@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>האפליקציה זקוקה לגישה לנתוני הבריאות שלך כדי לנתח ולהציג לך תובנות חשובות על מצב הבריאות שלך.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>האפליקציה זקוקה לגישה לעדכן נתוני בריאות כדי לשמור מידע נוסף.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
