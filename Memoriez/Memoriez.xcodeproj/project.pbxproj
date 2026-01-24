@@ -7,62 +7,75 @@
 	objects = {
 
 /* Begin PBXContainerItemProxy section */
-		4FA661072F25020A00893900 /* PBXContainerItemProxy */ = {
+		4F70FAAC2F2514BE00788874 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 4FA660E52F25020800893900 /* Project object */;
+			containerPortal = 4F70FA8A2F2514BD00788874 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 4FA660EC2F25020800893900;
-			remoteInfo = "Health Reporter";
+			remoteGlobalIDString = 4F70FA912F2514BD00788874;
+			remoteInfo = Memoriez;
 		};
-		4FA661112F25020A00893900 /* PBXContainerItemProxy */ = {
+		4F70FAB62F2514BE00788874 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 4FA660E52F25020800893900 /* Project object */;
+			containerPortal = 4F70FA8A2F2514BD00788874 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 4FA660EC2F25020800893900;
-			remoteInfo = "Health Reporter";
+			remoteGlobalIDString = 4F70FA912F2514BD00788874;
+			remoteInfo = Memoriez;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		4FA660ED2F25020800893900 /* Health Reporter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Health Reporter.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		4FA661062F25020A00893900 /* Health ReporterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Health ReporterTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		4FA661102F25020A00893900 /* Health ReporterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Health ReporterUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F70FA922F2514BD00788874 /* Memoriez.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memoriez.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F70FAAB2F2514BE00788874 /* MemoriezTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemoriezTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F70FAB52F2514BE00788874 /* MemoriezUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemoriezUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4F70FABD2F2514BE00788874 /* Exceptions for "Memoriez" folder in "Memoriez" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4F70FA912F2514BD00788874 /* Memoriez */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4FA660EF2F25020800893900 /* Health Reporter */ = {
+		4F70FA942F2514BD00788874 /* Memoriez */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Health Reporter";
+			exceptions = (
+				4F70FABD2F2514BE00788874 /* Exceptions for "Memoriez" folder in "Memoriez" target */,
+			);
+			path = Memoriez;
 			sourceTree = "<group>";
 		};
-		4FA661092F25020A00893900 /* Health ReporterTests */ = {
+		4F70FAAE2F2514BE00788874 /* MemoriezTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Health ReporterTests";
+			path = MemoriezTests;
 			sourceTree = "<group>";
 		};
-		4FA661132F25020A00893900 /* Health ReporterUITests */ = {
+		4F70FAB82F2514BE00788874 /* MemoriezUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Health ReporterUITests";
+			path = MemoriezUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		4FA660EA2F25020800893900 /* Frameworks */ = {
+		4F70FA8F2F2514BD00788874 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4FA661032F25020A00893900 /* Frameworks */ = {
+		4F70FAA82F2514BE00788874 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4FA6610D2F25020A00893900 /* Frameworks */ = {
+		4F70FAB22F2514BE00788874 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -72,22 +85,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		4FA660E42F25020800893900 = {
+		4F70FA892F2514BD00788874 = {
 			isa = PBXGroup;
 			children = (
-				4FA660EF2F25020800893900 /* Health Reporter */,
-				4FA661092F25020A00893900 /* Health ReporterTests */,
-				4FA661132F25020A00893900 /* Health ReporterUITests */,
-				4FA660EE2F25020800893900 /* Products */,
+				4F70FA942F2514BD00788874 /* Memoriez */,
+				4F70FAAE2F2514BE00788874 /* MemoriezTests */,
+				4F70FAB82F2514BE00788874 /* MemoriezUITests */,
+				4F70FA932F2514BD00788874 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		4FA660EE2F25020800893900 /* Products */ = {
+		4F70FA932F2514BD00788874 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4FA660ED2F25020800893900 /* Health Reporter.app */,
-				4FA661062F25020A00893900 /* Health ReporterTests.xctest */,
-				4FA661102F25020A00893900 /* Health ReporterUITests.xctest */,
+				4F70FA922F2514BD00788874 /* Memoriez.app */,
+				4F70FAAB2F2514BE00788874 /* MemoriezTests.xctest */,
+				4F70FAB52F2514BE00788874 /* MemoriezUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,134 +108,134 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4FA660EC2F25020800893900 /* Health Reporter */ = {
+		4F70FA912F2514BD00788874 /* Memoriez */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4FA661192F25020A00893900 /* Build configuration list for PBXNativeTarget "Health Reporter" */;
+			buildConfigurationList = 4F70FABE2F2514BE00788874 /* Build configuration list for PBXNativeTarget "Memoriez" */;
 			buildPhases = (
-				4FA660E92F25020800893900 /* Sources */,
-				4FA660EA2F25020800893900 /* Frameworks */,
-				4FA660EB2F25020800893900 /* Resources */,
+				4F70FA8E2F2514BD00788874 /* Sources */,
+				4F70FA8F2F2514BD00788874 /* Frameworks */,
+				4F70FA902F2514BD00788874 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4FA660EF2F25020800893900 /* Health Reporter */,
+				4F70FA942F2514BD00788874 /* Memoriez */,
 			);
-			name = "Health Reporter";
+			name = Memoriez;
 			packageProductDependencies = (
 			);
-			productName = "Health Reporter";
-			productReference = 4FA660ED2F25020800893900 /* Health Reporter.app */;
+			productName = Memoriez;
+			productReference = 4F70FA922F2514BD00788874 /* Memoriez.app */;
 			productType = "com.apple.product-type.application";
 		};
-		4FA661052F25020A00893900 /* Health ReporterTests */ = {
+		4F70FAAA2F2514BE00788874 /* MemoriezTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4FA6611E2F25020A00893900 /* Build configuration list for PBXNativeTarget "Health ReporterTests" */;
+			buildConfigurationList = 4F70FAC32F2514BE00788874 /* Build configuration list for PBXNativeTarget "MemoriezTests" */;
 			buildPhases = (
-				4FA661022F25020A00893900 /* Sources */,
-				4FA661032F25020A00893900 /* Frameworks */,
-				4FA661042F25020A00893900 /* Resources */,
+				4F70FAA72F2514BE00788874 /* Sources */,
+				4F70FAA82F2514BE00788874 /* Frameworks */,
+				4F70FAA92F2514BE00788874 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				4FA661082F25020A00893900 /* PBXTargetDependency */,
+				4F70FAAD2F2514BE00788874 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				4FA661092F25020A00893900 /* Health ReporterTests */,
+				4F70FAAE2F2514BE00788874 /* MemoriezTests */,
 			);
-			name = "Health ReporterTests";
+			name = MemoriezTests;
 			packageProductDependencies = (
 			);
-			productName = "Health ReporterTests";
-			productReference = 4FA661062F25020A00893900 /* Health ReporterTests.xctest */;
+			productName = MemoriezTests;
+			productReference = 4F70FAAB2F2514BE00788874 /* MemoriezTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		4FA6610F2F25020A00893900 /* Health ReporterUITests */ = {
+		4F70FAB42F2514BE00788874 /* MemoriezUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4FA661212F25020A00893900 /* Build configuration list for PBXNativeTarget "Health ReporterUITests" */;
+			buildConfigurationList = 4F70FAC62F2514BE00788874 /* Build configuration list for PBXNativeTarget "MemoriezUITests" */;
 			buildPhases = (
-				4FA6610C2F25020A00893900 /* Sources */,
-				4FA6610D2F25020A00893900 /* Frameworks */,
-				4FA6610E2F25020A00893900 /* Resources */,
+				4F70FAB12F2514BE00788874 /* Sources */,
+				4F70FAB22F2514BE00788874 /* Frameworks */,
+				4F70FAB32F2514BE00788874 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				4FA661122F25020A00893900 /* PBXTargetDependency */,
+				4F70FAB72F2514BE00788874 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				4FA661132F25020A00893900 /* Health ReporterUITests */,
+				4F70FAB82F2514BE00788874 /* MemoriezUITests */,
 			);
-			name = "Health ReporterUITests";
+			name = MemoriezUITests;
 			packageProductDependencies = (
 			);
-			productName = "Health ReporterUITests";
-			productReference = 4FA661102F25020A00893900 /* Health ReporterUITests.xctest */;
+			productName = MemoriezUITests;
+			productReference = 4F70FAB52F2514BE00788874 /* MemoriezUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		4FA660E52F25020800893900 /* Project object */ = {
+		4F70FA8A2F2514BD00788874 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
-					4FA660EC2F25020800893900 = {
+					4F70FA912F2514BD00788874 = {
 						CreatedOnToolsVersion = 26.2;
 					};
-					4FA661052F25020A00893900 = {
+					4F70FAAA2F2514BE00788874 = {
 						CreatedOnToolsVersion = 26.2;
-						TestTargetID = 4FA660EC2F25020800893900;
+						TestTargetID = 4F70FA912F2514BD00788874;
 					};
-					4FA6610F2F25020A00893900 = {
+					4F70FAB42F2514BE00788874 = {
 						CreatedOnToolsVersion = 26.2;
-						TestTargetID = 4FA660EC2F25020800893900;
+						TestTargetID = 4F70FA912F2514BD00788874;
 					};
 				};
 			};
-			buildConfigurationList = 4FA660E82F25020800893900 /* Build configuration list for PBXProject "Health Reporter" */;
+			buildConfigurationList = 4F70FA8D2F2514BD00788874 /* Build configuration list for PBXProject "Memoriez" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = 4FA660E42F25020800893900;
+			mainGroup = 4F70FA892F2514BD00788874;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 4FA660EE2F25020800893900 /* Products */;
+			productRefGroup = 4F70FA932F2514BD00788874 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4FA660EC2F25020800893900 /* Health Reporter */,
-				4FA661052F25020A00893900 /* Health ReporterTests */,
-				4FA6610F2F25020A00893900 /* Health ReporterUITests */,
+				4F70FA912F2514BD00788874 /* Memoriez */,
+				4F70FAAA2F2514BE00788874 /* MemoriezTests */,
+				4F70FAB42F2514BE00788874 /* MemoriezUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		4FA660EB2F25020800893900 /* Resources */ = {
+		4F70FA902F2514BD00788874 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4FA661042F25020A00893900 /* Resources */ = {
+		4F70FAA92F2514BE00788874 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4FA6610E2F25020A00893900 /* Resources */ = {
+		4F70FAB32F2514BE00788874 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -232,21 +245,21 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		4FA660E92F25020800893900 /* Sources */ = {
+		4F70FA8E2F2514BD00788874 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4FA661022F25020A00893900 /* Sources */ = {
+		4F70FAA72F2514BE00788874 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4FA6610C2F25020A00893900 /* Sources */ = {
+		4F70FAB12F2514BE00788874 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -256,20 +269,20 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		4FA661082F25020A00893900 /* PBXTargetDependency */ = {
+		4F70FAAD2F2514BE00788874 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4FA660EC2F25020800893900 /* Health Reporter */;
-			targetProxy = 4FA661072F25020A00893900 /* PBXContainerItemProxy */;
+			target = 4F70FA912F2514BD00788874 /* Memoriez */;
+			targetProxy = 4F70FAAC2F2514BE00788874 /* PBXContainerItemProxy */;
 		};
-		4FA661122F25020A00893900 /* PBXTargetDependency */ = {
+		4F70FAB72F2514BE00788874 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4FA660EC2F25020800893900 /* Health Reporter */;
-			targetProxy = 4FA661112F25020A00893900 /* PBXContainerItemProxy */;
+			target = 4F70FA912F2514BD00788874 /* Memoriez */;
+			targetProxy = 4F70FAB62F2514BE00788874 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		4FA6611A2F25020A00893900 /* Debug */ = {
+		4F70FABF2F2514BE00788874 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -278,7 +291,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TFG2H9C76N;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Health Reporter/Info.plist";
+				INFOPLIST_FILE = Memoriez/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -289,7 +302,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
+				PRODUCT_BUNDLE_IDENTIFIER = com.rani.Memoriez;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -301,7 +314,7 @@
 			};
 			name = Debug;
 		};
-		4FA6611B2F25020A00893900 /* Release */ = {
+		4F70FAC02F2514BE00788874 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -310,7 +323,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TFG2H9C76N;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Health Reporter/Info.plist";
+				INFOPLIST_FILE = Memoriez/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -321,7 +334,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
+				PRODUCT_BUNDLE_IDENTIFIER = com.rani.Memoriez;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -333,7 +346,7 @@
 			};
 			name = Release;
 		};
-		4FA6611C2F25020A00893900 /* Debug */ = {
+		4F70FAC12F2514BE00788874 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -397,7 +410,7 @@
 			};
 			name = Debug;
 		};
-		4FA6611D2F25020A00893900 /* Release */ = {
+		4F70FAC22F2514BE00788874 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -454,7 +467,7 @@
 			};
 			name = Release;
 		};
-		4FA6611F2F25020A00893900 /* Debug */ = {
+		4F70FAC42F2514BE00788874 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -464,7 +477,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-ReporterTests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.rani.MemoriezTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -472,11 +485,11 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Health Reporter.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Health Reporter";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Memoriez.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Memoriez";
 			};
 			name = Debug;
 		};
-		4FA661202F25020A00893900 /* Release */ = {
+		4F70FAC52F2514BE00788874 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -486,7 +499,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-ReporterTests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.rani.MemoriezTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -494,11 +507,11 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Health Reporter.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Health Reporter";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Memoriez.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Memoriez";
 			};
 			name = Release;
 		};
-		4FA661222F25020A00893900 /* Debug */ = {
+		4F70FAC72F2514BE00788874 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -506,7 +519,7 @@
 				DEVELOPMENT_TEAM = TFG2H9C76N;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-ReporterUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.rani.MemoriezUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -514,11 +527,11 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "Health Reporter";
+				TEST_TARGET_NAME = Memoriez;
 			};
 			name = Debug;
 		};
-		4FA661232F25020A00893900 /* Release */ = {
+		4F70FAC82F2514BE00788874 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -526,7 +539,7 @@
 				DEVELOPMENT_TEAM = TFG2H9C76N;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-ReporterUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.rani.MemoriezUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -534,50 +547,50 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "Health Reporter";
+				TEST_TARGET_NAME = Memoriez;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4FA660E82F25020800893900 /* Build configuration list for PBXProject "Health Reporter" */ = {
+		4F70FA8D2F2514BD00788874 /* Build configuration list for PBXProject "Memoriez" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4FA6611C2F25020A00893900 /* Debug */,
-				4FA6611D2F25020A00893900 /* Release */,
+				4F70FAC12F2514BE00788874 /* Debug */,
+				4F70FAC22F2514BE00788874 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4FA661192F25020A00893900 /* Build configuration list for PBXNativeTarget "Health Reporter" */ = {
+		4F70FABE2F2514BE00788874 /* Build configuration list for PBXNativeTarget "Memoriez" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4FA6611A2F25020A00893900 /* Debug */,
-				4FA6611B2F25020A00893900 /* Release */,
+				4F70FABF2F2514BE00788874 /* Debug */,
+				4F70FAC02F2514BE00788874 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4FA6611E2F25020A00893900 /* Build configuration list for PBXNativeTarget "Health ReporterTests" */ = {
+		4F70FAC32F2514BE00788874 /* Build configuration list for PBXNativeTarget "MemoriezTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4FA6611F2F25020A00893900 /* Debug */,
-				4FA661202F25020A00893900 /* Release */,
+				4F70FAC42F2514BE00788874 /* Debug */,
+				4F70FAC52F2514BE00788874 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4FA661212F25020A00893900 /* Build configuration list for PBXNativeTarget "Health ReporterUITests" */ = {
+		4F70FAC62F2514BE00788874 /* Build configuration list for PBXNativeTarget "MemoriezUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				4FA661222F25020A00893900 /* Debug */,
-				4FA661232F25020A00893900 /* Release */,
+				4F70FAC72F2514BE00788874 /* Debug */,
+				4F70FAC82F2514BE00788874 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 4FA660E52F25020800893900 /* Project object */;
+	rootObject = 4F70FA8A2F2514BD00788874 /* Project object */;
 }
