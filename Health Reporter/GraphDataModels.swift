@@ -83,6 +83,33 @@ struct NutritionGraphData {
     var periodLabel: String
 }
 
+// MARK: - חלופות לגרפים ריקים (צעדים, RHR, HRV)
+
+struct StepsDataPoint {
+    var date: Date
+    var steps: Double
+}
+
+struct StepsGraphData {
+    var points: [StepsDataPoint]
+    var periodLabel: String
+}
+
+struct TrendDataPoint {
+    var date: Date
+    var value: Double
+}
+
+struct RHRTrendGraphData {
+    var points: [TrendDataPoint]
+    var periodLabel: String
+}
+
+struct HRVTrendGraphData {
+    var points: [TrendDataPoint]
+    var periodLabel: String
+}
+
 /// צרור כל נתוני הגרפים לשליחה ל-AION
 struct AIONChartDataBundle {
     var range: DataRange
@@ -93,6 +120,9 @@ struct AIONChartDataBundle {
     var glucoseEnergy: GlucoseEnergyGraphData
     var autonomic: AutonomicRadarData
     var nutrition: NutritionGraphData
+    var steps: StepsGraphData
+    var rhrTrend: RHRTrendGraphData
+    var hrvTrend: HRVTrendGraphData
 }
 
 // MARK: - JSON Schema for Gemini (6 graphs in one Review request)

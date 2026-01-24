@@ -2,236 +2,307 @@
 //  RecommendationsViewController.swift
 //  Health Reporter
 //
-//  Created on 24/01/2026.
+//  עיצוב חדש: כרטיס המלצה לכל פריט, אייקונים, קריאות מקסימלית.
 //
 
 import UIKit
 
 class RecommendationsViewController: UIViewController {
-    
-    private let scrollView: UIScrollView = {
-        let scrollView = UIScrollView()
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.showsVerticalScrollIndicator = false
-        return scrollView
-    }()
-    
-    private let contentView: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-    
-    private let headerView: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-    
-    private let gradientLayer: CAGradientLayer = {
-        let gradient = CAGradientLayer()
-        gradient.colors = [AIONDesign.accentSecondary.cgColor, AIONDesign.accentPrimary.cgColor]
-        gradient.startPoint = CGPoint(x: 0, y: 0)
-        gradient.endPoint = CGPoint(x: 1, y: 1)
-        gradient.locations = [0.0, 1.0]
-        return gradient
-    }()
-    
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "RECOMMENDATIONS"
-        label.font = .systemFont(ofSize: 24, weight: .semibold)
-        label.textAlignment = .right
-        label.textColor = AIONDesign.textPrimary
-        label.numberOfLines = 0
-        return label
-    }()
-    
-    private let subtitleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Professional Directives"
-        label.font = .systemFont(ofSize: 14, weight: .regular)
-        label.textAlignment = .right
-        label.textColor = AIONDesign.textSecondary
-        return label
-    }()
-    
-    private let recommendationsCard: UIView = {
-        let view = UIView()
-        view.backgroundColor = AIONDesign.surface
-        view.layer.cornerRadius = AIONDesign.cornerRadius
-        view.layer.borderWidth = 1
-        view.layer.borderColor = AIONDesign.separator.cgColor
-        // Glassmorphism effect
-        view.alpha = 0.95
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-    
-    private let blurEffectView: UIVisualEffectView = {
-        let blur = UIBlurEffect(style: .systemUltraThinMaterialDark)
-        let blurView = UIVisualEffectView(effect: blur)
-        blurView.translatesAutoresizingMaskIntoConstraints = false
-        return blurView
-    }()
-    
-    private let recommendationsTextView: UITextView = {
-        let textView = UITextView()
-        textView.font = .systemFont(ofSize: 15, weight: .regular)
-        textView.textAlignment = .right
-        textView.isEditable = false
-        textView.backgroundColor = .clear
-        textView.textColor = AIONDesign.textPrimary
-        textView.textContainerInset = UIEdgeInsets(top: 32, left: 24, bottom: 32, right: 24)
-        textView.textContainer.lineFragmentPadding = 0
-        textView.textContainer.lineBreakMode = .byWordWrapping
-        // Better line spacing
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 6
-        textView.typingAttributes = [.paragraphStyle: paragraphStyle]
-        textView.translatesAutoresizingMaskIntoConstraints = false
-        return textView
-    }()
-    
+
     var recommendationsText: String = "" {
-        didSet {
-            // Format text with better styling
-            let formattedText = formatText(recommendationsText)
-            recommendationsTextView.attributedText = formattedText
-        }
+        didSet { items = Self.parse(recommendationsText); rebuildContent() }
     }
-    
-    private func formatText(_ text: String) -> NSAttributedString {
-        let attributedString = NSMutableAttributedString(string: text)
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 6
-        paragraphStyle.paragraphSpacing = 12
-        
-        let fullRange = NSRange(location: 0, length: text.count)
-        attributedString.addAttribute(.foregroundColor, value: AIONDesign.textPrimary, range: fullRange)
-        attributedString.addAttribute(.font, value: UIFont.systemFont(ofSize: 15, weight: .regular), range: fullRange)
-        attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: fullRange)
-        
-        // Make headers bold and larger
-        let headerPattern = "##\\s+(.+?)\\n"
-        if let regex = try? NSRegularExpression(pattern: headerPattern, options: []) {
-            regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, _ in
-                if let match = match, match.numberOfRanges > 1 {
-                    let headerRange = match.range(at: 1)
-                    attributedString.addAttribute(.font, value: UIFont.systemFont(ofSize: 18, weight: .bold), range: headerRange)
-                    attributedString.addAttribute(.foregroundColor, value: AIONDesign.accentSecondary, range: headerRange)
-                }
+
+    private var items: [RecommendationItem] = []
+    private let scrollView = UIScrollView()
+    private let stack = UIStackView()
+    private let closeButton = UIButton(type: .system)
+
+    private struct RecommendationItem {
+        let title: String
+        let body: String
+        let iconName: String
+    }
+
+    private static let iconRotation: [String] = [
+        "figure.walk", "bed.double.fill", "leaf.fill",
+        "heart.fill", "flame.fill", "drop.fill"
+    ]
+
+    private static func parse(_ text: String) -> [RecommendationItem] {
+        var result: [RecommendationItem] = []
+        var index = 0
+        let blocks = text.components(separatedBy: "\n\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+
+        for block in blocks {
+            if let item = parseBlock(block, iconIndex: &index) {
+                result.append(item)
             }
         }
-        
-        // Make bold text (between **)
-        let boldPattern = "\\*\\*(.+?)\\*\\*"
-        if let regex = try? NSRegularExpression(pattern: boldPattern, options: []) {
-            regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, _ in
-                if let match = match, match.numberOfRanges > 1 {
-                    let boldRange = match.range(at: 1)
-                    attributedString.addAttribute(.font, value: UIFont.systemFont(ofSize: 15, weight: .semibold), range: boldRange)
-                }
+        if result.isEmpty {
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                result.append(RecommendationItem(title: "המלצות", body: trimmed, iconName: "lightbulb.fill"))
             }
         }
-        
-        return attributedString
+        return result
     }
-    
+
+    private static func parseBlock(_ block: String, iconIndex: inout Int) -> RecommendationItem? {
+        let lines = block.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        guard !lines.isEmpty else { return nil }
+
+        var title: String?
+        var bodyLines: [String] = []
+        var foundTitle = false
+
+        for line in lines {
+            if let bEnd = line.range(of: "**:") {
+                let before = String(line[..<bEnd.lowerBound])
+                let bold = before.replacingOccurrences(of: "*", with: "").replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespaces)
+                let after = String(line[bEnd.upperBound...]).trimmingCharacters(in: .whitespaces)
+                if !bold.isEmpty {
+                    if title == nil { title = bold; foundTitle = true }
+                    if !after.isEmpty { bodyLines.append(after) }
+                }
+                continue
+            }
+            if foundTitle || title != nil {
+                bodyLines.append(line)
+            } else if line.hasPrefix("•") || line.hasPrefix("*") || line.hasPrefix("-") {
+                let cleaned = String(line.drop(while: { "•*- \t".contains($0) }))
+                if !cleaned.isEmpty { title = cleaned; foundTitle = true }
+            } else if let match = line.range(of: "^(\\d+)\\.\\s*", options: .regularExpression) {
+                let cleaned = String(line[match.upperBound...]).trimmingCharacters(in: .whitespaces)
+                if !cleaned.isEmpty { title = cleaned; foundTitle = true }
+            } else {
+                title = line
+                foundTitle = true
+            }
+        }
+
+        guard let t = title, !t.isEmpty else { return nil }
+        let body = bodyLines.joined(separator: "\n\n")
+        let icon = iconRotation[iconIndex % iconRotation.count]
+        iconIndex += 1
+        return RecommendationItem(title: t, body: body, iconName: icon)
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
-        setupNavigationBar()
-    }
-    
-    private func setupNavigationBar() {
-        let closeButton = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(closeTapped))
-        closeButton.tintColor = AIONDesign.textPrimary
-        navigationItem.rightBarButtonItem = closeButton
-        
-        // Set navigation bar appearance
-        if let navBar = navigationController?.navigationBar {
-            navBar.barTintColor = AIONDesign.background
-            navBar.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
-        }
-    }
-    
-    @objc private func closeTapped() {
-        dismiss(animated: true)
-    }
-    
-    private func setupUI() {
         view.backgroundColor = AIONDesign.background
-        
-        // Header עם gradient
-        headerView.layer.insertSublayer(gradientLayer, at: 0)
-        headerView.addSubview(titleLabel)
-        headerView.addSubview(subtitleLabel)
-        
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 60),
-            titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 24),
-            titleLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -24),
-            
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            subtitleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 24),
-            subtitleLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -24),
-            subtitleLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -32)
-        ])
-        
-        // Recommendations card with glassmorphism
-        recommendationsCard.insertSubview(blurEffectView, at: 0)
-        recommendationsCard.addSubview(recommendationsTextView)
-        
-        NSLayoutConstraint.activate([
-            blurEffectView.topAnchor.constraint(equalTo: recommendationsCard.topAnchor),
-            blurEffectView.leadingAnchor.constraint(equalTo: recommendationsCard.leadingAnchor),
-            blurEffectView.trailingAnchor.constraint(equalTo: recommendationsCard.trailingAnchor),
-            blurEffectView.bottomAnchor.constraint(equalTo: recommendationsCard.bottomAnchor),
-            
-            recommendationsTextView.topAnchor.constraint(equalTo: recommendationsCard.topAnchor),
-            recommendationsTextView.leadingAnchor.constraint(equalTo: recommendationsCard.leadingAnchor),
-            recommendationsTextView.trailingAnchor.constraint(equalTo: recommendationsCard.trailingAnchor),
-            recommendationsTextView.bottomAnchor.constraint(equalTo: recommendationsCard.bottomAnchor)
-        ])
-        
+        view.semanticContentAttribute = .forceRightToLeft
+        setupScrollAndStack()
+        setupHeader()
+        setupCloseButton()
+        rebuildContent()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+
+    private func setupScrollAndStack() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.alwaysBounceVertical = true
+        scrollView.semanticContentAttribute = .forceRightToLeft
         view.addSubview(scrollView)
-        scrollView.addSubview(contentView)
-        
-        contentView.addSubview(headerView)
-        contentView.addSubview(recommendationsCard)
-        
+
+        stack.axis = .vertical
+        stack.spacing = AIONDesign.spacingLarge
+        stack.alignment = .fill
+        stack.semanticContentAttribute = .forceRightToLeft
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(stack)
+
+        let lead: CGFloat = 12
+        let trail: CGFloat = 28
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
-            
-            headerView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            headerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            headerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 200),
-            headerView.widthAnchor.constraint(equalTo: contentView.widthAnchor),
-            
-            recommendationsCard.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -30),
-            recommendationsCard.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            recommendationsCard.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            recommendationsCard.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32),
-            recommendationsCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 500)
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: AIONDesign.spacingLarge),
+            stack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: lead),
+            stack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -trail),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -AIONDesign.spacingLarge),
+            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -(lead + trail))
         ])
     }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        gradientLayer.frame = headerView.bounds
+
+    private func setupHeader() {
+        let wrap = UIView()
+        wrap.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = UILabel()
+        title.text = "המלצות"
+        title.font = .systemFont(ofSize: 26, weight: .bold)
+        title.textColor = AIONDesign.textPrimary
+        title.textAlignment = .center
+        title.translatesAutoresizingMaskIntoConstraints = false
+
+        let sub = UILabel()
+        sub.text = "Directives מקצועיות"
+        sub.font = .systemFont(ofSize: 15, weight: .regular)
+        sub.textColor = AIONDesign.textSecondary
+        sub.textAlignment = .center
+        sub.translatesAutoresizingMaskIntoConstraints = false
+
+        wrap.addSubview(title)
+        wrap.addSubview(sub)
+        stack.addArrangedSubview(wrap)
+
+        NSLayoutConstraint.activate([
+            title.topAnchor.constraint(equalTo: wrap.topAnchor),
+            title.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
+            title.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
+
+            sub.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 6),
+            sub.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
+            sub.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
+            sub.bottomAnchor.constraint(equalTo: wrap.bottomAnchor)
+        ])
     }
+
+    private func setupCloseButton() {
+        closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        closeButton.tintColor = AIONDesign.textTertiary
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        view.addSubview(closeButton)
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            closeButton.widthAnchor.constraint(equalToConstant: 36),
+            closeButton.heightAnchor.constraint(equalToConstant: 36)
+        ])
+    }
+
+    @objc private func closeTapped() {
+        dismiss(animated: true)
+    }
+
+    private func rebuildContent() {
+        stack.arrangedSubviews.filter { $0 is RecCardView || $0 is RecFallbackView }.forEach { $0.removeFromSuperview() }
+        if items.isEmpty {
+            let fallback = RecFallbackView(text: recommendationsText)
+            stack.addArrangedSubview(fallback)
+            return
+        }
+        for item in items {
+            stack.addArrangedSubview(RecCardView(title: item.title, body: item.body, iconName: item.iconName))
+        }
+    }
+}
+
+// MARK: - Recommendation card
+
+private final class RecCardView: UIView {
+    init(title: String, body: String, iconName: String) {
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        semanticContentAttribute = .forceRightToLeft
+        backgroundColor = AIONDesign.surface
+        layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.06
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+        layer.shadowRadius = 8
+
+        let inner = UIStackView()
+        inner.axis = .horizontal
+        inner.spacing = AIONDesign.spacing
+        inner.alignment = .top
+        inner.semanticContentAttribute = .forceRightToLeft
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(inner)
+
+        let iconBg = UIView()
+        iconBg.backgroundColor = AIONDesign.accentSecondary.withAlphaComponent(0.12)
+        iconBg.layer.cornerRadius = 12
+        iconBg.translatesAutoresizingMaskIntoConstraints = false
+
+        let icon = UIImageView(image: UIImage(systemName: iconName))
+        icon.tintColor = AIONDesign.accentSecondary
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        iconBg.addSubview(icon)
+
+        let textStack = UIStackView()
+        textStack.axis = .vertical
+        textStack.spacing = 6
+        textStack.alignment = .leading
+        textStack.semanticContentAttribute = .forceRightToLeft
+
+        let titL = UILabel()
+        titL.attributedText = AIONDesign.attributedStringRTL(title, font: .systemFont(ofSize: 17, weight: .semibold), color: AIONDesign.textPrimary)
+        titL.numberOfLines = 0
+        textStack.addArrangedSubview(titL)
+
+        if !body.isEmpty {
+            let bL = UILabel()
+            bL.attributedText = AIONDesign.attributedStringRTL(body, font: .systemFont(ofSize: 15, weight: .regular), color: AIONDesign.textSecondary)
+            bL.numberOfLines = 0
+            textStack.addArrangedSubview(bL)
+        }
+
+        inner.addArrangedSubview(iconBg)
+        inner.addArrangedSubview(textStack)
+
+        let padLead: CGFloat = 14
+        let padTrail: CGFloat = 24
+        NSLayoutConstraint.activate([
+            iconBg.widthAnchor.constraint(equalToConstant: 44),
+            iconBg.heightAnchor.constraint(equalToConstant: 44),
+            icon.centerXAnchor.constraint(equalTo: iconBg.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: iconBg.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 22),
+            icon.heightAnchor.constraint(equalToConstant: 22),
+
+            inner.topAnchor.constraint(equalTo: topAnchor, constant: AIONDesign.spacingLarge),
+            inner.leadingAnchor.constraint(equalTo: leadingAnchor, constant: padLead),
+            inner.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padTrail),
+            inner.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AIONDesign.spacingLarge)
+        ])
+    }
+
+    required init?(coder: NSCoder) { nil }
+}
+
+// MARK: - Fallback
+
+private final class RecFallbackView: UIView {
+    init(text: String) {
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        semanticContentAttribute = .forceRightToLeft
+        backgroundColor = AIONDesign.surface
+        layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.06
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+        layer.shadowRadius = 8
+
+        let tv = UITextView()
+        let str = text.isEmpty ? "אין המלצות זמינות כרגע." : text
+        tv.attributedText = AIONDesign.attributedStringRTL(str, font: .systemFont(ofSize: 15, weight: .regular), color: AIONDesign.textPrimary)
+        tv.backgroundColor = .clear
+        tv.isEditable = false
+        tv.textAlignment = .right
+        tv.semanticContentAttribute = .forceRightToLeft
+        tv.textContainerInset = UIEdgeInsets(top: AIONDesign.spacingLarge, left: 24, bottom: AIONDesign.spacingLarge, right: 14)
+        tv.textContainer.lineFragmentPadding = 0
+        tv.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(tv)
+        NSLayoutConstraint.activate([
+            tv.topAnchor.constraint(equalTo: topAnchor),
+            tv.leadingAnchor.constraint(equalTo: leadingAnchor),
+            tv.trailingAnchor.constraint(equalTo: trailingAnchor),
+            tv.bottomAnchor.constraint(equalTo: bottomAnchor),
+            tv.heightAnchor.constraint(greaterThanOrEqualToConstant: 120)
+        ])
+    }
+    required init?(coder: NSCoder) { nil }
 }

@@ -289,6 +289,33 @@ class GeminiService {
         }
     }
     
+    private static func parseAPIError(statusCode: Int, data: Data?) -> String {
+        if statusCode == 429 {
+            let quotaMessage = "חסמת את המכסה היומית ל‑Gemini (20 בקשות בחינם). נסה שוב מחר, או שדרג לתוכנית בתשלום ב־Google AI Studio."
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let error = json["error"] as? [String: Any] else {
+                return quotaMessage
+            }
+            let status = error["status"] as? String ?? ""
+            let message = error["message"] as? String ?? ""
+            if status == "RESOURCE_EXHAUSTED" || message.lowercased().contains("quota") || message.contains("מכסה") {
+                return quotaMessage
+            }
+            if message.lowercased().contains("retry") || message.contains("41") {
+                return quotaMessage + " (המערכת ממליצה לנסות שוב בעוד כ־40 שניות אם זו מגבלת קצב.)"
+            }
+            return quotaMessage
+        }
+        if statusCode == 503 {
+            return "שירות Gemini לא זמין כרגע. נסה שוב בעוד דקות."
+        }
+        if statusCode != 200 {
+            return "שגיאת שרת: \(statusCode)"
+        }
+        return "שגיאה מ‑Gemini"
+    }
+
     private func formatJSONForPrompt(_ json: [String: Any]) -> String {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: json, options: .prettyPrinted)
@@ -350,10 +377,11 @@ class GeminiService {
             if let httpResponse = response as? HTTPURLResponse {
                 print("HTTP Status Code: \(httpResponse.statusCode)")
                 if httpResponse.statusCode != 200 {
+                    let userMessage = Self.parseAPIError(statusCode: httpResponse.statusCode, data: data)
                     if let data = data, let errorString = String(data: data, encoding: .utf8) {
                         print("Error response: \(errorString)")
                     }
-                    completion(nil, NSError(domain: "GeminiService", code: -8, userInfo: [NSLocalizedDescriptionKey: "שגיאת שרת: \(httpResponse.statusCode)"]))
+                    completion(nil, NSError(domain: "GeminiService", code: -8, userInfo: [NSLocalizedDescriptionKey: userMessage]))
                     return
                 }
             }
@@ -369,10 +397,11 @@ class GeminiService {
                     return
                 }
                 
-                // בדיקה אם יש שגיאה בתשובה
+                // בדיקה אם יש שגיאה בתשובה (תשובה 200 אבל error ב-JSON)
                 if let error = json["error"] as? [String: Any],
                    let message = error["message"] as? String {
-                    completion(nil, NSError(domain: "GeminiService", code: -6, userInfo: [NSLocalizedDescriptionKey: "שגיאה מ-Gemini: \(message)"]))
+                    let userMessage = Self.parseAPIError(statusCode: 200, data: data) ?? "שגיאה מ-Gemini: \(message)"
+                    completion(nil, NSError(domain: "GeminiService", code: -6, userInfo: [NSLocalizedDescriptionKey: userMessage]))
                     return
                 }
                 

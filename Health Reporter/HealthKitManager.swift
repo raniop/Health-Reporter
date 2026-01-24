@@ -421,13 +421,13 @@ class HealthKitManager {
         healthStore.execute(query)
     }
     
-    private func fetchSleepData(startDate: Date, endDate: Date, completion: @escaping (Double?, [SleepData]?) -> Void) {
+    private func fetchSleepData(startDate: Date, endDate: Date, matchByEndDate: Bool = false, completion: @escaping (Double?, [SleepData]?) -> Void) {
         guard let sleepType = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else {
             completion(nil, nil)
             return
         }
-        
-        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let options: HKQueryOptions = matchByEndDate ? .strictEndDate : .strictStartDate
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: options)
         let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]) { _, samples, _ in
             guard let samples = samples as? [HKCategorySample] else {
                 completion(nil, nil)
@@ -460,16 +460,41 @@ class HealthKitManager {
             completion(nil)
             return
         }
-        
         let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
         let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
             let calories = result?.sumQuantity()?.doubleValue(for: HKUnit.kilocalorie())
             completion(calories)
         }
-        
         healthStore.execute(query)
     }
-    
+
+    private func fetchDietaryProtein(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .dietaryProtein) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .cumulativeSum) { _, res, _ in
+            completion(res?.sumQuantity()?.doubleValue(for: HKUnit.gram()))
+        }
+        healthStore.execute(q)
+    }
+
+    private func fetchDietaryCarbs(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .dietaryCarbohydrates) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .cumulativeSum) { _, res, _ in
+            completion(res?.sumQuantity()?.doubleValue(for: HKUnit.gram()))
+        }
+        healthStore.execute(q)
+    }
+
+    private func fetchDietaryFat(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .dietaryFatTotal) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .cumulativeSum) { _, res, _ in
+            completion(res?.sumQuantity()?.doubleValue(for: HKUnit.gram()))
+        }
+        healthStore.execute(q)
+    }
+
     private func fetchBloodGlucose(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let glucoseType = HKQuantityType.quantityType(forIdentifier: .bloodGlucose) else {
             completion(nil)
@@ -808,6 +833,9 @@ class HealthKitManager {
         var sleepPoints: [SleepDayPoint] = []
         var glucosePoints: [GlucoseEnergyPoint] = []
         var nutritionPoints: [NutritionDayPoint] = []
+        var stepsPoints: [StepsDataPoint] = []
+        var rhrTrendPoints: [TrendDataPoint] = []
+        var hrvTrendPoints: [TrendDataPoint] = []
         
         var lastRHR: Double?
         var lastHRV: Double?
@@ -835,7 +863,7 @@ class HealthKitManager {
             g.enter()
             fetchDistance(startDate: dayStart, endDate: dayEnd) { dist = $0; g.leave() }
             g.enter()
-            fetchSleepData(startDate: dayStart, endDate: dayEnd) { hours, sleepData in
+            fetchSleepData(startDate: dayStart, endDate: dayEnd, matchByEndDate: true) { hours, sleepData in
                 sleepHours = hours
                 if let arr = sleepData {
                     var deep: Double = 0, rem: Double = 0
@@ -857,6 +885,15 @@ class HealthKitManager {
             fetchBloodGlucose(startDate: dayStart, endDate: dayEnd) { glucose = $0; g.leave() }
             g.enter()
             fetchHeartRate(startDate: dayStart, endDate: dayEnd) { heartRate = $0; g.leave() }
+            var protein: Double?
+            var carbs: Double?
+            var fat: Double?
+            g.enter()
+            fetchDietaryProtein(startDate: dayStart, endDate: dayEnd) { protein = $0; g.leave() }
+            g.enter()
+            fetchDietaryCarbs(startDate: dayStart, endDate: dayEnd) { carbs = $0; g.leave() }
+            g.enter()
+            fetchDietaryFat(startDate: dayStart, endDate: dayEnd) { fat = $0; g.leave() }
             
             g.notify(queue: .main) {
                 let strain = min(10.0, (energy ?? 0) / 200.0)
@@ -874,7 +911,10 @@ class HealthKitManager {
                 efficiencyPoints.append(EfficiencyDataPoint(date: dayStart, avgHeartRate: heartRate, distanceKm: dist, activeCalories: energy))
                 sleepPoints.append(SleepDayPoint(date: dayStart, totalHours: sleepHours, deepHours: deepHours, remHours: remHours, bbt: nil))
                 glucosePoints.append(GlucoseEnergyPoint(date: dayStart, glucose: glucose, activeEnergy: energy))
-                nutritionPoints.append(NutritionDayPoint(date: dayStart, protein: nil, carbs: nil, fat: nil, proteinGoal: nil, carbsGoal: nil, fatGoal: nil))
+                nutritionPoints.append(NutritionDayPoint(date: dayStart, protein: protein, carbs: carbs, fat: fat, proteinGoal: nil, carbsGoal: nil, fatGoal: nil))
+                stepsPoints.append(StepsDataPoint(date: dayStart, steps: steps ?? 0))
+                if let r = rhr { rhrTrendPoints.append(TrendDataPoint(date: dayStart, value: r)) }
+                if let h = hrv { hrvTrendPoints.append(TrendDataPoint(date: dayStart, value: h)) }
                 
                 if let h = hrv { lastHRV = h }
                 group.leave()
@@ -887,6 +927,18 @@ class HealthKitManager {
             sleepPoints.sort { $0.date < $1.date }
             glucosePoints.sort { $0.date < $1.date }
             nutritionPoints.sort { $0.date < $1.date }
+            stepsPoints.sort { $0.date < $1.date }
+            rhrTrendPoints.sort { $0.date < $1.date }
+            hrvTrendPoints.sort { $0.date < $1.date }
+            
+            // MARK: - Debug גרפים 3, 4
+            let sleepWithData = sleepPoints.filter { ($0.totalHours ?? 0) > 0 }
+            let glucoseWithData = glucosePoints.filter { $0.glucose != nil }
+            let energyWithData = glucosePoints.filter { ($0.activeEnergy ?? 0) > 0 }
+            print("[ChartDebug] fetchChartData done. range=\(label), days=\(dayBuckets.count)")
+            print("[ChartDebug] Sleep: total=\(sleepPoints.count), with totalHours>0=\(sleepWithData.count). Sample: \(sleepPoints.prefix(3).map { "\($0.date.description.prefix(10)):\($0.totalHours ?? -1)" })")
+            print("[ChartDebug] Glucose: with value=\(glucoseWithData.count). Energy>0=\(energyWithData.count). Sample energy: \(glucosePoints.prefix(3).map { "\($0.activeEnergy ?? -1)" })")
+            print("[ChartDebug] Readiness: points=\(readinessPoints.count). Sample recovery: \(readinessPoints.prefix(3).map { $0.recovery })")
             
             let rhrNorm = lastRHR.map { min(100, max(0, ($0 - 40) / 1.2)) }
             let hrvNorm = lastHRV.map { min(100, $0 / 1.5) }
@@ -900,7 +952,10 @@ class HealthKitManager {
                 sleep: SleepArchitectureGraphData(points: sleepPoints, periodLabel: label),
                 glucoseEnergy: GlucoseEnergyGraphData(points: glucosePoints, periodLabel: label),
                 autonomic: autonomic,
-                nutrition: NutritionGraphData(points: nutritionPoints, periodLabel: label)
+                nutrition: NutritionGraphData(points: nutritionPoints, periodLabel: label),
+                steps: StepsGraphData(points: stepsPoints, periodLabel: label),
+                rhrTrend: RHRTrendGraphData(points: rhrTrendPoints, periodLabel: label),
+                hrvTrend: HRVTrendGraphData(points: hrvTrendPoints, periodLabel: label)
             )
             completion(bundle)
         }

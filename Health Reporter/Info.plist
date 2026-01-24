@@ -6,6 +6,8 @@
 	<string>האפליקציה זקוקה לגישה לנתוני הבריאות שלך כדי לנתח ולהציג לך תובנות חשובות על מצב הבריאות שלך.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>האפליקציה זקוקה לגישה לעדכן נתוני בריאות כדי לשמור מידע נוסף.</string>
+	<key>App Uses Non-Exempt Encryption</key>
+	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

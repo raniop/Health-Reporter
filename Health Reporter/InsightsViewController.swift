@@ -2,236 +2,177 @@
 //  InsightsViewController.swift
 //  Health Reporter
 //
-//  Created on 24/01/2026.
+//  מציג את מלוא התובנות – ללא סינון – RTL, קריא.
 //
 
 import UIKit
 
 class InsightsViewController: UIViewController {
-    
-    private let scrollView: UIScrollView = {
-        let scrollView = UIScrollView()
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.showsVerticalScrollIndicator = false
-        return scrollView
-    }()
-    
-    private let contentView: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-    
-    private let headerView: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-    
-    private let gradientLayer: CAGradientLayer = {
-        let gradient = CAGradientLayer()
-        gradient.colors = [AIONDesign.accentPrimary.cgColor, AIONDesign.accentSecondary.cgColor]
-        gradient.startPoint = CGPoint(x: 0, y: 0)
-        gradient.endPoint = CGPoint(x: 1, y: 1)
-        gradient.locations = [0.0, 1.0]
-        return gradient
-    }()
-    
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "INSIGHTS"
-        label.font = .systemFont(ofSize: 24, weight: .semibold)
-        label.textAlignment = .right
-        label.textColor = AIONDesign.textPrimary
-        label.numberOfLines = 0
-        return label
-    }()
-    
-    private let subtitleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Deep Biometric Analysis"
-        label.font = .systemFont(ofSize: 14, weight: .regular)
-        label.textAlignment = .right
-        label.textColor = AIONDesign.textSecondary
-        return label
-    }()
-    
-    private let insightsCard: UIView = {
-        let view = UIView()
-        view.backgroundColor = AIONDesign.surface
-        view.layer.cornerRadius = AIONDesign.cornerRadius
-        view.layer.borderWidth = 1
-        view.layer.borderColor = AIONDesign.separator.cgColor
-        // Glassmorphism effect
-        view.alpha = 0.95
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-    
-    private let blurEffectView: UIVisualEffectView = {
-        let blur = UIBlurEffect(style: .systemUltraThinMaterialDark)
-        let blurView = UIVisualEffectView(effect: blur)
-        blurView.translatesAutoresizingMaskIntoConstraints = false
-        return blurView
-    }()
-    
-    private let insightsTextView: UITextView = {
-        let textView = UITextView()
-        textView.font = .systemFont(ofSize: 15, weight: .regular)
-        textView.textAlignment = .right
-        textView.isEditable = false
-        textView.backgroundColor = .clear
-        textView.textColor = AIONDesign.textPrimary
-        textView.textContainerInset = UIEdgeInsets(top: 32, left: 24, bottom: 32, right: 24)
-        textView.textContainer.lineFragmentPadding = 0
-        textView.textContainer.lineBreakMode = .byWordWrapping
-        // Better line spacing
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 6
-        textView.typingAttributes = [.paragraphStyle: paragraphStyle]
-        textView.translatesAutoresizingMaskIntoConstraints = false
-        return textView
-    }()
-    
+
     var insightsText: String = "" {
-        didSet {
-            // Format text with better styling
-            let formattedText = formatText(insightsText)
-            insightsTextView.attributedText = formattedText
-        }
+        didSet { rebuildContent() }
     }
-    
-    private func formatText(_ text: String) -> NSAttributedString {
-        let attributedString = NSMutableAttributedString(string: text)
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 6
-        paragraphStyle.paragraphSpacing = 12
-        
-        let fullRange = NSRange(location: 0, length: text.count)
-        attributedString.addAttribute(.foregroundColor, value: AIONDesign.textPrimary, range: fullRange)
-        attributedString.addAttribute(.font, value: UIFont.systemFont(ofSize: 15, weight: .regular), range: fullRange)
-        attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: fullRange)
-        
-        // Make headers bold and larger
-        let headerPattern = "##\\s+(.+?)\\n"
-        if let regex = try? NSRegularExpression(pattern: headerPattern, options: []) {
-            regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, _ in
-                if let match = match, match.numberOfRanges > 1 {
-                    let headerRange = match.range(at: 1)
-                    attributedString.addAttribute(.font, value: UIFont.systemFont(ofSize: 18, weight: .bold), range: headerRange)
-                    attributedString.addAttribute(.foregroundColor, value: AIONDesign.accentPrimary, range: headerRange)
-                }
-            }
-        }
-        
-        // Make bold text (between **)
-        let boldPattern = "\\*\\*(.+?)\\*\\*"
-        if let regex = try? NSRegularExpression(pattern: boldPattern, options: []) {
-            regex.enumerateMatches(in: text, options: [], range: fullRange) { match, _, _ in
-                if let match = match, match.numberOfRanges > 1 {
-                    let boldRange = match.range(at: 1)
-                    attributedString.addAttribute(.font, value: UIFont.systemFont(ofSize: 15, weight: .semibold), range: boldRange)
-                }
-            }
-        }
-        
-        return attributedString
-    }
-    
+
+    private let scrollView = UIScrollView()
+    private let stack = UIStackView()
+    private let closeButton = UIButton(type: .system)
+    private var contentView: UIView?
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
-        setupNavigationBar()
-    }
-    
-    private func setupNavigationBar() {
-        let closeButton = UIBarButtonItem(barButtonSystemItem: .close, target: self, action: #selector(closeTapped))
-        closeButton.tintColor = AIONDesign.textPrimary
-        navigationItem.rightBarButtonItem = closeButton
-        
-        // Set navigation bar appearance
-        if let navBar = navigationController?.navigationBar {
-            navBar.barTintColor = AIONDesign.background
-            navBar.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
-        }
-    }
-    
-    @objc private func closeTapped() {
-        dismiss(animated: true)
-    }
-    
-    private func setupUI() {
         view.backgroundColor = AIONDesign.background
-        
-        // Header עם gradient
-        headerView.layer.insertSublayer(gradientLayer, at: 0)
-        headerView.addSubview(titleLabel)
-        headerView.addSubview(subtitleLabel)
-        
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 60),
-            titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 24),
-            titleLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -24),
-            
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            subtitleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 24),
-            subtitleLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -24),
-            subtitleLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -32)
-        ])
-        
-        // Insights card with glassmorphism
-        insightsCard.insertSubview(blurEffectView, at: 0)
-        insightsCard.addSubview(insightsTextView)
-        
-        NSLayoutConstraint.activate([
-            blurEffectView.topAnchor.constraint(equalTo: insightsCard.topAnchor),
-            blurEffectView.leadingAnchor.constraint(equalTo: insightsCard.leadingAnchor),
-            blurEffectView.trailingAnchor.constraint(equalTo: insightsCard.trailingAnchor),
-            blurEffectView.bottomAnchor.constraint(equalTo: insightsCard.bottomAnchor),
-            
-            insightsTextView.topAnchor.constraint(equalTo: insightsCard.topAnchor),
-            insightsTextView.leadingAnchor.constraint(equalTo: insightsCard.leadingAnchor),
-            insightsTextView.trailingAnchor.constraint(equalTo: insightsCard.trailingAnchor),
-            insightsTextView.bottomAnchor.constraint(equalTo: insightsCard.bottomAnchor)
-        ])
-        
+        view.semanticContentAttribute = .forceRightToLeft
+        setupScrollAndStack()
+        setupHeader()
+        setupCloseButton()
+        rebuildContent()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+
+    private func setupScrollAndStack() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsVerticalScrollIndicator = true
+        scrollView.alwaysBounceVertical = true
+        scrollView.semanticContentAttribute = .forceRightToLeft
         view.addSubview(scrollView)
-        scrollView.addSubview(contentView)
-        
-        contentView.addSubview(headerView)
-        contentView.addSubview(insightsCard)
-        
+
+        stack.axis = .vertical
+        stack.spacing = AIONDesign.spacingLarge
+        stack.alignment = .fill
+        stack.semanticContentAttribute = .forceRightToLeft
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(stack)
+
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
-            
-            headerView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            headerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            headerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 200),
-            headerView.widthAnchor.constraint(equalTo: contentView.widthAnchor),
-            
-            insightsCard.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -30),
-            insightsCard.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            insightsCard.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            insightsCard.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32),
-            insightsCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 500)
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: AIONDesign.spacingLarge),
+            stack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: AIONDesign.spacing),
+            stack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -AIONDesign.spacing),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -AIONDesign.spacingLarge * 2),
+            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -AIONDesign.spacing * 2)
         ])
     }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        gradientLayer.frame = headerView.bounds
+
+    private func setupHeader() {
+        let wrap = UIView()
+        wrap.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = UILabel()
+        title.text = "תובנות AION"
+        title.font = .systemFont(ofSize: 26, weight: .bold)
+        title.textColor = AIONDesign.textPrimary
+        title.textAlignment = .center
+        title.translatesAutoresizingMaskIntoConstraints = false
+
+        let sub = UILabel()
+        sub.text = "ניתוח ביומטרי מבוסס נתונים"
+        sub.font = .systemFont(ofSize: 15, weight: .regular)
+        sub.textColor = AIONDesign.textSecondary
+        sub.textAlignment = .center
+        sub.translatesAutoresizingMaskIntoConstraints = false
+
+        wrap.addSubview(title)
+        wrap.addSubview(sub)
+        stack.addArrangedSubview(wrap)
+
+        NSLayoutConstraint.activate([
+            title.topAnchor.constraint(equalTo: wrap.topAnchor),
+            title.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
+            title.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
+            sub.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 6),
+            sub.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
+            sub.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
+            sub.bottomAnchor.constraint(equalTo: wrap.bottomAnchor)
+        ])
     }
+
+    private func setupCloseButton() {
+        closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        closeButton.tintColor = AIONDesign.textTertiary
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        closeButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        view.addSubview(closeButton)
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            closeButton.widthAnchor.constraint(equalToConstant: 36),
+            closeButton.heightAnchor.constraint(equalToConstant: 36)
+        ])
+    }
+
+    @objc private func closeTapped() {
+        dismiss(animated: true)
+    }
+
+    private func rebuildContent() {
+        contentView?.removeFromSuperview()
+        contentView = nil
+        let display = insightsText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if display.isEmpty {
+            let empty = UILabel()
+            empty.text = "אין תובנות זמינות.\nהרץ ניתוח מחדש (רענן נתונים) בדשבורד."
+            empty.font = .systemFont(ofSize: 16, weight: .regular)
+            empty.textColor = AIONDesign.textSecondary
+            empty.textAlignment = .center
+            empty.numberOfLines = 0
+            empty.translatesAutoresizingMaskIntoConstraints = false
+            stack.addArrangedSubview(empty)
+            contentView = empty
+            return
+        }
+        let full = InsightFullContentView(text: Self.stripMarkdownForDisplay(display))
+        stack.addArrangedSubview(full)
+        contentView = full
+    }
+
+    /// מסיר ** ומחליף ## בשורות ריקות לתצוגה נקייה.
+    private static func stripMarkdownForDisplay(_ s: String) -> String {
+        var t = s
+        while let r = t.range(of: "**") {
+            t.removeSubrange(r)
+        }
+        t = t.replacingOccurrences(of: "## ", with: "\n\n")
+        return t.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+// MARK: - תוכן מלא (כל התובנות, RTL)
+
+private final class InsightFullContentView: UIView {
+    init(text: String) {
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        semanticContentAttribute = .forceRightToLeft
+        backgroundColor = AIONDesign.surface
+        layer.cornerRadius = AIONDesign.cornerRadiusLarge
+
+        let tv = UITextView()
+        tv.attributedText = AIONDesign.attributedStringRTL(text, font: .systemFont(ofSize: 16, weight: .regular), color: AIONDesign.textPrimary)
+        tv.backgroundColor = .clear
+        tv.isEditable = false
+        tv.isScrollEnabled = false
+        tv.textAlignment = .right
+        tv.semanticContentAttribute = .forceRightToLeft
+        tv.textContainerInset = UIEdgeInsets(top: AIONDesign.spacing, left: AIONDesign.spacing, bottom: AIONDesign.spacing, right: AIONDesign.spacing)
+        tv.textContainer.lineFragmentPadding = 0
+        tv.translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(tv)
+        NSLayoutConstraint.activate([
+            tv.topAnchor.constraint(equalTo: topAnchor),
+            tv.leadingAnchor.constraint(equalTo: leadingAnchor),
+            tv.trailingAnchor.constraint(equalTo: trailingAnchor),
+            tv.bottomAnchor.constraint(equalTo: bottomAnchor),
+            tv.heightAnchor.constraint(greaterThanOrEqualToConstant: 120)
+        ])
+    }
+
+    required init?(coder: NSCoder) { nil }
 }
