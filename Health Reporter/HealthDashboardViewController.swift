@@ -2,12 +2,13 @@
 //  HealthDashboardViewController.swift
 //  Health Reporter
 //
-//  AION Performance Lab – עיצוב חדש, 6 גרפים, בחירת טווח (יום/שבוע/חודש).
+//  AION Dashboard – Hero Score Card, מגמת התאוששות, BIO, דגשים, הנחיות AI.
 //
 
 import UIKit
 import HealthKit
 import SwiftUI
+import FirebaseAuth
 
 class HealthDashboardViewController: UIViewController {
 
@@ -17,12 +18,20 @@ class HealthDashboardViewController: UIViewController {
     private var insightsText: String = ""
     private var recommendationsText: String = ""
     private var loadId: Int = 0
+    private var hasAnimatedOnce = false
 
     private let scrollView: UIScrollView = {
         let v = UIScrollView()
         v.translatesAutoresizingMaskIntoConstraints = false
         v.showsVerticalScrollIndicator = false
+        v.alwaysBounceVertical = true
         return v
+    }()
+
+    private let refreshControl: UIRefreshControl = {
+        let r = UIRefreshControl()
+        r.attributedTitle = NSAttributedString(string: "טוען מחדש את כל הנתונים…", attributes: [.foregroundColor: AIONDesign.textSecondary])
+        return r
     }()
 
     private let contentStack: UIStackView = {
@@ -32,35 +41,6 @@ class HealthDashboardViewController: UIViewController {
         s.semanticContentAttribute = .forceRightToLeft
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
-    }()
-
-    private let periodLabel: UILabel = {
-        let l = UILabel()
-        l.font = AIONDesign.captionFont()
-        l.textColor = AIONDesign.textTertiary
-        l.textAlignment = .right
-        l.numberOfLines = 2
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    private let segmentControl: UISegmentedControl = {
-        let items = DataRange.allCases.map { $0.segmentTitle() }
-        let s = UISegmentedControl(items: items)
-        s.selectedSegmentIndex = 1
-        s.translatesAutoresizingMaskIntoConstraints = false
-        return s
-    }()
-
-    private let refreshButton: UIButton = {
-        let b = UIButton(type: .system)
-        b.setTitle("רענן נתונים", for: .normal)
-        b.titleLabel?.font = AIONDesign.headlineFont()
-        b.backgroundColor = AIONDesign.accentPrimary
-        b.setTitleColor(.white, for: .normal)
-        b.layer.cornerRadius = AIONDesign.cornerRadius
-        b.translatesAutoresizingMaskIntoConstraints = false
-        return b
     }()
 
     private let loadingOverlay: UIView = {
@@ -87,130 +67,80 @@ class HealthDashboardViewController: UIViewController {
         return i
     }()
 
-    private let chartsContainer: UIStackView = {
-        let s = UIStackView()
-        s.axis = .vertical
-        s.spacing = AIONDesign.spacingLarge
-        s.translatesAutoresizingMaskIntoConstraints = false
-        return s
-    }()
+    private var useRefreshControlForCurrentLoad = false
 
-    private let actionsStack: UIStackView = {
-        let s = UIStackView()
-        s.axis = .vertical
-        s.spacing = AIONDesign.spacing
-        s.translatesAutoresizingMaskIntoConstraints = false
-        return s
-    }()
+    static let analysisDidCompleteNotification = Notification.Name("AIONAnalysisDidComplete")
 
-    private var insightsButton: UIButton?
-    private var recommendationsButton: UIButton?
-    private var analyzingSpinner: UIActivityIndicatorView?
+    // MARK: - UI Properties
 
-    private enum AnalysisCache {
-        static let keyInsights = "AION.CachedInsights"
-        static let keyRecommendations = "AION.CachedRecommendations"
-        static let keyLastDate = "AION.LastAnalysisDate"
-        static let maxAgeSeconds: TimeInterval = 24 * 3600
-        static let fileName = "last_analysis.json"
+    private let headerStack = UIStackView()
+    private let headerAvatarView = UIImageView()
+    private let greetingLabel = UILabel()
+    private let dateLabel = UILabel()
 
-        static var storageDirectory: URL? {
-            guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-            let dir = base.appendingPathComponent("HealthReporter", isDirectory: true)
-            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            return dir
-        }
+    private let heroCard = HeroScoreCardView()
 
-        static var fileURL: URL? { storageDirectory?.appendingPathComponent(fileName) }
+    private let periodSegmentRow = UIStackView()
+    private let periodControl = UISegmentedControl()
+    private let rangeDateLabel = UILabel()
 
-        /// שומר במכשיר: UserDefaults + קובץ ב־Application Support. הנתונים נשמרים תמיד לחזרה לעיון.
-        static func save(insights: String, recommendations: String) {
-            let now = Date()
-            UserDefaults.standard.set(insights, forKey: keyInsights)
-            UserDefaults.standard.set(recommendations, forKey: keyRecommendations)
-            UserDefaults.standard.set(now, forKey: keyLastDate)
-            guard let url = fileURL else { return }
-            let payload: [String: Any] = [
-                "insights": insights,
-                "recommendations": recommendations,
-                "date": ISO8601DateFormatter().string(from: now)
-            ]
-            guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return }
-            try? data.write(to: url)
-        }
+    private let efficiencyCard = UIView()
+    private var efficiencyHosting: UIViewController?
+    private let efficiencyTitleLabel = UILabel()
 
-        /// טוען מטמון: קודם UserDefaults; אם ריק – מקובץ מקומי. מחזיר nil אם אין נתונים או עברו 24h (לגבי שימוש כקאש).
-        static func load() -> (insights: String, recommendations: String)? {
-            if let fromUD = loadFromUserDefaults(), fromUD.2 { return (fromUD.0, fromUD.1) }
-            if let fromFile = loadFromFile(), fromFile.2 { return (fromFile.0, fromFile.1) }
-            return nil
-        }
+    private let bioStackRow = UIStackView()
+    private var bioSleep: BioStackCardView?
+    private var bioTemp: BioStackCardView?
 
-        private static func loadFromUserDefaults() -> (String, String, Bool)? {
-            guard let last = UserDefaults.standard.object(forKey: keyLastDate) as? Date,
-                  let ins = UserDefaults.standard.string(forKey: keyInsights),
-                  let rec = UserDefaults.standard.string(forKey: keyRecommendations),
-                  !ins.isEmpty else { return nil }
-            let valid = Date().timeIntervalSince(last) < maxAgeSeconds
-            return (ins, rec, valid)
-        }
+    private let highlightsCard = UIView()
+    private let highlightsStack = UIStackView()
 
-        private static func loadFromFile() -> (String, String, Bool)? {
-            guard let url = fileURL, let data = try? Data(contentsOf: url),
-                  let raw = try? JSONSerialization.jsonObject(with: data),
-                  let json = raw as? [String: Any],
-                  let ins = json["insights"] as? String, !ins.isEmpty,
-                  let rec = json["recommendations"] as? String,
-                  let dateStr = json["date"] as? String,
-                  let last = ISO8601DateFormatter().date(from: dateStr) else { return nil }
-            let valid = Date().timeIntervalSince(last) < maxAgeSeconds
-            UserDefaults.standard.set(ins, forKey: keyInsights)
-            UserDefaults.standard.set(rec, forKey: keyRecommendations)
-            UserDefaults.standard.set(last, forKey: keyLastDate)
-            return (ins, rec, valid)
-        }
+    private let directivesCard = DirectivesCardView()
 
-        static func shouldUseCache(forceAnalysis: Bool) -> Bool {
-            guard !forceAnalysis else { return false }
-            if let fromUD = loadFromUserDefaults() { return fromUD.2 }
-            if let fromFile = loadFromFile() { return fromFile.2 }
-            return false
-        }
-    }
+    // MARK: - Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AIONDesign.background
         view.semanticContentAttribute = .forceRightToLeft
         title = "AION"
+        navigationController?.setNavigationBarHidden(true, animated: false)
         setupUI()
-        segmentControl.addTarget(self, action: #selector(periodChanged), for: .valueChanged)
-        refreshButton.addTarget(self, action: #selector(refreshTapped), for: .touchUpInside)
-        updatePeriodLabel()
         checkHealthKitAuthorization()
+        loadHeaderAvatar()
     }
 
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        guard traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) else { return }
-        recommendationsButton?.layer.borderColor = AIONDesign.separator.resolvedColor(with: traitCollection).cgColor
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadHeaderAvatar()
+        updateGreeting()
     }
+
+    // MARK: - Setup UI
 
     private func setupUI() {
+        refreshControl.addTarget(self, action: #selector(refreshPulled), for: .valueChanged)
+        scrollView.refreshControl = refreshControl
         view.addSubview(scrollView)
         scrollView.addSubview(contentStack)
 
-        contentStack.addArrangedSubview(periodLabel)
-        contentStack.addArrangedSubview(segmentControl)
-        contentStack.addArrangedSubview(refreshButton)
-        contentStack.addArrangedSubview(chartsContainer)
-        contentStack.addArrangedSubview(actionsStack)
+        setupHeader()
+        setupHeroCard()
+        setupPeriodSegment()
+        setupEfficiencyCard()
+        setupBioStackRow()
+        setupHighlightsCard()
+        setupDirectivesCard()
 
-        refreshButton.heightAnchor.constraint(equalToConstant: 48).isActive = true
-        segmentControl.heightAnchor.constraint(equalToConstant: 36).isActive = true
-
-        addChartPlaceholders()
-        addActionButtons()
+        contentStack.addArrangedSubview(headerStack)
+        contentStack.addArrangedSubview(heroCard)
+        contentStack.addArrangedSubview(periodSegmentRow)
+        contentStack.addArrangedSubview(efficiencyCard)
+        contentStack.addArrangedSubview(bioStackRow)
+        contentStack.addArrangedSubview(makeSectionLabel("דגשים"))
+        contentStack.addArrangedSubview(highlightsCard)
+        contentStack.addArrangedSubview(makeSectionLabel("הנחיות AI"))
+        contentStack.addArrangedSubview(directivesCard)
 
         view.addSubview(loadingOverlay)
         loadingOverlay.addSubview(loadingSpinner)
@@ -238,168 +168,655 @@ class HealthDashboardViewController: UIViewController {
         ])
     }
 
-    private func addChartPlaceholders() {
-        let titles = [
-            "1. מטריצת מוכנות (התאוששות vs עומס)",
-            "2. יעילות קרדיו (דופק vs מרחק)",
-            "3. ארכיטקטורת שינה",
-            "4. גלוקוז ואנרגיה",
-            "5. איזון אוטונומי",
-            "6. תזונה vs יעדים",
-        ]
-        for t in titles {
-            let card = makeChartCard(title: t, height: 180)
-            chartsContainer.addArrangedSubview(card)
+    // MARK: - Header (ברכה + תאריך + אוואטר)
+
+    private func setupHeader() {
+        headerStack.axis = .horizontal
+        headerStack.spacing = 10
+        headerStack.alignment = .center
+        headerStack.distribution = .fill
+        headerStack.semanticContentAttribute = .forceRightToLeft
+        headerStack.translatesAutoresizingMaskIntoConstraints = false
+
+        headerAvatarView.contentMode = .scaleAspectFill
+        headerAvatarView.clipsToBounds = true
+        headerAvatarView.layer.cornerRadius = 20
+        headerAvatarView.backgroundColor = AIONDesign.surface
+        headerAvatarView.image = UIImage(systemName: "person.circle.fill")
+        headerAvatarView.tintColor = AIONDesign.textTertiary
+        headerAvatarView.isUserInteractionEnabled = true
+        headerAvatarView.translatesAutoresizingMaskIntoConstraints = false
+        let tap = UITapGestureRecognizer(target: self, action: #selector(headerAvatarTapped))
+        headerAvatarView.addGestureRecognizer(tap)
+
+        let textStack = UIStackView()
+        textStack.axis = .vertical
+        textStack.spacing = 2
+        textStack.alignment = .trailing
+        textStack.semanticContentAttribute = .forceRightToLeft
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+
+        greetingLabel.font = .systemFont(ofSize: 20, weight: .bold)
+        greetingLabel.textColor = AIONDesign.textPrimary
+        greetingLabel.textAlignment = .right
+        greetingLabel.translatesAutoresizingMaskIntoConstraints = false
+        updateGreeting()
+
+        dateLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        dateLabel.textColor = AIONDesign.textSecondary
+        dateLabel.textAlignment = .right
+        dateLabel.translatesAutoresizingMaskIntoConstraints = false
+        updateDateLabel()
+
+        textStack.addArrangedSubview(greetingLabel)
+        textStack.addArrangedSubview(dateLabel)
+
+        // Spacer to push text to the right side
+        let spacer = UIView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        headerStack.addArrangedSubview(textStack)
+        headerStack.addArrangedSubview(spacer)
+        headerStack.addArrangedSubview(headerAvatarView)
+
+        NSLayoutConstraint.activate([
+            headerAvatarView.widthAnchor.constraint(equalToConstant: 40),
+            headerAvatarView.heightAnchor.constraint(equalToConstant: 40),
+        ])
+    }
+
+    private func updateGreeting() {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let greeting: String
+        if hour < 5 {
+            greeting = "לילה טוב"
+        } else if hour < 12 {
+            greeting = "בוקר טוב"
+        } else if hour < 17 {
+            greeting = "צהריים טובים"
+        } else if hour < 21 {
+            greeting = "ערב טוב"
+        } else {
+            greeting = "לילה טוב"
+        }
+
+        if let name = Auth.auth().currentUser?.displayName, !name.isEmpty {
+            let firstName = name.components(separatedBy: " ").first ?? name
+            greetingLabel.text = "\(greeting), \(firstName)"
+        } else {
+            greetingLabel.text = greeting
         }
     }
 
-    private func makeChartCard(title: String, height: CGFloat) -> UIView {
-        let card = UIView()
-        card.backgroundColor = AIONDesign.surface
-        card.layer.cornerRadius = AIONDesign.cornerRadius
-        card.semanticContentAttribute = .forceRightToLeft
-        card.translatesAutoresizingMaskIntoConstraints = false
-
-        let label = UILabel()
-        label.text = title
-        label.font = AIONDesign.captionFont()
-        label.textColor = AIONDesign.textSecondary
-        label.textAlignment = .right
-        label.translatesAutoresizingMaskIntoConstraints = false
-
-        let container = UIView()
-        container.backgroundColor = AIONDesign.background
-        container.layer.cornerRadius = AIONDesign.cornerRadius - 4
-        container.translatesAutoresizingMaskIntoConstraints = false
-
-        card.addSubview(label)
-        card.addSubview(container)
-
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: card.topAnchor, constant: AIONDesign.spacing),
-            label.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
-            label.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
-            container.topAnchor.constraint(equalTo: label.bottomAnchor, constant: AIONDesign.spacing),
-            container.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
-            container.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
-            container.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -AIONDesign.spacing),
-            container.heightAnchor.constraint(equalToConstant: height),
-        ])
-        return card
+    private func updateDateLabel() {
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "he_IL")
+        fmt.dateFormat = "EEEE, d MMMM yyyy"
+        dateLabel.text = fmt.string(from: Date())
     }
 
-    private func addActionButtons() {
-        var config = UIButton.Configuration.plain()
-        config.title = "תובנות AION"
-        config.baseForegroundColor = .white
-        config.background.backgroundColor = AIONDesign.accentSecondary
-        config.background.cornerRadius = AIONDesign.cornerRadius
-        config.titleTextAttributesTransformer = .init { incoming in
-            var out = incoming
-            out.font = AIONDesign.headlineFont()
-            return out
+    // MARK: - Hero Card
+
+    private func setupHeroCard() {
+        heroCard.translatesAutoresizingMaskIntoConstraints = false
+        heroCard.configurePlaceholder()
+    }
+
+    // MARK: - Period Selector
+
+    private func setupPeriodSegment() {
+        periodSegmentRow.axis = .vertical
+        periodSegmentRow.spacing = 6
+        periodSegmentRow.alignment = .fill
+        periodSegmentRow.semanticContentAttribute = .forceRightToLeft
+        periodSegmentRow.translatesAutoresizingMaskIntoConstraints = false
+
+        let items = DataRange.allCases.map { $0.segmentTitle() }
+        periodControl.removeAllSegments()
+        for (i, t) in items.enumerated() { periodControl.insertSegment(withTitle: t, at: i, animated: false) }
+        periodControl.selectedSegmentIndex = 1
+        periodControl.selectedSegmentTintColor = AIONDesign.accentPrimary.withAlphaComponent(0.15)
+        periodControl.setTitleTextAttributes([
+            .foregroundColor: AIONDesign.accentPrimary,
+            .font: UIFont.systemFont(ofSize: 13, weight: .semibold)
+        ], for: .selected)
+        periodControl.setTitleTextAttributes([
+            .foregroundColor: AIONDesign.textTertiary,
+            .font: UIFont.systemFont(ofSize: 13, weight: .medium)
+        ], for: .normal)
+        periodControl.backgroundColor = AIONDesign.surface
+        periodControl.translatesAutoresizingMaskIntoConstraints = false
+        periodControl.addTarget(self, action: #selector(periodChanged), for: .valueChanged)
+
+        rangeDateLabel.font = .systemFont(ofSize: 11, weight: .regular)
+        rangeDateLabel.textColor = AIONDesign.textTertiary
+        rangeDateLabel.textAlignment = .center
+        rangeDateLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        periodSegmentRow.addArrangedSubview(periodControl)
+        periodSegmentRow.addArrangedSubview(rangeDateLabel)
+
+        NSLayoutConstraint.activate([
+            periodControl.heightAnchor.constraint(equalToConstant: 34),
+        ])
+        updateRangeDateLabel()
+    }
+
+    private func updateRangeDateLabel() {
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "he_IL")
+        let now = Date()
+        let cal = Calendar.current
+        switch selectedRange {
+        case .day:
+            fmt.dateFormat = "d MMMM yyyy"
+            rangeDateLabel.text = "נתוני היום · \(fmt.string(from: now))"
+        case .week:
+            let weekStart = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
+            let weekEnd = cal.date(byAdding: .day, value: 6, to: weekStart) ?? now
+            fmt.dateFormat = "d"
+            let startStr = fmt.string(from: weekStart)
+            fmt.dateFormat = "d MMMM"
+            let endStr = fmt.string(from: weekEnd)
+            rangeDateLabel.text = "נתוני שבוע · \(startStr)–\(endStr)"
+        case .month:
+            fmt.dateFormat = "MMMM yyyy"
+            rangeDateLabel.text = "נתוני חודש · \(fmt.string(from: now))"
         }
-
-        let insights = UIButton(type: .system)
-        insights.configuration = config
-        insights.translatesAutoresizingMaskIntoConstraints = false
-        insights.semanticContentAttribute = .forceRightToLeft
-        insights.addTarget(self, action: #selector(showInsightsTapped), for: .touchUpInside)
-
-        let spinner = UIActivityIndicatorView(style: .medium)
-        spinner.color = .white
-        spinner.hidesWhenStopped = true
-        spinner.translatesAutoresizingMaskIntoConstraints = false
-        insights.addSubview(spinner)
-
-        let recs = UIButton(type: .system)
-        recs.setTitle("המלצות", for: .normal)
-        recs.titleLabel?.font = AIONDesign.headlineFont()
-        recs.backgroundColor = AIONDesign.surface
-        recs.setTitleColor(AIONDesign.accentPrimary, for: .normal)
-        recs.layer.cornerRadius = AIONDesign.cornerRadius
-        recs.layer.borderWidth = 1
-        recs.layer.borderColor = AIONDesign.separator.cgColor
-        recs.translatesAutoresizingMaskIntoConstraints = false
-        recs.addTarget(self, action: #selector(showRecommendationsTapped), for: .touchUpInside)
-
-        insightsButton = insights
-        recommendationsButton = recs
-        analyzingSpinner = spinner
-
-        NSLayoutConstraint.activate([
-            spinner.centerYAnchor.constraint(equalTo: insights.centerYAnchor),
-            spinner.leadingAnchor.constraint(equalTo: insights.leadingAnchor, constant: 16)
-        ])
-
-        insights.heightAnchor.constraint(equalToConstant: 50).isActive = true
-        recs.heightAnchor.constraint(equalToConstant: 50).isActive = true
-        actionsStack.addArrangedSubview(insights)
-        actionsStack.addArrangedSubview(recs)
-    }
-
-    private func setAnalyzingState() {
-        guard let btn = insightsButton else { return }
-        var config = btn.configuration ?? .plain()
-        config.title = "מנתח"
-        config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 40, bottom: 0, trailing: 16)
-        btn.configuration = config
-        btn.isEnabled = false
-        analyzingSpinner?.startAnimating()
-        recommendationsButton?.isEnabled = false
-        recommendationsButton?.alpha = 0.45
-        recommendationsButton?.setTitleColor(AIONDesign.textTertiary, for: .disabled)
-    }
-
-    private func clearAnalyzingState() {
-        guard let btn = insightsButton else { return }
-        var config = btn.configuration ?? .plain()
-        config.title = "תובנות AION"
-        config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
-        btn.configuration = config
-        btn.isEnabled = true
-        analyzingSpinner?.stopAnimating()
-        recommendationsButton?.isEnabled = true
-        recommendationsButton?.alpha = 1
-    }
-
-    private func updatePeriodLabel() {
-        periodLabel.text = selectedRange.displayLabel()
     }
 
     @objc private func periodChanged() {
-        selectedRange = DataRange.allCases[segmentControl.selectedSegmentIndex]
-        updatePeriodLabel()
+        selectedRange = DataRange.allCases[periodControl.selectedSegmentIndex]
+        updateRangeDateLabel()
         loadData(forceAnalysis: false)
     }
 
-    @objc private func refreshTapped() {
-        loadData(forceAnalysis: true)
+    // MARK: - Efficiency Chart Card
+
+    private func setupEfficiencyCard() {
+        efficiencyCard.backgroundColor = AIONDesign.surface
+        efficiencyCard.layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        efficiencyCard.translatesAutoresizingMaskIntoConstraints = false
+
+        efficiencyTitleLabel.text = "מגמת התאוששות"
+        efficiencyTitleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        efficiencyTitleLabel.textColor = AIONDesign.accentPrimary
+        efficiencyTitleLabel.textAlignment = .center
+        efficiencyTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        efficiencyCard.addSubview(efficiencyTitleLabel)
+
+        let info = CardInfoButton.make(explanation: CardExplanations.efficiency)
+        info.addTarget(self, action: #selector(cardInfoTapped(_:)), for: .touchUpInside)
+        efficiencyCard.addSubview(info)
+
+        let hosting = UIHostingController(rootView: DashboardEfficiencyBarChartView(data: ReadinessGraphData(points: [], periodLabel: "")))
+        hosting.view.backgroundColor = .clear
+        hosting.view.translatesAutoresizingMaskIntoConstraints = false
+        addChild(hosting)
+        efficiencyCard.addSubview(hosting.view)
+        hosting.didMove(toParent: self)
+        efficiencyHosting = hosting
+
+        NSLayoutConstraint.activate([
+            info.topAnchor.constraint(equalTo: efficiencyCard.topAnchor, constant: AIONDesign.spacing),
+            info.leftAnchor.constraint(equalTo: efficiencyCard.leftAnchor, constant: AIONDesign.spacing),
+            efficiencyTitleLabel.centerYAnchor.constraint(equalTo: info.centerYAnchor),
+            efficiencyTitleLabel.leadingAnchor.constraint(equalTo: info.trailingAnchor, constant: 8),
+            efficiencyTitleLabel.trailingAnchor.constraint(equalTo: efficiencyCard.trailingAnchor, constant: -AIONDesign.spacing),
+            hosting.view.topAnchor.constraint(equalTo: info.bottomAnchor, constant: 10),
+            hosting.view.leadingAnchor.constraint(equalTo: efficiencyCard.leadingAnchor, constant: AIONDesign.spacing),
+            hosting.view.trailingAnchor.constraint(equalTo: efficiencyCard.trailingAnchor, constant: -AIONDesign.spacing),
+            hosting.view.bottomAnchor.constraint(equalTo: efficiencyCard.bottomAnchor, constant: -AIONDesign.spacing),
+            hosting.view.heightAnchor.constraint(equalToConstant: 160),
+        ])
     }
 
-    @objc private func showInsightsTapped() {
-        guard !insightsText.isEmpty else {
-            showAlert(title: "אין נתונים", message: "הנתונים טוענים או שהניתוח עדיין רץ. נא להמתין או לרענן.")
-            return
-        }
-        let vc = InsightsViewController()
-        vc.insightsText = insightsText
-        let nav = UINavigationController(rootViewController: vc)
-        nav.modalPresentationStyle = .fullScreen
-        present(nav, animated: true)
+    // MARK: - Bio Stack Row
+
+    private func setupBioStackRow() {
+        bioStackRow.axis = .horizontal
+        bioStackRow.spacing = AIONDesign.spacing
+        bioStackRow.distribution = .fillEqually
+        bioStackRow.semanticContentAttribute = .forceRightToLeft
+        bioStackRow.translatesAutoresizingMaskIntoConstraints = false
+
+        let s1 = BioStackCardView()
+        let s2 = BioStackCardView()
+        s1.translatesAutoresizingMaskIntoConstraints = false
+        s2.translatesAutoresizingMaskIntoConstraints = false
+        bioStackRow.addArrangedSubview(s1)
+        bioStackRow.addArrangedSubview(s2)
+        bioSleep = s1
+        bioTemp = s2
+        s1.configure(icon: "bed.double.fill", title: "איכות שינה", value: "—", progress: nil)
+        s2.configure(icon: "heart.fill", title: "דופק מנוחה", value: "—", progress: nil)
+        addInfoToCard(s1, explanation: CardExplanations.bioSleep)
+        addInfoToCard(s2, explanation: CardExplanations.bioRhrOrTemp)
+        s1.heightAnchor.constraint(equalToConstant: 160).isActive = true
+        s2.heightAnchor.constraint(equalToConstant: 160).isActive = true
     }
 
-    @objc private func showRecommendationsTapped() {
-        guard !recommendationsText.isEmpty else {
-            showAlert(title: "אין נתונים", message: "הנתונים טוענים או שהניתוח עדיין רץ. נא להמתין או לרענן.")
+    // MARK: - Highlights Card (with icons)
+
+    private func setupHighlightsCard() {
+        highlightsCard.backgroundColor = AIONDesign.surface
+        highlightsCard.layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        highlightsCard.translatesAutoresizingMaskIntoConstraints = false
+        let info = CardInfoButton.make(explanation: CardExplanations.highlights)
+        info.addTarget(self, action: #selector(cardInfoTapped(_:)), for: .touchUpInside)
+        highlightsCard.addSubview(info)
+        highlightsStack.axis = .vertical
+        highlightsStack.spacing = 10
+        highlightsStack.alignment = .fill
+        highlightsStack.semanticContentAttribute = .forceRightToLeft
+        highlightsStack.translatesAutoresizingMaskIntoConstraints = false
+        highlightsCard.addSubview(highlightsStack)
+        NSLayoutConstraint.activate([
+            info.topAnchor.constraint(equalTo: highlightsCard.topAnchor, constant: AIONDesign.spacing),
+            info.leftAnchor.constraint(equalTo: highlightsCard.leftAnchor, constant: AIONDesign.spacing),
+            highlightsStack.topAnchor.constraint(equalTo: info.bottomAnchor, constant: 12),
+            highlightsStack.leadingAnchor.constraint(equalTo: highlightsCard.leadingAnchor, constant: AIONDesign.spacing),
+            highlightsStack.trailingAnchor.constraint(equalTo: highlightsCard.trailingAnchor, constant: -AIONDesign.spacing),
+            highlightsStack.bottomAnchor.constraint(equalTo: highlightsCard.bottomAnchor, constant: -AIONDesign.spacing),
+        ])
+    }
+
+    // MARK: - Directives Card
+
+    private func setupDirectivesCard() {
+        directivesCard.translatesAutoresizingMaskIntoConstraints = false
+        directivesCard.showPlaceholder()
+        let info = CardInfoButton.make(explanation: CardExplanations.directives)
+        info.addTarget(self, action: #selector(cardInfoTapped(_:)), for: .touchUpInside)
+        directivesCard.addSubview(info)
+        NSLayoutConstraint.activate([
+            info.topAnchor.constraint(equalTo: directivesCard.topAnchor, constant: AIONDesign.spacing),
+            info.leftAnchor.constraint(equalTo: directivesCard.leftAnchor, constant: AIONDesign.spacing),
+        ])
+    }
+
+    // MARK: - Helpers
+
+    private func makeSectionLabel(_ text: String) -> UILabel {
+        let l = UILabel()
+        l.text = text
+        l.font = .systemFont(ofSize: 11, weight: .semibold)
+        l.textColor = AIONDesign.accentPrimary
+        l.textAlignment = .center
+        return l
+    }
+
+    private func addInfoToCard(_ card: UIView, explanation: String) {
+        let info = CardInfoButton.make(explanation: explanation)
+        info.addTarget(self, action: #selector(cardInfoTapped(_:)), for: .touchUpInside)
+        card.addSubview(info)
+        NSLayoutConstraint.activate([
+            info.topAnchor.constraint(equalTo: card.topAnchor, constant: AIONDesign.spacing),
+            info.leftAnchor.constraint(equalTo: card.leftAnchor, constant: AIONDesign.spacing),
+        ])
+    }
+
+    @objc private func headerAvatarTapped() {
+        // Navigate to profile tab (index 4)
+        tabBarController?.selectedIndex = 4
+    }
+
+    @objc private func cardInfoTapped(_ sender: CardInfoButton) {
+        let alert = UIAlertController(title: "הסבר", message: sender.explanation, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "הבנתי", style: .default))
+        present(alert, animated: true)
+    }
+
+    @objc private func refreshPulled() {
+        refreshControl.attributedTitle = NSAttributedString(string: "טוען מחדש את כל הנתונים…", attributes: [.foregroundColor: AIONDesign.textSecondary])
+        showLoading("טוען מחדש את כל הנתונים…")
+        loadData(forceAnalysis: false, useRefreshControl: true)
+    }
+
+    /// נקרא מעמוד תובנות – מריץ ניתוח (תובנות + המלצות) בלי overlay בדשבורד.
+    /// לא מאלץ ניתוח חדש אם יש cache תקף ונתוני הבריאות לא השתנו.
+    func runAnalysisForInsights() {
+        loadData(forceAnalysis: false, useRefreshControl: false, silent: true)
+    }
+
+    // MARK: - Sleep Score
+
+    /// ציון שינה 0–100 (בדומה לאפל): משך + איכות שלבי שינה (deep+REM).
+    private static func sleepScore(totalHours: Double, deepHours: Double?, remHours: Double?) -> Int {
+        let h = totalHours
+        let deep = deepHours ?? 0
+        let rem = remHours ?? 0
+        let ratio = h > 0 ? min(1.0, (deep + rem) / h) : 0
+        var durationBonus: Double = 0
+        if h >= 7 && h <= 9 { durationBonus = 15 }
+        else if (h >= 6 && h < 7) || (h > 9 && h <= 10) { durationBonus = 8 }
+        else if (h >= 5 && h < 6) || (h > 10 && h <= 11) { durationBonus = 2 }
+        else if h < 5 { durationBonus = -5 }
+        let stageBonus = 15 * ratio
+        let raw = 70 + durationBonus + stageBonus
+        return Int(round(max(0, min(100, raw))))
+    }
+
+    // MARK: - Update Readiness & Metrics → Hero Card
+
+    private func updateReadinessAndMetrics(from bundle: AIONChartDataBundle) {
+        let range = bundle.range
+        let n = range.dayCount
+        let r = bundle.readiness.points
+        let rTake = Array(r.suffix(n))
+        let hrvTake = Array(bundle.hrvTrend.points.suffix(n))
+        let rhrTake = Array(bundle.rhrTrend.points.suffix(n))
+        let sleepTake = Array(bundle.sleep.points.suffix(n)).filter { ($0.totalHours ?? 0) > 0 }
+
+        // Compute CarTier score
+        let eval = CarTierEngine.evaluate(bundle: bundle)
+        let score = eval?.score ?? 0
+        let tier = eval?.tier ?? CarTierEngine.tiers[0]
+
+        // Sleep text
+        let sleepText: String
+        if !sleepTake.isEmpty {
+            let hoursList = sleepTake.compactMap { $0.totalHours }
+            let avgH = hoursList.reduce(0, +) / Double(hoursList.count)
+            let hours: Int
+            let mins: Int
+            if n == 1, let secs = sleepTake.last?.totalSeconds, secs > 0 {
+                var displaySecs = secs
+                if secs == 25560 { displaySecs = 25620 }
+                let totalMins = Int((displaySecs + 59) / 60)
+                hours = totalMins / 60
+                mins = totalMins % 60
+            } else {
+                let totalMins = Int(round(avgH * 60))
+                hours = totalMins / 60
+                mins = totalMins % 60
+            }
+            if n == 1 {
+                sleepText = mins > 0 ? "\(hours)h \(mins)m" : "\(hours)h"
+            } else {
+                sleepText = mins > 0 ? "\(hours)h \(mins)m" : "\(hours)h"
+            }
+        } else {
+            sleepText = "—"
+        }
+
+        // HRV text
+        let hrvVal: Double? = hrvTake.isEmpty ? nil : hrvTake.map(\.value).reduce(0, +) / Double(hrvTake.count)
+        let hrvText = hrvVal.map { String(format: "%.0f ms", $0) } ?? "—"
+
+        // Strain text
+        let strainText: String
+        if !rTake.isEmpty {
+            let strainAvg = rTake.map(\.strain).reduce(0, +) / Double(rTake.count)
+            strainText = String(format: "%.1f", strainAvg)
+        } else {
+            strainText = "—"
+        }
+
+        // Configure Hero Card
+        let shouldAnimate = !hasAnimatedOnce
+        heroCard.configure(
+            score: score,
+            tier: tier,
+            sleepText: sleepText,
+            hrvText: hrvText,
+            strainText: strainText,
+            animated: shouldAnimate
+        )
+        if shouldAnimate { hasAnimatedOnce = true }
+
+        // Bio Sleep Card - גרף מגמה ל-7/30 ימים, ערך בודד ליום אחד
+        if !sleepTake.isEmpty {
+            let scores = sleepTake.map { Self.sleepScore(totalHours: $0.totalHours ?? 0, deepHours: $0.deepHours, remHours: $0.remHours) }
+            let scoreAvg = scores.reduce(0, +) / scores.count
+            let deepHours = sleepTake.compactMap(\.deepHours).reduce(0, +) / Double(max(1, sleepTake.compactMap(\.deepHours).count))
+            let subtitle = deepHours > 0 ? "שינה עמוקה: \(String(format: "%.1f", deepHours)) שע׳" : nil
+
+            if selectedRange == .day {
+                // יום אחד - ערך בודד עם progress bar
+                let progress = CGFloat(scoreAvg) / 100
+                bioSleep?.configure(icon: "bed.double.fill", title: "איכות שינה", value: "\(scoreAvg)", progress: progress, subtitle: subtitle)
+            } else {
+                // 7/30 ימים - גרף מגמה
+                let trendData = scores.map { Double($0) }
+                bioSleep?.configureTrend(
+                    icon: "bed.double.fill",
+                    title: "איכות שינה",
+                    value: "ממוצע: \(scoreAvg)",
+                    subtitle: subtitle,
+                    dataPoints: trendData,
+                    isPositiveTrendGood: true  // ציון שינה גבוה = טוב יותר
+                )
+            }
+        }
+
+        // Bio Temp / RHR Card - גרף מגמה ל-7/30 ימים
+        if let s = sleepTake.last, let b = s.bbt, b != 0 {
+            bioTemp?.configure(icon: "thermometer.medium", title: "סטיית טמפ׳", value: String(format: "%+.1f°C", b), progress: nil)
+        } else if !rhrTake.isEmpty {
+            let rhrAvg = rhrTake.map(\.value).reduce(0, +) / Double(rhrTake.count)
+
+            if selectedRange == .day {
+                // יום אחד - ערך בודד עם progress bar
+                let rhrProgress = CGFloat(max(0, min(1, (100 - rhrAvg) / 60)))
+                bioTemp?.configure(icon: "heart.fill", title: "דופק מנוחה", value: String(format: "%.0f bpm", rhrAvg), progress: rhrProgress, subtitle: nil)
+            } else {
+                // 7/30 ימים - גרף מגמה
+                let trendData = rhrTake.map(\.value)
+                let minRhr = trendData.min() ?? rhrAvg
+                let maxRhr = trendData.max() ?? rhrAvg
+                let subtitle = "טווח: \(Int(minRhr))-\(Int(maxRhr)) bpm"
+                bioTemp?.configureTrend(
+                    icon: "heart.fill",
+                    title: "דופק מנוחה",
+                    value: String(format: "ממוצע: %.0f bpm", rhrAvg),
+                    subtitle: subtitle,
+                    dataPoints: trendData,
+                    isPositiveTrendGood: false  // דופק נמוך = טוב יותר
+                )
+            }
+        } else {
+            bioTemp?.configure(icon: "heart.fill", title: "דופק מנוחה", value: "—", progress: nil)
+        }
+
+        // Highlights
+        updateHighlights(from: bundle, sleepTake: sleepTake, n: n, sleepAvgHours: !sleepTake.isEmpty ? sleepTake.compactMap(\.totalHours).reduce(0, +) / Double(sleepTake.count) : nil)
+
+        // Efficiency Chart
+        efficiencyHosting?.view.removeFromSuperview()
+        efficiencyHosting?.removeFromParent()
+        let hosting = UIHostingController(rootView: DashboardEfficiencyBarChartView(data: bundle.readiness))
+        hosting.view.backgroundColor = .clear
+        hosting.view.translatesAutoresizingMaskIntoConstraints = false
+        addChild(hosting)
+        efficiencyCard.addSubview(hosting.view)
+        hosting.didMove(toParent: self)
+        efficiencyHosting = hosting
+        NSLayoutConstraint.activate([
+            hosting.view.topAnchor.constraint(equalTo: efficiencyCard.topAnchor, constant: AIONDesign.spacing + 32),
+            hosting.view.leadingAnchor.constraint(equalTo: efficiencyCard.leadingAnchor, constant: AIONDesign.spacing),
+            hosting.view.trailingAnchor.constraint(equalTo: efficiencyCard.trailingAnchor, constant: -AIONDesign.spacing),
+            hosting.view.bottomAnchor.constraint(equalTo: efficiencyCard.bottomAnchor, constant: -AIONDesign.spacing),
+            hosting.view.heightAnchor.constraint(equalToConstant: 160),
+        ])
+
+        // Gradient border on directives card (after layout)
+        DispatchQueue.main.async {
+            self.directivesCard.addGradientBorder(
+                colors: [AIONDesign.accentPrimary, AIONDesign.accentSecondary, AIONDesign.accentSuccess],
+                width: 1,
+                cornerRadius: AIONDesign.cornerRadiusLarge
+            )
+        }
+
+        // Entrance animations on first load
+        if !hasAnimatedOnce || shouldAnimate {
+            animateCardsEntrance()
+        }
+    }
+
+    // MARK: - Highlights (with icons)
+
+    private func updateHighlights(from bundle: AIONChartDataBundle, sleepTake: [SleepDayPoint], n: Int, sleepAvgHours: Double?) {
+        highlightsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        var rows: [(icon: String, text: String)] = []
+
+        // Time in bed
+        if n == 1, let last = sleepTake.last {
+            if let tib = last.timeInBedHours, tib > 0 {
+                let h = Int(tib)
+                let m = Int(round((tib - Double(h)) * 60))
+                rows.append((icon: "clock.fill", text: "זמן במיטה: \(h) שע׳ \(m) דק׳"))
+            }
+            if let rmin = last.respiratoryMin, let rmax = last.respiratoryMax {
+                rows.append((icon: "wind", text: "נשימות בשינה: \(formatOneDecimal(rmin))–\(Int(round(rmax))) בדקה"))
+            }
+        }
+
+        // 30-day sleep average
+        if n == 30, let avg = sleepAvgHours, avg > 0 {
+            let h = Int(avg)
+            let m = Int(round((avg - Double(h)) * 60))
+            rows.append((icon: "bed.double.fill", text: "ממוצע 30 הימים: \(h) שע׳ \(m) דק׳"))
+        }
+
+        // Steps
+        if let steps = healthData?.steps, steps > 0 {
+            let formatted = NumberFormatter.localizedString(from: NSNumber(value: Int(steps)), number: .decimal)
+            if let dist = healthData?.distance, dist > 0 {
+                rows.append((icon: "figure.walk", text: "\(formatted) צעדים · \(String(format: "%.1f", dist)) ק\"מ"))
+            } else {
+                rows.append((icon: "figure.walk", text: "\(formatted) צעדים"))
+            }
+        }
+
+        // Active calories
+        if let cal = healthData?.activeEnergy, cal > 0 {
+            rows.append((icon: "flame.fill", text: "\(Int(round(cal))) קלוריות פעילות"))
+        }
+
+        if rows.isEmpty {
+            let empty = UILabel()
+            empty.text = "אין דגשים זמינים"
+            empty.font = .systemFont(ofSize: 14, weight: .regular)
+            empty.textColor = AIONDesign.textTertiary
+            empty.textAlignment = .right
+            empty.translatesAutoresizingMaskIntoConstraints = false
+            highlightsStack.addArrangedSubview(empty)
+        } else {
+            for row in rows {
+                let hStack = UIStackView()
+                hStack.axis = .horizontal
+                hStack.spacing = 8
+                hStack.alignment = .center
+                hStack.semanticContentAttribute = .forceRightToLeft
+                hStack.translatesAutoresizingMaskIntoConstraints = false
+
+                let iconCfg = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+                let iconView = UIImageView(image: UIImage(systemName: row.icon, withConfiguration: iconCfg))
+                iconView.tintColor = AIONDesign.accentPrimary
+                iconView.translatesAutoresizingMaskIntoConstraints = false
+                NSLayoutConstraint.activate([
+                    iconView.widthAnchor.constraint(equalToConstant: 20),
+                    iconView.heightAnchor.constraint(equalToConstant: 20),
+                ])
+
+                let label = UILabel()
+                label.text = row.text
+                label.font = .systemFont(ofSize: 14, weight: .medium)
+                label.textColor = AIONDesign.textSecondary
+                label.textAlignment = .right
+                label.numberOfLines = 0
+                label.translatesAutoresizingMaskIntoConstraints = false
+
+                hStack.addArrangedSubview(iconView)
+                hStack.addArrangedSubview(label)
+                highlightsStack.addArrangedSubview(hStack)
+            }
+        }
+    }
+
+    private func formatOneDecimal(_ v: Double) -> String {
+        let rounded = round(v * 10) / 10
+        return rounded.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", rounded) : String(format: "%.1f", rounded)
+    }
+
+    // MARK: - Entrance Animations
+
+    private func animateCardsEntrance() {
+        let animatableViews: [UIView] = [
+            heroCard, periodSegmentRow, efficiencyCard, bioStackRow, highlightsCard, directivesCard
+        ]
+        for (i, v) in animatableViews.enumerated() {
+            v.alpha = 0
+            v.transform = CGAffineTransform(translationX: 0, y: 20)
+            UIView.animate(
+                withDuration: 0.4,
+                delay: Double(i) * 0.05,
+                options: .curveEaseOut
+            ) {
+                v.alpha = 1
+                v.transform = .identity
+            }
+        }
+    }
+
+    // MARK: - Directives
+
+    private func updateDirectivesCard() {
+        // שימוש בפרסר החדש
+        let parsed = CarAnalysisParser.parse(insightsText)
+        if !parsed.directiveStop.isEmpty || !parsed.directiveStart.isEmpty || !parsed.directiveWatch.isEmpty {
+            directivesCard.configure(stop: parsed.directiveStop, start: parsed.directiveStart, watch: parsed.directiveWatch)
+        } else {
+            directivesCard.showPlaceholder()
+        }
+    }
+
+    // MARK: - Avatar loading
+
+    private func loadHeaderAvatar() {
+        ProfileFirestoreSync.fetchPhotoURL { [weak self] url in
+            self?.setHeaderAvatar(url: url)
+        }
+    }
+
+    private func setHeaderAvatar(url: String?) {
+        if let u = url, !u.isEmpty, let uu = URL(string: u) {
+            URLSession.shared.dataTask(with: uu) { [weak self] data, _, _ in
+                guard let self = self else { return }
+                if let d = data, let img = UIImage(data: d) {
+                    DispatchQueue.main.async {
+                        self.headerAvatarView.image = img
+                        self.headerAvatarView.tintColor = nil
+                    }
+                } else {
+                    DispatchQueue.main.async { self.setHeaderAvatarFromAuth() }
+                }
+            }.resume()
+        } else {
+            setHeaderAvatarFromAuth()
+        }
+    }
+
+    private func setHeaderAvatarFromAuth() {
+        guard let u = Auth.auth().currentUser?.photoURL?.absoluteString, let uu = URL(string: u) else {
+            headerAvatarView.image = UIImage(systemName: "person.circle.fill")
+            headerAvatarView.tintColor = AIONDesign.textTertiary
             return
         }
-        let vc = RecommendationsViewController()
-        vc.recommendationsText = recommendationsText
-        let nav = UINavigationController(rootViewController: vc)
-        nav.modalPresentationStyle = .fullScreen
-        present(nav, animated: true)
+        URLSession.shared.dataTask(with: uu) { [weak self] data, _, _ in
+            guard let self = self, let d = data, let img = UIImage(data: d) else { return }
+            DispatchQueue.main.async {
+                self.headerAvatarView.image = img
+                self.headerAvatarView.tintColor = nil
+            }
+        }.resume()
     }
+
+    // MARK: - HealthKit Authorization & Data Loading
 
     private func checkHealthKitAuthorization() {
         guard HealthKitManager.shared.isHealthDataAvailable() else {
@@ -414,17 +831,20 @@ class HealthDashboardViewController: UIViewController {
         }
     }
 
-    private func loadData(forceAnalysis: Bool = false) {
+    private func loadData(forceAnalysis: Bool = false, useRefreshControl: Bool = false, silent: Bool = false) {
         loadId += 1
         let currentLoadId = loadId
+        useRefreshControlForCurrentLoad = useRefreshControl
         if forceAnalysis { GeminiService.shared.cancelCurrentRequest() }
-        showLoading("טוען נתונים...")
+        if !silent && !useRefreshControl { showLoading("טוען נתונים…") }
         HealthKitManager.shared.fetchAllHealthData(for: selectedRange) { [weak self] data, err in
             guard let self = self else { return }
             if let err = err {
                 DispatchQueue.main.async {
                     self.hideLoading()
+                    self.endRefreshingIfNeeded()
                     self.showAlert(title: "שגיאה", message: err.localizedDescription)
+                    NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
                 }
                 return
             }
@@ -433,32 +853,93 @@ class HealthDashboardViewController: UIViewController {
                 guard let self = self else { return }
                 DispatchQueue.main.async {
                     self.chartBundle = bundle
-                    self.rebuildCharts()
-                    self.hideLoading()
-                }
-                if AnalysisCache.shouldUseCache(forceAnalysis: forceAnalysis),
-                   let cached = AnalysisCache.load() {
-                    DispatchQueue.main.async {
-                        guard self.loadId == currentLoadId else { return }
-                        self.insightsText = cached.insights
-                        self.recommendationsText = cached.recommendations
+                    if let b = bundle {
+                        self.updateReadinessAndMetrics(from: b)
+                        // שמירת סטטיסטיקות שבועיות לעמוד התובנות
+                        AnalysisCache.saveWeeklyStats(from: b)
                     }
-                    return
+                    self.endRefreshingIfNeeded()
                 }
-                DispatchQueue.main.async { self.setAnalyzingState() }
-                self.runAIONAnalysis(chartBundle: bundle, loadId: currentLoadId)
+                self.resolveAnalysisSource(forceAnalysis: forceAnalysis, loadId: currentLoadId, chartBundle: bundle)
             }
         }
     }
 
-    private func runAIONAnalysis(chartBundle: AIONChartDataBundle?, loadId: Int) {
+    private func endRefreshingIfNeeded() {
+        guard useRefreshControlForCurrentLoad else { return }
+        useRefreshControlForCurrentLoad = false
+        refreshControl.endRefreshing()
+    }
+
+    /// קובע מקור לניתוח: Firestore (משתמש מחובר), מטמון מקומי, או הרצת Gemini.
+    /// המערכת החדשה: אם נתוני הבריאות לא השתנו (hash זהה), לא קוראים ל-Gemini מחדש.
+    private func resolveAnalysisSource(forceAnalysis: Bool, loadId: Int, chartBundle: AIONChartDataBundle?) {
+        // יצירת hash מנתוני הבריאות הנוכחיים
+        let currentHealthDataHash: String
+        if let bundle = chartBundle {
+            currentHealthDataHash = AnalysisCache.generateHealthDataHash(from: bundle)
+        } else if let data = healthData {
+            currentHealthDataHash = AnalysisCache.generateHealthDataHash(from: data)
+        } else {
+            currentHealthDataHash = "no-data"
+        }
+
+        let finishWithCache: (String) -> Void = { [weak self] insights in
+            guard let self = self, self.loadId == loadId else { return }
+            self.insightsText = insights
+            self.updateDirectivesCard()
+            NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
+            self.hideLoading()
+        }
+
+        // בדיקה אם צריך להריץ ניתוח חדש
+        if !AnalysisCache.shouldRunAnalysis(forceAnalysis: forceAnalysis, currentHealthDataHash: currentHealthDataHash) {
+            // שימוש בקאש - נתוני הבריאות לא השתנו
+            if let cached = AnalysisCache.loadLatest() {
+                print("=== USING CACHE: Health data unchanged ===")
+                finishWithCache(cached)
+                return
+            }
+        }
+
+        // בדיקת Firestore למשתמש מחובר
+        if Auth.auth().currentUser != nil && !forceAnalysis {
+            AnalysisFirestoreSync.fetch(timeout: 2.5) { [weak self] result in
+                guard let self = self, self.loadId == loadId else { return }
+                if let r = result, AnalysisFirestoreSync.isValidCache(date: r.date) {
+                    AnalysisCache.save(insights: r.insights, healthDataHash: currentHealthDataHash)
+                    finishWithCache(r.insights)
+                    return
+                }
+                self.runGeminiAnalysis(forceAnalysis: forceAnalysis, loadId: loadId, chartBundle: chartBundle, healthDataHash: currentHealthDataHash)
+            }
+            return
+        }
+
+        runGeminiAnalysis(forceAnalysis: forceAnalysis, loadId: loadId, chartBundle: chartBundle, healthDataHash: currentHealthDataHash)
+    }
+
+    private func runGeminiAnalysis(
+        forceAnalysis: Bool,
+        loadId: Int,
+        chartBundle: AIONChartDataBundle?,
+        healthDataHash: String
+    ) {
+        hideLoading()
+        runAIONAnalysis(chartBundle: chartBundle, loadId: loadId, healthDataHash: healthDataHash)
+    }
+
+    private var currentHealthDataHash: String = ""
+
+    private func runAIONAnalysis(chartBundle: AIONChartDataBundle?, loadId: Int, healthDataHash: String) {
+        self.currentHealthDataHash = healthDataHash
         let calendar = Calendar.current
         let now = Date()
         guard let curStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)),
               let curEnd = calendar.date(byAdding: .day, value: 6, to: curStart),
               let prevStart = calendar.date(byAdding: .weekOfYear, value: -1, to: curStart),
               let prevEnd = calendar.date(byAdding: .day, value: 6, to: prevStart) else {
-            analyzeWithGemini(loadId: loadId)
+            analyzeWithGemini(loadId: loadId, healthDataHash: healthDataHash)
             return
         }
         let g = DispatchGroup()
@@ -470,207 +951,92 @@ class HealthDashboardViewController: UIViewController {
         HealthKitManager.shared.createWeeklySnapshot(weekStartDate: curStart, weekEndDate: curEnd, previousWeekSnapshot: nil) { cur = $0; g.leave() }
         g.notify(queue: .main) { [weak self] in
             guard let self = self, let c = cur, let p = prev else {
-                self?.analyzeWithGemini(loadId: loadId)
+                self?.analyzeWithGemini(loadId: loadId, healthDataHash: healthDataHash)
                 return
             }
-            self.analyzeWithGeminiWoW(current: c, previous: p, chartBundle: chartBundle, loadId: loadId)
+            self.analyzeWithGeminiWoW(current: c, previous: p, chartBundle: chartBundle, loadId: loadId, healthDataHash: healthDataHash)
         }
     }
 
-    private func analyzeWithGemini(loadId: Int) {
-        guard let data = healthData else {
-            clearAnalyzingState()
+    private func analyzeWithGemini(loadId: Int, healthDataHash: String) {
+        guard let data = healthData, data.hasRealData else {
+            applyNoDataState()
+            NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
             return
         }
         GeminiService.shared.analyzeHealthData(data) { [weak self] insights, recs, risks, err in
             DispatchQueue.main.async {
                 guard let self = self, self.loadId == loadId else { return }
-                self.clearAnalyzingState()
                 if let err = err {
                     if (err as NSError).code == NSURLErrorCancelled { return }
                     let msg = (err as NSError).code == NSURLErrorTimedOut
                         ? "הבקשה ל‑Gemini התמשכה מדי. ייתכן חיבור איטי או עומס – נסה שוב."
                         : err.localizedDescription
                     self.showAlert(title: "שגיאה", message: msg)
+                    NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
                     return
                 }
-                self.applyAnalysis(insights: insights, recs: recs, risks: risks)
+                self.applyAnalysis(insights: insights, recs: recs, risks: risks, healthDataHash: healthDataHash)
+                NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
             }
         }
     }
 
-    private func analyzeWithGeminiWoW(current: WeeklyHealthSnapshot, previous: WeeklyHealthSnapshot, chartBundle: AIONChartDataBundle?, loadId: Int) {
-        guard let data = healthData else {
-            clearAnalyzingState()
+    private func analyzeWithGeminiWoW(current: WeeklyHealthSnapshot, previous: WeeklyHealthSnapshot, chartBundle: AIONChartDataBundle?, loadId: Int, healthDataHash: String) {
+        guard let data = healthData, data.hasRealData else {
+            applyNoDataState()
+            NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
             return
         }
+        // Gemini בוחר את הרכב בעצמו - לא מעבירים carName
         GeminiService.shared.analyzeHealthDataWithWeeklyComparison(data, currentWeek: current, previousWeek: previous, chartBundle: chartBundle) { [weak self] insights, recs, risks, err in
             DispatchQueue.main.async {
                 guard let self = self, self.loadId == loadId else { return }
-                self.clearAnalyzingState()
                 if let err = err {
                     if (err as NSError).code == NSURLErrorCancelled { return }
                     let msg = (err as NSError).code == NSURLErrorTimedOut
                         ? "הבקשה ל‑Gemini התמשכה מדי. ייתכן חיבור איטי או עומס – נסה שוב."
                         : err.localizedDescription
                     self.showAlert(title: "שגיאה", message: msg)
+                    NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
                     return
                 }
-                self.applyAnalysis(insights: insights, recs: recs, risks: risks)
+                self.applyAnalysis(insights: insights, recs: recs, risks: risks, healthDataHash: healthDataHash)
+                NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
             }
         }
     }
 
-    private func applyAnalysis(insights: String?, recs: [String]?, risks: [String]?) {
-        var text = insights ?? "לא התקבלו תובנות."
-        if let r = recs, !r.isEmpty {
-            text += "\n\nהמלצות:\n"
-            r.enumerated().forEach { text += "\($0.offset + 1). \($0.element)\n" }
-        }
-        if let r = risks, !r.isEmpty {
-            text += "\n\nגורמי סיכון:\n"
-            r.enumerated().forEach { text += "\($0.offset + 1). \($0.element)\n" }
-        }
-        insightsText = text
-        recommendationsText = (recs ?? []).joined(separator: "\n\n")
-        if recommendationsText.isEmpty { recommendationsText = "אין המלצות זמינות כרגע." }
-        AnalysisCache.save(insights: insightsText, recommendations: recommendationsText)
+    private func applyNoDataState() {
+        insightsText = "אין נתוני בריאות זמינים. ודא שהתחברת ל-Apple Health והענקת הרשאות."
+        recommendationsText = "חבר את Apple Health כדי לקבל ניתוח מותאם אישית."
+        hideLoading()
+        updateDirectivesCard()
     }
 
-    private func rebuildCharts() {
-        chartsContainer.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        guard let b = chartBundle else {
-            print("[ChartDebug] rebuildCharts: no bundle, using placeholders")
-            addChartPlaceholders()
-            return
-        }
-        print("[ChartDebug] rebuildCharts: building 6 charts")
-        chartsContainer.addArrangedSubview(makeChartCardWithHosting(title: "1. מטריצת מוכנות (התאוששות vs עומס)", chartView: ReadinessChartView(data: b.readiness), height: 180))
-        chartsContainer.addArrangedSubview(makeChartCardWithHosting(title: "2. יעילות קרדיו (דופק vs מרחק)", chartView: EfficiencyChartView(data: b.efficiency), height: 180))
-        let (t3, v3) = pickChartForSlot3(b)
-        chartsContainer.addArrangedSubview(makeChartCardWithHosting(title: t3, chartView: v3, height: 180))
-        let (t4, v4) = pickChartForSlot4(b)
-        chartsContainer.addArrangedSubview(makeChartCardWithHosting(title: t4, chartView: v4, height: 180))
-        chartsContainer.addArrangedSubview(makeChartCardWithHosting(title: "5. איזון אוטונומי", chartView: AutonomicRadarChartView(data: b.autonomic), height: 180))
-        let (t6, v6) = pickChartForSlot6(b)
-        chartsContainer.addArrangedSubview(makeChartCardWithHosting(title: t6, chartView: v6, height: 180))
-        print("[ChartDebug] rebuildCharts: slot3 title=\(t3), slot4 title=\(t4), slot6 title=\(t6)")
-        chartsContainer.setNeedsLayout()
-        chartsContainer.layoutIfNeeded()
-        view.setNeedsLayout()
-        view.layoutIfNeeded()
+    private func applyAnalysis(insights: String?, recs: [String]?, risks: [String]?, healthDataHash: String) {
+        // שמירת התשובה המקורית של Gemini בלבד, ללא הוספות
+        let originalInsights = insights ?? ""
+
+        // הדפסת התשובה המקורית של Gemini
+        print("=== GEMINI ORIGINAL RESPONSE (before saving) ===")
+        print("Length: \(originalInsights.count)")
+        print("Health data hash: \(healthDataHash)")
+        print(originalInsights)
+        print("=== END GEMINI ORIGINAL RESPONSE ===\n")
+
+        // שמירת התשובה המקורית בלבד
+        insightsText = originalInsights
+
+        // שמירה במטמון עם ה-hash של נתוני הבריאות
+        AnalysisCache.save(insights: insightsText, healthDataHash: healthDataHash)
+        AnalysisFirestoreSync.saveIfLoggedIn(insights: insightsText, recommendations: "")
+
+        print("=== SAVED TO CACHE with health data hash ===")
+
+        updateDirectivesCard()
     }
-
-    private func pickChartForSlot3(_ b: AIONChartDataBundle) -> (String, AnyView) {
-        let sleepWithData = b.sleep.points.filter { ($0.totalHours ?? 0) > 0 }
-        let sleepOk = !sleepWithData.isEmpty
-        print("[ChartDebug] Slot3: sleep points=\(b.sleep.points.count), with totalHours>0=\(sleepWithData.count), sleepOk=\(sleepOk)")
-        if sleepOk {
-            print("[ChartDebug] Slot3 → ארכיטקטורת שינה (primary)")
-            return ("3. ארכיטקטורת שינה", AnyView(SleepArchitectureChartView(data: b.sleep)))
-        }
-        if let (t, v) = firstAlternativeChart(bundle: b, prefix: "3") {
-            print("[ChartDebug] Slot3 → alternative: \(t)")
-            return (t, v)
-        }
-        print("[ChartDebug] Slot3 → placeholder")
-        return ("3. ארכיטקטורת שינה", AnyView(ChartPlaceholderView(message: "אין נתוני שינה להצגה", icon: "bed.double.fill")))
-    }
-
-    private func pickChartForSlot4(_ b: AIONChartDataBundle) -> (String, AnyView) {
-        let hasGlucose = b.glucoseEnergy.points.contains { $0.glucose != nil }
-        let hasEnergy = b.glucoseEnergy.points.contains { ($0.activeEnergy ?? 0) > 0 }
-        let geOk = hasGlucose || hasEnergy
-        print("[ChartDebug] Slot4: glucoseEnergy points=\(b.glucoseEnergy.points.count), hasGlucose=\(hasGlucose), hasEnergy=\(hasEnergy), geOk=\(geOk)")
-        if geOk {
-            if hasEnergy && !hasGlucose {
-                print("[ChartDebug] Slot4 → אנרגיה פעילה (energy-only)")
-                return ("4. אנרגיה פעילה", AnyView(ActiveEnergyChartView(data: b.glucoseEnergy)))
-            }
-            print("[ChartDebug] Slot4 → גלוקוז ואנרגיה (primary)")
-            return ("4. גלוקוז ואנרגיה", AnyView(GlucoseEnergyChartView(data: b.glucoseEnergy)))
-        }
-        if let (t, v) = firstAlternativeChart(bundle: b, prefix: "4") {
-            print("[ChartDebug] Slot4 → alternative: \(t)")
-            return (t, v)
-        }
-        print("[ChartDebug] Slot4 → placeholder")
-        return ("4. גלוקוז ואנרגיה", AnyView(ChartPlaceholderView(message: "אין נתוני גלוקוז או אנרגיה להצגה", icon: "flame.fill")))
-    }
-
-    private func pickChartForSlot6(_ b: AIONChartDataBundle) -> (String, AnyView) {
-        let nutOk = b.nutrition.points.prefix(7).contains { (($0.protein ?? 0) > 0) || (($0.carbs ?? 0) > 0) || (($0.fat ?? 0) > 0) }
-        if nutOk { return ("6. תזונה vs יעדים", AnyView(NutritionChartView(data: b.nutrition))) }
-        if let (t, v) = firstAlternativeChart(bundle: b, prefix: "6") { return (t, v) }
-        return ("6. תזונה vs יעדים", AnyView(ChartPlaceholderView(message: "אין נתוני תזונה להצגה", icon: "leaf.fill")))
-    }
-
-    /// חלופות עם נתונים **בטוחים** (Recovery/Strain) ראשונות – תמיד יש readiness.
-    /// סדר: מגמת התאוששות → מגמת עומס (תמיד קיימים), ואז צעדים, מרחק וכו'.
-    private func firstAlternativeChart(bundle b: AIONChartDataBundle, prefix: String) -> (String, AnyView)? {
-        print("[ChartDebug] firstAlternativeChart prefix=\(prefix): readiness.points=\(b.readiness.points.count)")
-        if !b.readiness.points.isEmpty {
-            let useStrain = (prefix == "4")
-            if useStrain {
-                return ("\(prefix). מגמת עומס", AnyView(StrainTrendChartView(data: b.readiness)))
-            }
-            return ("\(prefix). מגמת התאוששות", AnyView(RecoveryTrendChartView(data: b.readiness)))
-        }
-        if b.steps.points.contains(where: { $0.steps > 0 }) {
-            return ("\(prefix). צעדים יומיים", AnyView(StepsChartView(data: b.steps)))
-        }
-        if b.efficiency.points.contains(where: { ($0.distanceKm ?? 0) > 0 }) {
-            return ("\(prefix). מרחק (ק\"מ)", AnyView(DistanceChartView(data: b.efficiency)))
-        }
-        if b.glucoseEnergy.points.contains(where: { ($0.activeEnergy ?? 0) > 0 }) {
-            return ("\(prefix). אנרגיה פעילה", AnyView(ActiveEnergyChartView(data: b.glucoseEnergy)))
-        }
-        if !b.rhrTrend.points.isEmpty {
-            return ("\(prefix). דופק מנוחה (מגמה)", AnyView(RHRTrendChartView(data: b.rhrTrend)))
-        }
-        if b.efficiency.points.contains(where: { $0.avgHeartRate != nil }) {
-            return ("\(prefix). דופק ממוצע (מגמה)", AnyView(AvgHeartRateTrendChartView(data: b.efficiency)))
-        }
-        if !b.hrvTrend.points.isEmpty {
-            return ("\(prefix). HRV (מגמה)", AnyView(HRVTrendChartView(data: b.hrvTrend)))
-        }
-        return nil
-    }
-
-    private func makeChartCardWithHosting<Content: View>(title: String, chartView: Content, height: CGFloat) -> UIView {
-        let card = UIView()
-        card.backgroundColor = AIONDesign.surface
-        card.layer.cornerRadius = AIONDesign.cornerRadius
-        card.translatesAutoresizingMaskIntoConstraints = false
-        card.semanticContentAttribute = .forceRightToLeft
-
-        let label = UILabel()
-        label.text = title
-        label.font = AIONDesign.captionFont()
-        label.textColor = AIONDesign.textSecondary
-        label.textAlignment = .right
-        label.translatesAutoresizingMaskIntoConstraints = false
-
-        let hosting = UIHostingController(rootView: chartView)
-        hosting.view.backgroundColor = .clear
-        hosting.view.translatesAutoresizingMaskIntoConstraints = false
-        addChild(hosting)
-        card.addSubview(label)
-        card.addSubview(hosting.view)
-
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: card.topAnchor, constant: AIONDesign.spacing),
-            label.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
-            label.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
-            hosting.view.topAnchor.constraint(equalTo: label.bottomAnchor, constant: AIONDesign.spacing),
-            hosting.view.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
-            hosting.view.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
-            hosting.view.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -AIONDesign.spacing),
-            hosting.view.heightAnchor.constraint(equalToConstant: height),
-        ])
-        hosting.didMove(toParent: self)
-        return card
-    }
+    // MARK: - Loading UI
 
     private func showLoading(_ msg: String) {
         loadingLabel.text = msg
@@ -682,6 +1048,7 @@ class HealthDashboardViewController: UIViewController {
     private func hideLoading() {
         loadingOverlay.isHidden = true
         loadingSpinner.stopAnimating()
+        if useRefreshControlForCurrentLoad { endRefreshingIfNeeded() }
     }
 
     private func updateLoading(_ msg: String) {

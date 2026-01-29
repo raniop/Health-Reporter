@@ -2,51 +2,113 @@
 //  AIONChartViews.swift
 //  Health Reporter
 //
-//  6 הגרפים המקצועיים של AION – SwiftUI Charts.
+//  גרפים בסגנון Biological Correlations – רקע כהה, קו גרדיאנט ציאן→ליים.
 //
 
 import SwiftUI
 import Charts
 
-// MARK: - 1. Readiness Matrix (Recovery vs Strain)
+// MARK: - Chart colors (ציאן / טורקיז / ליים – בהתאמה ללוגו)
+private enum ChartColors {
+    static let primary = Color(uiColor: UIColor(hex: "#00B4D8")!)
+    static let secondary = Color(uiColor: UIColor(hex: "#00C9A7")!)
+    static let success = Color(uiColor: UIColor(hex: "#7BED9F")!)
+    static let surface = Color(uiColor: UIColor(hex: "#1C1C1E")!)
+    static let background = Color(uiColor: UIColor(hex: "#0D0D0F")!)
+    static let textSecondary = Color(uiColor: UIColor(hex: "#EBEBF5")!).opacity(0.5)
+    
+    static var lineGradient: LinearGradient {
+        LinearGradient(
+            colors: [primary, secondary, success],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+}
+
+// MARK: - Dark chart container
+private struct ChartDarkBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(ChartColors.background)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+/// כמו chartDarkStyle אבל עם padding אופקי – מונע חיתוך תוויות ציר Y.
+private struct ChartDarkBackgroundPadded: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 20)
+            .background(ChartColors.background)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private extension View {
+    func chartDarkStyle() -> some View { modifier(ChartDarkBackground()) }
+    /// לשימוש בעמוד פעילות – ציר Y לא נחתך.
+    func chartDarkStylePadded() -> some View { modifier(ChartDarkBackgroundPadded()) }
+}
+
+// MARK: - 1. מטריצת מוכנות (התאוששות vs עומס)
 struct ReadinessChartView: View {
     let data: ReadinessGraphData
+    private var hasData: Bool { !data.points.isEmpty }
     var body: some View {
-        Chart(data.points) { p in
-            LineMark(x: .value("תאריך", p.date), y: .value("התאוששות", p.recovery))
-                .foregroundStyle(ChartColors.recovery)
-                .interpolationMethod(.catmullRom)
-            LineMark(x: .value("תאריך", p.date), y: .value("עומס", p.strain * 10))
-                .foregroundStyle(ChartColors.strain)
-                .interpolationMethod(.catmullRom)
+        Group {
+            if hasData {
+                Chart(data.points) { p in
+                    LineMark(x: .value("תאריך", p.date), y: .value("התאוששות", p.recovery))
+                        .foregroundStyle(ChartColors.lineGradient)
+                        .interpolationMethod(.catmullRom)
+                    LineMark(x: .value("תאריך", p.date), y: .value("עומס", p.strain * 10))
+                        .foregroundStyle(ChartColors.secondary)
+                        .interpolationMethod(.catmullRom)
+                }
+                .chartXScale(domain: .automatic)
+                .chartYScale(domain: 0 ... 100)
+            } else {
+                ChartPlaceholderView(message: "אין נתוני מוכנות", icon: "chart.line.uptrend.xyaxis")
+            }
         }
-        .chartXScale(domain: .automatic)
-        .chartYScale(domain: 0 ... 100)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStyle()
     }
 }
 
-// MARK: - 2. Cardiovascular Efficiency
+// MARK: - 2. יעילות קרדיו (דופק vs מרחק)
 struct EfficiencyChartView: View {
     let data: EfficiencyGraphData
+    private var hasHR: Bool { data.points.contains { $0.avgHeartRate != nil } }
+    private var hasDistance: Bool { data.points.contains { ($0.distanceKm ?? 0) > 0 } }
+    private var hasData: Bool { hasHR || hasDistance }
     var body: some View {
-        Chart(data.points) { p in
-            if let hr = p.avgHeartRate {
-                BarMark(x: .value("תאריך", p.date), y: .value("דופק", hr), width: .ratio(0.5))
-                    .foregroundStyle(ChartColors.recovery)
-            }
-            if let km = p.distanceKm, km > 0 {
-                LineMark(x: .value("תאריך", p.date), y: .value("ק\"מ", km * 10))
-                    .foregroundStyle(ChartColors.strain)
-                    .interpolationMethod(.catmullRom)
+        Group {
+            if hasData {
+                Chart(data.points) { p in
+                    if let hr = p.avgHeartRate {
+                        BarMark(x: .value("תאריך", p.date), y: .value("דופק", hr), width: .ratio(0.5))
+                            .foregroundStyle(ChartColors.primary)
+                    }
+                    if let km = p.distanceKm, km > 0 {
+                        LineMark(x: .value("תאריך", p.date), y: .value("ק\"מ", km * 10))
+                            .foregroundStyle(ChartColors.lineGradient)
+                            .interpolationMethod(.catmullRom)
+                    }
+                }
+                .chartXScale(domain: .automatic)
+                .chartYScale(domain: .automatic(includesZero: true))
+            } else {
+                ChartPlaceholderView(message: "אין נתוני דופק או מרחק", icon: "heart.fill")
             }
         }
-        .chartXScale(domain: .automatic)
-        .chartYScale(domain: .automatic(includesZero: true))
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStyle()
     }
 }
 
-// MARK: - 3. Sleep Architecture
-// BarMark עם Date ב־X לא הופיע; משתמשים ב־LineMark (כמו גרף 1/6) שהצגה עובדת.
+// MARK: - 3. ארכיטקטורת שינה
 struct SleepArchitectureChartView: View {
     let data: SleepArchitectureGraphData
     private var visiblePoints: [SleepDayPoint] { data.points.filter { ($0.totalHours ?? 0) > 0 } }
@@ -56,7 +118,7 @@ struct SleepArchitectureChartView: View {
             if hasData {
                 Chart(visiblePoints) { p in
                     LineMark(x: .value("תאריך", p.date), y: .value("שינה", p.totalHours!))
-                        .foregroundStyle(ChartColors.sleep)
+                        .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
                 .chartXScale(domain: .automatic)
@@ -66,13 +128,11 @@ struct SleepArchitectureChartView: View {
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
-        .onAppear {
-            print("[ChartDebug] SleepArchitectureChartView onAppear: points=\(data.points.count), visible=\(visiblePoints.count), hasData=\(hasData)")
-        }
+        .chartDarkStyle()
     }
 }
 
-// MARK: - 4. Glucose & Energy (מבנה כמו Efficiency; אנרגיה־בלבד → ActiveEnergyChartView בדשבורד)
+// MARK: - 4. גלוקוז ואנרגיה
 struct GlucoseEnergyChartView: View {
     let data: GlucoseEnergyGraphData
     private var hasGlucose: Bool { data.points.contains { $0.glucose != nil } }
@@ -84,12 +144,12 @@ struct GlucoseEnergyChartView: View {
                 Chart(data.points) { p in
                     if let g = p.glucose {
                         LineMark(x: .value("תאריך", p.date), y: .value("סוכר", g))
-                            .foregroundStyle(ChartColors.glucose)
+                            .foregroundStyle(ChartColors.lineGradient)
                             .interpolationMethod(.catmullRom)
                     }
                     if let e = p.activeEnergy, e > 0 {
                         BarMark(x: .value("תאריך", p.date), y: .value("אנרגיה", e / 50), width: .ratio(0.5))
-                            .foregroundStyle(ChartColors.strain.opacity(0.6))
+                            .foregroundStyle(ChartColors.secondary)
                     }
                 }
                 .chartXScale(domain: .automatic)
@@ -99,33 +159,40 @@ struct GlucoseEnergyChartView: View {
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
-        .onAppear {
-            print("[ChartDebug] GlucoseEnergyChartView onAppear: points=\(data.points.count), hasGlucose=\(hasGlucose), hasEnergy=\(hasEnergy), hasData=\(hasData)")
-        }
+        .chartDarkStyle()
     }
 }
 
-// MARK: - 5. Autonomic Balance (Radar)
+// MARK: - 5. איזון אוטונומי
 struct AutonomicRadarChartView: View {
     let data: AutonomicRadarData
+    private var hasAny: Bool { data.rhr != nil || data.hrv != nil || data.respiratory != nil }
     var body: some View {
-        let rhr = data.rhr ?? 50
-        let hrv = data.hrv ?? 50
-        let resp = data.respiratory ?? 50
-        Chart {
-            BarMark(x: .value("מדד", "RHR"), y: .value("ערך", rhr), width: .ratio(0.5))
-                .foregroundStyle(ChartColors.recovery)
-            BarMark(x: .value("מדד", "HRV"), y: .value("ערך", hrv), width: .ratio(0.5))
-                .foregroundStyle(ChartColors.strain)
-            BarMark(x: .value("מדד", "נשימה"), y: .value("ערך", resp), width: .ratio(0.5))
-                .foregroundStyle(ChartColors.sleep)
+        Group {
+            if hasAny {
+                let rhr = data.rhr ?? 0
+                let hrv = data.hrv ?? 0
+                let resp = data.respiratory ?? 0
+                Chart {
+                    BarMark(x: .value("מדד", "RHR"), y: .value("ערך", rhr), width: .ratio(0.5))
+                        .foregroundStyle(ChartColors.primary)
+                    BarMark(x: .value("מדד", "HRV"), y: .value("ערך", hrv), width: .ratio(0.5))
+                        .foregroundStyle(ChartColors.secondary)
+                    BarMark(x: .value("מדד", "נשימה"), y: .value("ערך", resp), width: .ratio(0.5))
+                        .foregroundStyle(ChartColors.success)
+                }
+                .chartXScale(domain: ["RHR", "HRV", "נשימה"])
+                .chartYScale(domain: 0 ... 100)
+            } else {
+                ChartPlaceholderView(message: "אין נתוני אוטונומי", icon: "waveform.path.ecg")
+            }
         }
-        .chartXScale(domain: ["RHR", "HRV", "נשימה"])
-        .chartYScale(domain: 0 ... 100)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStyle()
     }
 }
 
-// MARK: - 6. Nutrition Adherence
+// MARK: - 6. תזונה vs יעדים
 struct NutritionChartView: View {
     let data: NutritionGraphData
     private var hasData: Bool {
@@ -137,17 +204,17 @@ struct NutritionChartView: View {
         Group {
             if hasData {
                 Chart(data.points.prefix(7)) { p in
-                    if let pr = p.protein {
+                    if let pr = p.protein, pr > 0 {
                         BarMark(x: .value("תאריך", p.date), y: .value("חלבון", pr), width: .ratio(0.5))
-                            .foregroundStyle(ChartColors.strain)
+                            .foregroundStyle(ChartColors.primary)
                     }
                     if let c = p.carbs, c > 0 {
                         BarMark(x: .value("תאריך", p.date), y: .value("פחמימות", c), width: .ratio(0.5))
-                            .foregroundStyle(ChartColors.glucose)
+                            .foregroundStyle(ChartColors.secondary)
                     }
                     if let f = p.fat, f > 0 {
                         BarMark(x: .value("תאריך", p.date), y: .value("שומן", f), width: .ratio(0.5))
-                            .foregroundStyle(ChartColors.sleep)
+                            .foregroundStyle(ChartColors.success)
                     }
                 }
                 .chartXScale(domain: .automatic)
@@ -156,79 +223,111 @@ struct NutritionChartView: View {
                 ChartPlaceholderView(message: "אין נתוני תזונה להצגה", icon: "leaf.fill")
             }
         }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStyle()
     }
 }
 
-// MARK: - Placeholder when chart has no data
+// MARK: - Placeholder (סגנון כהה – כמו התמונה)
 struct ChartPlaceholderView: View {
     let message: String
     let icon: String
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.system(size: 28))
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 24))
+                .foregroundStyle(ChartColors.textSecondary)
             Text(message)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(ChartColors.textSecondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .tertiarySystemFill))
+        .background(ChartColors.background)
     }
 }
 
-// MARK: - Chart colors (SwiftUI)
-private enum ChartColors {
-    static let recovery = Color(red: 13/255, green: 126/255, blue: 167/255)
-    static let strain = Color(red: 232/255, green: 93/255, blue: 4/255)
-    static let sleep = Color(red: 92/255, green: 77/255, blue: 125/255)
-    static let glucose = Color(red: 202/255, green: 103/255, blue: 2/255)
-}
-
-// MARK: - חלופות לגרפים ריקים
+// MARK: - חלופות לגרפים ריקים (אותו סגנון – גרדיאנט, רקע כהה)
 
 struct DistanceChartView: View {
     let data: EfficiencyGraphData
     private var visiblePoints: [EfficiencyDataPoint] { data.points.filter { ($0.distanceKm ?? 0) > 0 } }
-    private var hasData: Bool { !visiblePoints.isEmpty }
+    private var points: [DayValuePoint] {
+        visiblePoints.compactMap { p in
+            guard let km = p.distanceKm, km > 0 else { return nil }
+            return DayValuePoint(id: "\(p.date.timeIntervalSince1970)", day: dayLabel(from: p.date), value: km)
+        }
+    }
+    private var hasData: Bool { !points.isEmpty }
+    private var yMax: Double {
+        let m = visiblePoints.compactMap(\.distanceKm).max() ?? 1
+        return max(m * 1.15, 0.5)
+    }
     var body: some View {
         Group {
             if hasData {
-                Chart(visiblePoints) { p in
-                    BarMark(x: .value("תאריך", p.date), y: .value("ק\"מ", p.distanceKm!), width: .ratio(0.5))
-                        .foregroundStyle(ChartColors.recovery)
+                Chart(points) { p in
+                    BarMark(x: .value("יום", p.day), y: .value("ק\"מ", p.value), width: .ratio(0.55))
+                        .foregroundStyle(LinearGradient(colors: [ChartColors.primary, ChartColors.success], startPoint: .bottom, endPoint: .top))
                 }
                 .chartXScale(domain: .automatic)
-                .chartYScale(domain: .automatic(includesZero: true))
+                .chartYScale(domain: 0 ... yMax)
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 5)) { _ in
+                        AxisGridLine().foregroundStyle(ChartColors.textSecondary)
+                        AxisValueLabel().foregroundStyle(ChartColors.textSecondary)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
             } else {
                 ChartPlaceholderView(message: "אין נתוני מרחק", icon: "figure.walk")
             }
         }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStylePadded()
     }
 }
 
-// LineMark במקום BarMark – BarMark+Date לא הוצג; LineMark עובד (גרף 1/6).
 struct ActiveEnergyChartView: View {
     let data: GlucoseEnergyGraphData
     private var visiblePoints: [GlucoseEnergyPoint] { data.points.filter { ($0.activeEnergy ?? 0) > 0 } }
-    private var hasData: Bool { !visiblePoints.isEmpty }
+    private var points: [DayValuePoint] {
+        visiblePoints.compactMap { p in
+            guard let kcal = p.activeEnergy, kcal > 0 else { return nil }
+            return DayValuePoint(id: "\(p.date.timeIntervalSince1970)", day: dayLabel(from: p.date), value: kcal)
+        }
+    }
+    private var hasData: Bool { !points.isEmpty }
+    private var yMax: Double {
+        let m = visiblePoints.compactMap(\.activeEnergy).max() ?? 1
+        return max(m * 1.15, 50)
+    }
     var body: some View {
         Group {
             if hasData {
-                Chart(visiblePoints) { p in
-                    LineMark(x: .value("תאריך", p.date), y: .value("קלוריות", (p.activeEnergy ?? 0) / 50))
-                        .foregroundStyle(ChartColors.strain)
+                Chart(points) { p in
+                    LineMark(x: .value("יום", p.day), y: .value("קלוריות", p.value))
+                        .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
                 .chartXScale(domain: .automatic)
-                .chartYScale(domain: .automatic(includesZero: true))
+                .chartYScale(domain: 0 ... yMax)
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 5)) { _ in
+                        AxisGridLine().foregroundStyle(ChartColors.textSecondary)
+                        AxisValueLabel().foregroundStyle(ChartColors.textSecondary)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
             } else {
                 ChartPlaceholderView(message: "אין נתוני אנרגיה פעילה", icon: "flame.fill")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStylePadded()
     }
 }
 
@@ -241,7 +340,7 @@ struct AvgHeartRateTrendChartView: View {
             if hasData {
                 Chart(visiblePoints) { p in
                     LineMark(x: .value("תאריך", p.date), y: .value("דופק", p.avgHeartRate!))
-                        .foregroundStyle(ChartColors.strain)
+                        .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
                 .chartXScale(domain: .automatic)
@@ -250,6 +349,56 @@ struct AvgHeartRateTrendChartView: View {
                 ChartPlaceholderView(message: "אין נתוני דופק", icon: "heart.fill")
             }
         }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStyle()
+    }
+}
+
+// MARK: - גרף יעילות שבועי (בר־צ׳ארט Mon–Sun) – דשבורד ראשי
+struct DashboardEfficiencyBarChartView: View {
+    let data: ReadinessGraphData
+    private var points: [(day: String, value: Double)] {
+        let last7 = Array(data.points.suffix(7))
+        return last7.enumerated().map { _, p in
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "he_IL")
+            formatter.dateFormat = "EEE"
+            let day = formatter.string(from: p.date)
+            return (day: day, value: p.recovery)
+        }
+    }
+    private var hasData: Bool { !points.isEmpty }
+    var body: some View {
+        Group {
+            if hasData {
+                Chart(points, id: \.day) { p in
+                    BarMark(x: .value("יום", p.day), y: .value("התאוששות", p.value), width: .ratio(0.55))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [ChartColors.primary, ChartColors.success],
+                                startPoint: .bottom,
+                                endPoint: .top
+                            )
+                        )
+                }
+                .chartXScale(domain: .automatic)
+                .chartYScale(domain: 0 ... 105)
+                .chartYAxis {
+                    AxisMarks(values: [0, 25, 50, 75, 100]) { _ in
+                        AxisGridLine().foregroundStyle(ChartColors.textSecondary)
+                        AxisValueLabel().foregroundStyle(ChartColors.textSecondary)
+                    }
+                }
+                .padding(.top, 10)
+                .padding(.leading, 6)
+                .padding(.trailing, 4)
+                .padding(.bottom, 4)
+            } else {
+                ChartPlaceholderView(message: "אין נתונים", icon: "chart.bar.fill")
+            }
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStyle()
     }
 }
 
@@ -261,16 +410,27 @@ struct RecoveryTrendChartView: View {
             if hasData {
                 Chart(data.points) { p in
                     LineMark(x: .value("תאריך", p.date), y: .value("התאוששות", p.recovery))
-                        .foregroundStyle(ChartColors.recovery)
+                        .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
                 .chartXScale(domain: .automatic)
-                .chartYScale(domain: 0 ... 100)
+                .chartYScale(domain: 0 ... 105)
+                .chartYAxis {
+                    AxisMarks(values: [0, 25, 50, 75, 100]) { _ in
+                        AxisGridLine().foregroundStyle(ChartColors.textSecondary)
+                        AxisValueLabel().foregroundStyle(ChartColors.textSecondary)
+                    }
+                }
+                .padding(.top, 10)
+                .padding(.leading, 6)
+                .padding(.trailing, 4)
+                .padding(.bottom, 4)
             } else {
                 ChartPlaceholderView(message: "אין נתונים", icon: "chart.line.uptrend.xyaxis")
             }
         }
-        .onAppear { print("[ChartDebug] RecoveryTrendChartView onAppear: points=\(data.points.count), hasData=\(hasData)") }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStyle()
     }
 }
 
@@ -282,7 +442,7 @@ struct StrainTrendChartView: View {
             if hasData {
                 Chart(data.points) { p in
                     LineMark(x: .value("תאריך", p.date), y: .value("עומס", p.strain * 10))
-                        .foregroundStyle(ChartColors.strain)
+                        .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
                 .chartXScale(domain: .automatic)
@@ -291,27 +451,60 @@ struct StrainTrendChartView: View {
                 ChartPlaceholderView(message: "אין נתונים", icon: "chart.line.uptrend.xyaxis")
             }
         }
-        .onAppear { print("[ChartDebug] StrainTrendChartView onAppear: points=\(data.points.count), hasData=\(hasData)") }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStyle()
     }
+}
+
+private struct DayValuePoint: Identifiable {
+    let id: String
+    let day: String
+    let value: Double
+}
+
+private func dayLabel(from date: Date) -> String {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "he_IL")
+    f.dateFormat = "d MMM"
+    return f.string(from: date)
 }
 
 struct StepsChartView: View {
     let data: StepsGraphData
     private var visiblePoints: [StepsDataPoint] { data.points.filter { $0.steps > 0 } }
-    private var hasData: Bool { !visiblePoints.isEmpty }
+    private var points: [DayValuePoint] {
+        visiblePoints.map { p in
+            DayValuePoint(id: "\(p.date.timeIntervalSince1970)", day: dayLabel(from: p.date), value: p.steps)
+        }
+    }
+    private var hasData: Bool { !points.isEmpty }
+    private var yMax: Double {
+        let m = visiblePoints.map(\.steps).max() ?? 1
+        return max(m * 1.15, 1000)
+    }
     var body: some View {
         Group {
             if hasData {
-                Chart(visiblePoints) { p in
-                    BarMark(x: .value("תאריך", p.date), y: .value("צעדים", p.steps), width: .ratio(0.5))
-                        .foregroundStyle(ChartColors.recovery)
+                Chart(points) { p in
+                    BarMark(x: .value("יום", p.day), y: .value("צעדים", p.value), width: .ratio(0.55))
+                        .foregroundStyle(LinearGradient(colors: [ChartColors.primary, ChartColors.success], startPoint: .bottom, endPoint: .top))
                 }
                 .chartXScale(domain: .automatic)
-                .chartYScale(domain: .automatic(includesZero: true))
+                .chartYScale(domain: 0 ... yMax)
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 5)) { _ in
+                        AxisGridLine().foregroundStyle(ChartColors.textSecondary)
+                        AxisValueLabel().foregroundStyle(ChartColors.textSecondary)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
             } else {
                 ChartPlaceholderView(message: "אין נתוני צעדים", icon: "figure.walk")
             }
         }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStylePadded()
     }
 }
 
@@ -323,7 +516,7 @@ struct RHRTrendChartView: View {
             if hasData {
                 Chart(data.points) { p in
                     LineMark(x: .value("תאריך", p.date), y: .value("דופק מנוחה", p.value))
-                        .foregroundStyle(ChartColors.strain)
+                        .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
                 .chartXScale(domain: .automatic)
@@ -332,6 +525,8 @@ struct RHRTrendChartView: View {
                 ChartPlaceholderView(message: "אין נתוני דופק מנוחה", icon: "heart.fill")
             }
         }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStyle()
     }
 }
 
@@ -343,7 +538,7 @@ struct HRVTrendChartView: View {
             if hasData {
                 Chart(data.points) { p in
                     LineMark(x: .value("תאריך", p.date), y: .value("HRV", p.value))
-                        .foregroundStyle(ChartColors.sleep)
+                        .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
                 .chartXScale(domain: .automatic)
@@ -352,6 +547,8 @@ struct HRVTrendChartView: View {
                 ChartPlaceholderView(message: "אין נתוני HRV", icon: "waveform.path.ecg")
             }
         }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
+        .chartDarkStyle()
     }
 }
 

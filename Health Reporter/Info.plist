@@ -6,7 +6,22 @@
 	<string>האפליקציה זקוקה לגישה לנתוני הבריאות שלך כדי לנתח ולהציג לך תובנות חשובות על מצב הבריאות שלך.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>האפליקציה זקוקה לגישה לעדכן נתוני בריאות כדי לשמור מידע נוסף.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>בחירת תמונת פרופיל מהגלריה.</string>
 	<key>App Uses Non-Exempt Encryption</key>
+	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.87919242294-1l3int0he5qk9b9i6egdtariam1j38nd</string>
+			</array>
+		</dict>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
@@ -21,8 +36,6 @@
 					<string>Default Configuration</string>
 					<key>UISceneDelegateClassName</key>
 					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
-					<key>UISceneStoryboardFile</key>
-					<string>Main</string>
 				</dict>
 			</array>
 		</dict>

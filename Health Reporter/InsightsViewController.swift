@@ -132,14 +132,19 @@ class InsightsViewController: UIViewController {
         contentView = full
     }
 
-    /// מסיר ** ומחליף ## בשורות ריקות לתצוגה נקייה.
-    private static func stripMarkdownForDisplay(_ s: String) -> String {
+    /// מסיר **, ## ומקפים בתחילת שורות – מחליף - ב־•.
+    static func stripMarkdownForDisplay(_ s: String) -> String {
         var t = s
-        while let r = t.range(of: "**") {
-            t.removeSubrange(r)
-        }
+        while let r = t.range(of: "**") { t.removeSubrange(r) }
         t = t.replacingOccurrences(of: "## ", with: "\n\n")
-        return t.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lines = t.components(separatedBy: .newlines)
+        let fixed = lines.map { line -> String in
+            var L = line.trimmingCharacters(in: .whitespaces)
+            if L.hasPrefix("- ") { L = "• " + String(L.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
+            else if L.hasPrefix("-") { L = "• " + String(L.dropFirst()).trimmingCharacters(in: .whitespaces) }
+            return L
+        }
+        return fixed.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

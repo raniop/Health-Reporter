@@ -2,49 +2,35 @@
 //  AIONDesign.swift
 //  Health Reporter
 //
-//  ערכת עיצוב – AION Performance Lab. תומך Light + Dark.
+//  ערכת עיצוב – Pro Lab / Synthesis. תמיד כהה, צבעי לוגו (ציאן/טורקיז/ירוק).
 //
 
 import UIKit
 
 enum AIONDesign {
-    // MARK: - Surfaces (dynamic)
-    static let background = UIColor { trait in
-        trait.userInterfaceStyle == .dark ? UIColor(hex: "#1C1C1E")! : UIColor(hex: "#F8F6F3")!
-    }
-    static let surface = UIColor { trait in
-        trait.userInterfaceStyle == .dark ? UIColor(hex: "#2C2C2E")! : UIColor(hex: "#FFFFFF")!
-    }
-    static let surfaceElevated = UIColor { trait in
-        trait.userInterfaceStyle == .dark ? UIColor(hex: "#3A3A3C")! : UIColor(hex: "#FFFFFF")!
-    }
-    static let separator = UIColor { trait in
-        trait.userInterfaceStyle == .dark ? UIColor(hex: "#48484A")! : UIColor(hex: "#E8E4DE")!
-    }
+    // MARK: - Surfaces (dark-only, כמו התמונות)
+    static let background = UIColor(hex: "#0D0D0F")!
+    static let surface = UIColor(hex: "#1C1C1E")!
+    static let surfaceElevated = UIColor(hex: "#252528")!
+    static let separator = UIColor(hex: "#3A3A3C")!
 
-    // MARK: - Text (dynamic)
-    static let textPrimary = UIColor { trait in
-        trait.userInterfaceStyle == .dark ? UIColor(hex: "#FFFFFF")! : UIColor(hex: "#1A1A1A")!
-    }
-    static let textSecondary = UIColor { trait in
-        trait.userInterfaceStyle == .dark ? UIColor(hex: "#EBEBF5")!.withAlphaComponent(0.6) : UIColor(hex: "#6B6560")!
-    }
-    static let textTertiary = UIColor { trait in
-        trait.userInterfaceStyle == .dark ? UIColor(hex: "#EBEBF5")!.withAlphaComponent(0.4) : UIColor(hex: "#9C958E")!
-    }
+    // MARK: - Text
+    static let textPrimary = UIColor(hex: "#FFFFFF")!
+    static let textSecondary = UIColor(hex: "#EBEBF5")!.withAlphaComponent(0.65)
+    static let textTertiary = UIColor(hex: "#EBEBF5")!.withAlphaComponent(0.45)
 
-    // MARK: - Accents (נראים טוב בשניהם)
-    static let accentPrimary = UIColor(hex: "#E85D04")!
-    static let accentSecondary = UIColor(hex: "#0D7EA7")!
-    static let accentSuccess = UIColor(hex: "#2D6A4F")!
+    // MARK: - Accents (גרדיאנט הלוגו: ירוק ליים → טורקיז → ציאן)
+    static let accentPrimary = UIColor(hex: "#00B4D8")!   // ציאן – מרכז הלוגו
+    static let accentSecondary = UIColor(hex: "#00C9A7")! // טורקיז
+    static let accentSuccess = UIColor(hex: "#7BED9F")!   // ירוק ליים – עלה/צמיחה
     static let accentWarning = UIColor(hex: "#CA6702")!
     static let accentDanger = UIColor(hex: "#9D0208")!
 
-    // MARK: - Chart colors
-    static let chartRecovery = UIColor(hex: "#0D7EA7")!
-    static let chartStrain = UIColor(hex: "#E85D04")!
+    // MARK: - Chart colors (בהתאמה ללוגו)
+    static let chartRecovery = UIColor(hex: "#00B4D8")!
+    static let chartStrain = UIColor(hex: "#00C9A7")!
     static let chartSleep = UIColor(hex: "#5C4D7D")!
-    static let chartGlucose = UIColor(hex: "#CA6702")!
+    static let chartGlucose = UIColor(hex: "#7BED9F")!
 
     // MARK: - Layout
     static let cornerRadius: CGFloat = 14
@@ -58,25 +44,12 @@ enum AIONDesign {
     static func bodyFont() -> UIFont { .systemFont(ofSize: 15, weight: .regular) }
     static func captionFont() -> UIFont { .systemFont(ofSize: 12, weight: .medium) }
 
-    /// מחזיר צבע בהתאם ל־trait collection של ה־view (לשימוש ב־layout)
-    static func resolveBackground(_ trait: UITraitCollection) -> UIColor {
-        background.resolvedColor(with: trait)
-    }
-    static func resolveSurface(_ trait: UITraitCollection) -> UIColor {
-        surface.resolvedColor(with: trait)
-    }
-    static func resolveTextPrimary(_ trait: UITraitCollection) -> UIColor {
-        textPrimary.resolvedColor(with: trait)
-    }
-    static func resolveTextSecondary(_ trait: UITraitCollection) -> UIColor {
-        textSecondary.resolvedColor(with: trait)
-    }
-    static func resolveTextTertiary(_ trait: UITraitCollection) -> UIColor {
-        textTertiary.resolvedColor(with: trait)
-    }
-    static func resolveSeparator(_ trait: UITraitCollection) -> UIColor {
-        separator.resolvedColor(with: trait)
-    }
+    static func resolveBackground(_ trait: UITraitCollection) -> UIColor { background }
+    static func resolveSurface(_ trait: UITraitCollection) -> UIColor { surface }
+    static func resolveTextPrimary(_ trait: UITraitCollection) -> UIColor { textPrimary }
+    static func resolveTextSecondary(_ trait: UITraitCollection) -> UIColor { textSecondary }
+    static func resolveTextTertiary(_ trait: UITraitCollection) -> UIColor { textTertiary }
+    static func resolveSeparator(_ trait: UITraitCollection) -> UIColor { separator }
 
     /// פסקה RTL לעברית – יישור לימין, כיוון כתיבה מימין לשמאל
     static func rtlParagraphStyle() -> NSParagraphStyle {

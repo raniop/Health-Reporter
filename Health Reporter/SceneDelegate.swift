@@ -6,20 +6,38 @@
 //
 
 import UIKit
+import FirebaseAuth
+import GoogleSignIn
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
-
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
-        
         window = UIWindow(windowScene: windowScene)
-        let healthDashboard = HealthDashboardViewController()
-        let navigationController = UINavigationController(rootViewController: healthDashboard)
-        window?.rootViewController = navigationController
+        window?.overrideUserInterfaceStyle = .dark
+        setRootByAuth()
         window?.makeKeyAndVisible()
+    }
+
+    func setRootByAuth() {
+        let root: UIViewController
+        if Auth.auth().currentUser != nil {
+            root = MainTabBarController()
+        } else {
+            root = LoginViewController()
+        }
+        window?.rootViewController = root
+    }
+
+    func showLogin() {
+        setRootByAuth()
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        guard let url = URLContexts.first?.url else { return }
+        _ = GIDSignIn.sharedInstance.handle(url)
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

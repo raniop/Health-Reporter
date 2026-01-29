@@ -36,9 +36,13 @@ struct EfficiencyGraphData {
 struct SleepDayPoint {
     var date: Date
     var totalHours: Double?
+    var totalSeconds: Int64?  // משך שינה בשניות – לתצוגה מדויקת (תואם אפל)
     var deepHours: Double?
     var remHours: Double?
     var bbt: Double?  // Basal body temp °C
+    var timeInBedHours: Double?  // זמן במיטה (אפל)
+    var respiratoryMin: Double?  // קצב נשימות בשינה – מינימום (נשימות/דקה)
+    var respiratoryMax: Double?  // קצב נשימות בשינה – מקסימום
 }
 
 struct SleepArchitectureGraphData {
@@ -123,6 +127,16 @@ struct AIONChartDataBundle {
     var steps: StepsGraphData
     var rhrTrend: RHRTrendGraphData
     var hrvTrend: HRVTrendGraphData
+
+    /// האם יש נתונים אמיתיים מ-HealthKit (לא רק אפסים סינתטיים)
+    var hasRealData: Bool {
+        let hasHRV = !hrvTrend.points.isEmpty
+        let hasRHR = !rhrTrend.points.isEmpty
+        let hasSleep = sleep.points.contains { ($0.totalHours ?? 0) > 0 }
+        let hasSteps = steps.points.contains { $0.steps > 0 }
+        let hasEnergy = glucoseEnergy.points.contains { ($0.activeEnergy ?? 0) > 0 }
+        return hasHRV || hasRHR || hasSleep || hasSteps || hasEnergy
+    }
 }
 
 // MARK: - JSON Schema for Gemini (6 graphs in one Review request)

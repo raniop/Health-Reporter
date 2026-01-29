@@ -24,7 +24,13 @@
    - לך ל-Signing & Capabilities
    - הוסף HealthKit capability (אם לא קיים)
    - ודא שקובץ ה-entitlements מוגדר: `Health Reporter.entitlements`
-3. בנה והרץ את האפליקציה
+3. **Firebase והתחברות Google** (חובה להתחברות):
+   - צור פרויקט ב-[Firebase Console](https://console.firebase.google.com) והוסף אפליקציית iOS עם Bundle ID `com.rani.Health-Reporter`
+   - הפעל **Authentication** > **Sign-in method** > **Google**
+   - הפעל **Firestore Database** (Create database). עבור כללי אבטחה, השתמש ב־rules שמאפשרים קריאה/כתיבה רק למשתמש המחובר ב־`users/{userId}`.
+   - הורד `GoogleService-Info.plist` והחלף את הקובץ בתיקיית `Health Reporter/`
+   - ב-Info.plist, עדכן את ה-URL Scheme ב-`CFBundleURLTypes` ל־`REVERSED_CLIENT_ID` מהקובץ שהורדת (ראה `GoogleService-Info.plist.example`)
+4. בנה והרץ את האפליקציה
 
 ## הרשאות
 
@@ -43,10 +49,11 @@
 ## שימוש
 
 1. פתח את האפליקציה
-2. אשר את בקשת הגישה לנתוני בריאות
-3. לחץ על "רענן נתונים" כדי לטעון את הנתונים
-4. האפליקציה תציג את כל נתוני הבריאות ותבצע ניתוח באמצעות Gemini
-5. קרא את התובנות וההמלצות
+2. **התחבר**: בחר "הכנס פרטים" (אימייל וסיסמה) או "התחבר עם Google"
+3. אשר את בקשת הגישה לנתוני בריאות
+4. לחץ על "רענן נתונים" כדי לטעון את הנתונים
+5. האפליקציה תציג את כל נתוני הבריאות ותבצע ניתוח באמצעות Gemini
+6. קרא את התובנות וההמלצות
 
 ## מבנה הפרויקט
 
@@ -54,8 +61,15 @@
 - `GeminiService.swift` - אינטגרציה עם Gemini API
 - `HealthDataModel.swift` - מודל נתונים לנתוני בריאות
 - `HealthDashboardViewController.swift` - מסך ראשי להצגת נתונים
+- `LoginViewController.swift` - מסך התחברות (אימייל/סיסמה + Google)
+- `AnalysisFirestoreSync.swift` - סנכרון נתוני ניתוח ל-Firestore (לפי משתמש מחובר)
 - `Config.plist` - קובץ הגדרות עם מפתח API של Gemini
+- `GoogleService-Info.plist` - קונפיגורציית Firebase (להוריד מ-Firebase Console)
 - `Health Reporter.entitlements` - הרשאות HealthKit
+
+## סנכרון נתונים בענן (Firestore)
+
+כאשר המשתמש מחובר (אימייל או Google), נתוני הניתוח (תובנות + המלצות) נשמרים גם ב-**Firestore** תחת `users/{userId}`. בכניסה ממכשיר אחר, האפליקציה טוענת את הנתונים מהענן (עם timeout קצר) ומציגה אותם אם הם עדכניים (פחות מ־24 שעות). כך התובנות וההמלצות זמינות **מכל מכשיר** בו מתחברים עם אותו חשבון.
 
 ## הערות
 

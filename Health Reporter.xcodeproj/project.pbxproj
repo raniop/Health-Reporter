@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4F325CB42F25372500233F0A /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA662102F25020A00893900 /* FirebaseAuth */; };
+		4F325CB52F25372500233F0A /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA662112F25020A00893900 /* FirebaseCore */; };
+		4F325CB62F25372500233F0A /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA662122F25020A00893900 /* GoogleSignIn */; };
+		4F325CB72F25372500233F0A /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA662132F25020A00893900 /* FirebaseFirestore */; };
+		4F325CB82F25372500233F0A /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA662142F25020A00893900 /* FirebaseStorage */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		4FA661072F25020A00893900 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -65,6 +73,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4F325CB82F25372500233F0A /* FirebaseStorage in Frameworks */,
+				4F325CB72F25372500233F0A /* FirebaseFirestore in Frameworks */,
+				4F325CB62F25372500233F0A /* GoogleSignIn in Frameworks */,
+				4F325CB52F25372500233F0A /* FirebaseCore in Frameworks */,
+				4F325CB42F25372500233F0A /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +138,11 @@
 			);
 			name = "Health Reporter";
 			packageProductDependencies = (
+				4FA662102F25020A00893900 /* FirebaseAuth */,
+				4FA662112F25020A00893900 /* FirebaseCore */,
+				4FA662122F25020A00893900 /* GoogleSignIn */,
+				4FA662132F25020A00893900 /* FirebaseFirestore */,
+				4FA662142F25020A00893900 /* FirebaseStorage */,
 			);
 			productName = "Health Reporter";
 			productReference = 4FA660ED2F25020800893900 /* Health Reporter.app */;
@@ -208,6 +226,10 @@
 			);
 			mainGroup = 4FA660E42F25020800893900;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4FA662002F25020A00893900 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				4FA662012F25020A00893900 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4FA660EE2F25020800893900 /* Products */;
 			projectDirPath = "";
@@ -296,7 +318,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = AION;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
@@ -304,7 +325,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 6.2;
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -331,7 +353,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = AION;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
@@ -339,7 +360,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 6.2;
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -597,6 +619,53 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4FA662002F25020A00893900 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+		4FA662012F25020A00893900 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4FA662102F25020A00893900 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FA662002F25020A00893900 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		4FA662112F25020A00893900 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FA662002F25020A00893900 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		4FA662122F25020A00893900 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FA662012F25020A00893900 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		4FA662132F25020A00893900 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FA662002F25020A00893900 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		4FA662142F25020A00893900 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FA662002F25020A00893900 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4FA660E52F25020800893900 /* Project object */;
 }

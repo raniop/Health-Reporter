@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(file:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}

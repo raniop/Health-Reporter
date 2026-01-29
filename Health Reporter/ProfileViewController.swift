@@ -1,0 +1,487 @@
+//
+//  ProfileViewController.swift
+//  Health Reporter
+//
+//  מסך פרופיל / Account – מדדים, מכשירים, הגדרות, התנתקות.
+//
+
+import UIKit
+import FirebaseAuth
+import HealthKit
+import PhotosUI
+
+private let kProfileBadge = "ProfileBadge"
+private let profileBadgeOptions: [(title: String, value: String)] = [
+    ("אתלט", "אתלט"),
+    ("מתחיל", "מתחיל"),
+    ("חובב", "חובב"),
+    ("מקצוען", "מקצוען"),
+]
+
+final class ProfileViewController: UIViewController {
+
+    private let scrollView = UIScrollView()
+    private let stack = UIStackView()
+    private let avatarView = UIView()
+    private let avatarImageView = UIImageView()
+    private let nameLabel = UILabel()
+    private let badgeContainer = UIView()
+    private let badgeLabel = UILabel()
+    private let tierLabel = UILabel()
+    private let metricsStack = UIStackView()
+    private let logoutButton = UIButton(type: .system)
+    private var heightValueLabel: UILabel?
+    private var weightValueLabel: UILabel?
+    private var ageValueLabel: UILabel?
+    private var thirdMetricTitleLabel: UILabel?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = "פרופיל"
+        view.backgroundColor = AIONDesign.background
+        view.semanticContentAttribute = .forceRightToLeft
+        navigationController?.navigationBar.barStyle = .black
+        navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
+        setupUI()
+        updateUserInfo()
+        loadProfilePhoto()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadProfileMetrics()
+        loadProfilePhoto()
+    }
+
+    private func setupUI() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.showsVerticalScrollIndicator = true
+        view.addSubview(scrollView)
+        stack.axis = .vertical
+        stack.spacing = 0
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(stack)
+
+        avatarView.backgroundColor = AIONDesign.surface
+        avatarView.layer.cornerRadius = 52
+        avatarView.layer.borderWidth = 2
+        avatarView.layer.borderColor = AIONDesign.accentPrimary.cgColor
+        avatarView.clipsToBounds = true
+        avatarView.translatesAutoresizingMaskIntoConstraints = false
+        avatarView.isUserInteractionEnabled = true
+        avatarImageView.contentMode = .scaleAspectFill
+        avatarImageView.clipsToBounds = true
+        avatarImageView.layer.cornerRadius = 50
+        avatarImageView.image = UIImage(systemName: "person.circle.fill")
+        avatarImageView.tintColor = AIONDesign.textTertiary
+        avatarImageView.translatesAutoresizingMaskIntoConstraints = false
+        avatarView.addSubview(avatarImageView)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(changePhotoTapped))
+        avatarView.addGestureRecognizer(tap)
+        NSLayoutConstraint.activate([
+            avatarImageView.centerXAnchor.constraint(equalTo: avatarView.centerXAnchor),
+            avatarImageView.centerYAnchor.constraint(equalTo: avatarView.centerYAnchor),
+            avatarImageView.widthAnchor.constraint(equalToConstant: 100),
+            avatarImageView.heightAnchor.constraint(equalToConstant: 100),
+            avatarView.widthAnchor.constraint(equalToConstant: 104),
+            avatarView.heightAnchor.constraint(equalToConstant: 104),
+        ])
+
+        nameLabel.text = "משתמש"
+        nameLabel.font = .systemFont(ofSize: 24, weight: .bold)
+        nameLabel.textColor = AIONDesign.textPrimary
+        nameLabel.textAlignment = .center
+        nameLabel.numberOfLines = 1
+        nameLabel.lineBreakMode = .byTruncatingTail
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        nameLabel.isUserInteractionEnabled = true
+        let nameTap = UITapGestureRecognizer(target: self, action: #selector(nameTapped))
+        nameLabel.addGestureRecognizer(nameTap)
+
+        let pencilBtn = UIButton(type: .system)
+        pencilBtn.setImage(UIImage(systemName: "pencil"), for: .normal)
+        pencilBtn.tintColor = AIONDesign.textTertiary
+        pencilBtn.translatesAutoresizingMaskIntoConstraints = false
+        pencilBtn.addTarget(self, action: #selector(nameTapped), for: .touchUpInside)
+
+        let nameRowContainer = UIView()
+        nameRowContainer.translatesAutoresizingMaskIntoConstraints = false
+        nameRowContainer.addSubview(nameLabel)
+        nameRowContainer.addSubview(pencilBtn)
+
+        badgeContainer.backgroundColor = AIONDesign.surface
+        badgeContainer.layer.cornerRadius = 14
+        badgeContainer.layer.borderWidth = 2
+        badgeContainer.layer.borderColor = AIONDesign.accentPrimary.cgColor
+        badgeContainer.translatesAutoresizingMaskIntoConstraints = false
+        badgeContainer.isUserInteractionEnabled = true
+        let badgeTap = UITapGestureRecognizer(target: self, action: #selector(badgeTapped))
+        badgeContainer.addGestureRecognizer(badgeTap)
+        badgeLabel.font = .systemFont(ofSize: 14, weight: .bold)
+        badgeLabel.textColor = AIONDesign.accentPrimary
+        badgeLabel.textAlignment = .center
+        badgeLabel.adjustsFontSizeToFitWidth = true
+        badgeLabel.minimumScaleFactor = 0.7
+        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        badgeContainer.addSubview(badgeLabel)
+        NSLayoutConstraint.activate([
+            badgeLabel.topAnchor.constraint(equalTo: badgeContainer.topAnchor, constant: 10),
+            badgeLabel.bottomAnchor.constraint(equalTo: badgeContainer.bottomAnchor, constant: -10),
+            badgeLabel.leadingAnchor.constraint(equalTo: badgeContainer.leadingAnchor, constant: 20),
+            badgeLabel.trailingAnchor.constraint(equalTo: badgeContainer.trailingAnchor, constant: -20),
+        ])
+        applySavedBadge()
+
+        tierLabel.text = "Performance Tier: Pro Lab"
+        tierLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        tierLabel.textColor = AIONDesign.textTertiary
+        tierLabel.textAlignment = .center
+        tierLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        metricsStack.axis = .horizontal
+        metricsStack.spacing = AIONDesign.spacing
+        metricsStack.distribution = .fillEqually
+        metricsStack.translatesAutoresizingMaskIntoConstraints = false
+        let (hCard, hLabel) = makeMetricCard("גובה", value: "—", unit: "cm", explanation: CardExplanations.profileHeight)
+        let (wCard, wLabel) = makeMetricCard("משקל", value: "—", unit: "kg", explanation: CardExplanations.profileWeight)
+        let (ageCard, ageLabel) = makeMetricCard("גיל", value: "—", unit: "שנה", explanation: CardExplanations.profileAge)
+        heightValueLabel = hLabel
+        weightValueLabel = wLabel
+        ageValueLabel = ageLabel
+        thirdMetricTitleLabel = ageCard.subviews.compactMap { $0 as? UILabel }.first
+        [hCard, wCard, ageCard].forEach { metricsStack.addArrangedSubview($0) }
+
+        logoutButton.setTitle("התנתק", for: .normal)
+        logoutButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .medium)
+        logoutButton.setTitleColor(AIONDesign.textTertiary, for: .normal)
+        logoutButton.backgroundColor = .clear
+        logoutButton.layer.cornerRadius = AIONDesign.cornerRadius
+        logoutButton.layer.borderWidth = 0.5
+        logoutButton.layer.borderColor = AIONDesign.separator.cgColor
+        logoutButton.translatesAutoresizingMaskIntoConstraints = false
+        logoutButton.addTarget(self, action: #selector(logoutTapped), for: .touchUpInside)
+
+        stack.addArrangedSubview(avatarView)
+        stack.addArrangedSubview(nameRowContainer)
+        stack.addArrangedSubview(badgeContainer)
+        stack.addArrangedSubview(tierLabel)
+        stack.addArrangedSubview(metricsStack)
+
+        NSLayoutConstraint.activate([
+            nameRowContainer.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            nameRowContainer.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+            nameRowContainer.heightAnchor.constraint(equalToConstant: 40),
+            nameLabel.centerXAnchor.constraint(equalTo: nameRowContainer.centerXAnchor),
+            nameLabel.centerYAnchor.constraint(equalTo: nameRowContainer.centerYAnchor),
+            pencilBtn.centerYAnchor.constraint(equalTo: nameRowContainer.centerYAnchor),
+            pencilBtn.trailingAnchor.constraint(equalTo: nameRowContainer.trailingAnchor, constant: -16),
+            pencilBtn.widthAnchor.constraint(equalToConstant: 28),
+            pencilBtn.heightAnchor.constraint(equalToConstant: 28),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: pencilBtn.leadingAnchor, constant: -8),
+            nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: nameRowContainer.leadingAnchor, constant: 16),
+            badgeContainer.widthAnchor.constraint(equalTo: nameLabel.widthAnchor, constant: 8 + 28),
+        ])
+
+        stack.setCustomSpacing(6, after: avatarView)
+        stack.setCustomSpacing(12, after: nameRowContainer)
+        stack.setCustomSpacing(6, after: badgeContainer)
+        stack.setCustomSpacing(AIONDesign.spacingLarge * 2, after: tierLabel)
+        stack.setCustomSpacing(AIONDesign.spacingLarge * 2, after: metricsStack)
+
+        let logoutContainer = UIView()
+        logoutContainer.translatesAutoresizingMaskIntoConstraints = false
+        logoutContainer.addSubview(logoutButton)
+        view.addSubview(logoutContainer)
+
+        NSLayoutConstraint.activate([
+            logoutButton.heightAnchor.constraint(equalToConstant: 34),
+            logoutButton.widthAnchor.constraint(equalToConstant: 90),
+            logoutButton.centerXAnchor.constraint(equalTo: logoutContainer.centerXAnchor),
+            logoutButton.topAnchor.constraint(equalTo: logoutContainer.topAnchor, constant: 10),
+            logoutButton.bottomAnchor.constraint(equalTo: logoutContainer.bottomAnchor, constant: -10),
+            metricsStack.heightAnchor.constraint(equalToConstant: 124),
+            metricsStack.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            metricsStack.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+        ])
+
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: logoutContainer.topAnchor),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: AIONDesign.spacingLarge * 1.5),
+            stack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: AIONDesign.spacing),
+            stack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -AIONDesign.spacing),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -AIONDesign.spacingLarge * 1.5),
+            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -AIONDesign.spacing * 2),
+            logoutContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            logoutContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            logoutContainer.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+        ])
+    }
+
+    private func makeMetricCard(_ title: String, value: String, unit: String, explanation: String) -> (UIView, UILabel) {
+        let c = UIView()
+        c.backgroundColor = AIONDesign.surface
+        c.layer.cornerRadius = AIONDesign.cornerRadius
+        c.translatesAutoresizingMaskIntoConstraints = false
+
+        let info = CardInfoButton.make(explanation: explanation)
+        info.addTarget(self, action: #selector(profileCardInfoTapped(_:)), for: .touchUpInside)
+        c.addSubview(info)
+
+        let t = UILabel()
+        t.text = title
+        t.font = .systemFont(ofSize: 12, weight: .semibold)
+        t.textColor = AIONDesign.textSecondary
+        t.textAlignment = .center
+        t.translatesAutoresizingMaskIntoConstraints = false
+        c.addSubview(t)
+
+        let v = UILabel()
+        v.text = (value.isEmpty || value == "—") ? "— \(unit)" : "\(value) \(unit)"
+        v.font = .systemFont(ofSize: 18, weight: .bold)
+        v.textColor = AIONDesign.textPrimary
+        v.textAlignment = .center
+        v.adjustsFontSizeToFitWidth = true
+        v.minimumScaleFactor = 0.7
+        v.translatesAutoresizingMaskIntoConstraints = false
+        c.addSubview(v)
+
+        NSLayoutConstraint.activate([
+            info.topAnchor.constraint(equalTo: c.topAnchor, constant: 10),
+            info.leftAnchor.constraint(equalTo: c.leftAnchor, constant: 10),
+            t.centerYAnchor.constraint(equalTo: info.centerYAnchor),
+            t.leadingAnchor.constraint(equalTo: info.trailingAnchor, constant: 6),
+            t.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -10),
+            v.topAnchor.constraint(equalTo: t.bottomAnchor, constant: 14),
+            v.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: 10),
+            v.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -10),
+            v.bottomAnchor.constraint(equalTo: c.bottomAnchor, constant: -14),
+        ])
+        return (c, v)
+    }
+
+    @objc private func profileCardInfoTapped(_ sender: CardInfoButton) {
+        let alert = UIAlertController(title: "הסבר", message: sender.explanation, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "הבנתי", style: .default))
+        present(alert, animated: true)
+    }
+
+    private func applySavedBadge() {
+        var v = UserDefaults.standard.string(forKey: kProfileBadge) ?? "אתלט"
+        if v == "ATHLETE" { v = "אתלט"; UserDefaults.standard.set("אתלט", forKey: kProfileBadge) }
+        badgeLabel.text = v
+    }
+
+    @objc private func nameTapped() {
+        let alert = UIAlertController(title: "עריכת שם", message: "הזן את שמך", preferredStyle: .alert)
+        alert.addTextField { [weak self] tf in
+            tf.text = self?.nameLabel.text
+            tf.placeholder = "שם"
+            tf.textAlignment = .right
+        }
+        alert.addAction(UIAlertAction(title: "ביטול", style: .cancel))
+        alert.addAction(UIAlertAction(title: "שמור", style: .default) { [weak self] _ in
+            guard let self = self, let name = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { return }
+            self.saveDisplayName(name)
+        })
+        present(alert, animated: true)
+    }
+
+    private func saveDisplayName(_ name: String) {
+        let request = Auth.auth().currentUser?.createProfileChangeRequest()
+        request?.displayName = name
+        request?.commitChanges { [weak self] err in
+            DispatchQueue.main.async {
+                if let e = err {
+                    let a = UIAlertController(title: "שגיאה", message: e.localizedDescription, preferredStyle: .alert)
+                    a.addAction(UIAlertAction(title: "אישור", style: .default))
+                    self?.present(a, animated: true)
+                    return
+                }
+                self?.nameLabel.text = name
+                ProfileFirestoreSync.saveDisplayName(name)
+            }
+        }
+    }
+
+    @objc private func badgeTapped() {
+        let sheet = UIAlertController(title: "בחר סוג משתמש", message: nil, preferredStyle: .actionSheet)
+        for opt in profileBadgeOptions {
+            sheet.addAction(UIAlertAction(title: opt.title, style: .default) { [weak self] _ in
+                UserDefaults.standard.set(opt.value, forKey: kProfileBadge)
+                self?.badgeLabel.text = opt.value
+            })
+        }
+        sheet.addAction(UIAlertAction(title: "ביטול", style: .cancel))
+        if let pop = sheet.popoverPresentationController {
+            pop.sourceView = view
+            pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
+            pop.permittedArrowDirections = []
+        }
+        present(sheet, animated: true)
+    }
+
+    private func updateUserInfo() {
+        guard Auth.auth().currentUser != nil else { return }
+        ProfileFirestoreSync.fetchDisplayName { [weak self] name in
+            guard let self = self else { return }
+            if let n = name, !n.isEmpty {
+                self.nameLabel.text = n
+                return
+            }
+            guard let u = Auth.auth().currentUser else { return }
+            self.nameLabel.text = u.displayName ?? u.email ?? "משתמש"
+        }
+    }
+
+    private func loadProfilePhoto() {
+        ProfileFirestoreSync.fetchPhotoURL { [weak self] url in
+            self?.applyProfilePhoto(url: url)
+        }
+    }
+
+    private func applyProfilePhoto(url: String?) {
+        if let u = url, let uu = URL(string: u) {
+            URLSession.shared.dataTask(with: uu) { [weak self] data, _, _ in
+                guard let self = self, let d = data, let img = UIImage(data: d) else { return }
+                DispatchQueue.main.async {
+                    self.avatarImageView.image = img
+                    self.avatarImageView.tintColor = nil
+                }
+            }.resume()
+        } else if let u = Auth.auth().currentUser?.photoURL?.absoluteString, let uu = URL(string: u) {
+            URLSession.shared.dataTask(with: uu) { [weak self] data, _, _ in
+                guard let self = self, let d = data, let img = UIImage(data: d) else { return }
+                DispatchQueue.main.async {
+                    self.avatarImageView.image = img
+                    self.avatarImageView.tintColor = nil
+                }
+            }.resume()
+        } else {
+            avatarImageView.image = UIImage(systemName: "person.circle.fill")
+            avatarImageView.tintColor = AIONDesign.textTertiary
+        }
+    }
+
+    @objc private func changePhotoTapped() {
+        if #available(iOS 14, *) {
+            var config = PHPickerConfiguration()
+            config.filter = .images
+            config.selectionLimit = 1
+            let picker = PHPickerViewController(configuration: config)
+            picker.delegate = self
+            present(picker, animated: true)
+        } else {
+            let picker = UIImagePickerController()
+            picker.sourceType = .photoLibrary
+            picker.delegate = self
+            picker.mediaTypes = ["public.image"]
+            present(picker, animated: true)
+        }
+    }
+
+    private func loadProfileMetrics() {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        HealthKitManager.shared.requestAuthorization { [weak self] success, _ in
+            guard success else { return }
+            HealthKitManager.shared.fetchProfileMetrics { heightCm, weightKg in
+                HealthKitManager.shared.fetchDateOfBirth { ageYears in
+                    self?.updateMetricLabels(heightCm: heightCm, weightKg: weightKg, ageYears: ageYears)
+                }
+            }
+        }
+    }
+
+    private func updateMetricLabels(heightCm: Double?, weightKg: Double?, ageYears: Int?) {
+        if let h = heightCm, h > 0 {
+            heightValueLabel?.text = String(format: "%.0f cm", h)
+        } else {
+            heightValueLabel?.text = "— cm"
+        }
+        if let w = weightKg, w > 0 {
+            weightValueLabel?.text = String(format: "%.1f kg", w)
+        } else {
+            weightValueLabel?.text = "— kg"
+        }
+        if let a = ageYears, a > 0 {
+            thirdMetricTitleLabel?.text = "גיל"
+            ageValueLabel?.text = String(format: "%d שנה", a)
+        } else if let h = heightCm, let w = weightKg, h > 0, w > 0 {
+            let bmi = w / ((h / 100) * (h / 100))
+            thirdMetricTitleLabel?.text = "BMI"
+            ageValueLabel?.text = String(format: "%.1f", bmi)
+        } else {
+            thirdMetricTitleLabel?.text = "גיל"
+            ageValueLabel?.text = "— שנה"
+        }
+    }
+
+    @objc private func logoutTapped() {
+        do {
+            try Auth.auth().signOut()
+            (view.window?.windowScene?.delegate as? SceneDelegate)?.showLogin()
+        } catch {
+            let alert = UIAlertController(title: "שגיאה", message: error.localizedDescription, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "אישור", style: .default))
+            present(alert, animated: true)
+        }
+    }
+}
+
+extension ProfileViewController: PHPickerViewControllerDelegate {
+    @available(iOS 14, *)
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true)
+        guard let r = results.first else { return }
+        r.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
+            guard let self = self, let img = obj as? UIImage else { return }
+            self.uploadAndSaveProfilePhoto(img)
+        }
+    }
+}
+
+extension ProfileViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        picker.dismiss(animated: true)
+        guard let img = info[.originalImage] as? UIImage else { return }
+        uploadAndSaveProfilePhoto(img)
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+    }
+}
+
+private extension ProfileViewController {
+    func uploadAndSaveProfilePhoto(_ image: UIImage) {
+        let overlay = UIView()
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.4)
+        overlay.frame = view.bounds
+        overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(overlay)
+        let sp = UIActivityIndicatorView(style: .large)
+        sp.color = .white
+        sp.center = CGPoint(x: overlay.bounds.midX, y: overlay.bounds.midY)
+        sp.autoresizingMask = [.flexibleTopMargin, .flexibleBottomMargin, .flexibleLeftMargin, .flexibleRightMargin]
+        overlay.addSubview(sp)
+        sp.startAnimating()
+
+        ProfileFirestoreSync.uploadProfileImage(image) { [weak self] result in
+            DispatchQueue.main.async {
+                overlay.removeFromSuperview()
+                switch result {
+                case .success(let url):
+                    ProfileFirestoreSync.savePhotoURL(url) { _ in }
+                    self?.applyProfilePhoto(url: url)
+                case .failure(let err):
+                    let alert = UIAlertController(title: "שגיאה", message: err.localizedDescription, preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "אישור", style: .default))
+                    self?.present(alert, animated: true)
+                }
+            }
+        }
+    }
+}

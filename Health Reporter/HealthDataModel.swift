@@ -52,8 +52,20 @@ struct HealthDataModel {
     var insights: String?
     var recommendations: [String]?
     var riskFactors: [String]?
-    
+
     var lastUpdated: Date?
+
+    /// האם יש נתוני בריאות אמיתיים (לפחות ערך אחד שאינו nil/0)
+    var hasRealData: Bool {
+        let all: [Double?] = [
+            steps, distance, activeEnergy, heartRate, restingHeartRate,
+            walkingHeartRateAverage, bloodPressureSystolic, oxygenSaturation,
+            bodyMass, bodyMassIndex, bodyFatPercentage, respiratoryRate,
+            dietaryEnergy, dietaryProtein, dietaryCarbohydrates, dietaryFat,
+            sleepHours, bloodGlucose, vo2Max, bodyTemperature
+        ]
+        return all.contains { $0 != nil && $0! > 0 }
+    }
 }
 
 struct SleepData {
@@ -215,7 +227,6 @@ struct HealthSummary {
             let jsonData = try JSONSerialization.data(withJSONObject: json, options: .prettyPrinted)
             return String(data: jsonData, encoding: .utf8)
         } catch {
-            print("Error converting to JSON: \(error)")
             return nil
         }
     }
