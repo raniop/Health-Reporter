@@ -46,6 +46,7 @@ final class ActivityViewController: UIViewController {
     private let rangeLabel = UILabel()
     private let heroCard = UIView()
     private let heroGradient = CAGradientLayer()
+    private let activityRingsCard = ActivityRingsView()
     private let summaryRow1 = UIStackView()
     private let summaryRow2 = UIStackView()
     private let secondaryRow = UIStackView()
@@ -107,6 +108,7 @@ final class ActivityViewController: UIViewController {
         stack.addArrangedSubview(periodCol)
 
         setupHero()
+        setupActivityRings()
         setupSummaryCards()
         setupSecondaryCards()
         setupChartCards()
@@ -173,6 +175,18 @@ final class ActivityViewController: UIViewController {
             sub.leadingAnchor.constraint(equalTo: heroCard.leadingAnchor, constant: AIONDesign.spacing),
             sub.trailingAnchor.constraint(equalTo: heroCard.trailingAnchor, constant: -AIONDesign.spacing),
             sub.bottomAnchor.constraint(equalTo: heroCard.bottomAnchor, constant: -AIONDesign.spacing),
+        ])
+    }
+
+    private func setupActivityRings() {
+        stack.addArrangedSubview(makeSectionLabel("טבעות פעילות"))
+
+        activityRingsCard.translatesAutoresizingMaskIntoConstraints = false
+        activityRingsCard.showPlaceholder()
+        stack.addArrangedSubview(activityRingsCard)
+
+        NSLayoutConstraint.activate([
+            activityRingsCard.heightAnchor.constraint(equalToConstant: 160),
         ])
     }
 
@@ -420,6 +434,7 @@ final class ActivityViewController: UIViewController {
         guard let s = summary else {
             [stepsValueLabel, distanceValueLabel, caloriesValueLabel, exerciseValueLabel, flightsValueLabel, moveValueLabel, standValueLabel]
                 .forEach { $0??.text = "—" }
+            activityRingsCard.showPlaceholder()
             return
         }
         func fmt(_ v: Double?, _ f: (Double) -> String, _ u: String) -> String {
@@ -433,6 +448,24 @@ final class ActivityViewController: UIViewController {
         flightsValueLabel?.text = fmt(s.flightsClimbed, { String(format: "%.0f", $0) }, "")
         moveValueLabel?.text = fmt(s.moveTimeMinutes, { String(format: "%.0f", $0) }, "דק׳")
         standValueLabel?.text = fmt(s.standHours, { String(format: "%.1f", $0) }, "שעות")
+
+        // Update Activity Rings - adjust goal by range
+        let multiplier: Double
+        switch selectedRange {
+        case .day: multiplier = 1.0
+        case .week: multiplier = 7.0
+        case .month: multiplier = 30.0
+        }
+
+        activityRingsCard.configure(
+            moveCalories: s.activeEnergyKcal,
+            moveGoal: 500 * multiplier,
+            exerciseMinutes: s.exerciseMinutes,
+            exerciseGoal: 30 * multiplier,
+            standHours: s.standHours,
+            standGoal: 12 * multiplier,
+            animated: true
+        )
     }
 
     private func updateCharts() {

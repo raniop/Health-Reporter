@@ -21,6 +21,8 @@ final class TrendsViewController: UIViewController {
     private var bioHrvLabel: UILabel?
     private var bioStrainLabel: UILabel?
     private var bioRhrLabel: UILabel?
+    private var bioStepsLabel: UILabel?
+    private var bioExerciseLabel: UILabel?
     private var focus1Label: UILabel?
     private var focus2Label: UILabel?
 
@@ -31,6 +33,7 @@ final class TrendsViewController: UIViewController {
     private let correlationCard = UIView()
     private let statsRow = UIStackView()
     private let biometricsRow = UIStackView()
+    private let activityRow = UIStackView()
     private let focusStack = UIStackView()
 
     override func viewDidLoad() {
@@ -45,6 +48,7 @@ final class TrendsViewController: UIViewController {
         setupCorrelationCard()
         setupStatsRow()
         setupBiometricsRow()
+        setupActivityRow()
         setupFocusAreas()
         setupStack()
         loadData()
@@ -233,12 +237,25 @@ final class TrendsViewController: UIViewController {
         biometricsRow.heightAnchor.constraint(equalToConstant: 96).isActive = true
     }
 
-    private func makeBioCard(_ title: String, value: String, icon: String) -> (UIView, UILabel) {
+    private func setupActivityRow() {
+        activityRow.axis = .horizontal
+        activityRow.spacing = AIONDesign.spacing
+        activityRow.distribution = .fillEqually
+        activityRow.translatesAutoresizingMaskIntoConstraints = false
+        let (c1, l1) = makeBioCard("צעדים", value: "—", icon: "figure.walk", color: .systemOrange, explanation: CardExplanations.activitySteps)
+        let (c2, l2) = makeBioCard("דקות אימון", value: "— דק׳", icon: "flame.fill", color: .systemGreen, explanation: CardExplanations.activityExercise)
+        bioStepsLabel = l1
+        bioExerciseLabel = l2
+        [c1, c2].forEach { activityRow.addArrangedSubview($0) }
+        activityRow.heightAnchor.constraint(equalToConstant: 96).isActive = true
+    }
+
+    private func makeBioCard(_ title: String, value: String, icon: String, color: UIColor? = nil, explanation: String = CardExplanations.biometrics) -> (UIView, UILabel) {
         let c = UIView()
         c.backgroundColor = AIONDesign.surface
         c.layer.cornerRadius = AIONDesign.cornerRadius
         let iv = UIImageView(image: UIImage(systemName: icon))
-        iv.tintColor = AIONDesign.accentPrimary
+        iv.tintColor = color ?? AIONDesign.accentPrimary
         iv.contentMode = .scaleAspectFit
         let t = UILabel()
         t.text = title
@@ -254,7 +271,7 @@ final class TrendsViewController: UIViewController {
         c.addSubview(iv)
         c.addSubview(t)
         c.addSubview(v)
-        let info = CardInfoButton.make(explanation: CardExplanations.biometrics)
+        let info = CardInfoButton.make(explanation: explanation)
         info.addTarget(self, action: #selector(cardInfoTapped(_:)), for: .touchUpInside)
         c.addSubview(info)
         NSLayoutConstraint.activate([
@@ -386,6 +403,8 @@ final class TrendsViewController: UIViewController {
         stack.addArrangedSubview(statsRow)
         stack.addArrangedSubview(sectionHeader("ביו-טרנדים"))
         stack.addArrangedSubview(biometricsRow)
+        stack.addArrangedSubview(sectionHeader("פעילות"))
+        stack.addArrangedSubview(activityRow)
         stack.addArrangedSubview(focusStack)
 
         NSLayoutConstraint.activate([
@@ -411,6 +430,56 @@ final class TrendsViewController: UIViewController {
                 self?.updateCorrelationStats(bundle)
                 if let b = bundle { self?.addCorrelationChart(bundle: b) }
             }
+        }
+
+        // Fetch activity data for the selected period
+        loadActivityData()
+    }
+
+    private func loadActivityData() {
+        let endDate = Date()
+        let startDate = Calendar.current.date(byAdding: .day, value: -selectedDays, to: endDate) ?? endDate
+
+        let group = DispatchGroup()
+        var totalSteps: Double = 0
+        var totalExercise: Double = 0
+
+        // Fetch steps
+        group.enter()
+        HealthKitManager.shared.fetchSteps(startDate: startDate, endDate: endDate) { steps in
+            totalSteps = steps ?? 0
+            group.leave()
+        }
+
+        // Fetch exercise minutes
+        group.enter()
+        HealthKitManager.shared.fetchExerciseMinutes(startDate: startDate, endDate: endDate) { minutes in
+            totalExercise = minutes ?? 0
+            group.leave()
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            self?.updateActivityLabels(steps: totalSteps, exerciseMinutes: totalExercise)
+        }
+    }
+
+    private func updateActivityLabels(steps: Double, exerciseMinutes: Double) {
+        // Format steps
+        if steps > 0 {
+            if steps >= 1000 {
+                bioStepsLabel?.text = String(format: "%.1fK", steps / 1000)
+            } else {
+                bioStepsLabel?.text = String(format: "%.0f", steps)
+            }
+        } else {
+            bioStepsLabel?.text = "—"
+        }
+
+        // Format exercise minutes
+        if exerciseMinutes > 0 {
+            bioExerciseLabel?.text = String(format: "%.0f דק׳", exerciseMinutes)
+        } else {
+            bioExerciseLabel?.text = "— דק׳"
         }
     }
 

@@ -696,6 +696,11 @@ final class DirectivesCardView: UIView {
 
     required init?(coder: NSCoder) { super.init(coder: coder); setup() }
 
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateGradientBorderFrame()
+    }
+
     private func setup() {
         backgroundColor = AIONDesign.surface
         layer.cornerRadius = AIONDesign.cornerRadiusLarge
@@ -796,6 +801,355 @@ final class DirectivesCardView: UIView {
         stopRow?.icon.isHidden = true
         setRow(startRow, value: "—", color: AIONDesign.textPrimary)
         setRow(watchRow, value: "—", color: AIONDesign.textPrimary)
+    }
+}
+
+// MARK: - Activity Rings View (Apple-style)
+
+/// טבעות פעילות בסגנון Apple Fitness
+final class ActivityRingsView: UIView {
+
+    // Ring colors matching Apple's Activity app
+    private let moveColor = UIColor(red: 1.0, green: 0.23, blue: 0.19, alpha: 1.0)    // Red
+    private let exerciseColor = UIColor(red: 0.0, green: 0.87, blue: 0.34, alpha: 1.0) // Green
+    private let standColor = UIColor(red: 0.0, green: 0.78, blue: 0.89, alpha: 1.0)    // Cyan/Blue
+
+    private let moveRingBg = CAShapeLayer()
+    private let moveRingFg = CAShapeLayer()
+    private let exerciseRingBg = CAShapeLayer()
+    private let exerciseRingFg = CAShapeLayer()
+    private let standRingBg = CAShapeLayer()
+    private let standRingFg = CAShapeLayer()
+
+    private let moveLabel = UILabel()
+    private let exerciseLabel = UILabel()
+    private let standLabel = UILabel()
+
+    private let moveValueLabel = UILabel()
+    private let exerciseValueLabel = UILabel()
+    private let standValueLabel = UILabel()
+
+    private var ringSize: CGFloat = 100
+    private let ringWidth: CGFloat = 12
+    private let ringGap: CGFloat = 4
+
+    // Store current progress values to preserve during layout
+    private var currentMoveProgress: CGFloat = 0
+    private var currentExerciseProgress: CGFloat = 0
+    private var currentStandProgress: CGFloat = 0
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) { super.init(coder: coder); setup() }
+
+    private func setup() {
+        backgroundColor = AIONDesign.surface
+        layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        clipsToBounds = true
+
+        // Add ring layers
+        [moveRingBg, exerciseRingBg, standRingBg, moveRingFg, exerciseRingFg, standRingFg].forEach {
+            layer.addSublayer($0)
+        }
+
+        // Configure labels
+        configureLabel(moveLabel, text: "תנועה", color: moveColor)
+        configureLabel(exerciseLabel, text: "אימון", color: exerciseColor)
+        configureLabel(standLabel, text: "עמידה", color: standColor)
+
+        configureValueLabel(moveValueLabel)
+        configureValueLabel(exerciseValueLabel)
+        configureValueLabel(standValueLabel)
+
+        [moveLabel, exerciseLabel, standLabel, moveValueLabel, exerciseValueLabel, standValueLabel].forEach { addSubview($0) }
+    }
+
+    private func configureLabel(_ label: UILabel, text: String, color: UIColor) {
+        label.text = text
+        label.font = .systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = color
+        label.textAlignment = .right
+        label.translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    private func configureValueLabel(_ label: UILabel) {
+        label.font = .systemFont(ofSize: 13, weight: .bold)
+        label.textColor = AIONDesign.textPrimary
+        label.textAlignment = .right
+        label.translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        drawRings()
+        layoutLabels()
+    }
+
+    private func drawRings() {
+        let centerX = bounds.width * 0.35
+        let centerY = bounds.height / 2
+        let center = CGPoint(x: centerX, y: centerY)
+        ringSize = min(bounds.width * 0.55, bounds.height - 20)
+
+        let outerRadius = ringSize / 2 - ringWidth / 2
+        let middleRadius = outerRadius - ringWidth - ringGap
+        let innerRadius = middleRadius - ringWidth - ringGap
+
+        // Move ring (outer - red)
+        configureRing(bg: moveRingBg, fg: moveRingFg, center: center, radius: outerRadius, color: moveColor, currentProgress: currentMoveProgress)
+
+        // Exercise ring (middle - green)
+        configureRing(bg: exerciseRingBg, fg: exerciseRingFg, center: center, radius: middleRadius, color: exerciseColor, currentProgress: currentExerciseProgress)
+
+        // Stand ring (inner - cyan)
+        configureRing(bg: standRingBg, fg: standRingFg, center: center, radius: innerRadius, color: standColor, currentProgress: currentStandProgress)
+    }
+
+    private func configureRing(bg: CAShapeLayer, fg: CAShapeLayer, center: CGPoint, radius: CGFloat, color: UIColor, currentProgress: CGFloat) {
+        let startAngle = -CGFloat.pi / 2
+        let endAngle = startAngle + 2 * CGFloat.pi
+
+        let path = UIBezierPath(arcCenter: center, radius: radius, startAngle: startAngle, endAngle: endAngle, clockwise: true)
+
+        bg.path = path.cgPath
+        bg.fillColor = UIColor.clear.cgColor
+        bg.strokeColor = color.withAlphaComponent(0.2).cgColor
+        bg.lineWidth = ringWidth
+        bg.lineCap = .round
+
+        fg.path = path.cgPath
+        fg.fillColor = UIColor.clear.cgColor
+        fg.strokeColor = color.cgColor
+        fg.lineWidth = ringWidth
+        fg.lineCap = .round
+        // Preserve current progress value instead of resetting to 0
+        fg.strokeEnd = currentProgress
+    }
+
+    private func layoutLabels() {
+        let labelsX = bounds.width * 0.58
+        let spacing: CGFloat = 28
+
+        // Move
+        moveLabel.frame = CGRect(x: labelsX, y: bounds.height / 2 - spacing * 1.5 - 8, width: bounds.width - labelsX - 12, height: 16)
+        moveValueLabel.frame = CGRect(x: labelsX, y: moveLabel.frame.maxY, width: bounds.width - labelsX - 12, height: 18)
+
+        // Exercise
+        exerciseLabel.frame = CGRect(x: labelsX, y: bounds.height / 2 - 8, width: bounds.width - labelsX - 12, height: 16)
+        exerciseValueLabel.frame = CGRect(x: labelsX, y: exerciseLabel.frame.maxY, width: bounds.width - labelsX - 12, height: 18)
+
+        // Stand
+        standLabel.frame = CGRect(x: labelsX, y: bounds.height / 2 + spacing * 1.5 - 8, width: bounds.width - labelsX - 12, height: 16)
+        standValueLabel.frame = CGRect(x: labelsX, y: standLabel.frame.maxY, width: bounds.width - labelsX - 12, height: 18)
+    }
+
+    /// Configure rings with values
+    /// - Parameters:
+    ///   - moveCalories: Active calories burned
+    ///   - moveGoal: Move goal (default 500)
+    ///   - exerciseMinutes: Exercise minutes
+    ///   - exerciseGoal: Exercise goal (default 30)
+    ///   - standHours: Stand hours
+    ///   - standGoal: Stand goal (default 12)
+    func configure(moveCalories: Double?, moveGoal: Double = 500,
+                   exerciseMinutes: Double?, exerciseGoal: Double = 30,
+                   standHours: Double?, standGoal: Double = 12,
+                   animated: Bool = true) {
+
+        let move = moveCalories ?? 0
+        let exercise = exerciseMinutes ?? 0
+        let stand = standHours ?? 0
+
+        let moveProgress = min(move / moveGoal, 1.5) // Allow overflow up to 150%
+        let exerciseProgress = min(exercise / exerciseGoal, 1.5)
+        let standProgress = min(stand / standGoal, 1.5)
+
+        // Store progress values for layout preservation
+        currentMoveProgress = CGFloat(moveProgress)
+        currentExerciseProgress = CGFloat(exerciseProgress)
+        currentStandProgress = CGFloat(standProgress)
+
+        // Update labels
+        moveValueLabel.text = "\(Int(move))/\(Int(moveGoal)) קק״ל"
+        exerciseValueLabel.text = "\(Int(exercise))/\(Int(exerciseGoal)) דק׳"
+        standValueLabel.text = "\(Int(stand))/\(Int(standGoal)) שע׳"
+
+        // Animate rings
+        if animated {
+            animateRing(moveRingFg, to: moveProgress)
+            animateRing(exerciseRingFg, to: exerciseProgress)
+            animateRing(standRingFg, to: standProgress)
+        } else {
+            moveRingFg.strokeEnd = CGFloat(moveProgress)
+            exerciseRingFg.strokeEnd = CGFloat(exerciseProgress)
+            standRingFg.strokeEnd = CGFloat(standProgress)
+        }
+    }
+
+    private func animateRing(_ layer: CAShapeLayer, to value: Double) {
+        let animation = CABasicAnimation(keyPath: "strokeEnd")
+        animation.fromValue = layer.strokeEnd
+        animation.toValue = CGFloat(value)
+        animation.duration = 0.8
+        animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        layer.strokeEnd = CGFloat(value)
+        layer.add(animation, forKey: "strokeEndAnimation")
+    }
+
+    /// Configure with placeholder
+    func showPlaceholder() {
+        currentMoveProgress = 0
+        currentExerciseProgress = 0
+        currentStandProgress = 0
+
+        moveValueLabel.text = "—/500 קק״ל"
+        exerciseValueLabel.text = "—/30 דק׳"
+        standValueLabel.text = "—/12 שע׳"
+        moveRingFg.strokeEnd = 0
+        exerciseRingFg.strokeEnd = 0
+        standRingFg.strokeEnd = 0
+    }
+}
+
+// MARK: - Activity Stats Card (Compact horizontal stats)
+
+/// כרטיס סטטיסטיקות פעילות קומפקטי
+final class ActivityStatsCardView: UIView {
+
+    private let stack = UIStackView()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) { super.init(coder: coder); setup() }
+
+    private func setup() {
+        backgroundColor = AIONDesign.surface
+        layer.cornerRadius = AIONDesign.cornerRadius
+        clipsToBounds = true
+
+        stack.axis = .horizontal
+        stack.distribution = .fillEqually
+        stack.spacing = 8
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+        ])
+    }
+
+    func configure(steps: Double?, distance: Double?, flights: Double?, workouts: Int?) {
+        stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        // Steps
+        if let steps = steps, steps > 0 {
+            stack.addArrangedSubview(makeStatItem(
+                icon: "figure.walk",
+                value: formatNumber(steps),
+                label: "צעדים",
+                color: UIColor.systemOrange
+            ))
+        }
+
+        // Distance
+        if let dist = distance, dist > 0 {
+            stack.addArrangedSubview(makeStatItem(
+                icon: "location.fill",
+                value: String(format: "%.1f", dist),
+                label: "ק״מ",
+                color: UIColor.systemBlue
+            ))
+        }
+
+        // Flights
+        if let flights = flights, flights > 0 {
+            stack.addArrangedSubview(makeStatItem(
+                icon: "arrow.up.right",
+                value: "\(Int(flights))",
+                label: "קומות",
+                color: UIColor.systemPurple
+            ))
+        }
+
+        // Workouts
+        if let workouts = workouts, workouts > 0 {
+            stack.addArrangedSubview(makeStatItem(
+                icon: "flame.fill",
+                value: "\(workouts)",
+                label: "אימונים",
+                color: UIColor.systemRed
+            ))
+        }
+
+        // If empty, show placeholder
+        if stack.arrangedSubviews.isEmpty {
+            stack.addArrangedSubview(makeStatItem(
+                icon: "figure.walk",
+                value: "—",
+                label: "צעדים",
+                color: UIColor.systemGray
+            ))
+        }
+    }
+
+    private func makeStatItem(icon: String, value: String, label: String, color: UIColor) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let iconView = UIImageView(image: UIImage(systemName: icon))
+        iconView.tintColor = color
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        let valueLabel = UILabel()
+        valueLabel.text = value
+        valueLabel.font = .systemFont(ofSize: 16, weight: .bold)
+        valueLabel.textColor = AIONDesign.textPrimary
+        valueLabel.textAlignment = .center
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = label
+        titleLabel.font = .systemFont(ofSize: 10, weight: .medium)
+        titleLabel.textColor = AIONDesign.textSecondary
+        titleLabel.textAlignment = .center
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(iconView)
+        container.addSubview(valueLabel)
+        container.addSubview(titleLabel)
+
+        NSLayoutConstraint.activate([
+            iconView.topAnchor.constraint(equalTo: container.topAnchor),
+            iconView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 20),
+            iconView.heightAnchor.constraint(equalToConstant: 20),
+
+            valueLabel.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 4),
+            valueLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+
+            titleLabel.topAnchor.constraint(equalTo: valueLabel.bottomAnchor, constant: 2),
+            titleLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            titleLabel.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor),
+        ])
+
+        return container
+    }
+
+    private func formatNumber(_ num: Double) -> String {
+        if num >= 1000 {
+            return String(format: "%.1fK", num / 1000)
+        }
+        return "\(Int(num))"
     }
 }
 

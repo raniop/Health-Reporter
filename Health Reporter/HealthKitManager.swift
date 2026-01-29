@@ -382,8 +382,114 @@ class HealthKitManager {
             healthData.vo2Max = vo2Max
             group.leave()
         }
-        
+
+        // MARK: - Activity Rings Data
+
+        // Exercise Minutes (Green Ring)
+        group.enter()
+        fetchExerciseMinutes(startDate: start, endDate: end) { minutes in
+            healthData.exerciseMinutes = minutes
+            group.leave()
+        }
+
+        // Stand Hours (Blue Ring)
+        group.enter()
+        fetchStandHours(startDate: start, endDate: end) { hours in
+            healthData.standHours = hours
+            group.leave()
+        }
+
+        // Move Time
+        group.enter()
+        fetchMoveTimeMinutes(startDate: start, endDate: end) { minutes in
+            healthData.moveTimeMinutes = minutes
+            group.leave()
+        }
+
+        // Flights Climbed
+        group.enter()
+        fetchFlightsClimbed(startDate: start, endDate: end) { flights in
+            healthData.flightsClimbed = flights
+            group.leave()
+        }
+
+        // Basal Energy (BMR)
+        group.enter()
+        fetchBasalEnergy(startDate: start, endDate: end) { energy in
+            healthData.basalEnergy = energy
+            group.leave()
+        }
+
+        // MARK: - Walking Metrics
+
+        // Walking Speed
+        group.enter()
+        fetchWalkingSpeed(startDate: start, endDate: end) { speed in
+            healthData.walkingSpeed = speed
+            group.leave()
+        }
+
+        // Walking Step Length
+        group.enter()
+        fetchWalkingStepLength(startDate: start, endDate: end) { length in
+            healthData.walkingStepLength = length
+            group.leave()
+        }
+
+        // Walking Asymmetry
+        group.enter()
+        fetchWalkingAsymmetry(startDate: start, endDate: end) { asymmetry in
+            healthData.walkingAsymmetry = asymmetry
+            group.leave()
+        }
+
+        // Walking Steadiness
+        group.enter()
+        fetchWalkingSteadiness(startDate: start, endDate: end) { steadiness in
+            healthData.walkingSteadiness = steadiness
+            group.leave()
+        }
+
+        // Six Minute Walk Distance
+        group.enter()
+        fetchSixMinuteWalkDistance(startDate: start, endDate: end) { distance in
+            healthData.sixMinuteWalkDistance = distance
+            group.leave()
+        }
+
+        // Heart Rate Recovery
+        group.enter()
+        fetchHeartRateRecovery(startDate: start, endDate: end) { hrr in
+            healthData.heartRateRecovery = hrr
+            group.leave()
+        }
+
+        // Walking Heart Rate Average
+        group.enter()
+        fetchWalkingHeartRateAverage(startDate: start, endDate: end) { avgHR in
+            healthData.walkingHeartRateAverage = avgHR
+            group.leave()
+        }
+
+        // MARK: - Workouts
+
+        group.enter()
+        fetchWorkouts(startDate: start, endDate: end) { workouts in
+            healthData.workoutCount = workouts.count
+            healthData.totalWorkoutMinutes = workouts.reduce(0) { $0 + $1.durationMinutes }
+            healthData.totalWorkoutCalories = workouts.compactMap(\.totalCalories).reduce(0, +)
+            healthData.workoutTypes = Array(Set(workouts.map(\.type)))
+            healthData.lastWorkout = workouts.first
+            // שומר את כל האימונים המפורטים (עד 50 אחרונים)
+            healthData.recentWorkouts = Array(workouts.prefix(50))
+            group.leave()
+        }
+
+        // Total Energy (Active + Basal)
         group.notify(queue: .main) {
+            if let active = healthData.activeEnergy, let basal = healthData.basalEnergy {
+                healthData.totalEnergy = active + basal
+            }
             healthData.lastUpdated = Date()
             completion(healthData, nil)
         }
@@ -391,7 +497,7 @@ class HealthKitManager {
     
     // MARK: - Helper Methods
     
-    private func fetchSteps(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+    func fetchSteps(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
             completion(nil)
             return
@@ -436,7 +542,7 @@ class HealthKitManager {
         healthStore.execute(query)
     }
 
-    private func fetchExerciseMinutes(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+    func fetchExerciseMinutes(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let t = HKQuantityType.quantityType(forIdentifier: .appleExerciseTime) else { completion(nil); return }
         let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
         let unit = HKUnit.minute()
@@ -1019,7 +1125,54 @@ class HealthKitManager {
                 group.leave()
             }
         }
-        
+
+        // MARK: - Activity Rings Data
+
+        // Exercise Minutes
+        group.enter()
+        fetchExerciseMinutes(startDate: weekStartDate, endDate: weekEndDate) { minutes in
+            snapshot.exerciseMinutes = minutes
+            group.leave()
+        }
+
+        // Stand Hours
+        group.enter()
+        fetchStandHours(startDate: weekStartDate, endDate: weekEndDate) { hours in
+            snapshot.standHours = hours
+            group.leave()
+        }
+
+        // Flights Climbed
+        group.enter()
+        fetchFlightsClimbed(startDate: weekStartDate, endDate: weekEndDate) { flights in
+            snapshot.flightsClimbed = flights
+            group.leave()
+        }
+
+        // MARK: - Workouts
+
+        group.enter()
+        fetchWorkouts(startDate: weekStartDate, endDate: weekEndDate) { workouts in
+            snapshot.workoutCount = workouts.count
+            snapshot.totalWorkoutMinutes = workouts.reduce(0) { $0 + $1.durationMinutes }
+            snapshot.workoutTypes = Array(Set(workouts.map(\.type)))
+            group.leave()
+        }
+
+        // MARK: - Walking Metrics
+
+        group.enter()
+        fetchWalkingSpeed(startDate: weekStartDate, endDate: weekEndDate) { speed in
+            snapshot.walkingSpeed = speed
+            group.leave()
+        }
+
+        group.enter()
+        fetchHeartRateRecovery(startDate: weekStartDate, endDate: weekEndDate) { hrr in
+            snapshot.heartRateRecovery = hrr
+            group.leave()
+        }
+
         group.notify(queue: .main) {
             completion(snapshot)
         }
@@ -1312,5 +1465,514 @@ class HealthKitManager {
             )
             completion(bundle)
         }
+    }
+
+    // MARK: - Data Source Detection
+
+    /// זיהוי מקורות נתונים מדגימות HealthKit
+    func detectDataSources(for dataType: HKSampleType, days: Int = 7, completion: @escaping (SourceDetectionResult?) -> Void) {
+        let end = Date()
+        let start = Calendar.current.date(byAdding: .day, value: -days, to: end) ?? end
+
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let query = HKSampleQuery(sampleType: dataType, predicate: predicate, limit: 100, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]) { _, samples, error in
+            guard let samples = samples, !samples.isEmpty else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+
+            let result = DataSourceManager.shared.analyzeDataSources(samples: samples)
+            DispatchQueue.main.async { completion(result) }
+        }
+        healthStore.execute(query)
+    }
+
+    /// זיהוי מקור עיקרי מכל סוגי הנתונים
+    func detectPrimaryDataSource(completion: @escaping (HealthDataSource) -> Void) {
+        // בודקים דופק מנוחה ו-HRV - הכי אמינים לזיהוי מכשיר
+        guard let rhrType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate),
+              let hrvType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else {
+            completion(.appleWatch)
+            return
+        }
+
+        let group = DispatchGroup()
+        var allSamples: [HKSample] = []
+
+        let end = Date()
+        let start = Calendar.current.date(byAdding: .day, value: -7, to: end) ?? end
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+
+        // RHR samples
+        group.enter()
+        let rhrQuery = HKSampleQuery(sampleType: rhrType, predicate: predicate, limit: 50, sortDescriptors: nil) { _, samples, _ in
+            if let s = samples { allSamples.append(contentsOf: s) }
+            group.leave()
+        }
+        healthStore.execute(rhrQuery)
+
+        // HRV samples
+        group.enter()
+        let hrvQuery = HKSampleQuery(sampleType: hrvType, predicate: predicate, limit: 50, sortDescriptors: nil) { _, samples, _ in
+            if let s = samples { allSamples.append(contentsOf: s) }
+            group.leave()
+        }
+        healthStore.execute(hrvQuery)
+
+        group.notify(queue: .main) {
+            if allSamples.isEmpty {
+                completion(.appleWatch)
+                return
+            }
+            let result = DataSourceManager.shared.analyzeDataSources(samples: allSamples)
+            completion(result.primarySource)
+        }
+    }
+
+    // MARK: - Enhanced Sleep Data (Garmin/Oura detailed stages)
+
+    /// שליפת נתוני שינה מפורטים עם כל השלבים
+    func fetchDetailedSleepData(startDate: Date, endDate: Date, completion: @escaping (DetailedSleepStages?) -> Void) {
+        guard let sleepType = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else {
+            completion(nil)
+            return
+        }
+
+        let datePredicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictEndDate)
+        let query = HKSampleQuery(sampleType: sleepType, predicate: datePredicate, limit: HKObjectQueryNoLimit, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]) { _, samples, _ in
+            guard let samples = samples as? [HKCategorySample], !samples.isEmpty else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+
+            var deepSleep: TimeInterval = 0
+            var remSleep: TimeInterval = 0
+            var lightSleep: TimeInterval = 0
+            var awakeTime: TimeInterval = 0
+            var inBedTime: TimeInterval = 0
+
+            for sample in samples {
+                let duration = sample.endDate.timeIntervalSince(sample.startDate)
+                guard let value = HKCategoryValueSleepAnalysis(rawValue: sample.value) else { continue }
+
+                switch value {
+                case .asleepDeep:
+                    deepSleep += duration
+                case .asleepREM:
+                    remSleep += duration
+                case .asleepCore:
+                    lightSleep += duration
+                case .asleepUnspecified:
+                    // אם אין פירוט - מניחים שינה קלה
+                    lightSleep += duration
+                case .awake:
+                    awakeTime += duration
+                case .inBed:
+                    inBedTime += duration
+                @unknown default:
+                    break
+                }
+            }
+
+            let totalSleep = deepSleep + remSleep + lightSleep
+            let timeInBed = totalSleep + awakeTime + inBedTime
+
+            let result = DetailedSleepStages(
+                deepSleep: deepSleep,
+                remSleep: remSleep,
+                lightSleep: lightSleep,
+                awakeTime: awakeTime,
+                totalSleep: totalSleep,
+                timeInBed: timeInBed
+            )
+
+            DispatchQueue.main.async { completion(result) }
+        }
+        healthStore.execute(query)
+    }
+
+    // MARK: - Body Temperature (Oura)
+
+    /// שליפת טמפרטורת גוף בסיסית (Oura מסנכרן לאפל הלט')
+    func fetchBasalBodyTemperature(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let tempType = HKQuantityType.quantityType(forIdentifier: .basalBodyTemperature) else {
+            completion(nil)
+            return
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let query = HKStatisticsQuery(quantityType: tempType, quantitySamplePredicate: predicate, options: .mostRecent) { _, result, _ in
+            let temp = result?.mostRecentQuantity()?.doubleValue(for: HKUnit.degreeCelsius())
+            DispatchQueue.main.async { completion(temp) }
+        }
+        healthStore.execute(query)
+    }
+
+    /// שליפת סטיית טמפרטורה מהבסיס (7 ימים אחורה)
+    func fetchBodyTemperatureDeviation(completion: @escaping (Double?) -> Void) {
+        let end = Date()
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: end) ?? end
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: end) ?? end
+
+        var baselineTemp: Double?
+        var recentTemp: Double?
+
+        let group = DispatchGroup()
+
+        // Baseline (7 days)
+        group.enter()
+        fetchBasalBodyTemperature(startDate: weekAgo, endDate: yesterday) { temp in
+            baselineTemp = temp
+            group.leave()
+        }
+
+        // Recent (last day)
+        group.enter()
+        fetchBasalBodyTemperature(startDate: yesterday, endDate: end) { temp in
+            recentTemp = temp
+            group.leave()
+        }
+
+        group.notify(queue: .main) {
+            guard let baseline = baselineTemp, let recent = recentTemp else {
+                completion(nil)
+                return
+            }
+            completion(recent - baseline)
+        }
+    }
+
+    // MARK: - SpO2 (Oxygen Saturation)
+
+    /// שליפת רמת חמצן ממוצעת
+    func fetchSpO2Average(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let o2Type = HKQuantityType.quantityType(forIdentifier: .oxygenSaturation) else {
+            completion(nil)
+            return
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let query = HKStatisticsQuery(quantityType: o2Type, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, _ in
+            let spo2 = result?.averageQuantity()?.doubleValue(for: HKUnit.percent())
+            DispatchQueue.main.async {
+                // המרה מ-0-1 ל-0-100 אם צריך
+                if let val = spo2, val <= 1 {
+                    completion(val * 100)
+                } else {
+                    completion(spo2)
+                }
+            }
+        }
+        healthStore.execute(query)
+    }
+
+    // MARK: - Heart Rate Samples for Strain Calculation
+
+    /// שליפת דגימות דופק לחישוב Training Strain
+    func fetchHeartRateSamples(startDate: Date, endDate: Date, completion: @escaping ([(value: Double, date: Date)]) -> Void) {
+        guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
+            completion([])
+            return
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+
+        let query = HKSampleQuery(sampleType: hrType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, _ in
+            guard let samples = samples as? [HKQuantitySample] else {
+                DispatchQueue.main.async { completion([]) }
+                return
+            }
+
+            let unit = HKUnit(from: "count/min")
+            let result = samples.map { (value: $0.quantity.doubleValue(for: unit), date: $0.startDate) }
+            DispatchQueue.main.async { completion(result) }
+        }
+        healthStore.execute(query)
+    }
+
+    // MARK: - HRV Baseline
+
+    /// שליפת ממוצע HRV ל-7 ימים (baseline)
+    func fetchHRVBaseline(days: Int = 7, completion: @escaping (Double?) -> Void) {
+        let end = Date()
+        guard let start = Calendar.current.date(byAdding: .day, value: -days, to: end),
+              let hrvType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else {
+            completion(nil)
+            return
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let query = HKStatisticsQuery(quantityType: hrvType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, _ in
+            let hrv = result?.averageQuantity()?.doubleValue(for: HKUnit.secondUnit(with: .milli))
+            DispatchQueue.main.async { completion(hrv) }
+        }
+        healthStore.execute(query)
+    }
+
+    /// שליפת מערך HRV יומי לחישוב מגמה
+    func fetchDailyHRVValues(days: Int = 7, completion: @escaping ([Double]) -> Void) {
+        let end = Date()
+        guard let start = Calendar.current.date(byAdding: .day, value: -days, to: end) else {
+            completion([])
+            return
+        }
+
+        var dailyValues: [Double] = []
+        let group = DispatchGroup()
+        let calendar = Calendar.current
+
+        for dayOffset in 0..<days {
+            guard let dayStart = calendar.date(byAdding: .day, value: -dayOffset, to: end),
+                  let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { continue }
+
+            group.enter()
+            fetchHRV(startDate: calendar.startOfDay(for: dayStart), endDate: calendar.startOfDay(for: dayEnd)) { hrv in
+                if let h = hrv { dailyValues.append(h) }
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) {
+            completion(dailyValues.reversed()) // מהישן לחדש
+        }
+    }
+
+    // MARK: - Enhanced Data Fetch with Source
+
+    /// שליפת כל הנתונים המורחבים כולל מקור וציונים מחושבים
+    func fetchEnhancedHealthData(for range: DataRange, completion: @escaping (HealthDataModel?) -> Void) {
+        let (start, end) = range.interval()
+        var model = HealthDataModel()
+
+        let group = DispatchGroup()
+
+        // Basic data
+        group.enter()
+        fetchAllHealthData(for: range) { basic, _ in
+            if let b = basic {
+                model = b
+            }
+            group.leave()
+        }
+
+        // Detect primary source
+        group.enter()
+        detectPrimaryDataSource { source in
+            model.primaryDataSource = source
+            group.leave()
+        }
+
+        // Detailed sleep stages
+        group.enter()
+        fetchDetailedSleepData(startDate: start, endDate: end) { stages in
+            if let s = stages {
+                model.sleepDeepHours = s.deepSleep / 3600
+                model.sleepRemHours = s.remSleep / 3600
+                model.sleepLightHours = s.lightSleep / 3600
+                model.sleepAwakeMinutes = s.awakeTime / 60
+                model.sleepEfficiency = s.timeInBed > 0 ? (s.totalSleep / s.timeInBed) * 100 : nil
+                model.timeInBedHours = s.timeInBed / 3600
+            }
+            group.leave()
+        }
+
+        // Body temperature deviation (Oura)
+        group.enter()
+        fetchBodyTemperatureDeviation { deviation in
+            model.bodyTemperatureDeviation = deviation
+            group.leave()
+        }
+
+        // SpO2
+        group.enter()
+        fetchSpO2Average(startDate: start, endDate: end) { spo2 in
+            model.spO2 = spo2
+            group.leave()
+        }
+
+        // HRV baseline and trend
+        group.enter()
+        fetchHRVBaseline(days: 7) { baseline in
+            model.hrv7DayBaseline = baseline
+            group.leave()
+        }
+
+        group.enter()
+        fetchDailyHRVValues(days: 7) { values in
+            if let baseline = model.hrv7DayBaseline, !values.isEmpty {
+                model.hrvTrend = CalculatedMetricsEngine.shared.calculateHRVTrend(recentHRV: values, baselineHRV: baseline)
+            }
+            group.leave()
+        }
+
+        group.notify(queue: .main) {
+            // Calculate Readiness Score
+            let readiness = CalculatedMetricsEngine.shared.calculateReadinessScore(
+                hrv: model.heartRateVariability,
+                hrvBaseline7Day: model.hrv7DayBaseline,
+                rhr: model.restingHeartRate,
+                rhrBaseline7Day: nil, // TODO: add RHR baseline
+                sleepHours: model.sleepHours,
+                sleepEfficiency: model.sleepEfficiency,
+                previousDayStrain: nil,
+                dataSource: model.primaryDataSource ?? .autoDetect
+            )
+            model.calculatedReadinessScore = Double(readiness.score)
+            model.isReadinessCalculated = true
+
+            completion(model)
+        }
+    }
+
+    // MARK: - Workouts
+
+    /// שליפת כל האימונים בטווח תאריכים
+    func fetchWorkouts(startDate: Date, endDate: Date, completion: @escaping ([WorkoutData]) -> Void) {
+        let workoutType = HKObjectType.workoutType()
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+
+        let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, _ in
+            guard let workouts = samples as? [HKWorkout] else {
+                DispatchQueue.main.async { completion([]) }
+                return
+            }
+
+            let workoutData = workouts.map { workout -> WorkoutData in
+                let typeString = Self.workoutTypeString(workout.workoutActivityType)
+                let duration = workout.duration / 60.0 // to minutes
+                let calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
+                let distance = workout.totalDistance?.doubleValue(for: .meter())
+
+                return WorkoutData(
+                    type: typeString,
+                    startDate: workout.startDate,
+                    endDate: workout.endDate,
+                    durationMinutes: duration,
+                    totalCalories: calories,
+                    totalDistance: distance,
+                    averageHeartRate: nil, // Would need separate query
+                    maxHeartRate: nil,
+                    elevationGain: nil
+                )
+            }
+
+            DispatchQueue.main.async { completion(workoutData) }
+        }
+
+        healthStore.execute(query)
+    }
+
+    /// המרת סוג אימון לטקסט
+    private static func workoutTypeString(_ type: HKWorkoutActivityType) -> String {
+        switch type {
+        case .running: return "Running"
+        case .walking: return "Walking"
+        case .cycling: return "Cycling"
+        case .swimming: return "Swimming"
+        case .yoga: return "Yoga"
+        case .functionalStrengthTraining: return "Strength Training"
+        case .traditionalStrengthTraining: return "Strength Training"
+        case .highIntensityIntervalTraining: return "HIIT"
+        case .crossTraining: return "Cross Training"
+        case .elliptical: return "Elliptical"
+        case .rowing: return "Rowing"
+        case .stairClimbing: return "Stair Climbing"
+        case .hiking: return "Hiking"
+        case .tennis: return "Tennis"
+        case .basketball: return "Basketball"
+        case .soccer: return "Soccer"
+        case .dance: return "Dance"
+        case .coreTraining: return "Core Training"
+        case .pilates: return "Pilates"
+        case .mixedCardio: return "Mixed Cardio"
+        case .cooldown: return "Cooldown"
+        case .flexibility: return "Flexibility"
+        default: return "Workout"
+        }
+    }
+
+    // MARK: - Walking Metrics
+
+    /// מהירות הליכה ממוצעת (קמ"ש)
+    func fetchWalkingSpeed(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .walkingSpeed) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .discreteAverage) { _, res, _ in
+            let mps = res?.averageQuantity()?.doubleValue(for: HKUnit.meter().unitDivided(by: .second()))
+            completion(mps.map { $0 * 3.6 }) // convert m/s to km/h
+        }
+        healthStore.execute(q)
+    }
+
+    /// אורך צעד ממוצע (מטר)
+    func fetchWalkingStepLength(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .walkingStepLength) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .discreteAverage) { _, res, _ in
+            completion(res?.averageQuantity()?.doubleValue(for: HKUnit.meter()))
+        }
+        healthStore.execute(q)
+    }
+
+    /// אסימטריית הליכה (%)
+    func fetchWalkingAsymmetry(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .walkingAsymmetryPercentage) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .discreteAverage) { _, res, _ in
+            completion(res?.averageQuantity()?.doubleValue(for: HKUnit.percent()))
+        }
+        healthStore.execute(q)
+    }
+
+    /// יציבות הליכה
+    func fetchWalkingSteadiness(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .appleWalkingSteadiness) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .mostRecent) { _, res, _ in
+            completion(res?.mostRecentQuantity()?.doubleValue(for: HKUnit.percent()))
+        }
+        healthStore.execute(q)
+    }
+
+    /// מרחק מבחן 6 דקות הליכה
+    func fetchSixMinuteWalkDistance(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .sixMinuteWalkTestDistance) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .mostRecent) { _, res, _ in
+            completion(res?.mostRecentQuantity()?.doubleValue(for: HKUnit.meter()))
+        }
+        healthStore.execute(q)
+    }
+
+    /// Heart Rate Recovery (דקה אחת אחרי אימון)
+    func fetchHeartRateRecovery(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .heartRateRecoveryOneMinute) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .mostRecent) { _, res, _ in
+            completion(res?.mostRecentQuantity()?.doubleValue(for: HKUnit(from: "count/min")))
+        }
+        healthStore.execute(q)
+    }
+
+    /// אנרגיה בסיסית (BMR)
+    func fetchBasalEnergy(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .basalEnergyBurned) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .cumulativeSum) { _, res, _ in
+            completion(res?.sumQuantity()?.doubleValue(for: HKUnit.kilocalorie()))
+        }
+        healthStore.execute(q)
+    }
+
+    /// Walking Heart Rate Average
+    func fetchWalkingHeartRateAverage(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        guard let t = HKQuantityType.quantityType(forIdentifier: .walkingHeartRateAverage) else { completion(nil); return }
+        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .discreteAverage) { _, res, _ in
+            completion(res?.averageQuantity()?.doubleValue(for: HKUnit(from: "count/min")))
+        }
+        healthStore.execute(q)
     }
 }

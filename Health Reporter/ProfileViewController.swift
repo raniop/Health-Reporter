@@ -45,6 +45,13 @@ final class ProfileViewController: UIViewController {
         setupUI()
         updateUserInfo()
         loadProfilePhoto()
+
+        // Listen for data source changes
+        NotificationCenter.default.addObserver(self, selector: #selector(dataSourceDidChange), name: .dataSourceChanged, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -183,11 +190,29 @@ final class ProfileViewController: UIViewController {
             badgeContainer.widthAnchor.constraint(equalTo: nameLabel.widthAnchor, constant: 8 + 28),
         ])
 
+        // Data Source Settings Card
+        let dataSourceCard = makeSettingsCard(
+            icon: "antenna.radiowaves.left.and.right",
+            title: "מקור נתונים",
+            subtitle: DataSourceManager.shared.effectiveSource().displayNameHebrew
+        )
+        dataSourceCard.tag = 999 // For updating later
+        let dataSourceTap = UITapGestureRecognizer(target: self, action: #selector(dataSourceTapped))
+        dataSourceCard.addGestureRecognizer(dataSourceTap)
+        stack.addArrangedSubview(dataSourceCard)
+
+        // Constraint for data source card width
+        NSLayoutConstraint.activate([
+            dataSourceCard.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            dataSourceCard.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+        ])
+
         stack.setCustomSpacing(6, after: avatarView)
         stack.setCustomSpacing(12, after: nameRowContainer)
         stack.setCustomSpacing(6, after: badgeContainer)
         stack.setCustomSpacing(AIONDesign.spacingLarge * 2, after: tierLabel)
-        stack.setCustomSpacing(AIONDesign.spacingLarge * 2, after: metricsStack)
+        stack.setCustomSpacing(AIONDesign.spacingLarge, after: metricsStack)
+        stack.setCustomSpacing(AIONDesign.spacingLarge, after: dataSourceCard)
 
         let logoutContainer = UIView()
         logoutContainer.translatesAutoresizingMaskIntoConstraints = false
@@ -261,6 +286,84 @@ final class ProfileViewController: UIViewController {
             v.bottomAnchor.constraint(equalTo: c.bottomAnchor, constant: -14),
         ])
         return (c, v)
+    }
+
+    /// יוצר כרטיס הגדרות עם אייקון, כותרת וsubtitle
+    private func makeSettingsCard(icon: String, title: String, subtitle: String) -> UIView {
+        let card = UIView()
+        card.backgroundColor = AIONDesign.surface
+        card.layer.cornerRadius = AIONDesign.cornerRadius
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.isUserInteractionEnabled = true
+
+        let iconView = UIImageView(image: UIImage(systemName: icon))
+        iconView.tintColor = AIONDesign.accentPrimary
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.textColor = AIONDesign.textPrimary
+        titleLabel.textAlignment = .right
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = subtitle
+        subtitleLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        subtitleLabel.textColor = AIONDesign.textSecondary
+        subtitleLabel.textAlignment = .right
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.left"))
+        chevron.tintColor = AIONDesign.textTertiary
+        chevron.contentMode = .scaleAspectFit
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+
+        card.addSubview(iconView)
+        card.addSubview(titleLabel)
+        card.addSubview(subtitleLabel)
+        card.addSubview(chevron)
+
+        NSLayoutConstraint.activate([
+            card.heightAnchor.constraint(equalToConstant: 64),
+
+            iconView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+            iconView.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 28),
+            iconView.heightAnchor.constraint(equalToConstant: 28),
+
+            titleLabel.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -12),
+            titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+
+            subtitleLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
+
+            chevron.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+            chevron.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            chevron.widthAnchor.constraint(equalToConstant: 16),
+            chevron.heightAnchor.constraint(equalToConstant: 16),
+        ])
+
+        return card
+    }
+
+    @objc private func dataSourceTapped() {
+        let vc = DataSourceSettingsViewController()
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    @objc private func dataSourceDidChange() {
+        // Update the subtitle in the data source card
+        if let card = stack.viewWithTag(999) {
+            for subview in card.subviews {
+                if let label = subview as? UILabel,
+                   label.font == .systemFont(ofSize: 13, weight: .regular) {
+                    label.text = DataSourceManager.shared.effectiveSource().displayNameHebrew
+                    break
+                }
+            }
+        }
     }
 
     @objc private func profileCardInfoTapped(_ sender: CardInfoButton) {

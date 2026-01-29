@@ -21,6 +21,7 @@ enum AnalysisCache {
     static let keyAvgReadiness = "AION.WeeklyStats.AvgReadiness"
     static let keyAvgStrain = "AION.WeeklyStats.AvgStrain"
     static let keyAvgHRV = "AION.WeeklyStats.AvgHRV"
+    static let keyHealthScore = "AION.WeeklyStats.HealthScore"
 
     // MARK: - Cache Duration
     /// מטמון תקף ל-24 שעות (לא נקרא ל-Gemini שוב גם אם יש שינוי)
@@ -63,8 +64,8 @@ enum AnalysisCache {
         print("Date: \(now)")
     }
 
-    /// שומר סטטיסטיקות שבועיות (נגזרות מ-chartBundle)
-    static func saveWeeklyStats(from bundle: AIONChartDataBundle) {
+    /// שומר סטטיסטיקות שבועיות (נגזרות מ-chartBundle) + ציון הבריאות
+    static func saveWeeklyStats(from bundle: AIONChartDataBundle, score: Int? = nil) {
         // Calculate average sleep
         let sleepValues = bundle.sleep.points.compactMap { $0.totalHours }
         let avgSleep = sleepValues.isEmpty ? 0 : sleepValues.reduce(0, +) / Double(sleepValues.count)
@@ -86,8 +87,15 @@ enum AnalysisCache {
         UserDefaults.standard.set(avgStrain, forKey: keyAvgStrain)
         UserDefaults.standard.set(avgHRV, forKey: keyAvgHRV)
 
-        print("=== WEEKLY STATS SAVED ===")
-        print("Avg Sleep: \(avgSleep)h, Readiness: \(avgReadiness), Strain: \(avgStrain), HRV: \(avgHRV)ms")
+        // שמירת הציון עצמו (לא חישוב מחדש ב-Insights)
+        if let s = score {
+            UserDefaults.standard.set(s, forKey: keyHealthScore)
+            print("=== WEEKLY STATS SAVED (with score) ===")
+            print("Score: \(s), Avg Sleep: \(avgSleep)h, Readiness: \(avgReadiness), Strain: \(avgStrain), HRV: \(avgHRV)ms")
+        } else {
+            print("=== WEEKLY STATS SAVED ===")
+            print("Avg Sleep: \(avgSleep)h, Readiness: \(avgReadiness), Strain: \(avgStrain), HRV: \(avgHRV)ms")
+        }
     }
 
     /// מחזיר את הסטטיסטיקות השבועיות השמורות
@@ -103,6 +111,14 @@ enum AnalysisCache {
         }
 
         return (sleep, readiness, strain, hrv)
+    }
+
+    /// מחזיר את ציון הבריאות השמור (שחושב ב-Dashboard)
+    static func loadHealthScore() -> Int? {
+        let score = UserDefaults.standard.integer(forKey: keyHealthScore)
+        // אם 0, זה יכול להיות שלא נשמר או שבאמת 0
+        // אבל ציון 0 אמיתי לא צפוי, אז נחזיר nil
+        return score > 0 ? score : nil
     }
 
     // MARK: - Load
@@ -129,42 +145,38 @@ enum AnalysisCache {
     /// מחזיר true אם:
     /// 1. forceAnalysis = true
     /// 2. אין מטמון
-    /// 3. המטמון פג תוקף (יותר מ-24 שעות)
-    /// 4. ה-hash של נתוני הבריאות השתנה
+    /// 3. ה-hash של נתוני הבריאות השתנה
+    /// הערה: אם ה-hash זהה (הנתונים לא השתנו), לא קוראים ל-Gemini גם אם עבר זמן רב!
+    /// זה מונע שינוי רכב כשהנתונים לא השתנו.
     static func shouldRunAnalysis(forceAnalysis: Bool, currentHealthDataHash: String) -> Bool {
         if forceAnalysis {
             print("=== SHOULD RUN ANALYSIS: force=true ===")
             return true
         }
 
-        // בדיקה מ-UserDefaults
+        // בדיקה מ-UserDefaults - קודם כל בודקים hash!
         if let cached = loadFromUserDefaults() {
-            if !cached.isValid {
-                print("=== SHOULD RUN ANALYSIS: cache expired ===")
-                return true
+            // אם ה-hash זהה - הנתונים לא השתנו - לא צריך לקרוא ל-Gemini!
+            if cached.healthDataHash == currentHealthDataHash {
+                print("=== USING CACHE: health data unchanged (hash match) ===")
+                return false
             }
-            if cached.healthDataHash != currentHealthDataHash {
-                print("=== SHOULD RUN ANALYSIS: health data changed ===")
-                print("Cached hash: \(cached.healthDataHash)")
-                print("Current hash: \(currentHealthDataHash)")
-                return true
-            }
-            print("=== USING CACHE: data unchanged ===")
-            return false
+            // רק אם ה-hash שונה - צריך ניתוח חדש
+            print("=== SHOULD RUN ANALYSIS: health data changed ===")
+            print("Cached hash: \(cached.healthDataHash)")
+            print("Current hash: \(currentHealthDataHash)")
+            return true
         }
 
         // בדיקה מקובץ
         if let cached = loadFromFile() {
-            if !cached.isValid {
-                print("=== SHOULD RUN ANALYSIS: file cache expired ===")
-                return true
+            // אם ה-hash זהה - לא צריך לקרוא ל-Gemini!
+            if cached.healthDataHash == currentHealthDataHash {
+                print("=== USING FILE CACHE: health data unchanged (hash match) ===")
+                return false
             }
-            if cached.healthDataHash != currentHealthDataHash {
-                print("=== SHOULD RUN ANALYSIS: health data changed (file) ===")
-                return true
-            }
-            print("=== USING FILE CACHE: data unchanged ===")
-            return false
+            print("=== SHOULD RUN ANALYSIS: health data changed (file) ===")
+            return true
         }
 
         print("=== SHOULD RUN ANALYSIS: no cache found ===")
@@ -193,6 +205,7 @@ enum AnalysisCache {
         UserDefaults.standard.removeObject(forKey: keyAvgReadiness)
         UserDefaults.standard.removeObject(forKey: keyAvgStrain)
         UserDefaults.standard.removeObject(forKey: keyAvgHRV)
+        UserDefaults.standard.removeObject(forKey: keyHealthScore)
 
         if let url = fileURL {
             try? FileManager.default.removeItem(at: url)
@@ -245,37 +258,57 @@ enum AnalysisCache {
 extension AnalysisCache {
 
     /// יוצר hash מנתוני הבריאות - אם ה-hash זהה, אין סיבה לקרוא ל-Gemini שוב
+    /// משתמש בתאריך (יום) במקום timestamp מדויק כדי למנוע שינויים מיותרים
     static func generateHealthDataHash(from bundle: AIONChartDataBundle) -> String {
         var components: [String] = []
 
-        // Readiness data
-        let readinessValues = bundle.readiness.points.map { "\($0.date.timeIntervalSince1970):\($0.recovery):\($0.strain)" }
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+
+        // Readiness data - מעוגל ליום
+        let readinessValues = bundle.readiness.points.map {
+            "\(dateFormatter.string(from: $0.date)):\(Int($0.recovery)):\(String(format: "%.1f", $0.strain))"
+        }
         components.append(contentsOf: readinessValues)
 
-        // Sleep data
+        // Sleep data - מעוגל לשעות
         let sleepValues = bundle.sleep.points.compactMap { point -> String? in
             guard let hours = point.totalHours else { return nil }
-            return "\(point.date.timeIntervalSince1970):\(hours)"
+            return "\(dateFormatter.string(from: point.date)):\(String(format: "%.1f", hours))"
         }
         components.append(contentsOf: sleepValues)
 
-        // HRV data
-        let hrvValues = bundle.hrvTrend.points.map { "\($0.date.timeIntervalSince1970):\($0.value)" }
+        // HRV data - ממוצע יומי מעוגל
+        let hrvByDay = Dictionary(grouping: bundle.hrvTrend.points) { dateFormatter.string(from: $0.date) }
+        let hrvValues = hrvByDay.map { day, points in
+            let avg = points.map(\.value).reduce(0, +) / Double(points.count)
+            return "\(day):\(Int(avg))"
+        }.sorted()
         components.append(contentsOf: hrvValues)
 
-        // RHR data
-        let rhrValues = bundle.rhrTrend.points.map { "\($0.date.timeIntervalSince1970):\($0.value)" }
+        // RHR data - ממוצע יומי מעוגל
+        let rhrByDay = Dictionary(grouping: bundle.rhrTrend.points) { dateFormatter.string(from: $0.date) }
+        let rhrValues = rhrByDay.map { day, points in
+            let avg = points.map(\.value).reduce(0, +) / Double(points.count)
+            return "\(day):\(Int(avg))"
+        }.sorted()
         components.append(contentsOf: rhrValues)
 
-        // Steps data
-        let stepsValues = bundle.steps.points.map { "\($0.date.timeIntervalSince1970):\($0.steps)" }
+        // Steps data - סכום יומי
+        let stepsByDay = Dictionary(grouping: bundle.steps.points) { dateFormatter.string(from: $0.date) }
+        let stepsValues = stepsByDay.map { day, points in
+            let total = points.map(\.steps).reduce(0, +)
+            return "\(day):\(total)"
+        }.sorted()
         components.append(contentsOf: stepsValues)
 
-        // Active energy
-        let energyValues = bundle.glucoseEnergy.points.compactMap { point -> String? in
-            guard let energy = point.activeEnergy else { return nil }
-            return "\(point.date.timeIntervalSince1970):\(energy)"
-        }
+        // Active energy - סכום יומי מעוגל
+        let energyByDay = Dictionary(grouping: bundle.glucoseEnergy.points) { dateFormatter.string(from: $0.date) }
+        let energyValues = energyByDay.compactMap { day, points -> String? in
+            let total = points.compactMap(\.activeEnergy).reduce(0, +)
+            guard total > 0 else { return nil }
+            return "\(day):\(Int(total))"
+        }.sorted()
         components.append(contentsOf: energyValues)
 
         // יצירת string אחד וה-hash שלו

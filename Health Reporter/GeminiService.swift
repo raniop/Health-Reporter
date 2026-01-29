@@ -161,6 +161,7 @@ class GeminiService {
     
     /// מנתח נתוני בריאות עם השוואה שבועית (אופציונלי: צרור 6 הגרפים ל־AION)
     /// Gemini בוחר את הרכב בעצמו בהתבסס על הניתוח
+    /// כולל הקשר מקור נתונים (Garmin/Oura/Apple Watch) להתאמה אישית
     func analyzeHealthDataWithWeeklyComparison(_ healthData: HealthDataModel, currentWeek: WeeklyHealthSnapshot, previousWeek: WeeklyHealthSnapshot, chartBundle: AIONChartDataBundle? = nil, completion: @escaping (String?, [String]?, [String]?, Error?) -> Void) {
         guard let summary = createHealthSummary(from: healthData, currentWeek: currentWeek, previousWeek: previousWeek),
               let jsonString = summary.toJSONString() else {
@@ -188,8 +189,31 @@ class GeminiService {
         } else {
             graphsBlock = ""
         }
-        
+
+        // Data source context for tailored analysis
+        let dataSourceContext = buildDataSourceContext()
+
+        // צירוף התשובה הקודמת כהקשר לשמירה על עקביות
+        var previousResponseContext = ""
+        if let previousResponse = AnalysisCache.loadLatest() {
+            previousResponseContext = """
+
+            # התשובה הקודמת שלך
+            בפעם הקודמת, בהתבסס על נתוני הבריאות שלי, החזרת את התשובה הבאה:
+            ---
+            \(previousResponse)
+            ---
+            חשוב: שמור על עקביות. אל תשנה את הרכב אלא אם יש שינוי משמעותי בנתונים שמצדיק זאת.
+
+            """
+            print("=== PREVIOUS RESPONSE CONTEXT ADDED ===")
+            print("Previous response length: \(previousResponse.count) characters")
+        } else {
+            print("=== NO PREVIOUS RESPONSE TO ADD ===")
+        }
+
         let prompt = """
+        \(previousResponseContext)
         Act as an elite sports physician, performance coach, and data analyst.
         RESPOND IN HEBREW ONLY.
 
@@ -233,6 +257,27 @@ class GeminiService {
         ## 7. סיכום
         "אם הרכב הזה ימשיך לנסוע באותו אופן, הנה איפה הוא יהיה בעוד שלושה חודשים."
 
+        ## 8. תוספי תזונה מומלצים
+        בהתבסס על ניתוח 3 חודשים של נתונים (HRV, דופק מנוחה, איכות שינה, עומס אימונים), המלץ על 3-5 תוספי תזונה ספציפיים.
+
+        לכל תוסף ציין:
+        - **שם התוסף** (בעברית ובאנגלית)
+        - **מינון מדויק** ותזמון (לפני שינה/בוקר/אחרי אימון)
+        - **הסיבה הספציפית** מהנתונים של המשתמש
+        - **קטגוריה**: [CATEGORY: sleep/performance/recovery/general]
+
+        פורמט חובה לכל תוסף:
+        **שם התוסף (English Name)** (מינון ותזמון) - הסיבה הספציפית מהנתונים [CATEGORY: xxx]
+
+        דוגמה:
+        **מגנזיום ציטראט (Magnesium Citrate)** (400mg לפני שינה) - ה-HRV שלך נמוך מהממוצע ואיכות השינה ירדה ב-15% בשבוע האחרון. [CATEGORY: sleep]
+
+        התמקד בתוספים מבוססי מחקר מדעי:
+        - אם HRV נמוך → מגנזיום, אשוגנדה
+        - אם עומס אימונים גבוה → אומגה 3 (EPA/DHA), קריאטין מונוהידראט, חלבון מי גבינה
+        - אם שינה לא טובה → מגנזיום, ויטמין D3, L-Theanine
+        - אם התאוששות איטית → ויטמין D3, זינק, אומגה 3, קו-אנזים Q10
+
         שמור על טון תובנתי, כנה ומעורר מוטיבציה.
         השתמש בהסברים ברורים, ללא אזעקות רפואיות וללא מילוי מיותר.
 
@@ -241,24 +286,31 @@ class GeminiService {
         - Previous Week: \(formatJSONForPrompt(previousWeekJSON))
         - Health Data (3 months): \(jsonString)
         \(graphsBlock)
+        \(dataSourceContext)
         """
         
         // הדפסת ה-prompt המלא שנשלח ל-Gemini
         print("=== FULL PROMPT SENT TO GEMINI ===")
         print(prompt)
         print("=== END FULL PROMPT ===\n")
-        
+
+        // שמירה לדיבאג (לפני השליחה)
+        GeminiDebugStore.lastPrompt = prompt
+
         sendRequest(prompt: prompt, temperature: 0.2) { response, error in
             if let error = error {
                 completion(nil, nil, nil, error)
                 return
             }
-            
+
             guard let response = response else {
                 completion(nil, nil, nil, NSError(domain: "GeminiService", code: -2, userInfo: [NSLocalizedDescriptionKey: "לא התקבלה תשובה מ-Gemini"]))
                 return
             }
-            
+
+            // שמירה לדיבאג (אחרי קבלת התשובה)
+            GeminiDebugStore.save(prompt: prompt, response: response)
+
             // פענוח התשובה לחלקים
             let (insights, recommendations, riskFactors) = self.parseResponse(response)
             completion(insights, recommendations, riskFactors, nil)
@@ -299,6 +351,84 @@ class GeminiService {
         } catch {
             return "{}"
         }
+    }
+
+    /// בונה הקשר מקור נתונים להתאמת הניתוח
+    private func buildDataSourceContext() -> String {
+        let source = DataSourceManager.shared.effectiveSource()
+        let strengths = source.strengths
+        let isCalculated = source == .autoDetect || source == .appleWatch
+
+        var context = """
+        # מקור נתונים
+        המשתמש משתמש ב-**\(source.displayNameHebrew)**.
+        """
+
+        if !strengths.isEmpty {
+            context += "\n\nחוזקות המכשיר:\n"
+            context += strengths.map { "- \($0)" }.joined(separator: "\n")
+        }
+
+        // Add device-specific guidance
+        switch source {
+        case .garmin:
+            context += """
+
+            ## הערות ספציפיות ל-Garmin
+            - נתוני HRV מדויקים במיוחד (24/7 או בשינה)
+            - שלבי שינה מפורטים (Deep, Light, REM, Awake)
+            - VO2 Max ו-Training Status זמינים
+            - הערה: Body Battery ו-Training Load לא מסתנכרנים לאפל הלט׳ - הציון שמוצג מחושב לפי HRV, דופק ושינה
+            - התמקד בטרנדים של HRV ו-RHR כאינדיקטורים להתאוששות
+            """
+        case .oura:
+            context += """
+
+            ## הערות ספציפיות ל-Oura
+            - HRV לילי מדויק ביותר (אלגוריתם 5 דקות)
+            - שלבי שינה מפורטים עם ציון יעילות
+            - סטיית טמפרטורת גוף - אינדיקטור מוקדם למחלה/מתח
+            - הערה: Readiness Score של Oura לא מסתנכרן - הציון שמוצג מחושב לפי HRV, דופק ושינה
+            - אם יש סטיית טמפרטורה חיובית (>0.5°C), שקול להמליץ על הפחתת עומס
+            """
+        case .whoop:
+            context += """
+
+            ## הערות ספציפיות ל-WHOOP
+            - מדידת HRV רציפה ומדויקת
+            - Recovery Score ו-Strain לא מסתנכרנים - מחושבים מקומית
+            - התמקד ביחס Recovery-to-Strain
+            """
+        case .appleWatch:
+            context += """
+
+            ## הערות ספציפיות ל-Apple Watch
+            - מדידת דופק וקלוריות מדויקת
+            - HRV נמדד בנקודות ספציפיות (לא רציף)
+            - שלבי שינה בסיסיים יותר (Core, Deep, REM)
+            - נתוני VO2 Max ו-Walking HRR זמינים
+            """
+        case .autoDetect:
+            context += """
+
+            ## מצב אוטומטי
+            המערכת מזהה אוטומטית את מקור הנתונים הפעיל ביותר.
+            הציונים (Readiness, Strain) מחושבים לפי האלגוריתם של AION מנתוני HealthKit.
+            """
+        default:
+            break
+        }
+
+        if isCalculated {
+            context += """
+
+            ## הערה על ציונים מחושבים
+            ציון המוכנות (Readiness) והעומס (Strain) **מחושבים** על ידי האפליקציה ולא מגיעים ישירות מהמכשיר.
+            החישוב מבוסס על: HRV (35%), דופק מנוחה (25%), איכות שינה (30%), והתאוששות (10%).
+            """
+        }
+
+        return context
     }
     
     private func sendRequest(prompt: String, systemInstruction: String? = nil, temperature: Double = 0.2, completion: @escaping (String?, Error?) -> Void) {

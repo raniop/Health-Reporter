@@ -9,6 +9,7 @@ import UIKit
 import HealthKit
 import SwiftUI
 import FirebaseAuth
+import WidgetKit
 
 class HealthDashboardViewController: UIViewController {
 
@@ -95,6 +96,9 @@ class HealthDashboardViewController: UIViewController {
     private let highlightsCard = UIView()
     private let highlightsStack = UIStackView()
 
+    private let activityRingsCard = ActivityRingsView()
+    private let activityStatsCard = ActivityStatsCardView()
+
     private let directivesCard = DirectivesCardView()
 
     // MARK: - Lifecycle
@@ -127,6 +131,7 @@ class HealthDashboardViewController: UIViewController {
         setupHeader()
         setupHeroCard()
         setupPeriodSegment()
+        setupActivityRings()
         setupEfficiencyCard()
         setupBioStackRow()
         setupHighlightsCard()
@@ -135,6 +140,9 @@ class HealthDashboardViewController: UIViewController {
         contentStack.addArrangedSubview(headerStack)
         contentStack.addArrangedSubview(heroCard)
         contentStack.addArrangedSubview(periodSegmentRow)
+        contentStack.addArrangedSubview(makeSectionLabel("פעילות"))
+        contentStack.addArrangedSubview(activityRingsCard)
+        contentStack.addArrangedSubview(activityStatsCard)
         contentStack.addArrangedSubview(efficiencyCard)
         contentStack.addArrangedSubview(bioStackRow)
         contentStack.addArrangedSubview(makeSectionLabel("דגשים"))
@@ -192,7 +200,7 @@ class HealthDashboardViewController: UIViewController {
         let textStack = UIStackView()
         textStack.axis = .vertical
         textStack.spacing = 2
-        textStack.alignment = .trailing
+        textStack.alignment = .fill  // Fill width so text alignment works
         textStack.semanticContentAttribute = .forceRightToLeft
         textStack.translatesAutoresizingMaskIntoConstraints = false
 
@@ -211,12 +219,14 @@ class HealthDashboardViewController: UIViewController {
         textStack.addArrangedSubview(greetingLabel)
         textStack.addArrangedSubview(dateLabel)
 
-        // Spacer to push text to the right side
+        // Spacer to push avatar to the left side
         let spacer = UIView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
+        // RTL layout: text on right, avatar on left
+        // Since semanticContentAttribute is forceRightToLeft, first item appears on right
         headerStack.addArrangedSubview(textStack)
         headerStack.addArrangedSubview(spacer)
         headerStack.addArrangedSubview(headerAvatarView)
@@ -262,6 +272,21 @@ class HealthDashboardViewController: UIViewController {
     private func setupHeroCard() {
         heroCard.translatesAutoresizingMaskIntoConstraints = false
         heroCard.configurePlaceholder()
+    }
+
+    // MARK: - Activity Rings
+
+    private func setupActivityRings() {
+        activityRingsCard.translatesAutoresizingMaskIntoConstraints = false
+        activityRingsCard.showPlaceholder()
+
+        activityStatsCard.translatesAutoresizingMaskIntoConstraints = false
+        activityStatsCard.configure(steps: nil, distance: nil, flights: nil, workouts: nil)
+
+        NSLayoutConstraint.activate([
+            activityRingsCard.heightAnchor.constraint(equalToConstant: 140),
+            activityStatsCard.heightAnchor.constraint(equalToConstant: 85),
+        ])
     }
 
     // MARK: - Period Selector
@@ -476,9 +501,9 @@ class HealthDashboardViewController: UIViewController {
     }
 
     /// נקרא מעמוד תובנות – מריץ ניתוח (תובנות + המלצות) בלי overlay בדשבורד.
-    /// לא מאלץ ניתוח חדש אם יש cache תקף ונתוני הבריאות לא השתנו.
-    func runAnalysisForInsights() {
-        loadData(forceAnalysis: false, useRefreshControl: false, silent: true)
+    /// forceAnalysis=true יקרא ל-Gemini גם אם יש cache (עם התשובה הקודמת כהקשר)
+    func runAnalysisForInsights(forceAnalysis: Bool = false) {
+        loadData(forceAnalysis: forceAnalysis, useRefreshControl: false, silent: true)
     }
 
     // MARK: - Sleep Score
@@ -501,7 +526,8 @@ class HealthDashboardViewController: UIViewController {
 
     // MARK: - Update Readiness & Metrics → Hero Card
 
-    private func updateReadinessAndMetrics(from bundle: AIONChartDataBundle) {
+    @discardableResult
+    private func updateReadinessAndMetrics(from bundle: AIONChartDataBundle) -> Int {
         let range = bundle.range
         let n = range.dayCount
         let r = bundle.readiness.points
@@ -624,6 +650,9 @@ class HealthDashboardViewController: UIViewController {
         // Highlights
         updateHighlights(from: bundle, sleepTake: sleepTake, n: n, sleepAvgHours: !sleepTake.isEmpty ? sleepTake.compactMap(\.totalHours).reduce(0, +) / Double(sleepTake.count) : nil)
 
+        // Activity Rings & Stats
+        updateActivityRings()
+
         // Efficiency Chart
         efficiencyHosting?.view.removeFromSuperview()
         efficiencyHosting?.removeFromParent()
@@ -642,8 +671,10 @@ class HealthDashboardViewController: UIViewController {
             hosting.view.heightAnchor.constraint(equalToConstant: 160),
         ])
 
-        // Gradient border on directives card (after layout)
-        DispatchQueue.main.async {
+        // Gradient border on directives card (after layout is complete)
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.directivesCard.layoutIfNeeded()
             self.directivesCard.addGradientBorder(
                 colors: [AIONDesign.accentPrimary, AIONDesign.accentSecondary, AIONDesign.accentSuccess],
                 width: 1,
@@ -655,6 +686,82 @@ class HealthDashboardViewController: UIViewController {
         if !hasAnimatedOnce || shouldAnimate {
             animateCardsEntrance()
         }
+
+        return score
+    }
+
+    // MARK: - Activity Rings Update
+
+    private func updateActivityRings() {
+        guard let data = healthData else {
+            activityRingsCard.showPlaceholder()
+            activityStatsCard.configure(steps: nil, distance: nil, flights: nil, workouts: nil)
+            return
+        }
+
+        // Configure Activity Rings
+        activityRingsCard.configure(
+            moveCalories: data.activeEnergy,
+            moveGoal: 500,
+            exerciseMinutes: data.exerciseMinutes,
+            exerciseGoal: 30,
+            standHours: data.standHours,
+            standGoal: 12,
+            animated: !hasAnimatedOnce
+        )
+
+        // Configure Activity Stats
+        activityStatsCard.configure(
+            steps: data.steps,
+            distance: data.distance,
+            flights: data.flightsClimbed,
+            workouts: data.workoutCount
+        )
+
+        // Update Widget Data
+        updateWidgetData()
+    }
+
+    // MARK: - Widget Data Update
+
+    private func updateWidgetData() {
+        guard let data = healthData else { return }
+
+        // Get current score, status and car tier from chartBundle
+        var score = 50
+        var tier: CarTier = CarTierEngine.tierForScore(50)
+        if let bundle = chartBundle {
+            if let eval = CarTierEngine.evaluate(bundle: bundle) {
+                score = eval.score
+                tier = eval.tier
+            }
+        }
+
+        // Calculate sleep hours from chart data
+        let sleepHours: Double
+        if let sleepPoints = chartBundle?.sleep.points, !sleepPoints.isEmpty {
+            sleepHours = sleepPoints.last?.totalHours ?? 0
+        } else {
+            sleepHours = 0
+        }
+
+        // Get HRV and RHR
+        let hrv = Int(chartBundle?.hrvTrend.points.last?.value ?? 0)
+        let rhr = Int(chartBundle?.rhrTrend.points.last?.value ?? 0)
+
+        // Update widget with real data from app
+        WidgetDataManager.shared.updateFromDashboard(
+            score: score,
+            status: tier.tierLabel,
+            steps: Int(data.steps ?? 0),
+            activeCalories: Int(data.activeEnergy ?? 0),
+            exerciseMinutes: Int(data.exerciseMinutes ?? 0),
+            standHours: Int(data.standHours ?? 0),
+            restingHR: rhr > 0 ? rhr : nil,
+            hrv: hrv > 0 ? hrv : nil,
+            sleepHours: sleepHours > 0 ? sleepHours : nil,
+            carTier: tier
+        )
     }
 
     // MARK: - Highlights (with icons)
@@ -747,7 +854,7 @@ class HealthDashboardViewController: UIViewController {
 
     private func animateCardsEntrance() {
         let animatableViews: [UIView] = [
-            heroCard, periodSegmentRow, efficiencyCard, bioStackRow, highlightsCard, directivesCard
+            heroCard, periodSegmentRow, activityRingsCard, activityStatsCard, efficiencyCard, bioStackRow, highlightsCard, directivesCard
         ]
         for (i, v) in animatableViews.enumerated() {
             v.alpha = 0
@@ -854,9 +961,9 @@ class HealthDashboardViewController: UIViewController {
                 DispatchQueue.main.async {
                     self.chartBundle = bundle
                     if let b = bundle {
-                        self.updateReadinessAndMetrics(from: b)
-                        // שמירת סטטיסטיקות שבועיות לעמוד התובנות
-                        AnalysisCache.saveWeeklyStats(from: b)
+                        let score = self.updateReadinessAndMetrics(from: b)
+                        // שמירת סטטיסטיקות שבועיות + ציון לעמוד התובנות
+                        AnalysisCache.saveWeeklyStats(from: b, score: score)
                     }
                     self.endRefreshingIfNeeded()
                 }

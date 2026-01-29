@@ -17,11 +17,54 @@ struct HealthDataModel {
     var heartRate: Double?
     var restingHeartRate: Double?
     var walkingHeartRateAverage: Double?
+
+    // MARK: - Activity Rings Data (Apple Activity App)
+    /// דקות אימון (Exercise Ring - ירוק)
+    var exerciseMinutes: Double?
+    /// שעות עמידה (Stand Ring - כחול)
+    var standHours: Double?
+    /// דקות תנועה כללית
+    var moveTimeMinutes: Double?
+    /// קומות שנטפסו
+    var flightsClimbed: Double?
+    /// אנרגיה בסיסית (BMR)
+    var basalEnergy: Double?
+    /// סה"כ קלוריות (פעילות + בסיסית)
+    var totalEnergy: Double?
+
+    // MARK: - Workout Data
+    /// מספר אימונים בטווח
+    var workoutCount: Int?
+    /// סה"כ דקות אימון
+    var totalWorkoutMinutes: Double?
+    /// סה"כ קלוריות באימונים
+    var totalWorkoutCalories: Double?
+    /// סוגי אימונים (ריצה, הליכה, וכו')
+    var workoutTypes: [String]?
+    /// אימון אחרון
+    var lastWorkout: WorkoutData?
+    /// כל האימונים בטווח (מפורט!)
+    var recentWorkouts: [WorkoutData]?
+
+    // MARK: - Walking Metrics (Apple)
+    /// מהירות הליכה (קמ"ש)
+    var walkingSpeed: Double?
+    /// אורך צעד (מטר)
+    var walkingStepLength: Double?
+    /// אסימטריית הליכה (%)
+    var walkingAsymmetry: Double?
+    /// יציבות הליכה (%)
+    var walkingSteadiness: Double?
+    /// מרחק מבחן 6 דקות הליכה
+    var sixMinuteWalkDistance: Double?
+    /// Heart Rate Recovery (1 דקה אחרי אימון)
+    var heartRateRecovery: Double?
     
     // נתונים קרדיווסקולריים
     var bloodPressureSystolic: Double?
     var bloodPressureDiastolic: Double?
     var oxygenSaturation: Double?
+    var heartRateVariability: Double? // HRV (ms)
     
     // נתונים מטבוליים
     var bodyMass: Double?
@@ -47,13 +90,55 @@ struct HealthDataModel {
     var bloodGlucose: Double?
     var bodyTemperature: Double?
     var vo2Max: Double?
-    
+
     // תובנות מ-Gemini
     var insights: String?
     var recommendations: [String]?
     var riskFactors: [String]?
 
     var lastUpdated: Date?
+
+    // MARK: - Data Source Tracking
+    /// מקור הנתונים העיקרי (Apple Watch, Garmin, Oura)
+    var primaryDataSource: HealthDataSource?
+    /// כל המקורות שזוהו
+    var detectedSources: Set<HealthDataSource>?
+
+    // MARK: - Enhanced Sleep Data (Garmin/Oura)
+    /// שעות שינה עמוקה
+    var sleepDeepHours: Double?
+    /// שעות שינה REM
+    var sleepRemHours: Double?
+    /// שעות שינה קלה
+    var sleepLightHours: Double?
+    /// דקות ערות בזמן שינה
+    var sleepAwakeMinutes: Double?
+    /// יעילות שינה (0-100%)
+    var sleepEfficiency: Double?
+    /// זמן במיטה (שעות)
+    var timeInBedHours: Double?
+
+    // MARK: - Calculated Metrics
+    /// ציון מוכנות מחושב (0-100) - דומה ל-Oura/WHOOP
+    var calculatedReadinessScore: Double?
+    /// עומס אימון מחושב (0-10)
+    var calculatedTrainingStrain: Double?
+    /// האם ציון המוכנות מחושב (true) או מהמכשיר (false)
+    var isReadinessCalculated: Bool?
+
+    // MARK: - Oura-Specific Data
+    /// סטיית טמפרטורת גוף מהבסיס (°C)
+    var bodyTemperatureDeviation: Double?
+    /// רמת חמצן בדם (%)
+    var spO2: Double?
+    /// קצב נשימה ממוצע (נשימות לדקה)
+    var respiratoryRateAvg: Double?
+
+    // MARK: - HRV Enhanced
+    /// HRV ממוצע 7 ימים (baseline)
+    var hrv7DayBaseline: Double?
+    /// מגמת HRV (-1 עד +1)
+    var hrvTrend: Double?
 
     /// האם יש נתוני בריאות אמיתיים (לפחות ערך אחד שאינו nil/0)
     var hasRealData: Bool {
@@ -62,7 +147,8 @@ struct HealthDataModel {
             walkingHeartRateAverage, bloodPressureSystolic, oxygenSaturation,
             bodyMass, bodyMassIndex, bodyFatPercentage, respiratoryRate,
             dietaryEnergy, dietaryProtein, dietaryCarbohydrates, dietaryFat,
-            sleepHours, bloodGlucose, vo2Max, bodyTemperature
+            sleepHours, bloodGlucose, vo2Max, bodyTemperature,
+            exerciseMinutes, standHours, flightsClimbed, totalWorkoutMinutes
         ]
         return all.contains { $0 != nil && $0! > 0 }
     }
@@ -72,6 +158,34 @@ struct SleepData {
     var startDate: Date
     var endDate: Date
     var value: HKCategoryValueSleepAnalysis
+}
+
+/// מודל נתוני אימון
+struct WorkoutData: Codable {
+    var type: String // סוג האימון (Running, Walking, Cycling, etc.)
+    var startDate: Date
+    var endDate: Date
+    var durationMinutes: Double
+    var totalCalories: Double?
+    var totalDistance: Double? // מטרים
+    var averageHeartRate: Double?
+    var maxHeartRate: Double?
+    var elevationGain: Double? // מטרים
+
+    func toJSON() -> [String: Any] {
+        var json: [String: Any] = [
+            "type": type,
+            "start_date": ISO8601DateFormatter().string(from: startDate),
+            "end_date": ISO8601DateFormatter().string(from: endDate),
+            "duration_minutes": durationMinutes
+        ]
+        if let cal = totalCalories { json["calories_kcal"] = cal }
+        if let dist = totalDistance { json["distance_meters"] = dist }
+        if let avgHR = averageHeartRate { json["average_heart_rate_bpm"] = avgHR }
+        if let maxHR = maxHeartRate { json["max_heart_rate_bpm"] = maxHR }
+        if let elev = elevationGain { json["elevation_gain_meters"] = elev }
+        return json
+    }
 }
 
 /// נתוני בריאות שבועיים (Weekly Snapshot)
@@ -101,7 +215,36 @@ struct WeeklyHealthSnapshot: Codable {
     var trainingStrain: Double? // עומס אימון (1-10)
     var recoveryScore: Double? // ציון התאוששות (0-100%)
     var efficiencyFactor: Double? // גורם יעילות (Pace/HR)
-    
+
+    // MARK: - Activity Rings
+    var exerciseMinutes: Double? // דקות אימון (ירוק)
+    var standHours: Double? // שעות עמידה (כחול)
+    var flightsClimbed: Double? // קומות
+
+    // MARK: - Workouts
+    var workoutCount: Int? // מספר אימונים
+    var totalWorkoutMinutes: Double? // סה"כ דקות אימון
+    var workoutTypes: [String]? // סוגי אימונים
+
+    // MARK: - Walking Metrics
+    var walkingSpeed: Double? // מהירות הליכה (קמ"ש)
+    var heartRateRecovery: Double? // Heart Rate Recovery
+
+    // MARK: - Data Source Info
+    var primaryDataSource: String? // "Garmin", "Oura", "Apple Watch"
+
+    // MARK: - Enhanced Sleep (Garmin/Oura)
+    var lightSleepHours: Double? // שינה קלה
+    var awakeMinutes: Double? // דקות ערות
+
+    // MARK: - Calculated Scores
+    var calculatedReadinessScore: Double? // ציון מוכנות מחושב (0-100)
+    var isReadinessCalculated: Bool? // האם מחושב או מהמכשיר
+
+    // MARK: - Oura-Specific
+    var bodyTemperatureDeviation: Double? // סטיית טמפ' מבסיס
+    var spO2Average: Double? // חמצן ממוצע
+
     func toJSON() -> [String: Any] {
         var json: [String: Any] = [:]
         json["week_start"] = ISO8601DateFormatter().string(from: weekStartDate)
@@ -131,12 +274,43 @@ struct WeeklyHealthSnapshot: Codable {
         if let strain = trainingStrain { json["training_strain_1_10"] = strain }
         if let recovery = recoveryScore { json["recovery_score_percent"] = recovery }
         if let ef = efficiencyFactor { json["efficiency_factor"] = ef }
-        
+
+        // Data Source
+        if let source = primaryDataSource { json["data_source"] = source }
+
+        // Enhanced Sleep
+        if let light = lightSleepHours { json["light_sleep_hours"] = light }
+        if let awake = awakeMinutes { json["awake_minutes"] = awake }
+
+        // Calculated Scores
+        if let readiness = calculatedReadinessScore {
+            json["readiness_score"] = readiness
+            json["readiness_is_calculated"] = isReadinessCalculated ?? true
+        }
+
+        // Oura-Specific
+        if let tempDev = bodyTemperatureDeviation { json["body_temp_deviation_c"] = tempDev }
+        if let spo2 = spO2Average { json["spo2_average_percent"] = spo2 }
+
         // חישוב Recovery-to-Strain Ratio
         if let strain = trainingStrain, let recovery = recoveryScore, strain > 0 {
             json["recovery_to_strain_ratio"] = recovery / (strain * 10)
         }
-        
+
+        // Activity Rings
+        if let exercise = exerciseMinutes { json["exercise_minutes"] = exercise }
+        if let stand = standHours { json["stand_hours"] = stand }
+        if let flights = flightsClimbed { json["flights_climbed"] = flights }
+
+        // Workouts
+        if let count = workoutCount, count > 0 { json["workout_count"] = count }
+        if let totalMins = totalWorkoutMinutes, totalMins > 0 { json["total_workout_minutes"] = totalMins }
+        if let types = workoutTypes, !types.isEmpty { json["workout_types"] = types }
+
+        // Walking Metrics
+        if let speed = walkingSpeed { json["walking_speed_kmh"] = speed }
+        if let hrr = heartRateRecovery { json["heart_rate_recovery_bpm"] = hrr }
+
         return json
     }
 }
@@ -192,16 +366,85 @@ struct HealthSummary {
             json["body_fat_percent"] = bodyFat
         }
         
-        // נתונים שינה
+        // נתונים שינה - בסיסי
         if let sleepHours = dataModel.sleepHours {
             json["sleep_hours"] = sleepHours
         }
-        
-        // נתונים תזונתיים
+
+        // MARK: - Enhanced Sleep Data (פירוט שלבי שינה)
+        if let deepSleep = dataModel.sleepDeepHours {
+            json["sleep_deep_hours"] = deepSleep
+        }
+        if let remSleep = dataModel.sleepRemHours {
+            json["sleep_rem_hours"] = remSleep
+        }
+        if let lightSleep = dataModel.sleepLightHours {
+            json["sleep_light_hours"] = lightSleep
+        }
+        if let awakeMinutes = dataModel.sleepAwakeMinutes {
+            json["sleep_awake_minutes"] = awakeMinutes
+        }
+        if let sleepEfficiency = dataModel.sleepEfficiency {
+            json["sleep_efficiency_percent"] = sleepEfficiency
+        }
+        if let timeInBed = dataModel.timeInBedHours {
+            json["time_in_bed_hours"] = timeInBed
+        }
+
+        // MARK: - HRV Data
+        if let hrv = dataModel.heartRateVariability {
+            json["heart_rate_variability_ms"] = hrv
+        }
+        if let hrvBaseline = dataModel.hrv7DayBaseline {
+            json["hrv_7day_baseline_ms"] = hrvBaseline
+        }
+        if let hrvTrend = dataModel.hrvTrend {
+            json["hrv_trend"] = hrvTrend  // -1 to +1
+        }
+
+        // MARK: - Calculated Scores (Readiness/Strain)
+        if let readiness = dataModel.calculatedReadinessScore {
+            json["readiness_score"] = readiness
+        }
+        if let strain = dataModel.calculatedTrainingStrain {
+            json["training_strain"] = strain
+        }
+
+        // MARK: - Additional Cardio
+        if let walkingHR = dataModel.walkingHeartRateAverage {
+            json["walking_heart_rate_avg_bpm"] = walkingHR
+        }
+        if let respiratoryRate = dataModel.respiratoryRate {
+            json["respiratory_rate"] = respiratoryRate
+        }
+
+        // MARK: - Body Composition
+        if let leanMass = dataModel.leanBodyMass {
+            json["lean_body_mass_kg"] = leanMass
+        }
+
+        // MARK: - Oura/Garmin Specific
+        if let tempDeviation = dataModel.bodyTemperatureDeviation {
+            json["body_temperature_deviation_c"] = tempDeviation
+        }
+        if let spO2 = dataModel.spO2 {
+            json["blood_oxygen_percent"] = spO2
+        }
+
+        // נתונים תזונתיים - מורחב
         if let calories = dataModel.dietaryEnergy {
             json["dietary_calories"] = calories
         }
-        
+        if let protein = dataModel.dietaryProtein {
+            json["dietary_protein_g"] = protein
+        }
+        if let carbs = dataModel.dietaryCarbohydrates {
+            json["dietary_carbs_g"] = carbs
+        }
+        if let fat = dataModel.dietaryFat {
+            json["dietary_fat_g"] = fat
+        }
+
         // נתונים נוספים
         if let glucose = dataModel.bloodGlucose {
             json["blood_glucose_mmol"] = glucose
@@ -209,7 +452,71 @@ struct HealthSummary {
         if let vo2Max = dataModel.vo2Max {
             json["vo2_max"] = vo2Max
         }
-        
+        if let bodyTemp = dataModel.bodyTemperature {
+            json["body_temperature_c"] = bodyTemp
+        }
+
+        // MARK: - Activity Rings (Apple Activity App)
+        if let exerciseMinutes = dataModel.exerciseMinutes {
+            json["exercise_minutes"] = exerciseMinutes
+        }
+        if let standHours = dataModel.standHours {
+            json["stand_hours"] = standHours
+        }
+        if let moveTime = dataModel.moveTimeMinutes {
+            json["move_time_minutes"] = moveTime
+        }
+        if let flights = dataModel.flightsClimbed {
+            json["flights_climbed"] = flights
+        }
+        if let basalEnergy = dataModel.basalEnergy {
+            json["basal_energy_kcal"] = basalEnergy
+        }
+        if let totalEnergy = dataModel.totalEnergy {
+            json["total_energy_kcal"] = totalEnergy
+        }
+
+        // MARK: - Workout Data
+        if let workoutCount = dataModel.workoutCount, workoutCount > 0 {
+            json["workout_count"] = workoutCount
+        }
+        if let totalWorkoutMinutes = dataModel.totalWorkoutMinutes, totalWorkoutMinutes > 0 {
+            json["total_workout_minutes"] = totalWorkoutMinutes
+        }
+        if let totalWorkoutCalories = dataModel.totalWorkoutCalories, totalWorkoutCalories > 0 {
+            json["total_workout_calories_kcal"] = totalWorkoutCalories
+        }
+        if let workoutTypes = dataModel.workoutTypes, !workoutTypes.isEmpty {
+            json["workout_types"] = workoutTypes
+        }
+        if let lastWorkout = dataModel.lastWorkout {
+            json["last_workout"] = lastWorkout.toJSON()
+        }
+        // רשימת כל האימונים המפורטת!
+        if let recentWorkouts = dataModel.recentWorkouts, !recentWorkouts.isEmpty {
+            json["recent_workouts"] = recentWorkouts.map { $0.toJSON() }
+        }
+
+        // MARK: - Walking Metrics
+        if let walkingSpeed = dataModel.walkingSpeed {
+            json["walking_speed_kmh"] = walkingSpeed
+        }
+        if let stepLength = dataModel.walkingStepLength {
+            json["walking_step_length_meters"] = stepLength
+        }
+        if let asymmetry = dataModel.walkingAsymmetry {
+            json["walking_asymmetry_percent"] = asymmetry
+        }
+        if let steadiness = dataModel.walkingSteadiness {
+            json["walking_steadiness_percent"] = steadiness
+        }
+        if let sixMinWalk = dataModel.sixMinuteWalkDistance {
+            json["six_minute_walk_distance_meters"] = sixMinWalk
+        }
+        if let hrr = dataModel.heartRateRecovery {
+            json["heart_rate_recovery_bpm"] = hrr
+        }
+
         json["date_range"] = [
             "start": ISO8601DateFormatter().string(from: dateRange.start),
             "end": ISO8601DateFormatter().string(from: dateRange.end)
