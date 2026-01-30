@@ -32,7 +32,7 @@ class SplashViewController: UIViewController {
 
     private let subtitleLabel: UILabel = {
         let label = UILabel()
-        label.text = "דוח בריאות אישי · Performance Lab"
+        label.text = "splash.healthReport".localized
         label.font = .systemFont(ofSize: 15, weight: .medium)
         label.textColor = UIColor(red: 0.612, green: 0.584, blue: 0.557, alpha: 1.0)
         label.textAlignment = .center
@@ -50,7 +50,7 @@ class SplashViewController: UIViewController {
 
     private let statusLabel: UILabel = {
         let label = UILabel()
-        label.text = "טוען נתונים..."
+        label.text = "loading".localized
         label.font = .systemFont(ofSize: 13, weight: .regular)
         label.textColor = UIColor(red: 0.612, green: 0.584, blue: 0.557, alpha: 1.0)
         label.textAlignment = .center
@@ -148,7 +148,7 @@ class SplashViewController: UIViewController {
 
     private func loadHealthData() {
         DispatchQueue.main.async {
-            self.statusLabel.text = "מסנכרן עם Apple Health..."
+            self.statusLabel.text = "splash.syncAppleHealth".localized
         }
 
         // טעינת נתוני בריאות
@@ -159,7 +159,7 @@ class SplashViewController: UIViewController {
             HealthDataCache.shared.healthData = data
 
             DispatchQueue.main.async {
-                self.statusLabel.text = "מעבד נתונים..."
+                self.statusLabel.text = "splash.processingData".localized
             }
 
             // טעינת נתוני גרפים

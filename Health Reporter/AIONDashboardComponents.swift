@@ -29,36 +29,36 @@ final class CardInfoButton: UIButton {
     }
 }
 
-// MARK: - הסברים לכל כרטיס – פשוטים וברורים
+// MARK: - Card Explanations - Localized
 enum CardExplanations {
-    static let readiness = "כמה הגוף שלך מוכן להיום. ציון גבוה = מוכן טוב, נמוך = עדיף לנוח."
-    static let hrv = "מדד שמושפע משינה ולחץ. ערך גבוה בדרך־כלל אומר שהגוף מתאושש טוב."
-    static let sleep = "כמה שעות ישנת. שינה טובה עוזרת לך להרגיש טוב ולהישאר בריא."
-    static let strain = "כמה עמלת על הגוף (אימונים, פעילות). חשוב לאזן עם מנוחה."
-    static let efficiency = "איך ההתאוששות השבועית נראית. כל עמודת = יום."
-    static let bioSleep = "ציון שינה 0–100 (בדומה לאפל): משך + איכות שלבי שינה. יום = לילה אחרון; שבוע/חודש = ממוצע."
-    static let bioTemp = "הפרש טמפרטורת הגוף מהרגיל. שינוי גדול יכול להראות עייפות או חולי."
-    static let bioRhrOrTemp = "סטיית טמפ׳ או דופק מנוחה – לפי הנתונים הזמינים. דופק נמוך במנוחה = כושר טוב."
-    static let directives = "המלצות: מה כדאי להפסיק, מה להתחיל, ומה לעקוב אחריו."
-    static let insight = "תובנה מהנתונים שלך – קשר בין דברים (למשל שינה ומדדים)."
-    static let correlation = "עד כמה שני מדדים קשורים. מספר גבוה = קשר חזק יותר."
-    static let pValue = "עד כמה התוצאה אמינה. ערך נמוך = סביר שהממצא אמיתי."
-    static let sampleSize = "על בסיס כמה ימים חושבו הנתונים."
-    static let biometrics = "ממוצעים של מדדים חשובים: דופק, עומס, שונות דופק."
-    static let focus = "דברים שכדאי לשים עליהם דגש – שינה סדירה, עומס אימון וכו'."
-    static let profileHeight = "גובה שמגיע מאפליקציית הבריאות."
-    static let profileWeight = "משקל שמגיע מאפליקציית הבריאות."
-    static let highlights = "דגשים מהנתונים: זמן במיטה, קצב נשימות בשינה, ממוצעים – כמו באפל."
-    static let profileAge = "גיל מתאריך לידה, או BMI (מגובה ומשקל) אם אין גיל."
-    static let activitySteps = "סה״כ צעדים בטווח הנבחר."
-    static let activityDistance = "מרחק הליכה וריצה בק״מ."
-    static let activityCalories = "קלוריות נשרפות מפעילות (לא בסיס)."
-    static let activityExercise = "דקות אימון (פעילות בעצימות בינונית־גבוהה)."
-    static let activityFlights = "קומות שעלית (מדרגות)."
-    static let activityMove = "דקות ״תנועה״ – פעילות שמזכה ב-Move."
-    static let activityStand = "שעות עמידה (Stand)."
-    static let activityCycling = "מרחק רכיבה בק״מ."
-    static let activitySwimming = "מרחק שחייה בק״מ."
+    static var readiness: String { "explanation.readiness".localized }
+    static var hrv: String { "explanation.hrv".localized }
+    static var sleep: String { "explanation.sleep".localized }
+    static var strain: String { "explanation.strain".localized }
+    static var efficiency: String { "explanation.efficiency".localized }
+    static var bioSleep: String { "explanation.bioSleep".localized }
+    static var bioTemp: String { "explanation.bioTemp".localized }
+    static var bioRhrOrTemp: String { "explanation.bioRhrOrTemp".localized }
+    static var directives: String { "explanation.directives".localized }
+    static var insight: String { "explanation.insight".localized }
+    static var correlation: String { "explanation.correlation".localized }
+    static var pValue: String { "explanation.pValue".localized }
+    static var sampleSize: String { "explanation.sampleSize".localized }
+    static var biometrics: String { "explanation.biometrics".localized }
+    static var focus: String { "explanation.focus".localized }
+    static var profileHeight: String { "explanation.profileHeight".localized }
+    static var profileWeight: String { "explanation.profileWeight".localized }
+    static var highlights: String { "explanation.highlights".localized }
+    static var profileAge: String { "explanation.profileAge".localized }
+    static var activitySteps: String { "explanation.activitySteps".localized }
+    static var activityDistance: String { "explanation.activityDistance".localized }
+    static var activityCalories: String { "explanation.activityCalories".localized }
+    static var activityExercise: String { "explanation.activityExercise".localized }
+    static var activityFlights: String { "explanation.activityFlights".localized }
+    static var activityMove: String { "explanation.activityMove".localized }
+    static var activityStand: String { "explanation.activityStand".localized }
+    static var activityCycling: String { "explanation.activityCycling".localized }
+    static var activitySwimming: String { "explanation.activitySwimming".localized }
 }
 
 // MARK: - KPI Ring (עיגול ערך + תווית)
@@ -704,7 +704,7 @@ final class DirectivesCardView: UIView {
     private func setup() {
         backgroundColor = AIONDesign.surface
         layer.cornerRadius = AIONDesign.cornerRadiusLarge
-        semanticContentAttribute = .forceRightToLeft
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         stack.axis = .vertical
         stack.spacing = AIONDesign.spacingLarge
@@ -712,9 +712,9 @@ final class DirectivesCardView: UIView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
-        let stop = makeRow(label: "STOP", color: AIONDesign.accentDanger)
-        let start = makeRow(label: "START", color: AIONDesign.accentSuccess)
-        let watch = makeRow(label: "WATCH", color: AIONDesign.accentWarning)
+        let stop = makeRow(label: "directives.stop".localized, color: AIONDesign.accentDanger)
+        let start = makeRow(label: "directives.start".localized, color: AIONDesign.accentSuccess)
+        let watch = makeRow(label: "directives.watch".localized, color: AIONDesign.accentWarning)
         stopRow = (stop.0, stop.1, stop.2, stop.3)
         startRow = (start.0, start.1, start.2, start.3)
         watchRow = (watch.0, watch.1, watch.2, watch.3)
@@ -736,12 +736,12 @@ final class DirectivesCardView: UIView {
         l.text = label
         l.font = .systemFont(ofSize: 13, weight: .bold)
         l.textColor = color
-        l.textAlignment = .right
+        l.textAlignment = LocalizationManager.shared.textAlignment
 
         let b = UILabel()
         b.font = .systemFont(ofSize: 14, weight: .regular)
         b.textColor = AIONDesign.textPrimary
-        b.textAlignment = .right
+        b.textAlignment = LocalizationManager.shared.textAlignment
         b.numberOfLines = 0
 
         let iv = UIImageView()
@@ -788,6 +788,7 @@ final class DirectivesCardView: UIView {
     }
 
     func configure(stop: String, start: String, watch: String) {
+        hidePlaceholder()
         let b: (String) -> String = { s in s == "—" ? "—" : AIONDirectivesParser.bullet(s) }
         setRow(stopRow, value: b(stop), color: AIONDesign.textPrimary)
         setRow(startRow, value: b(start), color: AIONDesign.textPrimary)
@@ -795,12 +796,48 @@ final class DirectivesCardView: UIView {
     }
 
     func showPlaceholder() {
-        let msg = "הרץ ניתוח (תובנות AION) כדי לראות המלצות."
-        stopRow?.body.attributedText = AIONDesign.attributedStringRTL(msg, font: .systemFont(ofSize: 14, weight: .regular), color: AIONDesign.textTertiary)
-        stopRow?.body.isHidden = false
-        stopRow?.icon.isHidden = true
-        setRow(startRow, value: "—", color: AIONDesign.textPrimary)
-        setRow(watchRow, value: "—", color: AIONDesign.textPrimary)
+        let msg = "dashboard.runAnalysisForRecommendations".localized
+        // Hide all rows when showing placeholder
+        stopRow?.wrap.isHidden = true
+        startRow?.wrap.isHidden = true
+        watchRow?.wrap.isHidden = true
+
+        // Show placeholder message in a centered way
+        if placeholderLabel == nil {
+            let label = UILabel()
+            label.font = .systemFont(ofSize: 14, weight: .regular)
+            label.textColor = AIONDesign.textTertiary
+            label.textAlignment = .center
+            label.numberOfLines = 0
+            label.translatesAutoresizingMaskIntoConstraints = false
+
+            // Create a container with extra top padding to avoid info button
+            let container = UIView()
+            container.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(label)
+            NSLayoutConstraint.activate([
+                label.topAnchor.constraint(equalTo: container.topAnchor, constant: 20),
+                label.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -10),
+            ])
+
+            stack.addArrangedSubview(container)
+            placeholderContainer = container
+            placeholderLabel = label
+        }
+        placeholderLabel?.text = msg
+        placeholderContainer?.isHidden = false
+    }
+
+    private var placeholderLabel: UILabel?
+    private var placeholderContainer: UIView?
+
+    func hidePlaceholder() {
+        placeholderContainer?.isHidden = true
+        stopRow?.wrap.isHidden = false
+        startRow?.wrap.isHidden = false
+        watchRow?.wrap.isHidden = false
     }
 }
 
@@ -856,9 +893,9 @@ final class ActivityRingsView: UIView {
         }
 
         // Configure labels
-        configureLabel(moveLabel, text: "תנועה", color: moveColor)
-        configureLabel(exerciseLabel, text: "אימון", color: exerciseColor)
-        configureLabel(standLabel, text: "עמידה", color: standColor)
+        configureLabel(moveLabel, text: "dashboard.move".localized, color: moveColor)
+        configureLabel(exerciseLabel, text: "dashboard.exercise".localized, color: exerciseColor)
+        configureLabel(standLabel, text: "dashboard.stand".localized, color: standColor)
 
         configureValueLabel(moveValueLabel)
         configureValueLabel(exerciseValueLabel)
@@ -871,14 +908,14 @@ final class ActivityRingsView: UIView {
         label.text = text
         label.font = .systemFont(ofSize: 11, weight: .semibold)
         label.textColor = color
-        label.textAlignment = .right
+        label.textAlignment = LocalizationManager.shared.textAlignment
         label.translatesAutoresizingMaskIntoConstraints = false
     }
 
     private func configureValueLabel(_ label: UILabel) {
         label.font = .systemFont(ofSize: 13, weight: .bold)
         label.textColor = AIONDesign.textPrimary
-        label.textAlignment = .right
+        label.textAlignment = LocalizationManager.shared.textAlignment
         label.translatesAutoresizingMaskIntoConstraints = false
     }
 
@@ -889,7 +926,8 @@ final class ActivityRingsView: UIView {
     }
 
     private func drawRings() {
-        let centerX = bounds.width * 0.35
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        let centerX = isRTL ? bounds.width * 0.35 : bounds.width * 0.65
         let centerY = bounds.height / 2
         let center = CGPoint(x: centerX, y: centerY)
         ringSize = min(bounds.width * 0.55, bounds.height - 20)
@@ -930,20 +968,24 @@ final class ActivityRingsView: UIView {
     }
 
     private func layoutLabels() {
-        let labelsX = bounds.width * 0.58
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
         let spacing: CGFloat = 28
+        let labelWidth = bounds.width * 0.42 - 12
+
+        // In RTL: labels on right (x = 0.58), In LTR: labels on left (x = 12)
+        let labelsX: CGFloat = isRTL ? bounds.width * 0.58 : 12
 
         // Move
-        moveLabel.frame = CGRect(x: labelsX, y: bounds.height / 2 - spacing * 1.5 - 8, width: bounds.width - labelsX - 12, height: 16)
-        moveValueLabel.frame = CGRect(x: labelsX, y: moveLabel.frame.maxY, width: bounds.width - labelsX - 12, height: 18)
+        moveLabel.frame = CGRect(x: labelsX, y: bounds.height / 2 - spacing * 1.5 - 8, width: labelWidth, height: 16)
+        moveValueLabel.frame = CGRect(x: labelsX, y: moveLabel.frame.maxY, width: labelWidth, height: 18)
 
         // Exercise
-        exerciseLabel.frame = CGRect(x: labelsX, y: bounds.height / 2 - 8, width: bounds.width - labelsX - 12, height: 16)
-        exerciseValueLabel.frame = CGRect(x: labelsX, y: exerciseLabel.frame.maxY, width: bounds.width - labelsX - 12, height: 18)
+        exerciseLabel.frame = CGRect(x: labelsX, y: bounds.height / 2 - 8, width: labelWidth, height: 16)
+        exerciseValueLabel.frame = CGRect(x: labelsX, y: exerciseLabel.frame.maxY, width: labelWidth, height: 18)
 
         // Stand
-        standLabel.frame = CGRect(x: labelsX, y: bounds.height / 2 + spacing * 1.5 - 8, width: bounds.width - labelsX - 12, height: 16)
-        standValueLabel.frame = CGRect(x: labelsX, y: standLabel.frame.maxY, width: bounds.width - labelsX - 12, height: 18)
+        standLabel.frame = CGRect(x: labelsX, y: bounds.height / 2 + spacing * 1.5 - 8, width: labelWidth, height: 16)
+        standValueLabel.frame = CGRect(x: labelsX, y: standLabel.frame.maxY, width: labelWidth, height: 18)
     }
 
     /// Configure rings with values
@@ -973,9 +1015,9 @@ final class ActivityRingsView: UIView {
         currentStandProgress = CGFloat(standProgress)
 
         // Update labels
-        moveValueLabel.text = "\(Int(move))/\(Int(moveGoal)) קק״ל"
-        exerciseValueLabel.text = "\(Int(exercise))/\(Int(exerciseGoal)) דק׳"
-        standValueLabel.text = "\(Int(stand))/\(Int(standGoal)) שע׳"
+        moveValueLabel.text = "\(Int(move))/\(Int(moveGoal)) \("unit.kcal".localized)"
+        exerciseValueLabel.text = "\(Int(exercise))/\(Int(exerciseGoal)) \("unit.min".localized)"
+        standValueLabel.text = "\(Int(stand))/\(Int(standGoal)) \("unit.hr".localized)"
 
         // Animate rings
         if animated {
@@ -1005,9 +1047,9 @@ final class ActivityRingsView: UIView {
         currentExerciseProgress = 0
         currentStandProgress = 0
 
-        moveValueLabel.text = "—/500 קק״ל"
-        exerciseValueLabel.text = "—/30 דק׳"
-        standValueLabel.text = "—/12 שע׳"
+        moveValueLabel.text = "—/500 \("unit.kcal".localized)"
+        exerciseValueLabel.text = "—/30 \("unit.min".localized)"
+        standValueLabel.text = "—/12 \("unit.hr".localized)"
         moveRingFg.strokeEnd = 0
         exerciseRingFg.strokeEnd = 0
         standRingFg.strokeEnd = 0
@@ -1055,7 +1097,7 @@ final class ActivityStatsCardView: UIView {
             stack.addArrangedSubview(makeStatItem(
                 icon: "figure.walk",
                 value: formatNumber(steps),
-                label: "צעדים",
+                label: "activity.steps".localized,
                 color: UIColor.systemOrange
             ))
         }
@@ -1065,7 +1107,7 @@ final class ActivityStatsCardView: UIView {
             stack.addArrangedSubview(makeStatItem(
                 icon: "location.fill",
                 value: String(format: "%.1f", dist),
-                label: "ק״מ",
+                label: "unit.km".localized,
                 color: UIColor.systemBlue
             ))
         }
@@ -1075,7 +1117,7 @@ final class ActivityStatsCardView: UIView {
             stack.addArrangedSubview(makeStatItem(
                 icon: "arrow.up.right",
                 value: "\(Int(flights))",
-                label: "קומות",
+                label: "activity.floors".localized,
                 color: UIColor.systemPurple
             ))
         }
@@ -1085,7 +1127,7 @@ final class ActivityStatsCardView: UIView {
             stack.addArrangedSubview(makeStatItem(
                 icon: "flame.fill",
                 value: "\(workouts)",
-                label: "אימונים",
+                label: "activity.workouts".localized,
                 color: UIColor.systemRed
             ))
         }
@@ -1095,7 +1137,7 @@ final class ActivityStatsCardView: UIView {
             stack.addArrangedSubview(makeStatItem(
                 icon: "figure.walk",
                 value: "—",
-                label: "צעדים",
+                label: "activity.steps".localized,
                 color: UIColor.systemGray
             ))
         }

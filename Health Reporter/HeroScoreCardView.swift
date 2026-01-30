@@ -120,7 +120,7 @@ final class HeroScoreCardView: UIView {
             icon: "bed.double.fill",
             iconView: sleepIcon,
             valueLabel: sleepValueLabel,
-            label: "שינה",
+            label: "metric.sleep".localized,
             tint: AIONDesign.accentPrimary
         )
         let hrvKPI = makeMiniKPI(
@@ -134,7 +134,7 @@ final class HeroScoreCardView: UIView {
             icon: "flame.fill",
             iconView: strainIcon,
             valueLabel: strainValueLabel,
-            label: "עומס",
+            label: "metric.strain".localized,
             tint: AIONDesign.accentWarning
         )
 
@@ -288,7 +288,7 @@ final class HeroScoreCardView: UIView {
     /// Configure with placeholder (no data)
     func configurePlaceholder() {
         scoreLabel.text = "—"
-        tierLabel.text = "טוען..."
+        tierLabel.text = "hero.loading".localized
         tierLabel.textColor = AIONDesign.textTertiary
         sleepValueLabel.text = "—"
         hrvValueLabel.text = "—"

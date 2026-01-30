@@ -1,0 +1,504 @@
+/* English Localization - Health Reporter */
+
+/* Common */
+"ok" = "OK";
+"cancel" = "Cancel";
+"error" = "Error";
+"loading" = "Loading...";
+"save" = "Save";
+"delete" = "Delete";
+"close" = "Close";
+"done" = "Done";
+"refresh" = "Refresh";
+"retry" = "Retry";
+"understand" = "Got it";
+"missingDetails" = "Missing Details";
+
+/* Tab Bar */
+"tab.dashboard" = "Dashboard";
+"tab.trends" = "Trends";
+"tab.activity" = "Activity";
+"tab.insights" = "Insights";
+"tab.profile" = "Profile";
+
+/* Login Screen */
+"login.title" = "Sign in to continue";
+"login.enterDetails" = "Enter details";
+"login.email" = "Email";
+"login.password" = "Password";
+"login.fullName" = "Full Name";
+"login.signIn" = "Sign In";
+"login.signUp" = "Sign Up";
+"login.noAccount" = "Don't have an account? Sign Up";
+"login.hasAccount" = "Already have an account? Sign In";
+"login.orSignInWithGoogle" = "Or sign in with Google";
+"login.orSignInWithApple" = "Or sign in with Apple";
+"login.signInWithGoogle" = "Sign in with Google";
+"login.connecting" = "Connecting...";
+"login.enterEmailPassword" = "Please enter email and password.";
+"login.enterFullName" = "Please enter your full name.";
+"login.googleClientIdError" = "Google Client ID not found. Please check GoogleService-Info.plist.";
+"login.appleError" = "Could not retrieve information from Apple.";
+
+/* Profile Screen */
+"profile.title" = "Profile";
+"profile.logout" = "Logout";
+"profile.logoutConfirm" = "Are you sure you want to logout?";
+"profile.height" = "Height";
+"profile.weight" = "Weight";
+"profile.age" = "Age";
+"profile.bmi" = "BMI";
+"profile.language" = "Language";
+"profile.dataSources" = "Data Sources";
+"profile.changeLanguage" = "Change Language";
+"profile.languageChangeMessage" = "The app will restart to apply the language change.";
+"profile.backgroundColor" = "Background Color";
+"profile.user" = "User";
+"profile.editName" = "Edit Name";
+"profile.enterName" = "Enter your name";
+"profile.name" = "Name";
+"profile.selectUserType" = "Select User Type";
+
+/* Dashboard */
+"dashboard.title" = "Dashboard";
+"dashboard.healthScore" = "Health Score";
+"dashboard.todaySummary" = "Today's Summary";
+"dashboard.lastUpdate" = "Last Update";
+"dashboard.noData" = "No Data";
+"dashboard.refreshing" = "Refreshing...";
+"dashboard.reloadAllData" = "Reloading all data...";
+"dashboard.analysisComplete" = "Analysis Complete";
+"dashboard.move" = "Move";
+"dashboard.exercise" = "Exercise";
+"dashboard.stand" = "Stand";
+"dashboard.runAnalysisForRecommendations" = "Run analysis (AION Insights) to see recommendations.";
+
+/* Activity Extended */
+"activity.floors" = "Floors";
+"activity.workouts" = "Workouts";
+
+/* Recommendations */
+"recommendations.noRecommendations" = "No recommendations yet.\nRun analysis on dashboard (AION Insights) to see personalized recommendations.";
+
+/* Insights */
+"insights.title" = "Insights";
+"insights.loading" = "Loading insights...";
+"insights.noInsights" = "No insights available";
+"insights.generateNew" = "Generate New Insights";
+"insights.whyIChose" = "Why I Chose";
+"insights.recommendations" = "Recommendations";
+"insights.summary" = "Summary";
+
+/* Trends */
+"trends.title" = "Trends";
+"trends.weekly" = "Weekly";
+"trends.monthly" = "Monthly";
+"trends.yearly" = "Yearly";
+"trends.noData" = "Not enough data to show trends";
+"trends.correlation" = "Correlation";
+
+/* Activity */
+"activity.title" = "Activity";
+"activity.steps" = "Steps";
+"activity.calories" = "Calories";
+"activity.distance" = "Distance";
+"activity.activeMinutes" = "Active Minutes";
+"activity.goal" = "Goal";
+"activity.daily" = "Daily";
+"activity.weekly" = "Weekly";
+
+/* Nutrition */
+"nutrition.title" = "Nutrition";
+"nutrition.calories" = "Calories";
+"nutrition.protein" = "Protein";
+"nutrition.carbs" = "Carbs";
+"nutrition.fat" = "Fat";
+"nutrition.water" = "Water";
+"nutrition.recommendations" = "Nutrition Recommendations";
+
+/* Data Sources */
+"dataSources.title" = "Data Sources";
+"dataSources.healthKit" = "Apple Health";
+"dataSources.connected" = "Connected";
+"dataSources.notConnected" = "Not Connected";
+"dataSources.connect" = "Connect";
+"dataSources.disconnect" = "Disconnect";
+
+/* Splash Screen */
+"splash.loading" = "Loading...";
+"splash.preparingData" = "Preparing data...";
+"splash.loadingHealth" = "Loading health data...";
+"splash.analyzing" = "Analyzing...";
+
+/* Errors */
+"error.generic" = "An error occurred. Please try again.";
+"error.network" = "Network error. Please check your connection.";
+"error.noData" = "No data found.";
+"error.unauthorized" = "Please sign in again.";
+
+/* Health Metrics */
+"metric.heartRate" = "Heart Rate";
+"metric.bloodPressure" = "Blood Pressure";
+"metric.sleep" = "Sleep";
+"metric.weight" = "Weight";
+"metric.steps" = "Steps";
+"metric.calories" = "Calories";
+"metric.oxygen" = "Blood Oxygen";
+"metric.stress" = "Stress Level";
+
+/* Units */
+"unit.kg" = "kg";
+"unit.cm" = "cm";
+"unit.bpm" = "bpm";
+"unit.steps" = "steps";
+"unit.kcal" = "kcal";
+"unit.hours" = "hours";
+"unit.minutes" = "minutes";
+"unit.min" = "min";
+"unit.hr" = "hr";
+"unit.percent" = "%";
+"unit.years" = "years";
+
+/* Time */
+"time.today" = "Today";
+"time.yesterday" = "Yesterday";
+"time.thisWeek" = "This Week";
+"time.thisMonth" = "This Month";
+"time.lastWeek" = "Last Week";
+"time.lastMonth" = "Last Month";
+"time.7days" = "7 Days";
+"time.30days" = "30 Days";
+
+/* Metric Labels */
+"metric.strain" = "Strain";
+"metric.sleep" = "Sleep";
+
+/* Car/Score Cards */
+"car.excellent" = "Excellent";
+"car.good" = "Good";
+"car.fair" = "Fair";
+"car.needsImprovement" = "Needs Improvement";
+"car.status" = "Status";
+"car.score" = "Score";
+
+/* Widgets */
+"widget.healthScore.title" = "Health Score";
+"widget.healthScore.description" = "Display your health score";
+"widget.dailySummary.title" = "Daily Summary";
+"widget.dailySummary.description" = "Your daily activity summary";
+"widget.carTier.title" = "Car Tier";
+"widget.carTier.description" = "Display your health tier";
+"widget.activityRings.title" = "Activity Rings";
+"widget.activityRings.description" = "Daily activity progress";
+
+/* Dashboard - Extended */
+"dashboard.loadingData" = "Loading data...";
+"dashboard.goodNight" = "Good night";
+"dashboard.goodMorning" = "Good morning";
+"dashboard.goodAfternoon" = "Good afternoon";
+"dashboard.goodEvening" = "Good evening";
+"dashboard.activity" = "Activity";
+"dashboard.highlights" = "Highlights";
+"dashboard.aiDirectives" = "AI Directives";
+"dashboard.recoveryTrend" = "Recovery Trend";
+"dashboard.sleepQuality" = "Sleep Quality";
+"dashboard.restingHR" = "Resting HR";
+"dashboard.deepSleep" = "Deep sleep";
+"dashboard.avgLabel" = "Average";
+"dashboard.rangeLabel" = "Range";
+"dashboard.timeInBed" = "Time in bed";
+"dashboard.breathsInSleep" = "Breaths in sleep";
+"dashboard.perMinute" = "per minute";
+"dashboard.avg30Days" = "30 days average";
+"dashboard.noHighlights" = "No highlights available";
+"dashboard.explanation" = "Explanation";
+"dashboard.healthKitError" = "HealthKit is not available on this device.";
+"dashboard.permissionDenied" = "Permission Denied";
+"dashboard.enableHealthAccess" = "Please enable access to health data in Settings.";
+"dashboard.geminiTimeout" = "The Gemini request took too long. Please try again.";
+"dashboard.noHealthData" = "No health data available. Make sure you connected to Apple Health and granted permissions.";
+"dashboard.connectAppleHealth" = "Connect Apple Health to get personalized analysis.";
+"dashboard.dataDay" = "Today's data";
+"dashboard.dataWeek" = "Week's data";
+"dashboard.dataMonth" = "Month's data";
+"dashboard.steps" = "steps";
+"dashboard.activeCalories" = "active calories";
+
+/* Splash - Extended */
+"splash.syncAppleHealth" = "Syncing with Apple Health...";
+"splash.processingData" = "Processing data...";
+"splash.healthReport" = "Personal Health Report · Performance Lab";
+
+/* Trends - Extended */
+"trends.loadingBiometrics" = "Loading biometric data...";
+"trends.basedOnPeriod" = "Based on biometric data from the selected period.";
+"trends.correlationEfficiency" = "Correlation Efficiency";
+"trends.positiveCorrelation" = "Positive correlation";
+"trends.negativeCorrelation" = "Negative correlation";
+"trends.need3Days" = "At least 3 days of data required";
+"trends.avgHrv" = "AVG HRV";
+"trends.strain" = "Strain";
+"trends.restingHR" = "Resting HR";
+"trends.steps" = "Steps";
+"trends.exerciseMinutes" = "Exercise min";
+"trends.bioTrends" = "Bio-Trends";
+"trends.activity" = "Activity";
+"trends.focusAreas" = "Focus Areas";
+"trends.sleepConsistency" = "Sleep consistency — maintain a tight sleep window for better recovery.";
+"trends.vo2Opportunity" = "VO2 Opportunity — high intensity intervals recommended this week.";
+"trends.sleepGap" = "Sleep consistency — gap between last nights is about %d min. Goal: under 20 min.";
+"trends.goodRecovery" = "Good recovery — can add moderate load this week.";
+"trends.trainingOpportunity" = "Training opportunity — high intensity intervals recommended when recovery improves.";
+"trends.noDataConnect" = "No data available. Connect Apple Health.";
+"trends.sleepActivityData" = "Sleep and activity data will enable accurate insights.";
+"trends.pValue" = "P-VALUE";
+"trends.sampleSize" = "Sample size";
+"trends.proLabInsight" = "PRO-LAB INSIGHT";
+"trends.sleepBoostsRecovery" = "%@h+ sleep boosts recovery by %d%%";
+"trends.basedOnDays" = "Based on biometric data from the last %d days.";
+"trends.noBiometricData" = "No biometric data available yet.";
+
+/* Activity - Extended */
+"activity.loadingActivity" = "Loading activity data";
+"activity.activityTitle" = "Activity";
+"activity.stepsDistanceCalories" = "Steps, distance, calories and exercise";
+"activity.activityRings" = "Activity Rings";
+"activity.summary" = "Summary";
+"activity.stepsMetric" = "Steps";
+"activity.distanceMetric" = "Distance";
+"activity.caloriesMetric" = "Calories";
+"activity.exerciseMetric" = "Exercise min";
+"activity.floorsMetric" = "Floors";
+"activity.moveMetric" = "Move";
+"activity.standMetric" = "Stand";
+"activity.charts" = "Charts";
+"activity.stepsChart" = "Steps Chart";
+"activity.distanceChart" = "Distance Chart";
+"activity.caloriesChart" = "Active Calories Chart";
+"activity.noStepsData" = "No steps data";
+"activity.noDistanceData" = "No distance data";
+"activity.noCaloriesData" = "No calories data";
+"activity.km" = "km";
+"activity.min" = "min";
+"activity.hours" = "hours";
+
+/* Insights - Extended */
+"insights.analyzingData" = "Analyzing data...";
+"insights.aionInsights" = "AION Insights";
+"insights.biometricAnalysis" = "Data-based biometric analysis";
+"insights.lastUpdate" = "Last update";
+"insights.noSignificantChange" = "No Significant Change";
+"insights.noSignificantChangeMsg" = "Your data hasn't changed enough to justify a new analysis. The analysis will update automatically when there's a significant change in HRV, sleep or activity.";
+"insights.refreshAnyway" = "Refresh anyway";
+"insights.waitingForAnalysis" = "Waiting for analysis...";
+"insights.carSelectedAfter" = "Your car will be chosen after the first analysis of your data";
+"insights.peakPerformance" = "Peak Performance";
+"insights.excellent" = "Excellent";
+"insights.goodCondition" = "Good Condition";
+"insights.okay" = "Okay";
+"insights.needsAttention" = "Needs Attention";
+"insights.carSelectedBased" = "The car was chosen based on analysis of your health data.";
+"insights.weeklyData" = "Weekly Data";
+"insights.sleep" = "Sleep";
+"insights.sleepExplanation" = "Average sleep hours in the last week. 7-9 hours is considered optimal for recovery.";
+"insights.readiness" = "Readiness";
+"insights.readinessExplanation" = "Your readiness score for training (0-100). Based on sleep, HRV and previous load.";
+"insights.strain" = "Strain";
+"insights.strainExplanation" = "Weekly physical strain level (0-10). Balanced strain is 2-5.";
+"insights.hrvExplanation" = "Heart Rate Variability. A higher value indicates better recovery ability.";
+"insights.steps" = "Steps";
+"insights.stepsExplanation" = "Total steps in the last week. Aim for 10,000 steps per day.";
+"insights.exerciseMinutes" = "Exercise Minutes";
+"insights.exerciseExplanation" = "Minutes of medium-high intensity physical activity. Recommended 150+ minutes per week.";
+"insights.loadingValue" = "Loading...";
+"insights.aiInsights" = "AI Insights";
+"insights.engine" = "Engine";
+"insights.transmission" = "Transmission";
+"insights.suspension" = "Suspension";
+"insights.fuelEfficiency" = "Fuel Efficiency";
+"insights.electronics" = "Electronics";
+"insights.whatLimitsPerformance" = "What limits performance?";
+"insights.optimizationPlan" = "Optimization Plan";
+"insights.recommendedUpgrades" = "Recommended Upgrades";
+"insights.skippedMaintenance" = "Skipped Maintenance";
+"insights.stopImmediately" = "Stop Immediately";
+"insights.tuningPlan" = "30-60 Day Tuning Plan";
+"insights.trainingAdjustments" = "Training Adjustments";
+"insights.recoveryAndSleep" = "Recovery and Sleep";
+"insights.habitToAdd" = "Habit to Add";
+"insights.habitToRemove" = "Habit to Remove";
+"insights.nutritionRecommendations" = "Nutrition Recommendations";
+"insights.recommendedSupplements" = "Recommended supplements based on your data analysis";
+"insights.actionDirectives" = "Action Directives";
+"insights.lookingAhead" = "Looking Ahead";
+"insights.newCarTitle" = "You have a new car!";
+"insights.dataChangedSignificantly" = "Your data changed significantly";
+"insights.timeToReplace" = "Time to replace the %@";
+"insights.timeToDiscover" = "Time to discover your updated car";
+"insights.preparingNewCar" = "Preparing your new car...";
+"insights.ready" = "Ready!";
+"insights.readyToDiscover" = "Ready to discover which car you are?";
+"insights.basedOnYourData" = "Based on your health data,\nwe'll discover which car represents you best";
+"insights.scanningHealthData" = "Scanning health data...";
+"insights.analyzingPerformance" = "Analyzing performance...";
+"insights.findingPerfectCar" = "Finding the perfect car...";
+"insights.noAnalysisYet" = "No performance analysis yet";
+"insights.pressRefreshToStart" = "Press the refresh button above to start";
+"insights.greatCondition" = "Great Condition";
+"insights.mediumCondition" = "Medium Condition";
+"insights.needsCare" = "Needs Care";
+"insights.requiresAttention" = "Requires Attention";
+"insights.discoverNewCar" = "Discover the new car";
+"insights.checkAgain" = "Check again";
+"insights.startDiscovery" = "Start Discovery";
+"insights.discoverCar" = "Discover My Car";
+
+/* Profile - Extended */
+"profile.dataSource" = "Data Source";
+"profile.backgroundColor" = "Background Color";
+"profile.backgroundColorChange" = "Background Color Change";
+"profile.backgroundColorMessage" = "To apply the change, the app will close. The new color will be active next time you open it.";
+"profile.confirmAndClose" = "Confirm and Close";
+"profile.athlete" = "Athlete";
+"profile.beginner" = "Beginner";
+"profile.amateur" = "Amateur";
+"profile.professional" = "Professional";
+
+/* Nutrition */
+"nutrition.supplementRecommendations" = "Supplement Recommendations";
+"nutrition.basedOnAnalysis" = "Based on 3 months analysis of your health data";
+"nutrition.whyRecommended" = "Why recommended for you:";
+"nutrition.noRecommendationsYet" = "No supplement recommendations yet\nTap 'Check again' on the Insights screen for a new analysis";
+"nutrition.disclaimer" = "These recommendations are based on AI analysis of your health data and do not replace professional medical advice. Consult a doctor before taking new supplements.";
+
+/* Data Sources */
+"dataSources.automatic" = "Automatic";
+"dataSources.selectSource" = "Select Data Source";
+"dataSources.description" = "The app reads data from Apple Health. If you have a device that syncs to Apple Health (like Garmin or Oura), select it here for customized analysis.";
+"dataSources.detectedSources" = "Detected Sources";
+"dataSources.checkingSources" = "Checking sources...";
+"dataSources.deviceStrengths" = "Device Strengths";
+"dataSources.note" = "Note: Garmin Body Battery and Oura Readiness Score don't sync to Apple Health. The app calculates similar readiness scores from HRV, heart rate, and sleep data.";
+"dataSources.selectDeviceToSeeStrengths" = "Select a specific device to see its strengths";
+"dataSources.noSourcesFound" = "No data sources found in the last 14 days";
+"dataSources.samples" = "samples";
+"dataSources.lastSync" = "Last sync";
+"dataSources.other" = "Other";
+"dataSources.autoDetect" = "Auto Detect";
+
+/* Chart Labels */
+"chart.date" = "Date";
+"chart.day" = "Day";
+"chart.recovery" = "Recovery";
+"chart.strain" = "Strain";
+"chart.heartRate" = "Heart Rate";
+"chart.km" = "km";
+"chart.sleep" = "Sleep";
+"chart.glucose" = "Glucose";
+"chart.energy" = "Energy";
+"chart.metric" = "Metric";
+"chart.value" = "Value";
+"chart.breathing" = "Breathing";
+"chart.protein" = "Protein";
+"chart.carbs" = "Carbs";
+"chart.fat" = "Fat";
+"chart.calories" = "Calories";
+"chart.steps" = "Steps";
+"chart.restingHR" = "Resting HR";
+
+/* Chart Placeholders */
+"chart.noReadinessData" = "No readiness data";
+"chart.noHRDistanceData" = "No heart rate or distance data";
+"chart.noSleepData" = "No sleep data to display";
+"chart.noGlucoseEnergyData" = "No glucose or energy data";
+"chart.noAutonomicData" = "No autonomic data";
+"chart.noNutritionData" = "No nutrition data to display";
+"chart.noDistanceData" = "No distance data";
+"chart.noActiveEnergyData" = "No active energy data";
+"chart.noHeartRateData" = "No heart rate data";
+"chart.noData" = "No data";
+"chart.noStepsData" = "No steps data";
+"chart.noRestingHRData" = "No resting heart rate data";
+"chart.noHRVData" = "No HRV data";
+
+/* Debug Screen */
+"debug.query" = "Query";
+"debug.response" = "Response";
+"debug.differences" = "Differences";
+"debug.history" = "History";
+"debug.copy" = "Copy";
+"debug.share" = "Share";
+"debug.close" = "Close";
+"debug.noSavedQuery" = "No saved query";
+"debug.noSavedResponse" = "No saved response";
+"debug.noDifferences" = "No differences to show";
+"debug.callingGemini" = "Calling Gemini...";
+"debug.completed" = "Completed!";
+"debug.copied" = "Copied!";
+"debug.noHistory" = "No saved history";
+"debug.queryStats" = "Query: %@ chars, %@ words";
+"debug.responseStats" = "Response: %@ chars, %@ words";
+"debug.comparisonStats" = "Comparison between previous and current response";
+"debug.entriesInLast7Days" = "%d entries in last 7 days";
+"debug.notFound" = "Not found";
+"debug.notIdentified" = "Not identified";
+"debug.previousResponse" = "Previous response: %@ chars";
+"debug.currentResponse" = "Current response: %@ chars";
+"debug.difference" = "Difference: %@ chars";
+"debug.noChange" = "No change: %@";
+"debug.removed" = "Removed:";
+"debug.added" = "Added:";
+"debug.previousResponseTime" = "Previous response: %@";
+"debug.currentResponseTime" = "Current response: %@";
+"debug.noPreviousResponse" = "No previous response to compare";
+
+/* Report Screen */
+"report.title" = "AION Report";
+"report.subtitle" = "Insights, recommendations and risk factors";
+
+/* Recommendations Screen */
+"recommendations.title" = "Recommendations";
+"recommendations.subtitle" = "Actionable guidance based on your biometric data";
+
+/* Hero Card */
+"hero.loading" = "Loading...";
+
+/* Sync Errors */
+"sync.noUserLoggedIn" = "No user logged in";
+"sync.imageConversionError" = "Error converting image";
+"sync.noURLReceived" = "No URL received";
+
+/* Card Explanations (info button tooltips) */
+"explanation.readiness" = "How ready your body is for today. High score = well rested, low = better to rest.";
+"explanation.hrv" = "A measure affected by sleep and stress. A high value usually means the body is recovering well.";
+"explanation.sleep" = "How many hours you slept. Good sleep helps you feel good and stay healthy.";
+"explanation.strain" = "How much you worked your body (workouts, activity). Important to balance with rest.";
+"explanation.efficiency" = "How your weekly recovery looks. Each column = one day.";
+"explanation.bioSleep" = "Sleep score 0-100 (similar to Apple): duration + quality of sleep stages. Day = last night; week/month = average.";
+"explanation.bioTemp" = "Body temperature deviation from normal. A big change could indicate fatigue or illness.";
+"explanation.bioRhrOrTemp" = "Temp deviation or resting HR - based on available data. Low resting HR = good fitness.";
+"explanation.directives" = "Recommendations: what to stop, what to start, and what to monitor.";
+"explanation.insight" = "Insight from your data - connections between things (e.g., sleep and metrics).";
+"explanation.correlation" = "How much two metrics are related. Higher number = stronger connection.";
+"explanation.pValue" = "How reliable the result is. Low value = finding is likely real.";
+"explanation.sampleSize" = "Based on how many days the data was calculated.";
+"explanation.biometrics" = "Averages of important metrics: heart rate, strain, heart rate variability.";
+"explanation.focus" = "Things to focus on - regular sleep, training load, etc.";
+"explanation.profileHeight" = "Height from the Health app.";
+"explanation.profileWeight" = "Weight from the Health app.";
+"explanation.highlights" = "Highlights from data: time in bed, breathing rate during sleep, averages - like Apple.";
+"explanation.profileAge" = "Age from birth date, or BMI (from height and weight) if no age.";
+"explanation.activitySteps" = "Total steps in the selected range.";
+"explanation.activityDistance" = "Walking and running distance in km.";
+"explanation.activityCalories" = "Calories burned from activity (not basal).";
+"explanation.activityExercise" = "Exercise minutes (medium-high intensity activity).";
+"explanation.activityFlights" = "Floors climbed (stairs).";
+"explanation.activityMove" = "Move minutes - activity that earns Move credit.";
+"explanation.activityStand" = "Stand hours.";
+"explanation.activityCycling" = "Cycling distance in km.";
+"explanation.activitySwimming" = "Swimming distance in km.";
+
+/* Directives Labels */
+"directives.stop" = "STOP";
+"directives.start" = "START";
+"directives.watch" = "WATCH";

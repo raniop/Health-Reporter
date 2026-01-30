@@ -53,7 +53,7 @@ final class NutritionViewController: UIViewController {
 
     private func setupUI() {
         view.backgroundColor = bgColor
-        title = "תזונה ותוספים"
+        title = "nutrition.title".localized
 
         // Navigation bar styling
         navigationController?.navigationBar.prefersLargeTitles = false
@@ -122,16 +122,16 @@ final class NutritionViewController: UIViewController {
         iconLabel.font = .systemFont(ofSize: 50)
         iconLabel.textAlignment = .center
 
-        // כותרת
+        // Title
         let titleLabel = UILabel()
-        titleLabel.text = "המלצות תוספי תזונה"
+        titleLabel.text = "nutrition.supplementRecommendations".localized
         titleLabel.font = .systemFont(ofSize: 24, weight: .bold)
         titleLabel.textColor = textWhite
         titleLabel.textAlignment = .center
 
-        // תת-כותרת
+        // Subtitle
         let subtitleLabel = UILabel()
-        subtitleLabel.text = "מבוסס על ניתוח 3 חודשים של נתוני הבריאות שלך"
+        subtitleLabel.text = "nutrition.basedOnAnalysis".localized
         subtitleLabel.font = .systemFont(ofSize: 14, weight: .regular)
         subtitleLabel.textColor = textGray
         subtitleLabel.textAlignment = .center
@@ -224,12 +224,12 @@ final class NutritionViewController: UIViewController {
         separator.backgroundColor = AIONDesign.separator
         separator.translatesAutoresizingMaskIntoConstraints = false
 
-        // סיבה
+        // Reason
         let reasonTitleLabel = UILabel()
-        reasonTitleLabel.text = "למה מומלץ עבורך:"
+        reasonTitleLabel.text = "nutrition.whyRecommended".localized
         reasonTitleLabel.font = .systemFont(ofSize: 12, weight: .medium)
         reasonTitleLabel.textColor = accentCyan
-        reasonTitleLabel.textAlignment = .right
+        reasonTitleLabel.textAlignment = LocalizationManager.shared.textAlignment
         reasonTitleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let reasonLabel = UILabel()
@@ -298,7 +298,7 @@ final class NutritionViewController: UIViewController {
         iconLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let messageLabel = UILabel()
-        messageLabel.text = "אין עדיין המלצות תוספים\nלחץ על 'בדוק שוב' במסך תובנות לקבלת ניתוח חדש"
+        messageLabel.text = "nutrition.noRecommendationsYet".localized
         messageLabel.font = .systemFont(ofSize: 15, weight: .regular)
         messageLabel.textColor = textGray
         messageLabel.textAlignment = .center
@@ -325,7 +325,7 @@ final class NutritionViewController: UIViewController {
 
     private func addDisclaimer() {
         let label = UILabel()
-        label.text = "⚠️ המלצות אלו מבוססות על ניתוח AI של נתוני הבריאות שלך ואינן מהוות תחליף לייעוץ רפואי מקצועי. התייעץ עם רופא לפני נטילת תוספים חדשים."
+        label.text = "⚠️ " + "nutrition.disclaimer".localized
         label.font = .systemFont(ofSize: 11, weight: .regular)
         label.textColor = textGray.withAlphaComponent(0.7)
         label.textAlignment = .center

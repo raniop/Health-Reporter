@@ -11,12 +11,14 @@ import HealthKit
 import PhotosUI
 
 private let kProfileBadge = "ProfileBadge"
-private let profileBadgeOptions: [(title: String, value: String)] = [
-    ("אתלט", "אתלט"),
-    ("מתחיל", "מתחיל"),
-    ("חובב", "חובב"),
-    ("מקצוען", "מקצוען"),
-]
+private var profileBadgeOptions: [(title: String, value: String)] {
+    [
+        ("profile.athlete".localized, "athlete"),
+        ("profile.beginner".localized, "beginner"),
+        ("profile.amateur".localized, "amateur"),
+        ("profile.professional".localized, "professional"),
+    ]
+}
 
 final class ProfileViewController: UIViewController {
 
@@ -37,9 +39,9 @@ final class ProfileViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "פרופיל"
+        title = "profile.title".localized
         view.backgroundColor = AIONDesign.background
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupUI()
         updateUserInfo()
         loadProfilePhoto()
@@ -96,7 +98,7 @@ final class ProfileViewController: UIViewController {
             avatarView.heightAnchor.constraint(equalToConstant: 104),
         ])
 
-        nameLabel.text = "משתמש"
+        nameLabel.text = "profile.user".localized
         nameLabel.font = .systemFont(ofSize: 24, weight: .bold)
         nameLabel.textColor = AIONDesign.textPrimary
         nameLabel.textAlignment = .center
@@ -151,16 +153,16 @@ final class ProfileViewController: UIViewController {
         metricsStack.spacing = AIONDesign.spacing
         metricsStack.distribution = .fillEqually
         metricsStack.translatesAutoresizingMaskIntoConstraints = false
-        let (hCard, hLabel) = makeMetricCard("גובה", value: "—", unit: "cm", explanation: CardExplanations.profileHeight)
-        let (wCard, wLabel) = makeMetricCard("משקל", value: "—", unit: "kg", explanation: CardExplanations.profileWeight)
-        let (ageCard, ageLabel) = makeMetricCard("גיל", value: "—", unit: "שנה", explanation: CardExplanations.profileAge)
+        let (hCard, hLabel) = makeMetricCard("profile.height".localized, value: "—", unit: "unit.cm".localized, explanation: CardExplanations.profileHeight)
+        let (wCard, wLabel) = makeMetricCard("profile.weight".localized, value: "—", unit: "unit.kg".localized, explanation: CardExplanations.profileWeight)
+        let (ageCard, ageLabel) = makeMetricCard("profile.age".localized, value: "—", unit: "unit.years".localized, explanation: CardExplanations.profileAge)
         heightValueLabel = hLabel
         weightValueLabel = wLabel
         ageValueLabel = ageLabel
         thirdMetricTitleLabel = ageCard.subviews.compactMap { $0 as? UILabel }.first
         [hCard, wCard, ageCard].forEach { metricsStack.addArrangedSubview($0) }
 
-        logoutButton.setTitle("התנתק", for: .normal)
+        logoutButton.setTitle("profile.logout".localized, for: .normal)
         logoutButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .medium)
         logoutButton.setTitleColor(AIONDesign.textTertiary, for: .normal)
         logoutButton.backgroundColor = .clear
@@ -194,8 +196,8 @@ final class ProfileViewController: UIViewController {
         // Data Source Settings Card
         let dataSourceCard = makeSettingsCard(
             icon: "antenna.radiowaves.left.and.right",
-            title: "מקור נתונים",
-            subtitle: DataSourceManager.shared.effectiveSource().displayNameHebrew
+            title: "profile.dataSource".localized,
+            subtitle: DataSourceManager.shared.effectiveSource().displayName
         )
         dataSourceCard.tag = 999 // For updating later
         let dataSourceTap = UITapGestureRecognizer(target: self, action: #selector(dataSourceTapped))
@@ -217,6 +219,15 @@ final class ProfileViewController: UIViewController {
             bgColorCard.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
         ])
 
+        // Language Selection Card
+        let languageCard = makeLanguageCard()
+        stack.addArrangedSubview(languageCard)
+
+        NSLayoutConstraint.activate([
+            languageCard.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            languageCard.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+        ])
+
         stack.setCustomSpacing(6, after: avatarView)
         stack.setCustomSpacing(12, after: nameRowContainer)
         stack.setCustomSpacing(6, after: badgeContainer)
@@ -224,6 +235,7 @@ final class ProfileViewController: UIViewController {
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: metricsStack)
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: dataSourceCard)
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: bgColorCard)
+        stack.setCustomSpacing(AIONDesign.spacingLarge, after: languageCard)
 
         let logoutContainer = UIView()
         logoutContainer.translatesAutoresizingMaskIntoConstraints = false
@@ -386,12 +398,12 @@ final class ProfileViewController: UIViewController {
         card.translatesAutoresizingMaskIntoConstraints = false
         card.tag = 998 // For updating later
 
-        // כותרת
+        // Title
         let titleLabel = UILabel()
-        titleLabel.text = "צבע רקע"
+        titleLabel.text = "profile.backgroundColor".localized
         titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         titleLabel.textColor = AIONDesign.textPrimary
-        titleLabel.textAlignment = .right
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         // אייקון
@@ -479,16 +491,16 @@ final class ProfileViewController: UIViewController {
         // Haptic
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
-        // הצגת אישור למשתמש
+        // Show confirmation to user
         let alert = UIAlertController(
-            title: "שינוי צבע רקע",
-            message: "כדי שהשינוי ייכנס לתוקף, האפליקציה תיסגר. בפעם הבאה שתפתח אותה, הצבע החדש יופעל.",
+            title: "profile.backgroundColorChange".localized,
+            message: "profile.backgroundColorMessage".localized,
             preferredStyle: .alert
         )
 
-        alert.addAction(UIAlertAction(title: "ביטול", style: .cancel))
+        alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
 
-        alert.addAction(UIAlertAction(title: "אישור וסגירה", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: "profile.confirmAndClose".localized, style: .default) { [weak self] _ in
             // שמירת הצבע החדש
             BackgroundColor.current = selectedColor
 
@@ -518,6 +530,109 @@ final class ProfileViewController: UIViewController {
         }
     }
 
+    // MARK: - Language Selection
+
+    private func makeLanguageCard() -> UIView {
+        let card = UIView()
+        card.backgroundColor = AIONDesign.surface
+        card.layer.cornerRadius = AIONDesign.cornerRadius
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.tag = 996
+
+        let titleLabel = UILabel()
+        titleLabel.text = "profile.language".localized
+        titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.textColor = AIONDesign.textPrimary
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let iconView = UIImageView(image: UIImage(systemName: "globe"))
+        iconView.tintColor = AIONDesign.accentPrimary
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        let languagesStack = UIStackView()
+        languagesStack.axis = .horizontal
+        languagesStack.spacing = 12
+        languagesStack.distribution = .fillEqually
+        languagesStack.translatesAutoresizingMaskIntoConstraints = false
+        languagesStack.tag = 995
+
+        for lang in AppLanguage.allCases {
+            let btn = makeLanguageButton(lang)
+            languagesStack.addArrangedSubview(btn)
+        }
+
+        card.addSubview(titleLabel)
+        card.addSubview(iconView)
+        card.addSubview(languagesStack)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        NSLayoutConstraint.activate([
+            iconView.trailingAnchor.constraint(equalTo: isRTL ? card.trailingAnchor : card.leadingAnchor, constant: isRTL ? -AIONDesign.spacing : AIONDesign.spacing),
+            iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            iconView.widthAnchor.constraint(equalToConstant: 24),
+            iconView.heightAnchor.constraint(equalToConstant: 24),
+
+            titleLabel.leadingAnchor.constraint(equalTo: isRTL ? card.leadingAnchor : iconView.trailingAnchor, constant: isRTL ? AIONDesign.spacing : 10),
+            titleLabel.trailingAnchor.constraint(equalTo: isRTL ? iconView.leadingAnchor : card.trailingAnchor, constant: isRTL ? -10 : -AIONDesign.spacing),
+            titleLabel.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),
+
+            languagesStack.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 14),
+            languagesStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+            languagesStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+            languagesStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -AIONDesign.spacing),
+            languagesStack.heightAnchor.constraint(equalToConstant: 44),
+        ])
+
+        return card
+    }
+
+    private func makeLanguageButton(_ language: AppLanguage) -> UIButton {
+        let btn = UIButton(type: .system)
+        btn.setTitle(language.displayName, for: .normal)
+        btn.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+        btn.layer.cornerRadius = 8
+        btn.translatesAutoresizingMaskIntoConstraints = false
+
+        let isSelected = language == LocalizationManager.shared.currentLanguage
+        btn.backgroundColor = isSelected ? AIONDesign.accentPrimary : AIONDesign.background
+        btn.setTitleColor(isSelected ? .white : AIONDesign.textPrimary, for: .normal)
+        btn.layer.borderWidth = isSelected ? 0 : 1
+        btn.layer.borderColor = AIONDesign.separator.cgColor
+
+        btn.tag = language == .hebrew ? 0 : 1
+        btn.addTarget(self, action: #selector(languageButtonTapped(_:)), for: .touchUpInside)
+
+        return btn
+    }
+
+    @objc private func languageButtonTapped(_ sender: UIButton) {
+        let selectedLanguage: AppLanguage = sender.tag == 0 ? .hebrew : .english
+
+        guard selectedLanguage != LocalizationManager.shared.currentLanguage else { return }
+
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+        let alert = UIAlertController(
+            title: "profile.changeLanguage".localized,
+            message: "profile.languageChangeMessage".localized,
+            preferredStyle: .alert
+        )
+
+        alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
+
+        alert.addAction(UIAlertAction(title: "ok".localized, style: .default) { _ in
+            LocalizationManager.shared.currentLanguage = selectedLanguage
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                exit(0)
+            }
+        })
+
+        present(alert, animated: true)
+    }
+
     @objc private func backgroundColorDidChange() {
         view.backgroundColor = AIONDesign.background
         navigationController?.navigationBar.barStyle = AIONDesign.navBarStyle
@@ -527,26 +642,34 @@ final class ProfileViewController: UIViewController {
     }
 
     @objc private func profileCardInfoTapped(_ sender: CardInfoButton) {
-        let alert = UIAlertController(title: "הסבר", message: sender.explanation, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "הבנתי", style: .default))
+        let alert = UIAlertController(title: "dashboard.explanation".localized, message: sender.explanation, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "understand".localized, style: .default))
         present(alert, animated: true)
     }
 
     private func applySavedBadge() {
-        var v = UserDefaults.standard.string(forKey: kProfileBadge) ?? "אתלט"
-        if v == "ATHLETE" { v = "אתלט"; UserDefaults.standard.set("אתלט", forKey: kProfileBadge) }
-        badgeLabel.text = v
+        let savedValue = UserDefaults.standard.string(forKey: kProfileBadge) ?? "athlete"
+        // Map saved key to localized display text
+        let displayText: String
+        switch savedValue {
+        case "athlete", "אתלט", "ATHLETE": displayText = "profile.athlete".localized
+        case "beginner", "מתחיל": displayText = "profile.beginner".localized
+        case "amateur", "חובב": displayText = "profile.amateur".localized
+        case "professional", "מקצוען": displayText = "profile.professional".localized
+        default: displayText = "profile.athlete".localized
+        }
+        badgeLabel.text = displayText
     }
 
     @objc private func nameTapped() {
-        let alert = UIAlertController(title: "עריכת שם", message: "הזן את שמך", preferredStyle: .alert)
+        let alert = UIAlertController(title: "profile.editName".localized, message: "profile.enterName".localized, preferredStyle: .alert)
         alert.addTextField { [weak self] tf in
             tf.text = self?.nameLabel.text
-            tf.placeholder = "שם"
-            tf.textAlignment = .right
+            tf.placeholder = "profile.name".localized
+            tf.textAlignment = LocalizationManager.shared.textAlignment
         }
-        alert.addAction(UIAlertAction(title: "ביטול", style: .cancel))
-        alert.addAction(UIAlertAction(title: "שמור", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
+        alert.addAction(UIAlertAction(title: "save".localized, style: .default) { [weak self] _ in
             guard let self = self, let name = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { return }
             self.saveDisplayName(name)
         })
@@ -559,8 +682,8 @@ final class ProfileViewController: UIViewController {
         request?.commitChanges { [weak self] err in
             DispatchQueue.main.async {
                 if let e = err {
-                    let a = UIAlertController(title: "שגיאה", message: e.localizedDescription, preferredStyle: .alert)
-                    a.addAction(UIAlertAction(title: "אישור", style: .default))
+                    let a = UIAlertController(title: "error".localized, message: e.localizedDescription, preferredStyle: .alert)
+                    a.addAction(UIAlertAction(title: "ok".localized, style: .default))
                     self?.present(a, animated: true)
                     return
                 }
@@ -571,14 +694,14 @@ final class ProfileViewController: UIViewController {
     }
 
     @objc private func badgeTapped() {
-        let sheet = UIAlertController(title: "בחר סוג משתמש", message: nil, preferredStyle: .actionSheet)
+        let sheet = UIAlertController(title: "profile.selectUserType".localized, message: nil, preferredStyle: .actionSheet)
         for opt in profileBadgeOptions {
             sheet.addAction(UIAlertAction(title: opt.title, style: .default) { [weak self] _ in
                 UserDefaults.standard.set(opt.value, forKey: kProfileBadge)
                 self?.badgeLabel.text = opt.value
             })
         }
-        sheet.addAction(UIAlertAction(title: "ביטול", style: .cancel))
+        sheet.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
         if let pop = sheet.popoverPresentationController {
             pop.sourceView = view
             pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
@@ -596,7 +719,7 @@ final class ProfileViewController: UIViewController {
                 return
             }
             guard let u = Auth.auth().currentUser else { return }
-            self.nameLabel.text = u.displayName ?? u.email ?? "משתמש"
+            self.nameLabel.text = u.displayName ?? u.email ?? "profile.user".localized
         }
     }
 
@@ -670,15 +793,15 @@ final class ProfileViewController: UIViewController {
             weightValueLabel?.text = "— kg"
         }
         if let a = ageYears, a > 0 {
-            thirdMetricTitleLabel?.text = "גיל"
-            ageValueLabel?.text = String(format: "%d שנה", a)
+            thirdMetricTitleLabel?.text = "profile.age".localized
+            ageValueLabel?.text = "\(a) \("unit.years".localized)"
         } else if let h = heightCm, let w = weightKg, h > 0, w > 0 {
             let bmi = w / ((h / 100) * (h / 100))
             thirdMetricTitleLabel?.text = "BMI"
             ageValueLabel?.text = String(format: "%.1f", bmi)
         } else {
-            thirdMetricTitleLabel?.text = "גיל"
-            ageValueLabel?.text = "— שנה"
+            thirdMetricTitleLabel?.text = "profile.age".localized
+            ageValueLabel?.text = "— \("unit.years".localized)"
         }
     }
 
@@ -687,8 +810,8 @@ final class ProfileViewController: UIViewController {
             try Auth.auth().signOut()
             (view.window?.windowScene?.delegate as? SceneDelegate)?.showLogin()
         } catch {
-            let alert = UIAlertController(title: "שגיאה", message: error.localizedDescription, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "אישור", style: .default))
+            let alert = UIAlertController(title: "error".localized, message: error.localizedDescription, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
             present(alert, animated: true)
         }
     }
@@ -740,8 +863,8 @@ private extension ProfileViewController {
                     ProfileFirestoreSync.savePhotoURL(url) { _ in }
                     self?.applyProfilePhoto(url: url)
                 case .failure(let err):
-                    let alert = UIAlertController(title: "שגיאה", message: err.localizedDescription, preferredStyle: .alert)
-                    alert.addAction(UIAlertAction(title: "אישור", style: .default))
+                    let alert = UIAlertController(title: "error".localized, message: err.localizedDescription, preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
                     self?.present(alert, animated: true)
                 }
             }

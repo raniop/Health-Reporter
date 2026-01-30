@@ -38,9 +38,9 @@ final class TrendsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "מגמות"
+        title = "trends.title".localized
         view.backgroundColor = AIONDesign.background
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupTimeframe()
         setupInsightCard()
         setupCorrelationCard()
@@ -108,21 +108,21 @@ final class TrendsViewController: UIViewController {
         pro.text = "PRO-LAB INSIGHT"
         pro.font = .systemFont(ofSize: 11, weight: .bold)
         pro.textColor = AIONDesign.accentPrimary
-        pro.textAlignment = .right
+        pro.textAlignment = .center
 
         let main = UILabel()
-        main.text = "טוען נתונים ביומטריים…"
+        main.text = "trends.loadingBiometrics".localized
         main.font = .systemFont(ofSize: 17, weight: .bold)
         main.textColor = AIONDesign.textPrimary
-        main.textAlignment = .right
+        main.textAlignment = .center
         main.numberOfLines = 0
         insightMainLabel = main
 
         let sub = UILabel()
-        sub.text = "מבוסס על נתונים ביומטריים מהתקופה הנבחרת."
+        sub.text = "trends.basedOnPeriod".localized
         sub.font = .systemFont(ofSize: 13, weight: .regular)
         sub.textColor = AIONDesign.textSecondary
-        sub.textAlignment = .right
+        sub.textAlignment = .center
         sub.numberOfLines = 0
 
         [pro, main, sub].forEach { $0.translatesAutoresizingMaskIntoConstraints = false }
@@ -149,8 +149,8 @@ final class TrendsViewController: UIViewController {
     }
 
     @objc private func cardInfoTapped(_ sender: CardInfoButton) {
-        let alert = UIAlertController(title: "הסבר", message: sender.explanation, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "הבנתי", style: .default))
+        let alert = UIAlertController(title: "dashboard.explanation".localized, message: sender.explanation, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "understand".localized, style: .default))
         present(alert, animated: true)
     }
 
@@ -160,22 +160,22 @@ final class TrendsViewController: UIViewController {
         correlationCard.translatesAutoresizingMaskIntoConstraints = false
 
         let title = UILabel()
-        title.text = "יעילות קורלציה"
+        title.text = "trends.correlationEfficiency".localized
         title.font = .systemFont(ofSize: 15, weight: .semibold)
         title.textColor = AIONDesign.textPrimary
-        title.textAlignment = .right
+        title.textAlignment = .center
 
         let val = UILabel()
         val.text = "—"
         val.font = .systemFont(ofSize: 28, weight: .bold)
         val.textColor = AIONDesign.accentPrimary
-        val.textAlignment = .right
+        val.textAlignment = .center
 
         let imp = UILabel()
         imp.text = ""
         imp.font = .systemFont(ofSize: 13, weight: .medium)
         imp.textColor = AIONDesign.accentSuccess
-        imp.textAlignment = .right
+        imp.textAlignment = .center
 
         correlationValLabel = val
         correlationImpLabel = imp
@@ -227,8 +227,8 @@ final class TrendsViewController: UIViewController {
         statsRow.distribution = .fillEqually
         statsRow.translatesAutoresizingMaskIntoConstraints = false
 
-        let (p, pLbl) = makeStatCard(title: "P-VALUE", value: "—", explanation: CardExplanations.pValue)
-        let (s, sLbl) = makeStatCard(title: "גודל מדגם", value: "—", explanation: CardExplanations.sampleSize)
+        let (p, pLbl) = makeStatCard(title: "trends.pValue".localized, value: "—", explanation: CardExplanations.pValue)
+        let (s, sLbl) = makeStatCard(title: "trends.sampleSize".localized, value: "—", explanation: CardExplanations.sampleSize)
         pValueLabel = pLbl
         sampleSizeLabel = sLbl
         statsRow.addArrangedSubview(p)
@@ -240,9 +240,9 @@ final class TrendsViewController: UIViewController {
         biometricsRow.spacing = AIONDesign.spacing
         biometricsRow.distribution = .fillEqually
         biometricsRow.translatesAutoresizingMaskIntoConstraints = false
-        let (c1, l1) = makeBioCard("AVG HRV", value: "— ms", icon: "heart.fill")
-        let (c2, l2) = makeBioCard("עומס", value: "—", icon: "bolt.fill")
-        let (c3, l3) = makeBioCard("דופק מנוחה", value: "— bpm", icon: "waveform.path.ecg")
+        let (c1, l1) = makeBioCard("trends.avgHrv".localized, value: "— ms", icon: "heart.fill")
+        let (c2, l2) = makeBioCard("trends.strain".localized, value: "—", icon: "bolt.fill")
+        let (c3, l3) = makeBioCard("trends.restingHR".localized, value: "— bpm", icon: "waveform.path.ecg")
         bioHrvLabel = l1
         bioStrainLabel = l2
         bioRhrLabel = l3
@@ -255,8 +255,8 @@ final class TrendsViewController: UIViewController {
         activityRow.spacing = AIONDesign.spacing
         activityRow.distribution = .fillEqually
         activityRow.translatesAutoresizingMaskIntoConstraints = false
-        let (c1, l1) = makeBioCard("צעדים", value: "—", icon: "figure.walk", color: .systemOrange, explanation: CardExplanations.activitySteps)
-        let (c2, l2) = makeBioCard("דקות אימון", value: "— דק׳", icon: "flame.fill", color: .systemGreen, explanation: CardExplanations.activityExercise)
+        let (c1, l1) = makeBioCard("trends.steps".localized, value: "—", icon: "figure.walk", color: .systemOrange, explanation: CardExplanations.activitySteps)
+        let (c2, l2) = makeBioCard("trends.exerciseMinutes".localized, value: "— \("activity.min".localized)", icon: "flame.fill", color: .systemGreen, explanation: CardExplanations.activityExercise)
         bioStepsLabel = l1
         bioExerciseLabel = l2
         [c1, c2].forEach { activityRow.addArrangedSubview($0) }
@@ -310,12 +310,12 @@ final class TrendsViewController: UIViewController {
         focusStack.spacing = AIONDesign.spacing
         focusStack.translatesAutoresizingMaskIntoConstraints = false
         let header = UILabel()
-        header.text = "מוקדי התמקדות"
+        header.text = "trends.focusAreas".localized
         header.font = .systemFont(ofSize: 12, weight: .bold)
         header.textColor = AIONDesign.accentPrimary
-        header.textAlignment = .right
-        let (f1, l1) = makeFocusRow(icon: "moon.fill", text: "עקביות שינה — הישאר עם חלון שינה צר ל recovery טוב יותר.")
-        let (f2, l2) = makeFocusRow(icon: "arrow.up.forward", text: "הזדמנות VO2 — אינטרוולים באינטנסיביות גבוהה מומלצים השבוע.")
+        header.textAlignment = LocalizationManager.shared.textAlignment
+        let (f1, l1) = makeFocusRow(icon: "moon.fill", text: "trends.sleepConsistency".localized)
+        let (f2, l2) = makeFocusRow(icon: "arrow.up.forward", text: "trends.vo2Opportunity".localized)
         focus1Label = l1
         focus2Label = l2
         focusStack.addArrangedSubview(header)
@@ -334,7 +334,7 @@ final class TrendsViewController: UIViewController {
         l.text = text
         l.font = .systemFont(ofSize: 14, weight: .regular)
         l.textColor = AIONDesign.textPrimary
-        l.textAlignment = .right
+        l.textAlignment = LocalizationManager.shared.textAlignment
         l.numberOfLines = 0
         [iv, l].forEach { $0.translatesAutoresizingMaskIntoConstraints = false }
         row.addSubview(iv)
@@ -396,7 +396,7 @@ final class TrendsViewController: UIViewController {
         l.text = text
         l.font = .systemFont(ofSize: 11, weight: .bold)
         l.textColor = AIONDesign.accentPrimary
-        l.textAlignment = .right
+        l.textAlignment = LocalizationManager.shared.textAlignment
         return l
     }
 
@@ -414,9 +414,9 @@ final class TrendsViewController: UIViewController {
         stack.addArrangedSubview(insightCard)
         stack.addArrangedSubview(correlationCard)
         stack.addArrangedSubview(statsRow)
-        stack.addArrangedSubview(sectionHeader("ביו-טרנדים"))
+        stack.addArrangedSubview(sectionHeader("trends.bioTrends".localized))
         stack.addArrangedSubview(biometricsRow)
-        stack.addArrangedSubview(sectionHeader("פעילות"))
+        stack.addArrangedSubview(sectionHeader("trends.activity".localized))
         stack.addArrangedSubview(activityRow)
         stack.addArrangedSubview(focusStack)
 
@@ -490,9 +490,9 @@ final class TrendsViewController: UIViewController {
 
         // Format exercise minutes
         if exerciseMinutes > 0 {
-            bioExerciseLabel?.text = String(format: "%.0f דק׳", exerciseMinutes)
+            bioExerciseLabel?.text = String(format: "%.0f \("activity.min".localized)", exerciseMinutes)
         } else {
-            bioExerciseLabel?.text = "— דק׳"
+            bioExerciseLabel?.text = "— \("activity.min".localized)"
         }
     }
 
@@ -502,7 +502,7 @@ final class TrendsViewController: UIViewController {
             correlationImpLabel?.text = ""
             pValueLabel?.text = "—"
             sampleSizeLabel?.text = "—"
-            insightMainLabel?.text = "אין נתונים ביומטריים זמינים עדיין."
+            insightMainLabel?.text = "trends.noBiometricData".localized
             return
         }
         let r = b.readiness.points
@@ -512,7 +512,7 @@ final class TrendsViewController: UIViewController {
         // חישוב קורלציה בסיסית בין recovery ל-strain
         guard sampleCount >= 3 else {
             correlationValLabel?.text = "—"
-            correlationImpLabel?.text = "נדרשים לפחות 3 ימי נתונים"
+            correlationImpLabel?.text = "trends.need3Days".localized
             pValueLabel?.text = "—"
             return
         }
@@ -532,7 +532,7 @@ final class TrendsViewController: UIViewController {
         if den > 0 {
             let corr = num / den
             correlationValLabel?.text = String(format: "%.2f", corr)
-            correlationImpLabel?.text = corr > 0 ? "קורלציה חיובית" : (corr < -0.3 ? "קורלציה שלילית" : "")
+            correlationImpLabel?.text = corr > 0 ? "trends.positiveCorrelation".localized : (corr < -0.3 ? "trends.negativeCorrelation".localized : "")
             // P-value approximation (t-test for Pearson r)
             let t = corr * sqrt(Double(sampleCount - 2) / (1 - corr * corr))
             let abst = abs(t)
@@ -549,7 +549,7 @@ final class TrendsViewController: UIViewController {
 
     private func updateInsightFromBundle(_ bundle: AIONChartDataBundle?) {
         guard let b = bundle, b.hasRealData else {
-            insightMainLabel?.text = "אין נתונים ביומטריים זמינים עדיין."
+            insightMainLabel?.text = "trends.noBiometricData".localized
             return
         }
         let sleep = b.sleep.points
@@ -559,9 +559,9 @@ final class TrendsViewController: UIViewController {
             let last = r[r.count - 1].recovery
             let prev = r[r.count - 2].recovery
             let delta = prev > 0 ? Int(round((last - prev) / prev * 100)) : 0
-            insightMainLabel?.text = "שינה \(String(format: "%.0f", h))h+ מעלה את ההתאוששות ב־\(delta)%"
+            insightMainLabel?.text = String(format: "trends.sleepBoostsRecovery".localized, String(format: "%.0f", h), delta)
         } else {
-            insightMainLabel?.text = "מבוסס על נתונים ביומטריים מ־\(n) הימים האחרונים."
+            insightMainLabel?.text = String(format: "trends.basedOnDays".localized, n)
         }
     }
 
@@ -570,8 +570,8 @@ final class TrendsViewController: UIViewController {
             bioHrvLabel?.text = "— ms"
             bioStrainLabel?.text = "—"
             bioRhrLabel?.text = "— bpm"
-            focus1Label?.text = "אין נתונים זמינים. חבר את Apple Health."
-            focus2Label?.text = "נתוני שינה ופעילות יאפשרו תובנות מדויקות."
+            focus1Label?.text = "trends.noDataConnect".localized
+            focus2Label?.text = "trends.sleepActivityData".localized
             return
         }
         let hrv = b.hrvTrend.points
@@ -587,14 +587,14 @@ final class TrendsViewController: UIViewController {
         let sleep = b.sleep.points
         if sleep.count >= 2, let a = sleep.last?.totalHours, let b0 = sleep.dropLast().last?.totalHours, a > 0, b0 > 0 {
             let diff = abs(a - b0) * 60
-            focus1Label?.text = "עקביות שינה — הפער בין הלילות האחרונים כ־\(Int(diff)) דק׳. מטרה: פחות מ־20 דק׳."
+            focus1Label?.text = String(format: "trends.sleepGap".localized, Int(diff))
         } else {
-            focus1Label?.text = "עקביות שינה — הישאר עם חלון שינה צר להתאוששות טובה יותר."
+            focus1Label?.text = "trends.sleepConsistency".localized
         }
         if let last = b.readiness.points.last, last.recovery >= 75 {
-            focus2Label?.text = "התאוששות טובה — ניתן להוסיף עומס מתון השבוע."
+            focus2Label?.text = "trends.goodRecovery".localized
         } else {
-            focus2Label?.text = "הזדמנות אימון — אינטרוולים באינטנסיביות גבוהה מומלצים כשההתאוששות תעלה."
+            focus2Label?.text = "trends.trainingOpportunity".localized
         }
     }
 }

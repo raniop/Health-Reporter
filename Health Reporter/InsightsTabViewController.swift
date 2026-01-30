@@ -67,7 +67,7 @@ final class InsightsTabViewController: UIViewController {
         v.translatesAutoresizingMaskIntoConstraints = false
         v.showsVerticalScrollIndicator = false
         v.alwaysBounceVertical = true
-        v.semanticContentAttribute = .forceRightToLeft
+        v.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         return v
     }()
 
@@ -76,7 +76,7 @@ final class InsightsTabViewController: UIViewController {
         s.axis = .vertical
         s.spacing = 16
         s.alignment = .fill
-        s.semanticContentAttribute = .forceRightToLeft
+        s.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
     }()
@@ -98,7 +98,7 @@ final class InsightsTabViewController: UIViewController {
 
     private let loadingLabel: UILabel = {
         let l = UILabel()
-        l.text = "מנתח נתונים..."
+        l.text = "insights.analyzingData".localized
         l.font = .systemFont(ofSize: 16, weight: .medium)
         l.textColor = AIONDesign.textSecondary
         l.textAlignment = .center
@@ -141,9 +141,9 @@ final class InsightsTabViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "תובנות"
+        title = "insights.title".localized
         view.backgroundColor = bgColor
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupUI()
         setupRefreshButton()
@@ -260,12 +260,12 @@ final class InsightsTabViewController: UIViewController {
 
     private func showNoSignificantChangeAlert() {
         let alert = UIAlertController(
-            title: "אין שינוי משמעותי",
-            message: "הנתונים שלך לא השתנו מספיק כדי להצדיק ניתוח חדש. הניתוח יתעדכן אוטומטית כשיהיה שינוי משמעותי ב-HRV, שינה או פעילות.",
+            title: "insights.noSignificantChange".localized,
+            message: "insights.noSignificantChangeMsg".localized,
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "הבנתי", style: .default))
-        alert.addAction(UIAlertAction(title: "רענן בכל זאת", style: .destructive) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: "understand".localized, style: .default))
+        alert.addAction(UIAlertAction(title: "insights.refreshAnyway".localized, style: .destructive) { [weak self] _ in
             self?.forceRefresh()
         })
         present(alert, animated: true)
@@ -383,21 +383,21 @@ final class InsightsTabViewController: UIViewController {
         sparkle.font = .systemFont(ofSize: 28)
 
         let title = UILabel()
-        title.text = "תובנות AION"
+        title.text = "insights.aionInsights".localized
         title.font = .systemFont(ofSize: 22, weight: .bold)
         title.textColor = textWhite
 
         let subtitle = UILabel()
-        subtitle.text = "ניתוח ביומטרי מבוסס נתונים"
+        subtitle.text = "insights.biometricAnalysis".localized
         subtitle.font = .systemFont(ofSize: 13, weight: .regular)
         subtitle.textColor = textGray
 
         let dateLabel = UILabel()
         if let d = AnalysisCache.lastUpdateDate() {
             let f = DateFormatter()
-            f.locale = Locale(identifier: "he_IL")
-            f.dateFormat = "d בMMMM yyyy"
-            dateLabel.text = "עדכון אחרון: \(f.string(from: d))"
+            f.locale = Locale(identifier: LocalizationManager.shared.currentLanguage == .hebrew ? "he_IL" : "en_US")
+            f.dateFormat = LocalizationManager.shared.currentLanguage == .hebrew ? "d בMMMM yyyy" : "MMMM d, yyyy"
+            dateLabel.text = "\("insights.lastUpdate".localized): \(f.string(from: d))"
         }
         dateLabel.font = .systemFont(ofSize: 12, weight: .regular)
         dateLabel.textColor = textDarkGray
@@ -461,20 +461,20 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         print("=== INSIGHTS: Using saved car: \(carName) ===")
     } else {
         // No car at all - show placeholder
-        carName = "ממתין לניתוח..."
+        carName = "insights.waitingForAnalysis".localized
         wikiName = ""
-        explanation = "הרכב שלך ייבחר לאחר ניתוח ראשון של הנתונים"
+        explanation = "insights.carSelectedAfter".localized
         print("=== INSIGHTS: No car available, showing placeholder ===")
     }
 
     // Determine status based on score
     let status: String
     switch score {
-    case 80...100: status = "שיא ביצועים"
-    case 65..<80: status = "מצוין"
-    case 45..<65: status = "מצב טוב"
-    case 25..<45: status = "בסדר"
-    default: status = "צריך טיפול"
+    case 80...100: status = "insights.peakPerformance".localized
+    case 65..<80: status = "insights.excellent".localized
+    case 45..<65: status = "insights.goodCondition".localized
+    case 25..<45: status = "insights.okay".localized
+    default: status = "insights.needsAttention".localized
     }
 
     // Determine color based on score
@@ -590,7 +590,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     progressBar.translatesAutoresizingMaskIntoConstraints = false
 
     // Explanation
-    let rawExplanation = explanation.isEmpty ? "הרכב נבחר על סמך ניתוח נתוני הבריאות שלך." : explanation
+    let rawExplanation = explanation.isEmpty ? "insights.carSelectedBased".localized : explanation
     let explanationText = cleanExplanationText(rawExplanation, carName: carName)
 
     let explanationLabel = UILabel()
@@ -614,7 +614,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     buttonsStack.distribution = .fillEqually
     buttonsStack.translatesAutoresizingMaskIntoConstraints = false
 
-    let refreshButton = createActionButton(title: "🔄 בדוק שוב", action: #selector(rediscoverTapped))
+    let refreshButton = createActionButton(title: "🔄 " + "insights.checkAgain".localized, action: #selector(rediscoverTapped))
     buttonsStack.addArrangedSubview(refreshButton)
 
     // Header row: score + badge
@@ -883,15 +883,15 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     private func getStatusInfo(score: Int) -> (text: String, color: UIColor, emoji: String) {
         switch score {
         case 80...100:
-            return ("מצב מעולה", accentGreen, "🏎️")
+            return ("insights.greatCondition".localized, accentGreen, "🏎️")
         case 65..<80:
-            return ("מצב טוב", accentCyan, "🚙")
+            return ("insights.goodCondition".localized, accentCyan, "🚙")
         case 50..<65:
-            return ("מצב בינוני", accentOrange, "🚗")
+            return ("insights.mediumCondition".localized, accentOrange, "🚗")
         case 35..<50:
-            return ("צריך טיפול", accentOrange, "🚕")
+            return ("insights.needsCare".localized, accentOrange, "🚕")
         default:
-            return ("דורש תשומת לב", accentRed, "🛻")
+            return ("insights.requiresAttention".localized, accentRed, "🛻")
         }
     }
 
@@ -1012,7 +1012,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     // MARK: - Weekly Data Grid (4 boxes)
 
     private func addWeeklyDataGrid(parsed: CarAnalysisResponse) {
-        let header = makeSectionHeader("נתוני השבוע", icon: nil, color: accentCyan)
+        let header = makeSectionHeader("insights.weeklyData".localized, icon: nil, color: accentCyan)
         stack.addArrangedSubview(header)
 
         // Grid container
@@ -1066,17 +1066,17 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         let sleepBox = makeDataBox(
             icon: "bed.double.fill",
-            title: "שינה",
+            title: "insights.sleep".localized,
             value: sleepValue,
             color: accentCyan,
-            explanation: "ממוצע שעות שינה בשבוע האחרון. 7-9 שעות נחשב אופטימלי להתאוששות."
+            explanation: "insights.sleepExplanation".localized
         )
         let readinessBox = makeDataBox(
             icon: "bolt.fill",
-            title: "מוכנות",
+            title: "insights.readiness".localized,
             value: readinessValue,
             color: accentCyan,
-            explanation: "ציון המוכנות שלך לאימון (0-100). מבוסס על שינה, HRV ועומס קודם."
+            explanation: "insights.readinessExplanation".localized
         )
 
         row1.addArrangedSubview(sleepBox)
@@ -1090,17 +1090,17 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         let strainBox = makeDataBox(
             icon: "flame.fill",
-            title: "עומס",
+            title: "insights.strain".localized,
             value: strainValue,
             color: accentOrange,
-            explanation: "רמת העומס הפיזי השבועי (0-10). עומס מאוזן הוא 2-5."
+            explanation: "insights.strainExplanation".localized
         )
         let hrvBox = makeDataBox(
             icon: "waveform.path.ecg",
             title: "HRV",
             value: hrvValue,
             color: accentCyan,
-            explanation: "שונות קצב הלב (Heart Rate Variability). ערך גבוה יותר מצביע על יכולת התאוששות טובה יותר."
+            explanation: "insights.hrvExplanation".localized
         )
 
         row2.addArrangedSubview(strainBox)
@@ -1117,23 +1117,23 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         let startDate = Calendar.current.date(byAdding: .day, value: -7, to: endDate) ?? endDate
 
         // Steps value - will be updated async
-        let stepsValue = "טוען..."
-        let exerciseValue = "טוען..."
+        let stepsValue = "insights.loadingValue".localized
+        let exerciseValue = "insights.loadingValue".localized
 
         let stepsBox = makeDataBox(
             icon: "figure.walk",
-            title: "צעדים",
+            title: "insights.steps".localized,
             value: stepsValue,
             color: accentOrange,
-            explanation: "סה״כ צעדים בשבוע האחרון. מומלץ לשאוף ל-10,000 צעדים ביום."
+            explanation: "insights.stepsExplanation".localized
         )
 
         let exerciseBox = makeDataBox(
             icon: "flame.fill",
-            title: "דקות אימון",
+            title: "insights.exerciseMinutes".localized,
             value: exerciseValue,
             color: accentGreen,
-            explanation: "דקות פעילות גופנית בעצימות בינונית-גבוהה. מומלץ 150+ דקות בשבוע."
+            explanation: "insights.exerciseExplanation".localized
         )
 
         row3.addArrangedSubview(stepsBox)
@@ -1259,15 +1259,15 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         guard hasContent else { return }
 
-        let header = makeSectionHeader("תובנות AI", icon: nil, color: accentCyan)
+        let header = makeSectionHeader("insights.aiInsights".localized, icon: nil, color: accentCyan)
         stack.addArrangedSubview(header)
 
         let items: [(emoji: String, title: String, content: String, color: UIColor)] = [
-            ("🔥", "מנוע", parsed.engine, accentOrange),
-            ("⚙️", "תיבת הילוכים", parsed.transmission, accentPurple),
-            ("🛞", "מתלים", parsed.suspension, accentGreen),
-            ("⛽", "יעילות דלק", parsed.fuelEfficiency, accentCyan),
-            ("🧠", "אלקטרוניקה", parsed.electronics, accentBlue),
+            ("🔥", "insights.engine".localized, parsed.engine, accentOrange),
+            ("⚙️", "insights.transmission".localized, parsed.transmission, accentPurple),
+            ("🛞", "insights.suspension".localized, parsed.suspension, accentGreen),
+            ("⛽", "insights.fuelEfficiency".localized, parsed.fuelEfficiency, accentCyan),
+            ("🧠", "insights.electronics".localized, parsed.electronics, accentBlue),
         ]
 
         for item in items {
@@ -1309,7 +1309,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         contentTextView.isScrollEnabled = false
         contentTextView.textContainerInset = .zero
         contentTextView.textContainer.lineFragmentPadding = 0
-        contentTextView.semanticContentAttribute = .forceRightToLeft
+        contentTextView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         contentTextView.translatesAutoresizingMaskIntoConstraints = false
 
         card.addSubview(emojiLabel)
@@ -1388,7 +1388,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         icon.translatesAutoresizingMaskIntoConstraints = false
 
         let title = UILabel()
-        title.text = "מה מגביל את הביצועים?"
+        title.text = "insights.whatLimitsPerformance".localized
         title.font = .systemFont(ofSize: 16, weight: .bold)
         title.textColor = accentOrange
         title.textAlignment = .right
@@ -1442,7 +1442,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         row.axis = .horizontal
         row.spacing = 10
         row.alignment = .top
-        row.semanticContentAttribute = .forceRightToLeft
+        row.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         let bullet = UILabel()
         bullet.text = "•"
@@ -1460,7 +1460,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         textView.isScrollEnabled = false
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
-        textView.semanticContentAttribute = .forceRightToLeft
+        textView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         row.addArrangedSubview(bullet)
         row.addArrangedSubview(textView)
@@ -1473,7 +1473,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     private func addOptimizationCard(parsed: CarAnalysisResponse) {
         guard !parsed.upgrades.isEmpty || !parsed.skippedMaintenance.isEmpty || !parsed.stopImmediately.isEmpty else { return }
 
-        let header = makeSectionHeader("תוכנית אופטימיזציה", icon: "wrench.and.screwdriver.fill", color: accentGreen)
+        let header = makeSectionHeader("insights.optimizationPlan".localized, icon: "wrench.and.screwdriver.fill", color: accentGreen)
         stack.addArrangedSubview(header)
 
         let card = UIView()
@@ -1488,7 +1488,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         innerStack.translatesAutoresizingMaskIntoConstraints = false
 
         if !parsed.upgrades.isEmpty {
-            let subHeader = makeSubHeader("שדרוגים מומלצים", color: accentGreen)
+            let subHeader = makeSubHeader("insights.recommendedUpgrades".localized, color: accentGreen)
             innerStack.addArrangedSubview(subHeader)
             for item in parsed.upgrades {
                 let row = makeCheckRow(text: item, color: accentGreen)
@@ -1497,7 +1497,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         }
 
         if !parsed.skippedMaintenance.isEmpty {
-            let subHeader = makeSubHeader("טיפול שמדלגים עליו", color: accentOrange)
+            let subHeader = makeSubHeader("insights.skippedMaintenance".localized, color: accentOrange)
             innerStack.addArrangedSubview(subHeader)
             for item in parsed.skippedMaintenance {
                 let row = makeCheckRow(text: item, color: accentOrange)
@@ -1506,7 +1506,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         }
 
         if !parsed.stopImmediately.isEmpty {
-            let subHeader = makeSubHeader("להפסיק מיד", color: accentRed)
+            let subHeader = makeSubHeader("insights.stopImmediately".localized, color: accentRed)
             innerStack.addArrangedSubview(subHeader)
             for item in parsed.stopImmediately {
                 let row = makeCheckRow(text: item, color: accentRed)
@@ -1530,7 +1530,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         row.axis = .horizontal
         row.spacing = 10
         row.alignment = .top
-        row.semanticContentAttribute = .forceRightToLeft
+        row.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         let checkIcon = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
         checkIcon.tintColor = color
@@ -1547,7 +1547,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         textView.isScrollEnabled = false
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
-        textView.semanticContentAttribute = .forceRightToLeft
+        textView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         row.addArrangedSubview(checkIcon)
         row.addArrangedSubview(textView)
@@ -1570,7 +1570,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         guard hasContent else { return }
 
-        let header = makeSectionHeader("תוכנית כוונון 30-60 יום", icon: "calendar.badge.clock", color: accentPurple)
+        let header = makeSectionHeader("insights.tuningPlan".localized, icon: "calendar.badge.clock", color: accentPurple)
         stack.addArrangedSubview(header)
 
         let card = UIView()
@@ -1585,22 +1585,22 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         innerStack.translatesAutoresizingMaskIntoConstraints = false
 
         if !parsed.trainingAdjustments.isEmpty {
-            let row = makeTuneUpRow(emoji: "🏃", title: "התאמות אימון", content: parsed.trainingAdjustments)
+            let row = makeTuneUpRow(emoji: "🏃", title: "insights.trainingAdjustments".localized, content: parsed.trainingAdjustments)
             innerStack.addArrangedSubview(row)
         }
 
         if !parsed.recoveryChanges.isEmpty {
-            let row = makeTuneUpRow(emoji: "😴", title: "התאוששות ושינה", content: parsed.recoveryChanges)
+            let row = makeTuneUpRow(emoji: "😴", title: "insights.recoveryAndSleep".localized, content: parsed.recoveryChanges)
             innerStack.addArrangedSubview(row)
         }
 
         if !parsed.habitToAdd.isEmpty {
-            let row = makeTuneUpRow(emoji: "➕", title: "הרגל להוסיף", content: parsed.habitToAdd)
+            let row = makeTuneUpRow(emoji: "➕", title: "insights.habitToAdd".localized, content: parsed.habitToAdd)
             innerStack.addArrangedSubview(row)
         }
 
         if !parsed.habitToRemove.isEmpty {
-            let row = makeTuneUpRow(emoji: "➖", title: "הרגל להסיר", content: parsed.habitToRemove)
+            let row = makeTuneUpRow(emoji: "➖", title: "insights.habitToRemove".localized, content: parsed.habitToRemove)
             innerStack.addArrangedSubview(row)
         }
 
@@ -1643,7 +1643,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         contentTextView.isScrollEnabled = false
         contentTextView.textContainerInset = .zero
         contentTextView.textContainer.lineFragmentPadding = 0
-        contentTextView.semanticContentAttribute = .forceRightToLeft
+        contentTextView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         contentTextView.translatesAutoresizingMaskIntoConstraints = false
 
         container.addSubview(emojiLabel)
@@ -1695,7 +1695,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         // כותרת
         let titleLabel = UILabel()
-        titleLabel.text = "המלצות תזונה ותוספים"
+        titleLabel.text = "insights.nutritionRecommendations".localized
         titleLabel.font = .systemFont(ofSize: 17, weight: .bold)
         titleLabel.textColor = textWhite
         titleLabel.textAlignment = .right
@@ -1703,7 +1703,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         // תיאור
         let subtitleLabel = UILabel()
-        subtitleLabel.text = "תוספים מומלצים מבוססי ניתוח הנתונים שלך"
+        subtitleLabel.text = "insights.recommendedSupplements".localized
         subtitleLabel.font = .systemFont(ofSize: 13, weight: .regular)
         subtitleLabel.textColor = textGray
         subtitleLabel.textAlignment = .right
@@ -1716,7 +1716,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         countBadge.translatesAutoresizingMaskIntoConstraints = false
 
         let countLabel = UILabel()
-        countLabel.text = "\(parsed.supplements.count) המלצות"
+        countLabel.text = "\(parsed.supplements.count) \("insights.recommendations".localized)"
         countLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         countLabel.textColor = accentGreen
         countLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -1796,7 +1796,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     private func addDirectivesCard(parsed: CarAnalysisResponse) {
         guard !parsed.directiveStop.isEmpty || !parsed.directiveStart.isEmpty || !parsed.directiveWatch.isEmpty else { return }
 
-        let header = makeSectionHeader("הנחיות פעולה", icon: "checklist", color: accentCyan)
+        let header = makeSectionHeader("insights.actionDirectives".localized, icon: "checklist", color: accentCyan)
         stack.addArrangedSubview(header)
 
         let card = UIView()
@@ -1857,7 +1857,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         contentTextView.isScrollEnabled = false
         contentTextView.textContainerInset = .zero
         contentTextView.textContainer.lineFragmentPadding = 0
-        contentTextView.semanticContentAttribute = .forceRightToLeft
+        contentTextView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         contentTextView.translatesAutoresizingMaskIntoConstraints = false
 
         container.addSubview(badge)
@@ -1881,7 +1881,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     private func addSummaryCard(parsed: CarAnalysisResponse) {
         guard !parsed.summary.isEmpty else { return }
 
-        let header = makeSectionHeader("מבט קדימה", icon: "crystal.ball", color: accentCyan)
+        let header = makeSectionHeader("insights.lookingAhead".localized, icon: "crystal.ball", color: accentCyan)
         stack.addArrangedSubview(header)
 
         let card = UIView()
@@ -1977,7 +1977,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         // כותרת
         let titleLabel = UILabel()
-        titleLabel.text = "יש לך רכב חדש!"
+        titleLabel.text = "insights.newCarTitle".localized
         titleLabel.font = .systemFont(ofSize: 26, weight: .bold)
         titleLabel.textColor = textWhite
         titleLabel.textAlignment = .center
@@ -1987,9 +1987,9 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         // תת-כותרת עם הרכב הקודם
         let subtitleLabel = UILabel()
         if let pending = AnalysisCache.getPendingCar(), !pending.previousName.isEmpty {
-            subtitleLabel.text = "הנתונים שלך השתנו משמעותית\nהגיע הזמן להחליף את ה-\(pending.previousName)"
+            subtitleLabel.text = "\("insights.dataChangedSignificantly".localized)\n\(String(format: "insights.timeToReplace".localized, pending.previousName))"
         } else {
-            subtitleLabel.text = "הנתונים שלך השתנו משמעותית\nהגיע הזמן לגלות את הרכב המעודכן"
+            subtitleLabel.text = "\("insights.dataChangedSignificantly".localized)\n\("insights.timeToDiscover".localized)"
         }
         subtitleLabel.font = .systemFont(ofSize: 15, weight: .regular)
         subtitleLabel.textColor = textGray
@@ -2012,7 +2012,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         buttonGradient.cornerRadius = 28
 
         ctaButton.layer.insertSublayer(buttonGradient, at: 0)
-        ctaButton.setTitle("🎁  גלה את הרכב החדש", for: .normal)
+        ctaButton.setTitle("🎁  " + "insights.discoverNewCar".localized, for: .normal)
         ctaButton.setTitleColor(.black, for: .normal)
         ctaButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .bold)
         ctaButton.layer.cornerRadius = 28
@@ -2134,7 +2134,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         // טקסט סטטוס
         let statusLabel = UILabel()
-        statusLabel.text = "מכין את הרכב החדש..."
+        statusLabel.text = "insights.preparingNewCar".localized
         statusLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         statusLabel.textColor = textWhite
         statusLabel.textAlignment = .center
@@ -2181,7 +2181,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             iconLabel.text = "🎉"
             iconLabel.layer.removeAnimation(forKey: "rotation")
-            statusLabel.text = "מוכן!"
+            statusLabel.text = "insights.ready".localized
             progressBar.animateProgress(to: 1.0, duration: 0.5)
         }
 
@@ -2342,7 +2342,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         // כותרת
         let titleLabel = UILabel()
-        titleLabel.text = "מוכן לגלות איזה רכב אתה?"
+        titleLabel.text = "insights.readyToDiscover".localized
         titleLabel.font = .systemFont(ofSize: 24, weight: .bold)
         titleLabel.textColor = textWhite
         titleLabel.textAlignment = .center
@@ -2351,7 +2351,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         // תת-כותרת
         let subtitleLabel = UILabel()
-        subtitleLabel.text = "על סמך נתוני הבריאות שלך,\nנגלה איזה רכב מייצג אותך הכי טוב"
+        subtitleLabel.text = "insights.basedOnYourData".localized
         subtitleLabel.font = .systemFont(ofSize: 15, weight: .regular)
         subtitleLabel.textColor = textGray
         subtitleLabel.textAlignment = .center
@@ -2373,7 +2373,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         buttonGradient.cornerRadius = 28
 
         ctaButton.layer.insertSublayer(buttonGradient, at: 0)
-        ctaButton.setTitle("🔮  גלה את הרכב שלי", for: .normal)
+        ctaButton.setTitle("🔮  " + "insights.discoverCar".localized, for: .normal)
         ctaButton.setTitleColor(.white, for: .normal)
         ctaButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .bold)
         ctaButton.layer.cornerRadius = 28
@@ -2493,7 +2493,7 @@ private func showDiscoveryLoadingAnimation() {
 
     // טקסט סטטוס
     let statusLabel = UILabel()
-    statusLabel.text = "סורק נתוני בריאות..."
+    statusLabel.text = "insights.scanningHealthData".localized
     statusLabel.font = .systemFont(ofSize: 18, weight: .semibold)
     statusLabel.textColor = textWhite
     statusLabel.textAlignment = .center
@@ -2534,14 +2534,14 @@ private func showDiscoveryLoadingAnimation() {
     // שלב 2: מנתח (2 שניות)
     DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
         iconLabel.text = "🧠"
-        statusLabel.text = "מנתח ביצועים..."
+        statusLabel.text = "insights.analyzingPerformance".localized
         progressBar.animateProgress(to: 0.6, duration: 1.8)
     }
 
     // שלב 3: מוצא התאמה (2 שניות)
     DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
         iconLabel.text = "🎯"
-        statusLabel.text = "מוצא את הרכב המושלם..."
+        statusLabel.text = "insights.findingPerfectCar".localized
         progressBar.animateProgress(to: 0.9, duration: 1.5)
     }
 
@@ -2635,18 +2635,18 @@ private func showDiscoveryLoadingAnimation() {
                 wikiName = savedCar.wikiName
                 explanation = savedCar.explanation
             } else {
-                carName = "ממתין לניתוח..."
+                carName = "insights.waitingForAnalysis".localized
                 wikiName = ""
-                explanation = "הרכב שלך ייבחר לאחר ניתוח ראשון של הנתונים"
+                explanation = "insights.carSelectedAfter".localized
             }
         } else if let savedCar = AnalysisCache.loadSelectedCar() {
             carName = savedCar.name
             wikiName = savedCar.wikiName
             explanation = savedCar.explanation
         } else {
-            carName = "ממתין לניתוח..."
+            carName = "insights.waitingForAnalysis".localized
             wikiName = ""
-            explanation = "הרכב שלך ייבחר לאחר ניתוח ראשון של הנתונים"
+            explanation = "insights.carSelectedAfter".localized
         }
 
         // Determine status and color based on score
@@ -2654,19 +2654,19 @@ private func showDiscoveryLoadingAnimation() {
         let tierColor: UIColor
         switch score {
         case 80...100:
-            status = "שיא ביצועים"
+            status = "insights.peakPerformance".localized
             tierColor = AIONDesign.accentSuccess
         case 65..<80:
-            status = "מצוין"
+            status = "insights.excellent".localized
             tierColor = AIONDesign.accentSecondary
         case 45..<65:
-            status = "מצב טוב"
+            status = "insights.goodCondition".localized
             tierColor = AIONDesign.accentPrimary
         case 25..<45:
-            status = "בסדר"
+            status = "insights.okay".localized
             tierColor = AIONDesign.accentWarning
         default:
-            status = "צריך טיפול"
+            status = "insights.needsAttention".localized
             tierColor = AIONDesign.accentDanger
         }
 
@@ -2756,7 +2756,7 @@ private func showDiscoveryLoadingAnimation() {
 
         // הסבר
         let explanationLabel = UILabel()
-        let rawExplanation = parsed?.carExplanation ?? "הרכב נבחר על סמך ניתוח נתוני הבריאות שלך."
+        let rawExplanation = parsed?.carExplanation ?? "insights.carSelectedBased".localized
         explanationLabel.text = cleanExplanationText(rawExplanation, carName: carName)
         explanationLabel.font = .systemFont(ofSize: 14, weight: .semibold)
         explanationLabel.textColor = .white
@@ -2774,8 +2774,8 @@ private func showDiscoveryLoadingAnimation() {
         buttonsStack.alpha = 0
         buttonsStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let refreshButton = createActionButton(title: "🔄 בדוק שוב", action: #selector(rediscoverTapped))
-        let detailsButton = createActionButton(title: "📊 פרטים", action: #selector(showDetailsTapped))
+        let refreshButton = createActionButton(title: "🔄 " + "insights.checkAgain".localized, action: #selector(rediscoverTapped))
+        let detailsButton = createActionButton(title: "📊 Details", action: #selector(showDetailsTapped))
 
         buttonsStack.addArrangedSubview(refreshButton)
         buttonsStack.addArrangedSubview(detailsButton)
@@ -2941,7 +2941,7 @@ private func showDiscoveryLoadingAnimation() {
     private func addRemainingContent(parsed: CarAnalysisResponse?) {
         guard let parsed = parsed else { return }
 
-        // הוספת כותרת "תובנות AION" מעל הכרטיס
+        // הוספת כותרת ""insights.aionInsights".localized" מעל הכרטיס
         insertHeaderAboveCard()
 
         // הוספת כל הקטעים הנוספים
@@ -2967,21 +2967,21 @@ private func showDiscoveryLoadingAnimation() {
         sparkle.font = .systemFont(ofSize: 28)
 
         let title = UILabel()
-        title.text = "תובנות AION"
+        title.text = "insights.aionInsights".localized
         title.font = .systemFont(ofSize: 22, weight: .bold)
         title.textColor = textWhite
 
         let subtitle = UILabel()
-        subtitle.text = "ניתוח ביומטרי מבוסס נתונים"
+        subtitle.text = "insights.biometricAnalysis".localized
         subtitle.font = .systemFont(ofSize: 13, weight: .regular)
         subtitle.textColor = textGray
 
         let dateLabel = UILabel()
         if let d = AnalysisCache.lastUpdateDate() {
             let f = DateFormatter()
-            f.locale = Locale(identifier: "he_IL")
-            f.dateFormat = "d בMMMM yyyy"
-            dateLabel.text = "עדכון אחרון: \(f.string(from: d))"
+            f.locale = Locale(identifier: LocalizationManager.shared.currentLanguage == .hebrew ? "he_IL" : "en_US")
+            f.dateFormat = LocalizationManager.shared.currentLanguage == .hebrew ? "d בMMMM yyyy" : "MMMM d, yyyy"
+            dateLabel.text = "\("insights.lastUpdate".localized): \(f.string(from: d))"
         }
         dateLabel.font = .systemFont(ofSize: 12, weight: .regular)
         dateLabel.textColor = textDarkGray
@@ -3062,13 +3062,13 @@ private func showDiscoveryLoadingAnimation() {
         icon.translatesAutoresizingMaskIntoConstraints = false
 
         let titleLabel = UILabel()
-        titleLabel.text = "אין עדיין ניתוח ביצועים"
+        titleLabel.text = "insights.noAnalysisYet".localized
         titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         titleLabel.textColor = textWhite
         titleLabel.textAlignment = .center
 
         let subtitleLabel = UILabel()
-        subtitleLabel.text = "לחץ על כפתור הרענון למעלה להתחיל"
+        subtitleLabel.text = "insights.pressRefreshToStart".localized
         subtitleLabel.font = .systemFont(ofSize: 14, weight: .regular)
         subtitleLabel.textColor = textGray
         subtitleLabel.textAlignment = .center
@@ -3100,7 +3100,7 @@ private func showDiscoveryLoadingAnimation() {
         container.axis = .horizontal
         container.spacing = 8
         container.alignment = .center
-        container.semanticContentAttribute = .forceRightToLeft
+        container.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         if let iconName = icon {
             let iconView = UIImageView(image: UIImage(systemName: iconName))

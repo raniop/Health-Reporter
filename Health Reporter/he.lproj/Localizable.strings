@@ -1,0 +1,509 @@
+/* Hebrew Localization - Health Reporter */
+
+/* Common */
+"ok" = "אישור";
+"cancel" = "ביטול";
+"error" = "שגיאה";
+"loading" = "טוען...";
+"save" = "שמור";
+"delete" = "מחק";
+"close" = "סגור";
+"done" = "סיום";
+"refresh" = "רענן";
+"retry" = "נסה שוב";
+"understand" = "הבנתי";
+"missingDetails" = "חסרים פרטים";
+
+/* Tab Bar */
+"tab.dashboard" = "דשבורד";
+"tab.trends" = "מגמות";
+"tab.activity" = "פעילות";
+"tab.insights" = "תובנות";
+"tab.profile" = "פרופיל";
+
+/* Login Screen */
+"login.title" = "התחבר כדי להמשיך";
+"login.enterDetails" = "הכנס פרטים";
+"login.email" = "אימייל";
+"login.password" = "סיסמה";
+"login.fullName" = "שם מלא";
+"login.signIn" = "התחבר";
+"login.signUp" = "הירשם";
+"login.noAccount" = "אין לך חשבון? הירשם";
+"login.hasAccount" = "יש לך חשבון? התחבר";
+"login.orSignInWithGoogle" = "או התחבר עם Google";
+"login.orSignInWithApple" = "או התחבר עם Apple";
+"login.signInWithGoogle" = "התחבר עם Google";
+"login.connecting" = "מתחבר...";
+"login.enterEmailPassword" = "נא להזין אימייל וסיסמה.";
+"login.enterFullName" = "נא להזין שם מלא.";
+"login.googleClientIdError" = "לא נמצא Client ID ל-Google. ודא ש-GoogleService-Info.plist מעודכן.";
+"login.appleError" = "לא ניתן לקבל מידע מ-Apple.";
+
+/* Profile Screen */
+"profile.title" = "פרופיל";
+"profile.logout" = "התנתק";
+"profile.logoutConfirm" = "האם אתה בטוח שברצונך להתנתק?";
+"profile.height" = "גובה";
+"profile.weight" = "משקל";
+"profile.age" = "גיל";
+"profile.bmi" = "BMI";
+"profile.language" = "שפה";
+"profile.dataSources" = "מקורות מידע";
+"profile.changeLanguage" = "שינוי שפה";
+"profile.languageChangeMessage" = "כדי שהשינוי ייכנס לתוקף, האפליקציה תיסגר ותיפתח מחדש.";
+"profile.backgroundColor" = "צבע רקע";
+"profile.user" = "משתמש";
+"profile.editName" = "עריכת שם";
+"profile.enterName" = "הזן את שמך";
+"profile.name" = "שם";
+"profile.selectUserType" = "בחר סוג משתמש";
+
+/* Dashboard */
+"dashboard.title" = "דשבורד";
+"dashboard.healthScore" = "ציון בריאות";
+"dashboard.todaySummary" = "סיכום היום";
+"dashboard.lastUpdate" = "עדכון אחרון";
+"dashboard.noData" = "אין נתונים";
+"dashboard.refreshing" = "מרענן...";
+"dashboard.reloadAllData" = "טוען מחדש את כל הנתונים...";
+"dashboard.analysisComplete" = "ניתוח הושלם";
+"dashboard.move" = "תנועה";
+"dashboard.exercise" = "אימון";
+"dashboard.stand" = "עמידה";
+
+/* Insights */
+"insights.title" = "תובנות";
+"insights.loading" = "טוען תובנות...";
+"insights.noInsights" = "אין תובנות זמינות";
+"insights.generateNew" = "צור תובנות חדשות";
+"insights.whyIChose" = "למה בחרתי";
+"insights.recommendations" = "המלצות";
+"insights.summary" = "סיכום";
+
+/* Trends */
+"trends.title" = "מגמות";
+"trends.weekly" = "שבועי";
+"trends.monthly" = "חודשי";
+"trends.yearly" = "שנתי";
+"trends.noData" = "אין מספיק נתונים להצגת מגמות";
+"trends.correlation" = "קורלציה";
+
+/* Activity */
+"activity.title" = "פעילות";
+"activity.steps" = "צעדים";
+"activity.calories" = "קלוריות";
+"activity.distance" = "מרחק";
+"activity.activeMinutes" = "דקות פעילות";
+"activity.goal" = "יעד";
+"activity.daily" = "יומי";
+"activity.weekly" = "שבועי";
+
+/* Nutrition */
+"nutrition.title" = "תזונה";
+"nutrition.calories" = "קלוריות";
+"nutrition.protein" = "חלבון";
+"nutrition.carbs" = "פחמימות";
+"nutrition.fat" = "שומן";
+"nutrition.water" = "מים";
+"nutrition.recommendations" = "המלצות תזונה";
+
+/* Data Sources */
+"dataSources.title" = "מקורות מידע";
+"dataSources.healthKit" = "Apple Health";
+"dataSources.connected" = "מחובר";
+"dataSources.notConnected" = "לא מחובר";
+"dataSources.connect" = "חבר";
+"dataSources.disconnect" = "נתק";
+
+/* Splash Screen */
+"splash.loading" = "טוען...";
+"splash.preparingData" = "מכין נתונים...";
+"splash.loadingHealth" = "טוען נתוני בריאות...";
+"splash.analyzing" = "מנתח...";
+
+/* Errors */
+"error.generic" = "אירעה שגיאה. נסה שוב.";
+"error.network" = "בעיית רשת. בדוק את החיבור לאינטרנט.";
+"error.noData" = "לא נמצאו נתונים.";
+"error.unauthorized" = "יש להתחבר מחדש.";
+
+/* Health Metrics */
+"metric.heartRate" = "דופק";
+"metric.bloodPressure" = "לחץ דם";
+"metric.sleep" = "שינה";
+"metric.weight" = "משקל";
+"metric.steps" = "צעדים";
+"metric.calories" = "קלוריות";
+"metric.oxygen" = "חמצן בדם";
+"metric.stress" = "רמת מתח";
+
+/* Units */
+"unit.kg" = "ק״ג";
+"unit.cm" = "ס״מ";
+"unit.bpm" = "פעימות/דקה";
+"unit.steps" = "צעדים";
+"unit.kcal" = "קק״ל";
+"unit.hours" = "שעות";
+"unit.minutes" = "דקות";
+"unit.min" = "דק׳";
+"unit.hr" = "שע׳";
+"unit.percent" = "%";
+"unit.years" = "שנה";
+
+/* Time */
+"time.today" = "היום";
+"time.yesterday" = "אתמול";
+"time.thisWeek" = "השבוע";
+"time.thisMonth" = "החודש";
+"time.lastWeek" = "שבוע שעבר";
+"time.lastMonth" = "חודש שעבר";
+"time.7days" = "7 ימים";
+"time.30days" = "30 ימים";
+
+/* Metric Labels */
+"metric.strain" = "עומס";
+"metric.sleep" = "שינה";
+
+/* Car/Score Cards */
+"car.excellent" = "מצוין";
+"car.good" = "טוב";
+"car.fair" = "סביר";
+"car.needsImprovement" = "דורש שיפור";
+"car.status" = "סטטוס";
+"car.score" = "ציון";
+
+/* Widgets */
+"widget.healthScore.title" = "ציון בריאות";
+"widget.healthScore.description" = "הצג את ציון הבריאות שלך";
+"widget.dailySummary.title" = "סיכום יומי";
+"widget.dailySummary.description" = "סיכום הפעילות היומית";
+"widget.carTier.title" = "דירוג רכב";
+"widget.carTier.description" = "הצג את דירוג הבריאות שלך";
+"widget.activityRings.title" = "טבעות פעילות";
+"widget.activityRings.description" = "התקדמות הפעילות היומית";
+
+/* Dashboard - Extended */
+"dashboard.loadingData" = "טוען נתונים…";
+"dashboard.goodNight" = "לילה טוב";
+"dashboard.goodMorning" = "בוקר טוב";
+"dashboard.goodAfternoon" = "צהריים טובים";
+"dashboard.goodEvening" = "ערב טוב";
+"dashboard.activity" = "פעילות";
+"dashboard.highlights" = "דגשים";
+"dashboard.aiDirectives" = "הנחיות AI";
+"dashboard.recoveryTrend" = "מגמת התאוששות";
+"dashboard.sleepQuality" = "איכות שינה";
+"dashboard.restingHR" = "דופק מנוחה";
+"dashboard.deepSleep" = "שינה עמוקה";
+"dashboard.avgLabel" = "ממוצע";
+"dashboard.rangeLabel" = "טווח";
+"dashboard.timeInBed" = "זמן במיטה";
+"dashboard.breathsInSleep" = "נשימות בשינה";
+"dashboard.perMinute" = "בדקה";
+"dashboard.avg30Days" = "ממוצע 30 הימים";
+"dashboard.noHighlights" = "אין דגשים זמינים";
+"dashboard.explanation" = "הסבר";
+"dashboard.healthKitError" = "HealthKit לא זמין במכשיר זה.";
+"dashboard.permissionDenied" = "הרשאה נדחתה";
+"dashboard.enableHealthAccess" = "אנא אפשר גישה לנתוני בריאות בהגדרות.";
+"dashboard.geminiTimeout" = "הבקשה ל‑Gemini התמשכה מדי. ייתכן חיבור איטי או עומס – נסה שוב.";
+"dashboard.noHealthData" = "אין נתוני בריאות זמינים. ודא שהתחברת ל-Apple Health והענקת הרשאות.";
+"dashboard.connectAppleHealth" = "חבר את Apple Health כדי לקבל ניתוח מותאם אישית.";
+"dashboard.dataDay" = "נתוני היום";
+"dashboard.dataWeek" = "נתוני שבוע";
+"dashboard.dataMonth" = "נתוני חודש";
+"dashboard.steps" = "צעדים";
+"dashboard.activeCalories" = "קלוריות פעילות";
+
+/* Splash - Extended */
+"splash.syncAppleHealth" = "מסנכרן עם Apple Health...";
+"splash.processingData" = "מעבד נתונים...";
+"splash.healthReport" = "דוח בריאות אישי · Performance Lab";
+
+/* Trends - Extended */
+"trends.loadingBiometrics" = "טוען נתונים ביומטריים…";
+"trends.basedOnPeriod" = "מבוסס על נתונים ביומטריים מהתקופה הנבחרת.";
+"trends.correlationEfficiency" = "יעילות קורלציה";
+"trends.positiveCorrelation" = "קורלציה חיובית";
+"trends.negativeCorrelation" = "קורלציה שלילית";
+"trends.need3Days" = "נדרשים לפחות 3 ימי נתונים";
+"trends.avgHrv" = "AVG HRV";
+"trends.strain" = "עומס";
+"trends.restingHR" = "דופק מנוחה";
+"trends.steps" = "צעדים";
+"trends.exerciseMinutes" = "דקות אימון";
+"trends.bioTrends" = "ביו-טרנדים";
+"trends.activity" = "פעילות";
+"trends.focusAreas" = "מוקדי התמקדות";
+"trends.sleepConsistency" = "עקביות שינה — הישאר עם חלון שינה צר ל recovery טוב יותר.";
+"trends.vo2Opportunity" = "הזדמנות VO2 — אינטרוולים באינטנסיביות גבוהה מומלצים השבוע.";
+"trends.sleepGap" = "עקביות שינה — הפער בין הלילות האחרונים כ־%d דק׳. מטרה: פחות מ־20 דק׳.";
+"trends.goodRecovery" = "התאוששות טובה — ניתן להוסיף עומס מתון השבוע.";
+"trends.trainingOpportunity" = "הזדמנות אימון — אינטרוולים באינטנסיביות גבוהה מומלצים כשההתאוששות תעלה.";
+"trends.noDataConnect" = "אין נתונים זמינים. חבר את Apple Health.";
+"trends.sleepActivityData" = "נתוני שינה ופעילות יאפשרו תובנות מדויקות.";
+"trends.pValue" = "P-VALUE";
+"trends.sampleSize" = "גודל מדגם";
+"trends.proLabInsight" = "PRO-LAB INSIGHT";
+"trends.sleepBoostsRecovery" = "שינה %@h+ מעלה את ההתאוששות ב־%d%%";
+"trends.basedOnDays" = "מבוסס על נתונים ביומטריים מ־%d הימים האחרונים.";
+"trends.noBiometricData" = "אין נתונים ביומטריים זמינים עדיין.";
+
+/* Activity - Extended */
+"activity.loadingActivity" = "טוען נתוני פעילות";
+"activity.activityTitle" = "פעילות";
+"activity.stepsDistanceCalories" = "צעדים, מרחק, קלוריות ואימון";
+"activity.activityRings" = "טבעות פעילות";
+"activity.summary" = "סיכום";
+"activity.stepsMetric" = "צעדים";
+"activity.distanceMetric" = "מרחק";
+"activity.caloriesMetric" = "קלוריות";
+"activity.exerciseMetric" = "דקות אימון";
+"activity.floorsMetric" = "קומות";
+"activity.moveMetric" = "Move";
+"activity.standMetric" = "Stand";
+"activity.charts" = "גרפים";
+"activity.stepsChart" = "גרף צעדים";
+"activity.distanceChart" = "גרף מרחק";
+"activity.caloriesChart" = "גרף קלוריות פעילות";
+"activity.noStepsData" = "אין נתוני צעדים";
+"activity.noDistanceData" = "אין נתוני מרחק";
+"activity.noCaloriesData" = "אין נתוני קלוריות";
+"activity.km" = "ק״מ";
+"activity.min" = "דק׳";
+"activity.hours" = "שעות";
+
+/* Insights - Extended */
+"insights.analyzingData" = "מנתח נתונים...";
+"insights.aionInsights" = "תובנות AION";
+"insights.biometricAnalysis" = "ניתוח ביומטרי מבוסס נתונים";
+"insights.lastUpdate" = "עדכון אחרון";
+"insights.noSignificantChange" = "אין שינוי משמעותי";
+"insights.noSignificantChangeMsg" = "הנתונים שלך לא השתנו מספיק כדי להצדיק ניתוח חדש. הניתוח יתעדכן אוטומטית כשיהיה שינוי משמעותי ב-HRV, שינה או פעילות.";
+"insights.refreshAnyway" = "רענן בכל זאת";
+"insights.waitingForAnalysis" = "ממתין לניתוח...";
+"insights.carSelectedAfter" = "הרכב שלך ייבחר לאחר ניתוח ראשון של הנתונים";
+"insights.peakPerformance" = "שיא ביצועים";
+"insights.excellent" = "מצוין";
+"insights.goodCondition" = "מצב טוב";
+"insights.okay" = "בסדר";
+"insights.needsAttention" = "צריך טיפול";
+"insights.carSelectedBased" = "הרכב נבחר על סמך ניתוח נתוני הבריאות שלך.";
+"insights.weeklyData" = "נתוני השבוע";
+"insights.sleep" = "שינה";
+"insights.sleepExplanation" = "ממוצע שעות שינה בשבוע האחרון. 7-9 שעות נחשב אופטימלי להתאוששות.";
+"insights.readiness" = "מוכנות";
+"insights.readinessExplanation" = "ציון המוכנות שלך לאימון (0-100). מבוסס על שינה, HRV ועומס קודם.";
+"insights.strain" = "עומס";
+"insights.strainExplanation" = "רמת העומס הפיזי השבועי (0-10). עומס מאוזן הוא 2-5.";
+"insights.hrvExplanation" = "שונות קצב הלב (Heart Rate Variability). ערך גבוה יותר מצביע על יכולת התאוששות טובה יותר.";
+"insights.steps" = "צעדים";
+"insights.stepsExplanation" = "סה״כ צעדים בשבוע האחרון. מומלץ לשאוף ל-10,000 צעדים ביום.";
+"insights.exerciseMinutes" = "דקות אימון";
+"insights.exerciseExplanation" = "דקות פעילות גופנית בעצימות בינונית-גבוהה. מומלץ 150+ דקות בשבוע.";
+"insights.loadingValue" = "טוען...";
+"insights.aiInsights" = "תובנות AI";
+"insights.engine" = "מנוע";
+"insights.transmission" = "תיבת הילוכים";
+"insights.suspension" = "מתלים";
+"insights.fuelEfficiency" = "יעילות דלק";
+"insights.electronics" = "אלקטרוניקה";
+"insights.whatLimitsPerformance" = "מה מגביל את הביצועים?";
+"insights.optimizationPlan" = "תוכנית אופטימיזציה";
+"insights.recommendedUpgrades" = "שדרוגים מומלצים";
+"insights.skippedMaintenance" = "טיפול שמדלגים עליו";
+"insights.stopImmediately" = "להפסיק מיד";
+"insights.tuningPlan" = "תוכנית כוונון 30-60 יום";
+"insights.trainingAdjustments" = "התאמות אימון";
+"insights.recoveryAndSleep" = "התאוששות ושינה";
+"insights.habitToAdd" = "הרגל להוסיף";
+"insights.habitToRemove" = "הרגל להסיר";
+"insights.nutritionRecommendations" = "המלצות תזונה ותוספים";
+"insights.recommendedSupplements" = "תוספים מומלצים מבוססי ניתוח הנתונים שלך";
+"insights.actionDirectives" = "הנחיות פעולה";
+"insights.lookingAhead" = "מבט קדימה";
+"insights.newCarTitle" = "יש לך רכב חדש!";
+"insights.dataChangedSignificantly" = "הנתונים שלך השתנו משמעותית";
+"insights.timeToReplace" = "הגיע הזמן להחליף את ה-%@";
+"insights.timeToDiscover" = "הגיע הזמן לגלות את הרכב המעודכן";
+"insights.preparingNewCar" = "מכין את הרכב החדש...";
+"insights.ready" = "מוכן!";
+"insights.readyToDiscover" = "מוכן לגלות איזה רכב אתה?";
+"insights.basedOnYourData" = "על סמך נתוני הבריאות שלך,\nנגלה איזה רכב מייצג אותך הכי טוב";
+"insights.scanningHealthData" = "סורק נתוני בריאות...";
+"insights.analyzingPerformance" = "מנתח ביצועים...";
+"insights.findingPerfectCar" = "מוצא את הרכב המושלם...";
+"insights.noAnalysisYet" = "אין עדיין ניתוח ביצועים";
+"insights.pressRefreshToStart" = "לחץ על כפתור הרענון למעלה להתחיל";
+"insights.greatCondition" = "מצב מעולה";
+"insights.mediumCondition" = "מצב בינוני";
+"insights.needsCare" = "צריך טיפול";
+"insights.requiresAttention" = "דורש תשומת לב";
+"insights.discoverNewCar" = "גלה את הרכב החדש";
+"insights.checkAgain" = "בדוק שוב";
+"insights.startDiscovery" = "התחל גילוי";
+"insights.discoverCar" = "גלה את הרכב שלי";
+
+/* Profile - Extended */
+"profile.dataSource" = "מקור נתונים";
+"profile.backgroundColor" = "צבע רקע";
+"profile.backgroundColorChange" = "שינוי צבע רקע";
+"profile.backgroundColorMessage" = "כדי שהשינוי ייכנס לתוקף, האפליקציה תיסגר. בפעם הבאה שתפתח אותה, הצבע החדש יופעל.";
+"profile.confirmAndClose" = "אישור וסגירה";
+"profile.athlete" = "אתלט";
+"profile.beginner" = "מתחיל";
+"profile.amateur" = "חובב";
+"profile.professional" = "מקצוען";
+
+/* Nutrition */
+"nutrition.supplementRecommendations" = "המלצות תוספי תזונה";
+"nutrition.basedOnAnalysis" = "מבוסס על ניתוח 3 חודשים של נתוני הבריאות שלך";
+"nutrition.whyRecommended" = "למה מומלץ עבורך:";
+"nutrition.noRecommendationsYet" = "אין עדיין המלצות תוספים\nלחץ על ׳בדוק שוב׳ במסך תובנות לקבלת ניתוח חדש";
+"nutrition.disclaimer" = "המלצות אלו מבוססות על ניתוח AI של נתוני הבריאות שלך ואינן מהוות תחליף לייעוץ רפואי מקצועי. התייעץ עם רופא לפני נטילת תוספים חדשים.";
+
+/* Data Sources */
+"dataSources.automatic" = "אוטומטי";
+"dataSources.selectSource" = "בחר מקור נתונים";
+"dataSources.description" = "האפליקציה קוראת נתונים מאפל הלט׳. אם יש לך מכשיר שמסנכרן לאפל הלט׳ (כמו Garmin או Oura), בחר אותו כאן כדי לקבל ניתוח מותאם.";
+"dataSources.detectedSources" = "מקורות שזוהו";
+"dataSources.checkingSources" = "בודק מקורות...";
+"dataSources.deviceStrengths" = "חוזקות המכשיר";
+"dataSources.note" = "שים לב: Garmin Body Battery ו-Oura Readiness Score לא מסתנכרנים לאפל הלט׳. האפליקציה מחשבת ציוני מוכנות דומים מנתוני HRV, דופק ושינה.";
+"dataSources.selectDeviceToSeeStrengths" = "בחר מכשיר ספציפי כדי לראות את החוזקות שלו";
+"dataSources.noSourcesFound" = "לא נמצאו מקורות נתונים ב-14 ימים האחרונים";
+"dataSources.samples" = "דגימות";
+"dataSources.lastSync" = "סנכרון אחרון";
+"dataSources.other" = "אחר";
+"dataSources.autoDetect" = "זיהוי אוטומטי";
+
+/* Dashboard Extended */
+"dashboard.runAnalysisForRecommendations" = "הרץ ניתוח (תובנות AION) כדי לראות המלצות.";
+
+/* Activity Extended */
+"activity.floors" = "קומות";
+"activity.workouts" = "אימונים";
+
+/* Recommendations */
+"recommendations.noRecommendations" = "אין המלצות כרגע.\nהרץ ניתוח בדשבורד (תובנות AION) כדי לראות המלצות מותאמות.";
+
+/* Unit km */
+"unit.km" = "ק״מ";
+
+/* Chart Labels */
+"chart.date" = "תאריך";
+"chart.day" = "יום";
+"chart.recovery" = "התאוששות";
+"chart.strain" = "עומס";
+"chart.heartRate" = "דופק";
+"chart.km" = "ק\"מ";
+"chart.sleep" = "שינה";
+"chart.glucose" = "סוכר";
+"chart.energy" = "אנרגיה";
+"chart.metric" = "מדד";
+"chart.value" = "ערך";
+"chart.breathing" = "נשימה";
+"chart.protein" = "חלבון";
+"chart.carbs" = "פחמימות";
+"chart.fat" = "שומן";
+"chart.calories" = "קלוריות";
+"chart.steps" = "צעדים";
+"chart.restingHR" = "דופק מנוחה";
+
+/* Chart Placeholders */
+"chart.noReadinessData" = "אין נתוני מוכנות";
+"chart.noHRDistanceData" = "אין נתוני דופק או מרחק";
+"chart.noSleepData" = "אין נתוני שינה להצגה";
+"chart.noGlucoseEnergyData" = "אין נתוני גלוקוז או אנרגיה להצגה";
+"chart.noAutonomicData" = "אין נתוני אוטונומי";
+"chart.noNutritionData" = "אין נתוני תזונה להצגה";
+"chart.noDistanceData" = "אין נתוני מרחק";
+"chart.noActiveEnergyData" = "אין נתוני אנרגיה פעילה";
+"chart.noHeartRateData" = "אין נתוני דופק";
+"chart.noData" = "אין נתונים";
+"chart.noStepsData" = "אין נתוני צעדים";
+"chart.noRestingHRData" = "אין נתוני דופק מנוחה";
+"chart.noHRVData" = "אין נתוני HRV";
+
+/* Debug Screen */
+"debug.query" = "שאילתה";
+"debug.response" = "תשובה";
+"debug.differences" = "הבדלים";
+"debug.history" = "היסטוריה";
+"debug.copy" = "העתק";
+"debug.share" = "שתף";
+"debug.close" = "סגור";
+"debug.noSavedQuery" = "אין שאילתה שמורה";
+"debug.noSavedResponse" = "אין תשובה שמורה";
+"debug.noDifferences" = "אין הבדלים להצגה";
+"debug.callingGemini" = "קורא ל-Gemini...";
+"debug.completed" = "הושלם!";
+"debug.copied" = "הועתק!";
+"debug.noHistory" = "אין היסטוריה שמורה";
+"debug.queryStats" = "שאילתה: %@ תווים, %@ מילים";
+"debug.responseStats" = "תשובה: %@ תווים, %@ מילים";
+"debug.comparisonStats" = "השוואה בין תשובה קודמת לנוכחית";
+"debug.entriesInLast7Days" = "%d רשומות ב-7 הימים האחרונים";
+"debug.notFound" = "לא נמצא";
+"debug.notIdentified" = "לא זוהה";
+"debug.previousResponse" = "תשובה קודמת: %@ תווים";
+"debug.currentResponse" = "תשובה נוכחית: %@ תווים";
+"debug.difference" = "הפרש: %@ תווים";
+"debug.noChange" = "ללא שינוי: %@";
+"debug.removed" = "נמחקו:";
+"debug.added" = "נוספו:";
+"debug.previousResponseTime" = "תשובה קודמת: %@";
+"debug.currentResponseTime" = "תשובה נוכחית: %@";
+"debug.noPreviousResponse" = "אין תשובה קודמת להשוואה";
+
+/* Report Screen */
+"report.title" = "דוח AION";
+"report.subtitle" = "תובנות, המלצות וגורמי סיכון";
+
+/* Recommendations Screen */
+"recommendations.title" = "המלצות";
+"recommendations.subtitle" = "הנחיות מעשיות לפי הנתונים הביומטריים שלך";
+
+/* Hero Card */
+"hero.loading" = "טוען...";
+
+/* Sync Errors */
+"sync.noUserLoggedIn" = "אין משתמש מחובר";
+"sync.imageConversionError" = "שגיאה בהמרת תמונה";
+"sync.noURLReceived" = "לא התקבל URL";
+
+/* Card Explanations (info button tooltips) */
+"explanation.readiness" = "כמה הגוף שלך מוכן להיום. ציון גבוה = מוכן טוב, נמוך = עדיף לנוח.";
+"explanation.hrv" = "מדד שמושפע משינה ולחץ. ערך גבוה בדרך־כלל אומר שהגוף מתאושש טוב.";
+"explanation.sleep" = "כמה שעות ישנת. שינה טובה עוזרת לך להרגיש טוב ולהישאר בריא.";
+"explanation.strain" = "כמה עמלת על הגוף (אימונים, פעילות). חשוב לאזן עם מנוחה.";
+"explanation.efficiency" = "איך ההתאוששות השבועית נראית. כל עמודת = יום.";
+"explanation.bioSleep" = "ציון שינה 0–100 (בדומה לאפל): משך + איכות שלבי שינה. יום = לילה אחרון; שבוע/חודש = ממוצע.";
+"explanation.bioTemp" = "הפרש טמפרטורת הגוף מהרגיל. שינוי גדול יכול להראות עייפות או חולי.";
+"explanation.bioRhrOrTemp" = "סטיית טמפ׳ או דופק מנוחה – לפי הנתונים הזמינים. דופק נמוך במנוחה = כושר טוב.";
+"explanation.directives" = "המלצות: מה כדאי להפסיק, מה להתחיל, ומה לעקוב אחריו.";
+"explanation.insight" = "תובנה מהנתונים שלך – קשר בין דברים (למשל שינה ומדדים).";
+"explanation.correlation" = "עד כמה שני מדדים קשורים. מספר גבוה = קשר חזק יותר.";
+"explanation.pValue" = "עד כמה התוצאה אמינה. ערך נמוך = סביר שהממצא אמיתי.";
+"explanation.sampleSize" = "על בסיס כמה ימים חושבו הנתונים.";
+"explanation.biometrics" = "ממוצעים של מדדים חשובים: דופק, עומס, שונות דופק.";
+"explanation.focus" = "דברים שכדאי לשים עליהם דגש – שינה סדירה, עומס אימון וכו'.";
+"explanation.profileHeight" = "גובה שמגיע מאפליקציית הבריאות.";
+"explanation.profileWeight" = "משקל שמגיע מאפליקציית הבריאות.";
+"explanation.highlights" = "דגשים מהנתונים: זמן במיטה, קצב נשימות בשינה, ממוצעים – כמו באפל.";
+"explanation.profileAge" = "גיל מתאריך לידה, או BMI (מגובה ומשקל) אם אין גיל.";
+"explanation.activitySteps" = "סה״כ צעדים בטווח הנבחר.";
+"explanation.activityDistance" = "מרחק הליכה וריצה בק״מ.";
+"explanation.activityCalories" = "קלוריות נשרפות מפעילות (לא בסיס).";
+"explanation.activityExercise" = "דקות אימון (פעילות בעצימות בינונית־גבוהה).";
+"explanation.activityFlights" = "קומות שעלית (מדרגות).";
+"explanation.activityMove" = "דקות ״תנועה״ – פעילות שמזכה ב-Move.";
+"explanation.activityStand" = "שעות עמידה (Stand).";
+"explanation.activityCycling" = "מרחק רכיבה בק״מ.";
+"explanation.activitySwimming" = "מרחק שחייה בק״מ.";
+
+/* Directives Labels */
+"directives.stop" = "עצור";
+"directives.start" = "התחל";
+"directives.watch" = "עקוב";

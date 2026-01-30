@@ -70,7 +70,7 @@ struct ReadinessChartView: View {
                 .chartXScale(domain: .automatic)
                 .chartYScale(domain: 0 ... 100)
             } else {
-                ChartPlaceholderView(message: "אין נתוני מוכנות", icon: "chart.line.uptrend.xyaxis")
+                ChartPlaceholderView(message: "chart.noReadinessData".localized, icon: "chart.line.uptrend.xyaxis")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -101,7 +101,7 @@ struct EfficiencyChartView: View {
                 .chartXScale(domain: .automatic)
                 .chartYScale(domain: .automatic(includesZero: true))
             } else {
-                ChartPlaceholderView(message: "אין נתוני דופק או מרחק", icon: "heart.fill")
+                ChartPlaceholderView(message: "chart.noHRDistanceData".localized, icon: "heart.fill")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -125,7 +125,7 @@ struct SleepArchitectureChartView: View {
                 .chartXScale(domain: .automatic)
                 .chartYScale(domain: 0 ... 12)
             } else {
-                ChartPlaceholderView(message: "אין נתוני שינה להצגה", icon: "bed.double.fill")
+                ChartPlaceholderView(message: "chart.noSleepData".localized, icon: "bed.double.fill")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -156,7 +156,7 @@ struct GlucoseEnergyChartView: View {
                 .chartXScale(domain: .automatic)
                 .chartYScale(domain: .automatic(includesZero: true))
             } else {
-                ChartPlaceholderView(message: "אין נתוני גלוקוז או אנרגיה להצגה", icon: "flame.fill")
+                ChartPlaceholderView(message: "chart.noGlucoseEnergyData".localized, icon: "flame.fill")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -185,7 +185,7 @@ struct AutonomicRadarChartView: View {
                 .chartXScale(domain: ["RHR", "HRV", "נשימה"])
                 .chartYScale(domain: 0 ... 100)
             } else {
-                ChartPlaceholderView(message: "אין נתוני אוטונומי", icon: "waveform.path.ecg")
+                ChartPlaceholderView(message: "chart.noAutonomicData".localized, icon: "waveform.path.ecg")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -221,7 +221,7 @@ struct NutritionChartView: View {
                 .chartXScale(domain: .automatic)
                 .chartYScale(domain: .automatic(includesZero: true))
             } else {
-                ChartPlaceholderView(message: "אין נתוני תזונה להצגה", icon: "leaf.fill")
+                ChartPlaceholderView(message: "chart.noNutritionData".localized, icon: "leaf.fill")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -283,7 +283,7 @@ struct DistanceChartView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
             } else {
-                ChartPlaceholderView(message: "אין נתוני מרחק", icon: "figure.walk")
+                ChartPlaceholderView(message: "chart.noDistanceData".localized, icon: "figure.walk")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -324,7 +324,7 @@ struct ActiveEnergyChartView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
             } else {
-                ChartPlaceholderView(message: "אין נתוני אנרגיה פעילה", icon: "flame.fill")
+                ChartPlaceholderView(message: "chart.noActiveEnergyData".localized, icon: "flame.fill")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -347,7 +347,7 @@ struct AvgHeartRateTrendChartView: View {
                 .chartXScale(domain: .automatic)
                 .chartYScale(domain: .automatic(includesZero: true))
             } else {
-                ChartPlaceholderView(message: "אין נתוני דופק", icon: "heart.fill")
+                ChartPlaceholderView(message: "chart.noHeartRateData".localized, icon: "heart.fill")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -362,7 +362,7 @@ struct DashboardEfficiencyBarChartView: View {
         let last7 = Array(data.points.suffix(7))
         return last7.enumerated().map { _, p in
             let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "he_IL")
+            formatter.locale = LocalizationManager.shared.currentLocale
             formatter.dateFormat = "EEE"
             let day = formatter.string(from: p.date)
             return (day: day, value: p.recovery)
@@ -395,7 +395,7 @@ struct DashboardEfficiencyBarChartView: View {
                 .padding(.trailing, 4)
                 .padding(.bottom, 4)
             } else {
-                ChartPlaceholderView(message: "אין נתונים", icon: "chart.bar.fill")
+                ChartPlaceholderView(message: "chart.noData".localized, icon: "chart.bar.fill")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -427,7 +427,7 @@ struct RecoveryTrendChartView: View {
                 .padding(.trailing, 4)
                 .padding(.bottom, 4)
             } else {
-                ChartPlaceholderView(message: "אין נתונים", icon: "chart.line.uptrend.xyaxis")
+                ChartPlaceholderView(message: "chart.noData".localized, icon: "chart.line.uptrend.xyaxis")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -449,7 +449,7 @@ struct StrainTrendChartView: View {
                 .chartXScale(domain: .automatic)
                 .chartYScale(domain: 0 ... 100)
             } else {
-                ChartPlaceholderView(message: "אין נתונים", icon: "chart.line.uptrend.xyaxis")
+                ChartPlaceholderView(message: "chart.noData".localized, icon: "chart.line.uptrend.xyaxis")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -465,7 +465,7 @@ private struct DayValuePoint: Identifiable {
 
 private func dayLabel(from date: Date) -> String {
     let f = DateFormatter()
-    f.locale = Locale(identifier: "he_IL")
+    f.locale = LocalizationManager.shared.currentLocale
     f.dateFormat = "d MMM"
     return f.string(from: date)
 }
@@ -501,7 +501,7 @@ struct StepsChartView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
             } else {
-                ChartPlaceholderView(message: "אין נתוני צעדים", icon: "figure.walk")
+                ChartPlaceholderView(message: "chart.noStepsData".localized, icon: "figure.walk")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -523,7 +523,7 @@ struct RHRTrendChartView: View {
                 .chartXScale(domain: .automatic)
                 .chartYScale(domain: .automatic(includesZero: true))
             } else {
-                ChartPlaceholderView(message: "אין נתוני דופק מנוחה", icon: "heart.fill")
+                ChartPlaceholderView(message: "chart.noRestingHRData".localized, icon: "heart.fill")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)
@@ -545,7 +545,7 @@ struct HRVTrendChartView: View {
                 .chartXScale(domain: .automatic)
                 .chartYScale(domain: .automatic(includesZero: true))
             } else {
-                ChartPlaceholderView(message: "אין נתוני HRV", icon: "waveform.path.ecg")
+                ChartPlaceholderView(message: "chart.noHRVData".localized, icon: "waveform.path.ecg")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 140, maxHeight: .infinity)

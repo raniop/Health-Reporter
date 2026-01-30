@@ -18,8 +18,8 @@ final class DataSourceSettingsViewController: UIViewController {
     private let headerLabel = UILabel()
     private let descriptionLabel = UILabel()
 
-    private let sourceSegment: UISegmentedControl = {
-        let items = ["אוטומטי", "Apple Watch", "Garmin", "Oura"]
+    private lazy var sourceSegment: UISegmentedControl = {
+        let items = ["dataSources.automatic".localized, "Apple Watch", "Garmin", "Oura"]
         let seg = UISegmentedControl(items: items)
         seg.selectedSegmentTintColor = AIONDesign.accentPrimary
         seg.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .selected)
@@ -44,9 +44,9 @@ final class DataSourceSettingsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "מקור נתונים"
+        title = "dataSources.title".localized
         view.backgroundColor = AIONDesign.background
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupUI()
         loadCurrentSelection()
@@ -67,17 +67,17 @@ final class DataSourceSettingsViewController: UIViewController {
         scrollView.addSubview(stack)
 
         // Header
-        headerLabel.text = "בחר מקור נתונים"
+        headerLabel.text = "dataSources.selectSource".localized
         headerLabel.font = .systemFont(ofSize: 22, weight: .bold)
         headerLabel.textColor = AIONDesign.textPrimary
-        headerLabel.textAlignment = .right
+        headerLabel.textAlignment = LocalizationManager.shared.textAlignment
         headerLabel.translatesAutoresizingMaskIntoConstraints = false
 
         // Description
-        descriptionLabel.text = "האפליקציה קוראת נתונים מאפל הלט׳. אם יש לך מכשיר שמסנכרן לאפל הלט׳ (כמו Garmin או Oura), בחר אותו כאן כדי לקבל ניתוח מותאם."
+        descriptionLabel.text = "dataSources.description".localized
         descriptionLabel.font = .systemFont(ofSize: 14, weight: .regular)
         descriptionLabel.textColor = AIONDesign.textSecondary
-        descriptionLabel.textAlignment = .right
+        descriptionLabel.textAlignment = LocalizationManager.shared.textAlignment
         descriptionLabel.numberOfLines = 0
         descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
 
@@ -126,10 +126,10 @@ final class DataSourceSettingsViewController: UIViewController {
         detectedSourcesCard.layer.cornerRadius = AIONDesign.cornerRadius
         detectedSourcesCard.translatesAutoresizingMaskIntoConstraints = false
 
-        detectedSourcesHeaderLabel.text = "מקורות שזוהו"
+        detectedSourcesHeaderLabel.text = "dataSources.detectedSources".localized
         detectedSourcesHeaderLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         detectedSourcesHeaderLabel.textColor = AIONDesign.textPrimary
-        detectedSourcesHeaderLabel.textAlignment = .right
+        detectedSourcesHeaderLabel.textAlignment = LocalizationManager.shared.textAlignment
         detectedSourcesHeaderLabel.translatesAutoresizingMaskIntoConstraints = false
 
         detectedSourcesList.axis = .vertical
@@ -137,7 +137,7 @@ final class DataSourceSettingsViewController: UIViewController {
         detectedSourcesList.alignment = .fill
         detectedSourcesList.translatesAutoresizingMaskIntoConstraints = false
 
-        noSourcesLabel.text = "בודק מקורות..."
+        noSourcesLabel.text = "dataSources.checkingSources".localized
         noSourcesLabel.font = .systemFont(ofSize: 14, weight: .regular)
         noSourcesLabel.textColor = AIONDesign.textTertiary
         noSourcesLabel.textAlignment = .center
@@ -168,10 +168,10 @@ final class DataSourceSettingsViewController: UIViewController {
         strengthsCard.layer.cornerRadius = AIONDesign.cornerRadius
         strengthsCard.translatesAutoresizingMaskIntoConstraints = false
 
-        strengthsHeaderLabel.text = "חוזקות המכשיר"
+        strengthsHeaderLabel.text = "dataSources.deviceStrengths".localized
         strengthsHeaderLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         strengthsHeaderLabel.textColor = AIONDesign.textPrimary
-        strengthsHeaderLabel.textAlignment = .right
+        strengthsHeaderLabel.textAlignment = LocalizationManager.shared.textAlignment
         strengthsHeaderLabel.translatesAutoresizingMaskIntoConstraints = false
 
         strengthsLabel.font = .systemFont(ofSize: 14, weight: .regular)
@@ -207,10 +207,10 @@ final class DataSourceSettingsViewController: UIViewController {
         infoIcon.contentMode = .scaleAspectFit
         infoIcon.translatesAutoresizingMaskIntoConstraints = false
 
-        infoLabel.text = "שים לב: Garmin Body Battery ו-Oura Readiness Score לא מסתנכרנים לאפל הלט׳. האפליקציה מחשבת ציוני מוכנות דומים מנתוני HRV, דופק ושינה."
+        infoLabel.text = "dataSources.note".localized
         infoLabel.font = .systemFont(ofSize: 13, weight: .regular)
         infoLabel.textColor = AIONDesign.textSecondary
-        infoLabel.textAlignment = .right
+        infoLabel.textAlignment = LocalizationManager.shared.textAlignment
         infoLabel.numberOfLines = 0
         infoLabel.translatesAutoresizingMaskIntoConstraints = false
 
@@ -265,7 +265,7 @@ final class DataSourceSettingsViewController: UIViewController {
         let strengths = source.strengths
 
         if strengths.isEmpty {
-            strengthsLabel.text = "בחר מכשיר ספציפי כדי לראות את החוזקות שלו"
+            strengthsLabel.text = "dataSources.selectDeviceToSeeStrengths".localized
         } else {
             strengthsLabel.text = strengths.map { "• \($0)" }.joined(separator: "\n")
         }
@@ -305,7 +305,7 @@ final class DataSourceSettingsViewController: UIViewController {
 
     private func showNoSources() {
         noSourcesLabel.isHidden = false
-        noSourcesLabel.text = "לא נמצאו מקורות נתונים ב-14 ימים האחרונים"
+        noSourcesLabel.text = "dataSources.noSourcesFound".localized
         detectedSourcesList.isHidden = true
     }
 
@@ -326,12 +326,12 @@ final class DataSourceSettingsViewController: UIViewController {
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let detailLabel = UILabel()
-        var detail = "\(count) דגימות"
+        var detail = "\(count) \("dataSources.samples".localized)"
         if let sync = lastSync {
             let formatter = RelativeDateTimeFormatter()
             formatter.unitsStyle = .short
-            formatter.locale = Locale(identifier: "he")
-            detail += " • סנכרון אחרון: \(formatter.localizedString(for: sync, relativeTo: Date()))"
+            formatter.locale = Locale(identifier: LocalizationManager.shared.currentLanguage == .hebrew ? "he" : "en")
+            detail += " • \("dataSources.lastSync".localized): \(formatter.localizedString(for: sync, relativeTo: Date()))"
         }
         detailLabel.text = detail
         detailLabel.font = .systemFont(ofSize: 12, weight: .regular)

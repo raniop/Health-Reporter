@@ -34,7 +34,7 @@ class HealthDashboardViewController: UIViewController {
 
     private let refreshControl: UIRefreshControl = {
         let r = UIRefreshControl()
-        r.attributedTitle = NSAttributedString(string: "טוען מחדש את כל הנתונים…", attributes: [.foregroundColor: AIONDesign.textSecondary])
+        r.attributedTitle = NSAttributedString(string: "dashboard.reloadAllData".localized, attributes: [.foregroundColor: AIONDesign.textSecondary])
         return r
     }()
 
@@ -42,7 +42,7 @@ class HealthDashboardViewController: UIViewController {
         let s = UIStackView()
         s.axis = .vertical
         s.spacing = AIONDesign.spacingLarge
-        s.semanticContentAttribute = .forceRightToLeft
+        s.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
     }()
@@ -57,7 +57,7 @@ class HealthDashboardViewController: UIViewController {
 
     private let loadingLabel: UILabel = {
         let l = UILabel()
-        l.text = "טוען..."
+        l.text = "loading".localized
         l.font = AIONDesign.bodyFont()
         l.textColor = AIONDesign.textPrimary
         l.translatesAutoresizingMaskIntoConstraints = false
@@ -109,7 +109,7 @@ class HealthDashboardViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AIONDesign.background
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         title = "AION"
         navigationController?.setNavigationBarHidden(true, animated: false)
         setupUI()
@@ -166,14 +166,14 @@ class HealthDashboardViewController: UIViewController {
         contentStack.addArrangedSubview(headerStack)
         contentStack.addArrangedSubview(heroCard)
         contentStack.addArrangedSubview(periodSegmentRow)
-        contentStack.addArrangedSubview(makeSectionLabel("פעילות"))
+        contentStack.addArrangedSubview(makeSectionLabel("dashboard.activity".localized))
         contentStack.addArrangedSubview(activityRingsCard)
         contentStack.addArrangedSubview(activityStatsCard)
         contentStack.addArrangedSubview(efficiencyCard)
         contentStack.addArrangedSubview(bioStackRow)
-        contentStack.addArrangedSubview(makeSectionLabel("דגשים"))
+        contentStack.addArrangedSubview(makeSectionLabel("dashboard.highlights".localized))
         contentStack.addArrangedSubview(highlightsCard)
-        contentStack.addArrangedSubview(makeSectionLabel("הנחיות AI"))
+        contentStack.addArrangedSubview(makeSectionLabel("dashboard.aiDirectives".localized))
         contentStack.addArrangedSubview(directivesCard)
 
         view.addSubview(loadingOverlay)
@@ -209,7 +209,7 @@ class HealthDashboardViewController: UIViewController {
         headerStack.spacing = 10
         headerStack.alignment = .center
         headerStack.distribution = .fill
-        headerStack.semanticContentAttribute = .forceRightToLeft
+        headerStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         headerStack.translatesAutoresizingMaskIntoConstraints = false
 
         headerAvatarView.contentMode = .scaleAspectFill
@@ -227,18 +227,18 @@ class HealthDashboardViewController: UIViewController {
         textStack.axis = .vertical
         textStack.spacing = 2
         textStack.alignment = .fill  // Fill width so text alignment works
-        textStack.semanticContentAttribute = .forceRightToLeft
+        textStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         textStack.translatesAutoresizingMaskIntoConstraints = false
 
         greetingLabel.font = .systemFont(ofSize: 20, weight: .bold)
         greetingLabel.textColor = AIONDesign.textPrimary
-        greetingLabel.textAlignment = .right
+        greetingLabel.textAlignment = LocalizationManager.shared.textAlignment
         greetingLabel.translatesAutoresizingMaskIntoConstraints = false
         updateGreeting()
 
         dateLabel.font = .systemFont(ofSize: 13, weight: .regular)
         dateLabel.textColor = AIONDesign.textSecondary
-        dateLabel.textAlignment = .right
+        dateLabel.textAlignment = LocalizationManager.shared.textAlignment
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
         updateDateLabel()
 
@@ -267,15 +267,15 @@ class HealthDashboardViewController: UIViewController {
         let hour = Calendar.current.component(.hour, from: Date())
         let greeting: String
         if hour < 5 {
-            greeting = "לילה טוב"
+            greeting = "dashboard.goodNight".localized
         } else if hour < 12 {
-            greeting = "בוקר טוב"
+            greeting = "dashboard.goodMorning".localized
         } else if hour < 17 {
-            greeting = "צהריים טובים"
+            greeting = "dashboard.goodAfternoon".localized
         } else if hour < 21 {
-            greeting = "ערב טוב"
+            greeting = "dashboard.goodEvening".localized
         } else {
-            greeting = "לילה טוב"
+            greeting = "dashboard.goodNight".localized
         }
 
         if let name = Auth.auth().currentUser?.displayName, !name.isEmpty {
@@ -288,7 +288,8 @@ class HealthDashboardViewController: UIViewController {
 
     private func updateDateLabel() {
         let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "he_IL")
+        let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
+        fmt.locale = Locale(identifier: isHebrew ? "he_IL" : "en_US")
         fmt.dateFormat = "EEEE, d MMMM yyyy"
         dateLabel.text = fmt.string(from: Date())
     }
@@ -321,7 +322,7 @@ class HealthDashboardViewController: UIViewController {
         periodSegmentRow.axis = .vertical
         periodSegmentRow.spacing = 6
         periodSegmentRow.alignment = .fill
-        periodSegmentRow.semanticContentAttribute = .forceRightToLeft
+        periodSegmentRow.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         periodSegmentRow.translatesAutoresizingMaskIntoConstraints = false
 
         let items = DataRange.allCases.map { $0.segmentTitle() }
@@ -357,13 +358,14 @@ class HealthDashboardViewController: UIViewController {
 
     private func updateRangeDateLabel() {
         let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "he_IL")
+        let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
+        fmt.locale = Locale(identifier: isHebrew ? "he_IL" : "en_US")
         let now = Date()
         let cal = Calendar.current
         switch selectedRange {
         case .day:
             fmt.dateFormat = "d MMMM yyyy"
-            rangeDateLabel.text = "נתוני היום · \(fmt.string(from: now))"
+            rangeDateLabel.text = "\("dashboard.dataDay".localized) · \(fmt.string(from: now))"
         case .week:
             let weekStart = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
             let weekEnd = cal.date(byAdding: .day, value: 6, to: weekStart) ?? now
@@ -371,10 +373,10 @@ class HealthDashboardViewController: UIViewController {
             let startStr = fmt.string(from: weekStart)
             fmt.dateFormat = "d MMMM"
             let endStr = fmt.string(from: weekEnd)
-            rangeDateLabel.text = "נתוני שבוע · \(startStr)–\(endStr)"
+            rangeDateLabel.text = "\("dashboard.dataWeek".localized) · \(startStr)–\(endStr)"
         case .month:
             fmt.dateFormat = "MMMM yyyy"
-            rangeDateLabel.text = "נתוני חודש · \(fmt.string(from: now))"
+            rangeDateLabel.text = "\("dashboard.dataMonth".localized) · \(fmt.string(from: now))"
         }
     }
 
@@ -391,7 +393,7 @@ class HealthDashboardViewController: UIViewController {
         efficiencyCard.layer.cornerRadius = AIONDesign.cornerRadiusLarge
         efficiencyCard.translatesAutoresizingMaskIntoConstraints = false
 
-        efficiencyTitleLabel.text = "מגמת התאוששות"
+        efficiencyTitleLabel.text = "dashboard.recoveryTrend".localized
         efficiencyTitleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         efficiencyTitleLabel.textColor = AIONDesign.accentPrimary
         efficiencyTitleLabel.textAlignment = .center
@@ -430,7 +432,7 @@ class HealthDashboardViewController: UIViewController {
         bioStackRow.axis = .horizontal
         bioStackRow.spacing = AIONDesign.spacing
         bioStackRow.distribution = .fillEqually
-        bioStackRow.semanticContentAttribute = .forceRightToLeft
+        bioStackRow.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         bioStackRow.translatesAutoresizingMaskIntoConstraints = false
 
         let s1 = BioStackCardView()
@@ -441,8 +443,8 @@ class HealthDashboardViewController: UIViewController {
         bioStackRow.addArrangedSubview(s2)
         bioSleep = s1
         bioTemp = s2
-        s1.configure(icon: "bed.double.fill", title: "איכות שינה", value: "—", progress: nil)
-        s2.configure(icon: "heart.fill", title: "דופק מנוחה", value: "—", progress: nil)
+        s1.configure(icon: "bed.double.fill", title: "dashboard.sleepQuality".localized, value: "—", progress: nil)
+        s2.configure(icon: "heart.fill", title: "dashboard.restingHR".localized, value: "—", progress: nil)
         addInfoToCard(s1, explanation: CardExplanations.bioSleep)
         addInfoToCard(s2, explanation: CardExplanations.bioRhrOrTemp)
         s1.heightAnchor.constraint(equalToConstant: 160).isActive = true
@@ -461,7 +463,7 @@ class HealthDashboardViewController: UIViewController {
         highlightsStack.axis = .vertical
         highlightsStack.spacing = 10
         highlightsStack.alignment = .fill
-        highlightsStack.semanticContentAttribute = .forceRightToLeft
+        highlightsStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         highlightsStack.translatesAutoresizingMaskIntoConstraints = false
         highlightsCard.addSubview(highlightsStack)
         NSLayoutConstraint.activate([
@@ -515,14 +517,14 @@ class HealthDashboardViewController: UIViewController {
     }
 
     @objc private func cardInfoTapped(_ sender: CardInfoButton) {
-        let alert = UIAlertController(title: "הסבר", message: sender.explanation, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "הבנתי", style: .default))
+        let alert = UIAlertController(title: "dashboard.explanation".localized, message: sender.explanation, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "understand".localized, style: .default))
         present(alert, animated: true)
     }
 
     @objc private func refreshPulled() {
-        refreshControl.attributedTitle = NSAttributedString(string: "טוען מחדש את כל הנתונים…", attributes: [.foregroundColor: AIONDesign.textSecondary])
-        showLoading("טוען מחדש את כל הנתונים…")
+        refreshControl.attributedTitle = NSAttributedString(string: "dashboard.reloadAllData".localized, attributes: [.foregroundColor: AIONDesign.textSecondary])
+        showLoading("dashboard.reloadAllData".localized)
         loadData(forceAnalysis: false, useRefreshControl: true)
     }
 
@@ -624,19 +626,19 @@ class HealthDashboardViewController: UIViewController {
             let scores = sleepTake.map { Self.sleepScore(totalHours: $0.totalHours ?? 0, deepHours: $0.deepHours, remHours: $0.remHours) }
             let scoreAvg = scores.reduce(0, +) / scores.count
             let deepHours = sleepTake.compactMap(\.deepHours).reduce(0, +) / Double(max(1, sleepTake.compactMap(\.deepHours).count))
-            let subtitle = deepHours > 0 ? "שינה עמוקה: \(String(format: "%.1f", deepHours)) שע׳" : nil
+            let subtitle = deepHours > 0 ? "\("dashboard.deepSleep".localized): \(String(format: "%.1f", deepHours)) \("unit.hours".localized)" : nil
 
             if selectedRange == .day {
                 // יום אחד - ערך בודד עם progress bar
                 let progress = CGFloat(scoreAvg) / 100
-                bioSleep?.configure(icon: "bed.double.fill", title: "איכות שינה", value: "\(scoreAvg)", progress: progress, subtitle: subtitle)
+                bioSleep?.configure(icon: "bed.double.fill", title: "dashboard.sleepQuality".localized, value: "\(scoreAvg)", progress: progress, subtitle: subtitle)
             } else {
                 // 7/30 ימים - גרף מגמה
                 let trendData = scores.map { Double($0) }
                 bioSleep?.configureTrend(
                     icon: "bed.double.fill",
-                    title: "איכות שינה",
-                    value: "ממוצע: \(scoreAvg)",
+                    title: "dashboard.sleepQuality".localized,
+                    value: "\("dashboard.avgLabel".localized): \(scoreAvg)",
                     subtitle: subtitle,
                     dataPoints: trendData,
                     isPositiveTrendGood: true  // ציון שינה גבוה = טוב יותר
@@ -646,31 +648,31 @@ class HealthDashboardViewController: UIViewController {
 
         // Bio Temp / RHR Card - גרף מגמה ל-7/30 ימים
         if let s = sleepTake.last, let b = s.bbt, b != 0 {
-            bioTemp?.configure(icon: "thermometer.medium", title: "סטיית טמפ׳", value: String(format: "%+.1f°C", b), progress: nil)
+            bioTemp?.configure(icon: "thermometer.medium", title: "dashboard.restingHR".localized, value: String(format: "%+.1f°C", b), progress: nil)
         } else if !rhrTake.isEmpty {
             let rhrAvg = rhrTake.map(\.value).reduce(0, +) / Double(rhrTake.count)
 
             if selectedRange == .day {
                 // יום אחד - ערך בודד עם progress bar
                 let rhrProgress = CGFloat(max(0, min(1, (100 - rhrAvg) / 60)))
-                bioTemp?.configure(icon: "heart.fill", title: "דופק מנוחה", value: String(format: "%.0f bpm", rhrAvg), progress: rhrProgress, subtitle: nil)
+                bioTemp?.configure(icon: "heart.fill", title: "dashboard.restingHR".localized, value: String(format: "%.0f bpm", rhrAvg), progress: rhrProgress, subtitle: nil)
             } else {
                 // 7/30 ימים - גרף מגמה
                 let trendData = rhrTake.map(\.value)
                 let minRhr = trendData.min() ?? rhrAvg
                 let maxRhr = trendData.max() ?? rhrAvg
-                let subtitle = "טווח: \(Int(minRhr))-\(Int(maxRhr)) bpm"
+                let subtitle = "\("dashboard.rangeLabel".localized): \(Int(minRhr))-\(Int(maxRhr)) bpm"
                 bioTemp?.configureTrend(
                     icon: "heart.fill",
-                    title: "דופק מנוחה",
-                    value: String(format: "ממוצע: %.0f bpm", rhrAvg),
+                    title: "dashboard.restingHR".localized,
+                    value: String(format: "\("dashboard.avgLabel".localized): %.0f bpm", rhrAvg),
                     subtitle: subtitle,
                     dataPoints: trendData,
                     isPositiveTrendGood: false  // דופק נמוך = טוב יותר
                 )
             }
         } else {
-            bioTemp?.configure(icon: "heart.fill", title: "דופק מנוחה", value: "—", progress: nil)
+            bioTemp?.configure(icon: "heart.fill", title: "dashboard.restingHR".localized, value: "—", progress: nil)
         }
 
         // Highlights
@@ -810,10 +812,10 @@ class HealthDashboardViewController: UIViewController {
             if let tib = last.timeInBedHours, tib > 0 {
                 let h = Int(tib)
                 let m = Int(round((tib - Double(h)) * 60))
-                rows.append((icon: "clock.fill", text: "זמן במיטה: \(h) שע׳ \(m) דק׳"))
+                rows.append((icon: "clock.fill", text: "\("dashboard.timeInBed".localized): \(h) \("unit.hours".localized) \(m) \("unit.minutes".localized)"))
             }
             if let rmin = last.respiratoryMin, let rmax = last.respiratoryMax {
-                rows.append((icon: "wind", text: "נשימות בשינה: \(formatOneDecimal(rmin))–\(Int(round(rmax))) בדקה"))
+                rows.append((icon: "wind", text: "\("dashboard.breathsInSleep".localized): \(formatOneDecimal(rmin))–\(Int(round(rmax))) \("dashboard.perMinute".localized)"))
             }
         }
 
@@ -821,30 +823,30 @@ class HealthDashboardViewController: UIViewController {
         if n == 30, let avg = sleepAvgHours, avg > 0 {
             let h = Int(avg)
             let m = Int(round((avg - Double(h)) * 60))
-            rows.append((icon: "bed.double.fill", text: "ממוצע 30 הימים: \(h) שע׳ \(m) דק׳"))
+            rows.append((icon: "bed.double.fill", text: "\("dashboard.avg30Days".localized): \(h) \("unit.hours".localized) \(m) \("unit.minutes".localized)"))
         }
 
         // Steps
         if let steps = healthData?.steps, steps > 0 {
             let formatted = NumberFormatter.localizedString(from: NSNumber(value: Int(steps)), number: .decimal)
             if let dist = healthData?.distance, dist > 0 {
-                rows.append((icon: "figure.walk", text: "\(formatted) צעדים · \(String(format: "%.1f", dist)) ק\"מ"))
+                rows.append((icon: "figure.walk", text: "\(formatted) \("dashboard.steps".localized) · \(String(format: "%.1f", dist)) \("activity.km".localized)"))
             } else {
-                rows.append((icon: "figure.walk", text: "\(formatted) צעדים"))
+                rows.append((icon: "figure.walk", text: "\(formatted) \("dashboard.steps".localized)"))
             }
         }
 
         // Active calories
         if let cal = healthData?.activeEnergy, cal > 0 {
-            rows.append((icon: "flame.fill", text: "\(Int(round(cal))) קלוריות פעילות"))
+            rows.append((icon: "flame.fill", text: "\(Int(round(cal))) \("dashboard.activeCalories".localized)"))
         }
 
         if rows.isEmpty {
             let empty = UILabel()
-            empty.text = "אין דגשים זמינים"
+            empty.text = "dashboard.noHighlights".localized
             empty.font = .systemFont(ofSize: 14, weight: .regular)
             empty.textColor = AIONDesign.textTertiary
-            empty.textAlignment = .right
+            empty.textAlignment = LocalizationManager.shared.textAlignment
             empty.translatesAutoresizingMaskIntoConstraints = false
             highlightsStack.addArrangedSubview(empty)
         } else {
@@ -853,7 +855,7 @@ class HealthDashboardViewController: UIViewController {
                 hStack.axis = .horizontal
                 hStack.spacing = 8
                 hStack.alignment = .center
-                hStack.semanticContentAttribute = .forceRightToLeft
+                hStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
                 hStack.translatesAutoresizingMaskIntoConstraints = false
 
                 let iconCfg = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
@@ -869,7 +871,7 @@ class HealthDashboardViewController: UIViewController {
                 label.text = row.text
                 label.font = .systemFont(ofSize: 14, weight: .medium)
                 label.textColor = AIONDesign.textSecondary
-                label.textAlignment = .right
+                label.textAlignment = LocalizationManager.shared.textAlignment
                 label.numberOfLines = 0
                 label.translatesAutoresizingMaskIntoConstraints = false
 
@@ -976,13 +978,13 @@ class HealthDashboardViewController: UIViewController {
 
         // Fallback: אם אין cache, טען מ-HealthKit
         guard HealthKitManager.shared.isHealthDataAvailable() else {
-            showAlert(title: "שגיאה", message: "HealthKit לא זמין במכשיר זה.")
+            showAlert(title: "error".localized, message: "dashboard.healthKitError".localized)
             return
         }
         HealthKitManager.shared.requestAuthorization { [weak self] ok, err in
             DispatchQueue.main.async {
                 if ok { self?.loadData(forceAnalysis: false) }
-                else { self?.showAlert(title: "הרשאה נדחתה", message: "אנא אפשר גישה לנתוני בריאות בהגדרות.") }
+                else { self?.showAlert(title: "dashboard.permissionDenied".localized, message: "dashboard.enableHealthAccess".localized) }
             }
         }
     }
@@ -992,14 +994,14 @@ class HealthDashboardViewController: UIViewController {
         let currentLoadId = loadId
         useRefreshControlForCurrentLoad = useRefreshControl
         if forceAnalysis { GeminiService.shared.cancelCurrentRequest() }
-        if !silent && !useRefreshControl { showLoading("טוען נתונים…") }
+        if !silent && !useRefreshControl { showLoading("dashboard.loadingData".localized) }
         HealthKitManager.shared.fetchAllHealthData(for: selectedRange) { [weak self] data, err in
             guard let self = self else { return }
             if let err = err {
                 DispatchQueue.main.async {
                     self.hideLoading()
                     self.endRefreshingIfNeeded()
-                    self.showAlert(title: "שגיאה", message: err.localizedDescription)
+                    self.showAlert(title: "error".localized, message: err.localizedDescription)
                     NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
                 }
                 return
@@ -1141,9 +1143,9 @@ class HealthDashboardViewController: UIViewController {
                 if let err = err {
                     if (err as NSError).code == NSURLErrorCancelled { return }
                     let msg = (err as NSError).code == NSURLErrorTimedOut
-                        ? "הבקשה ל‑Gemini התמשכה מדי. ייתכן חיבור איטי או עומס – נסה שוב."
+                        ? "dashboard.geminiTimeout".localized
                         : err.localizedDescription
-                    self.showAlert(title: "שגיאה", message: msg)
+                    self.showAlert(title: "error".localized, message: msg)
                     NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
                     return
                 }
@@ -1166,9 +1168,9 @@ class HealthDashboardViewController: UIViewController {
                 if let err = err {
                     if (err as NSError).code == NSURLErrorCancelled { return }
                     let msg = (err as NSError).code == NSURLErrorTimedOut
-                        ? "הבקשה ל‑Gemini התמשכה מדי. ייתכן חיבור איטי או עומס – נסה שוב."
+                        ? "dashboard.geminiTimeout".localized
                         : err.localizedDescription
-                    self.showAlert(title: "שגיאה", message: msg)
+                    self.showAlert(title: "error".localized, message: msg)
                     NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
                     return
                 }
@@ -1179,8 +1181,8 @@ class HealthDashboardViewController: UIViewController {
     }
 
     private func applyNoDataState() {
-        insightsText = "אין נתוני בריאות זמינים. ודא שהתחברת ל-Apple Health והענקת הרשאות."
-        recommendationsText = "חבר את Apple Health כדי לקבל ניתוח מותאם אישית."
+        insightsText = "dashboard.noHealthData".localized
+        recommendationsText = "dashboard.connectAppleHealth".localized
         hideLoading()
         updateDirectivesCard()
     }
@@ -1231,7 +1233,7 @@ class HealthDashboardViewController: UIViewController {
         while let p = top.presentedViewController { top = p }
         if top is UIAlertController { return }
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "אישור", style: .default))
+        alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
         top.present(alert, animated: true)
     }
 }

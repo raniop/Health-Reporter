@@ -35,6 +35,20 @@ enum HealthDataSource: String, CaseIterable, Codable {
         }
     }
 
+    /// Localized display name
+    var displayName: String {
+        switch self {
+        case .appleWatch: return "Apple Watch"
+        case .garmin: return "Garmin"
+        case .oura: return "Oura Ring"
+        case .whoop: return "WHOOP"
+        case .fitbit: return "Fitbit"
+        case .samsung: return "Samsung Health"
+        case .other: return "dataSources.other".localized
+        case .autoDetect: return "dataSources.autoDetect".localized
+        }
+    }
+
     /// שם קצר לאינדיקטור
     var shortName: String {
         switch self {

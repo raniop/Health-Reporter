@@ -11,8 +11,13 @@ class GeminiDebugViewController: UIViewController {
 
     // MARK: - UI Components
 
-    private let segmentedControl: UISegmentedControl = {
-        let sc = UISegmentedControl(items: ["שאילתה", "תשובה", "הבדלים", "היסטוריה"])
+    private lazy var segmentedControl: UISegmentedControl = {
+        let sc = UISegmentedControl(items: [
+            "debug.query".localized,
+            "debug.response".localized,
+            "debug.differences".localized,
+            "debug.history".localized
+        ])
         sc.selectedSegmentIndex = 0
         sc.translatesAutoresizingMaskIntoConstraints = false
         return sc
@@ -47,17 +52,17 @@ class GeminiDebugViewController: UIViewController {
         return label
     }()
 
-    private let copyButton: UIButton = {
+    private lazy var copyButton: UIButton = {
         let btn = UIButton(type: .system)
-        btn.setTitle("העתק", for: .normal)
+        btn.setTitle("debug.copy".localized, for: .normal)
         btn.setImage(UIImage(systemName: "doc.on.doc"), for: .normal)
         btn.translatesAutoresizingMaskIntoConstraints = false
         return btn
     }()
 
-    private let shareButton: UIButton = {
+    private lazy var shareButton: UIButton = {
         let btn = UIButton(type: .system)
-        btn.setTitle("שתף", for: .normal)
+        btn.setTitle("debug.share".localized, for: .normal)
         btn.setImage(UIImage(systemName: "square.and.arrow.up"), for: .normal)
         btn.translatesAutoresizingMaskIntoConstraints = false
         return btn
@@ -84,9 +89,9 @@ class GeminiDebugViewController: UIViewController {
 
     // MARK: - Data
 
-    private var promptText: String = "אין שאילתה שמורה"
-    private var responseText: String = "אין תשובה שמורה"
-    private var differencesText: String = "אין הבדלים להצגה"
+    private lazy var promptText: String = "debug.noSavedQuery".localized
+    private lazy var responseText: String = "debug.noSavedResponse".localized
+    private lazy var differencesText: String = "debug.noDifferences".localized
     private var differencesAttributedText: NSAttributedString?
     private var historyEntries: [DebugLogEntry] = []
     private var historyAttributedText: NSAttributedString?
@@ -108,7 +113,7 @@ class GeminiDebugViewController: UIViewController {
 
         // Navigation bar
         navigationItem.leftBarButtonItem = UIBarButtonItem(
-            title: "סגור",
+            title: "debug.close".localized,
             style: .done,
             target: self,
             action: #selector(closeTapped)
@@ -495,7 +500,7 @@ class GeminiDebugViewController: UIViewController {
 
             let charCount = promptText.count
             let wordCount = promptText.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
-            statsLabel.text = "שאילתה: \(charCount.formatted()) תווים, \(wordCount.formatted()) מילים"
+            statsLabel.text = String(format: "debug.queryStats".localized, charCount.formatted(), wordCount.formatted())
 
         case 1: // תשובה
             textView.attributedText = nil
@@ -504,7 +509,7 @@ class GeminiDebugViewController: UIViewController {
 
             let charCount = responseText.count
             let wordCount = responseText.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
-            statsLabel.text = "תשובה: \(charCount.formatted()) תווים, \(wordCount.formatted()) מילים"
+            statsLabel.text = String(format: "debug.responseStats".localized, charCount.formatted(), wordCount.formatted())
 
         case 2: // הבדלים
             if let attributed = differencesAttributedText {
@@ -514,17 +519,17 @@ class GeminiDebugViewController: UIViewController {
                 textView.text = differencesText
                 textView.font = .systemFont(ofSize: 14, weight: .regular)
             }
-            statsLabel.text = "השוואה בין תשובה קודמת לנוכחית"
+            statsLabel.text = "debug.comparisonStats".localized
 
         case 3: // היסטוריה
             if let attributed = historyAttributedText {
                 textView.attributedText = attributed
             } else {
                 textView.attributedText = nil
-                textView.text = "אין היסטוריה שמורה"
+                textView.text = "debug.noHistory".localized
                 textView.font = .systemFont(ofSize: 14, weight: .regular)
             }
-            statsLabel.text = "\(historyEntries.count) רשומות ב-7 הימים האחרונים"
+            statsLabel.text = String(format: "debug.entriesInLast7Days".localized, historyEntries.count)
 
         default:
             break
@@ -547,7 +552,7 @@ class GeminiDebugViewController: UIViewController {
     @objc private func forceGeminiTapped() {
         // התחלת טעינה
         forceGeminiButton.isEnabled = false
-        forceGeminiButton.setTitle("קורא ל-Gemini...", for: .normal)
+        forceGeminiButton.setTitle("debug.callingGemini".localized, for: .normal)
         geminiSpinner.startAnimating()
 
         // שליחת notification ל-Dashboard לבצע ניתוח
@@ -588,7 +593,7 @@ class GeminiDebugViewController: UIViewController {
         if timeout {
             showToast("Timeout!")
         } else {
-            showToast("הושלם!")
+            showToast("debug.completed".localized)
             // רענון הנתונים
             loadData()
             updateDisplay()
@@ -601,7 +606,7 @@ class GeminiDebugViewController: UIViewController {
         case 0: text = promptText
         case 1: text = responseText
         case 2: text = differencesText
-        case 3: text = historyAttributedText?.string ?? "אין היסטוריה"
+        case 3: text = historyAttributedText?.string ?? "debug.noHistory".localized
         default: text = ""
         }
 
@@ -612,7 +617,7 @@ class GeminiDebugViewController: UIViewController {
         generator.notificationOccurred(.success)
 
         // Show toast
-        showToast("הועתק!")
+        showToast("debug.copied".localized)
     }
 
     @objc private func shareTapped() {
@@ -630,7 +635,7 @@ class GeminiDebugViewController: UIViewController {
             text = differencesText
             label = "Gemini Differences"
         case 3:
-            text = historyAttributedText?.string ?? "אין היסטוריה"
+            text = historyAttributedText?.string ?? "debug.noHistory".localized
             label = "Gemini History (7 days)"
         default:
             text = ""

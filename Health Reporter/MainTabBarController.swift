@@ -18,19 +18,19 @@ final class MainTabBarController: UITabBarController {
         tabBar.unselectedItemTintColor = AIONDesign.textTertiary
 
         let dash = HealthDashboardViewController()
-        dash.tabBarItem = UITabBarItem(title: "דשבורד", image: UIImage(systemName: "square.grid.2x2"), tag: 0)
+        dash.tabBarItem = UITabBarItem(title: "tab.dashboard".localized, image: UIImage(systemName: "square.grid.2x2"), tag: 0)
 
         let trends = TrendsViewController()
-        trends.tabBarItem = UITabBarItem(title: "מגמות", image: UIImage(systemName: "chart.line.uptrend.xyaxis"), tag: 1)
+        trends.tabBarItem = UITabBarItem(title: "tab.trends".localized, image: UIImage(systemName: "chart.line.uptrend.xyaxis"), tag: 1)
 
         let activity = ActivityViewController()
-        activity.tabBarItem = UITabBarItem(title: "פעילות", image: UIImage(systemName: "figure.run"), tag: 2)
+        activity.tabBarItem = UITabBarItem(title: "tab.activity".localized, image: UIImage(systemName: "figure.run"), tag: 2)
 
         let insights = InsightsTabViewController()
-        insights.tabBarItem = UITabBarItem(title: "תובנות", image: UIImage(systemName: "sparkles"), tag: 3)
+        insights.tabBarItem = UITabBarItem(title: "tab.insights".localized, image: UIImage(systemName: "sparkles"), tag: 3)
 
         let profile = ProfileViewController()
-        profile.tabBarItem = UITabBarItem(title: "פרופיל", image: UIImage(systemName: "person.circle"), tag: 4)
+        profile.tabBarItem = UITabBarItem(title: "tab.profile".localized, image: UIImage(systemName: "person.circle"), tag: 4)
 
         viewControllers = [
             UINavigationController(rootViewController: dash),

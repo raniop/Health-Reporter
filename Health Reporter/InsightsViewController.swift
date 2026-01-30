@@ -21,7 +21,7 @@ class InsightsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AIONDesign.background
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupScrollAndStack()
         setupHeader()
         setupCloseButton()
@@ -37,13 +37,13 @@ class InsightsViewController: UIViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = true
         scrollView.alwaysBounceVertical = true
-        scrollView.semanticContentAttribute = .forceRightToLeft
+        scrollView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         view.addSubview(scrollView)
 
         stack.axis = .vertical
         stack.spacing = AIONDesign.spacingLarge
         stack.alignment = .fill
-        stack.semanticContentAttribute = .forceRightToLeft
+        stack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         stack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stack)
 
@@ -65,14 +65,14 @@ class InsightsViewController: UIViewController {
         wrap.translatesAutoresizingMaskIntoConstraints = false
 
         let title = UILabel()
-        title.text = "תובנות AION"
+        title.text = "insights.aionInsights".localized
         title.font = .systemFont(ofSize: 26, weight: .bold)
         title.textColor = AIONDesign.textPrimary
         title.textAlignment = .center
         title.translatesAutoresizingMaskIntoConstraints = false
 
         let sub = UILabel()
-        sub.text = "ניתוח ביומטרי מבוסס נתונים"
+        sub.text = "insights.biometricAnalysis".localized
         sub.font = .systemFont(ofSize: 15, weight: .regular)
         sub.textColor = AIONDesign.textSecondary
         sub.textAlignment = .center
@@ -117,7 +117,7 @@ class InsightsViewController: UIViewController {
         let display = insightsText.trimmingCharacters(in: .whitespacesAndNewlines)
         if display.isEmpty {
             let empty = UILabel()
-            empty.text = "אין תובנות זמינות.\nהרץ ניתוח מחדש (רענן נתונים) בדשבורד."
+            empty.text = "insights.noInsights".localized
             empty.font = .systemFont(ofSize: 16, weight: .regular)
             empty.textColor = AIONDesign.textSecondary
             empty.textAlignment = .center
@@ -154,7 +154,7 @@ private final class InsightFullContentView: UIView {
     init(text: String) {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        semanticContentAttribute = .forceRightToLeft
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         backgroundColor = AIONDesign.surface
         layer.cornerRadius = AIONDesign.cornerRadiusLarge
 
@@ -163,8 +163,8 @@ private final class InsightFullContentView: UIView {
         tv.backgroundColor = .clear
         tv.isEditable = false
         tv.isScrollEnabled = false
-        tv.textAlignment = .right
-        tv.semanticContentAttribute = .forceRightToLeft
+        tv.textAlignment = LocalizationManager.shared.textAlignment
+        tv.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         tv.textContainerInset = UIEdgeInsets(top: AIONDesign.spacing, left: AIONDesign.spacing, bottom: AIONDesign.spacing, right: AIONDesign.spacing)
         tv.textContainer.lineFragmentPadding = 0
         tv.translatesAutoresizingMaskIntoConstraints = false

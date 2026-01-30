@@ -19,15 +19,17 @@ struct CarTier {
 
 enum CarTierEngine {
 
-    // MARK: - 5 דרגות קבועות
+    // MARK: - 5 Tier Levels
 
-    static let tiers: [CarTier] = [
-        CarTier(name: "Fiat Panda",               emoji: "🚙", tierLabel: "צריך טיפול",    tierIndex: 0, color: AIONDesign.accentDanger,    imageName: "CarFiatPanda"),
-        CarTier(name: "Toyota Corolla",            emoji: "🚗", tierLabel: "בסדר",          tierIndex: 1, color: AIONDesign.accentWarning,   imageName: "CarToyotaCorolla"),
-        CarTier(name: "BMW M3",                    emoji: "🏎️", tierLabel: "מצב טוב",       tierIndex: 2, color: AIONDesign.accentPrimary,   imageName: "CarBMWM3"),
-        CarTier(name: "Porsche 911 Turbo",         emoji: "🏁", tierLabel: "מצוין",         tierIndex: 3, color: AIONDesign.accentSecondary, imageName: "CarPorsche911"),
-        CarTier(name: "Ferrari SF90 Stradale",     emoji: "🏆", tierLabel: "שיא ביצועים",   tierIndex: 4, color: AIONDesign.accentSuccess,   imageName: "CarFerrariSF90"),
-    ]
+    static var tiers: [CarTier] {
+        [
+            CarTier(name: "Fiat Panda",               emoji: "🚙", tierLabel: "insights.needsAttention".localized, tierIndex: 0, color: AIONDesign.accentDanger,    imageName: "CarFiatPanda"),
+            CarTier(name: "Toyota Corolla",            emoji: "🚗", tierLabel: "insights.okay".localized,           tierIndex: 1, color: AIONDesign.accentWarning,   imageName: "CarToyotaCorolla"),
+            CarTier(name: "BMW M3",                    emoji: "🏎️", tierLabel: "insights.goodCondition".localized,  tierIndex: 2, color: AIONDesign.accentPrimary,   imageName: "CarBMWM3"),
+            CarTier(name: "Porsche 911 Turbo",         emoji: "🏁", tierLabel: "insights.excellent".localized,      tierIndex: 3, color: AIONDesign.accentSecondary, imageName: "CarPorsche911"),
+            CarTier(name: "Ferrari SF90 Stradale",     emoji: "🏆", tierLabel: "insights.peakPerformance".localized,tierIndex: 4, color: AIONDesign.accentSuccess,   imageName: "CarFerrariSF90"),
+        ]
+    }
 
     /// חישוב ציון בריאות מרוכב (0-100) ממדדים זמינים.
     /// משקולות: readiness 40%, sleep 25%, HRV 20%, strain balance 15%.

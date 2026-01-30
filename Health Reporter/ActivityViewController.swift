@@ -28,7 +28,7 @@ final class ActivityViewController: UIViewController {
 
     private let refreshControl: UIRefreshControl = {
         let r = UIRefreshControl()
-        r.attributedTitle = NSAttributedString(string: "טוען נתוני פעילות", attributes: [.foregroundColor: AIONDesign.textSecondary])
+        r.attributedTitle = NSAttributedString(string: "activity.loadingActivity".localized, attributes: [.foregroundColor: AIONDesign.textSecondary])
         return r
     }()
 
@@ -37,7 +37,7 @@ final class ActivityViewController: UIViewController {
         s.axis = .vertical
         s.spacing = AIONDesign.spacingLarge
         s.alignment = .fill
-        s.semanticContentAttribute = .forceRightToLeft
+        s.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
     }()
@@ -63,9 +63,9 @@ final class ActivityViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "פעילות"
+        title = "activity.title".localized
         view.backgroundColor = AIONDesign.background
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupUI()
         loadData()
 
@@ -95,7 +95,7 @@ final class ActivityViewController: UIViewController {
         periodCol.axis = .vertical
         periodCol.spacing = 8
         periodCol.alignment = .fill
-        periodCol.semanticContentAttribute = .forceRightToLeft
+        periodCol.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         periodCol.translatesAutoresizingMaskIntoConstraints = false
 
         for (i, r) in DataRange.allCases.enumerated() {
@@ -158,13 +158,13 @@ final class ActivityViewController: UIViewController {
         icon.contentMode = .scaleAspectFit
         icon.translatesAutoresizingMaskIntoConstraints = false
         let title = UILabel()
-        title.text = "פעילות"
+        title.text = "activity.activityTitle".localized
         title.font = .systemFont(ofSize: 22, weight: .bold)
         title.textColor = AIONDesign.textPrimary
         title.textAlignment = .center
         title.translatesAutoresizingMaskIntoConstraints = false
         let sub = UILabel()
-        sub.text = "צעדים, מרחק, קלוריות ואימון"
+        sub.text = "activity.stepsDistanceCalories".localized
         sub.font = .systemFont(ofSize: 13, weight: .medium)
         sub.textColor = AIONDesign.textSecondary
         sub.textAlignment = .center
@@ -192,7 +192,7 @@ final class ActivityViewController: UIViewController {
     }
 
     private func setupActivityRings() {
-        stack.addArrangedSubview(makeSectionLabel("טבעות פעילות"))
+        stack.addArrangedSubview(makeSectionLabel("activity.activityRings".localized))
 
         activityRingsCard.translatesAutoresizingMaskIntoConstraints = false
         activityRingsCard.showPlaceholder()
@@ -204,23 +204,23 @@ final class ActivityViewController: UIViewController {
     }
 
     private func setupSummaryCards() {
-        stack.addArrangedSubview(makeSectionLabel("סיכום"))
+        stack.addArrangedSubview(makeSectionLabel("activity.summary".localized))
 
         summaryRow1.axis = .horizontal
         summaryRow1.spacing = AIONDesign.spacing
         summaryRow1.distribution = .fillEqually
-        summaryRow1.semanticContentAttribute = .forceRightToLeft
+        summaryRow1.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         summaryRow1.translatesAutoresizingMaskIntoConstraints = false
         summaryRow2.axis = .horizontal
         summaryRow2.spacing = AIONDesign.spacing
         summaryRow2.distribution = .fillEqually
-        summaryRow2.semanticContentAttribute = .forceRightToLeft
+        summaryRow2.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         summaryRow2.translatesAutoresizingMaskIntoConstraints = false
 
-        let (c1, l1) = makeMetricCard("צעדים", unit: "", explanation: CardExplanations.activitySteps)
-        let (c2, l2) = makeMetricCard("מרחק", unit: "ק״מ", explanation: CardExplanations.activityDistance)
-        let (c3, l3) = makeMetricCard("קלוריות", unit: "kcal", explanation: CardExplanations.activityCalories)
-        let (c4, l4) = makeMetricCard("דקות אימון", unit: "דק׳", explanation: CardExplanations.activityExercise)
+        let (c1, l1) = makeMetricCard("activity.stepsMetric".localized, unit: "", explanation: CardExplanations.activitySteps)
+        let (c2, l2) = makeMetricCard("activity.distanceMetric".localized, unit: "activity.km".localized, explanation: CardExplanations.activityDistance)
+        let (c3, l3) = makeMetricCard("activity.caloriesMetric".localized, unit: "kcal", explanation: CardExplanations.activityCalories)
+        let (c4, l4) = makeMetricCard("activity.exerciseMetric".localized, unit: "activity.min".localized, explanation: CardExplanations.activityExercise)
         stepsValueLabel = l1
         distanceValueLabel = l2
         caloriesValueLabel = l3
@@ -239,12 +239,12 @@ final class ActivityViewController: UIViewController {
         secondaryRow.axis = .horizontal
         secondaryRow.spacing = AIONDesign.spacing
         secondaryRow.distribution = .fillEqually
-        secondaryRow.semanticContentAttribute = .forceRightToLeft
+        secondaryRow.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         secondaryRow.translatesAutoresizingMaskIntoConstraints = false
 
-        let (c1, l1) = makeMetricCard("קומות", unit: "", explanation: CardExplanations.activityFlights)
-        let (c2, l2) = makeMetricCard("Move", unit: "דק׳", explanation: CardExplanations.activityMove)
-        let (c3, l3) = makeMetricCard("Stand", unit: "שעות", explanation: CardExplanations.activityStand)
+        let (c1, l1) = makeMetricCard("activity.floorsMetric".localized, unit: "", explanation: CardExplanations.activityFlights)
+        let (c2, l2) = makeMetricCard("activity.moveMetric".localized, unit: "activity.min".localized, explanation: CardExplanations.activityMove)
+        let (c3, l3) = makeMetricCard("activity.standMetric".localized, unit: "activity.hours".localized, explanation: CardExplanations.activityStand)
         flightsValueLabel = l1
         moveValueLabel = l2
         standValueLabel = l3
@@ -335,18 +335,18 @@ final class ActivityViewController: UIViewController {
         }
 
         let placeholders = [
-            UIHostingController(rootView: ChartPlaceholderView(message: "טוען...", icon: "chart.bar.fill")),
-            UIHostingController(rootView: ChartPlaceholderView(message: "טוען...", icon: "figure.walk")),
-            UIHostingController(rootView: ChartPlaceholderView(message: "טוען...", icon: "flame.fill")),
+            UIHostingController(rootView: ChartPlaceholderView(message: "loading".localized, icon: "chart.bar.fill")),
+            UIHostingController(rootView: ChartPlaceholderView(message: "loading".localized, icon: "figure.walk")),
+            UIHostingController(rootView: ChartPlaceholderView(message: "loading".localized, icon: "flame.fill")),
         ]
-        addChartCard(stepsChartCard, title: "גרף צעדים", infoMsg: CardExplanations.activitySteps, placeholderHost: placeholders[0])
-        addChartCard(distanceChartCard, title: "גרף מרחק", infoMsg: CardExplanations.activityDistance, placeholderHost: placeholders[1])
-        addChartCard(energyChartCard, title: "גרף קלוריות פעילות", infoMsg: CardExplanations.activityCalories, placeholderHost: placeholders[2])
+        addChartCard(stepsChartCard, title: "activity.stepsChart".localized, infoMsg: CardExplanations.activitySteps, placeholderHost: placeholders[0])
+        addChartCard(distanceChartCard, title: "activity.distanceChart".localized, infoMsg: CardExplanations.activityDistance, placeholderHost: placeholders[1])
+        addChartCard(energyChartCard, title: "activity.caloriesChart".localized, infoMsg: CardExplanations.activityCalories, placeholderHost: placeholders[2])
         stepsHosting = placeholders[0]
         distanceHosting = placeholders[1]
         energyHosting = placeholders[2]
 
-        stack.addArrangedSubview(makeSectionLabel("גרפים"))
+        stack.addArrangedSubview(makeSectionLabel("activity.charts".localized))
         stack.addArrangedSubview(stepsChartCard)
         stack.addArrangedSubview(distanceChartCard)
         stack.addArrangedSubview(energyChartCard)
@@ -362,8 +362,8 @@ final class ActivityViewController: UIViewController {
     }
 
     @objc private func infoTapped(_ sender: CardInfoButton) {
-        let alert = UIAlertController(title: "הסבר", message: sender.explanation, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "הבנתי", style: .default))
+        let alert = UIAlertController(title: "dashboard.explanation".localized, message: sender.explanation, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "understand".localized, style: .default))
         present(alert, animated: true)
     }
 
@@ -455,12 +455,12 @@ final class ActivityViewController: UIViewController {
             return u.isEmpty ? f(x) : "\(f(x)) \(u)"
         }
         stepsValueLabel?.text = fmt(s.steps, { String(format: "%.0f", $0) }, "")
-        distanceValueLabel?.text = fmt(s.distanceKm, { String(format: "%.2f", $0) }, "ק״מ")
+        distanceValueLabel?.text = fmt(s.distanceKm, { String(format: "%.2f", $0) }, "activity.km".localized)
         caloriesValueLabel?.text = fmt(s.activeEnergyKcal, { String(format: "%.0f", $0) }, "kcal")
-        exerciseValueLabel?.text = fmt(s.exerciseMinutes, { String(format: "%.0f", $0) }, "דק׳")
+        exerciseValueLabel?.text = fmt(s.exerciseMinutes, { String(format: "%.0f", $0) }, "activity.min".localized)
         flightsValueLabel?.text = fmt(s.flightsClimbed, { String(format: "%.0f", $0) }, "")
-        moveValueLabel?.text = fmt(s.moveTimeMinutes, { String(format: "%.0f", $0) }, "דק׳")
-        standValueLabel?.text = fmt(s.standHours, { String(format: "%.1f", $0) }, "שעות")
+        moveValueLabel?.text = fmt(s.moveTimeMinutes, { String(format: "%.0f", $0) }, "activity.min".localized)
+        standValueLabel?.text = fmt(s.standHours, { String(format: "%.1f", $0) }, "activity.hours".localized)
 
         // Update Activity Rings - adjust goal by range
         let multiplier: Double
@@ -493,17 +493,17 @@ final class ActivityViewController: UIViewController {
         if hasSteps {
             replaceChartHost(&stepsHosting, in: stepsChartCard, with: UIHostingController(rootView: StepsChartView(data: stepsData)))
         } else {
-            replaceChartHost(&stepsHosting, in: stepsChartCard, with: UIHostingController(rootView: ChartPlaceholderView(message: "אין נתוני צעדים", icon: "chart.bar.fill")))
+            replaceChartHost(&stepsHosting, in: stepsChartCard, with: UIHostingController(rootView: ChartPlaceholderView(message: "activity.noStepsData".localized, icon: "chart.bar.fill")))
         }
         if hasDist {
             replaceChartHost(&distanceHosting, in: distanceChartCard, with: UIHostingController(rootView: DistanceChartView(data: distData)))
         } else {
-            replaceChartHost(&distanceHosting, in: distanceChartCard, with: UIHostingController(rootView: ChartPlaceholderView(message: "אין נתוני מרחק", icon: "figure.walk")))
+            replaceChartHost(&distanceHosting, in: distanceChartCard, with: UIHostingController(rootView: ChartPlaceholderView(message: "activity.noDistanceData".localized, icon: "figure.walk")))
         }
         if hasEnergy {
             replaceChartHost(&energyHosting, in: energyChartCard, with: UIHostingController(rootView: ActiveEnergyChartView(data: energyData)))
         } else {
-            replaceChartHost(&energyHosting, in: energyChartCard, with: UIHostingController(rootView: ChartPlaceholderView(message: "אין נתוני קלוריות", icon: "flame.fill")))
+            replaceChartHost(&energyHosting, in: energyChartCard, with: UIHostingController(rootView: ChartPlaceholderView(message: "activity.noCaloriesData".localized, icon: "flame.fill")))
         }
     }
 

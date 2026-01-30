@@ -323,6 +323,7 @@
 			knownRegions = (
 				en,
 				Base,
+				he,
 			);
 			mainGroup = 4FA660E42F25020800893900;
 			minimizedProjectReferenceProxies = 1;
@@ -450,7 +451,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 10.1;
+				MARKETING_VERSION = 11.0;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -485,7 +486,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 10.1;
+				MARKETING_VERSION = 11.0;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
 				PRODUCT_NAME = "$(TARGET_NAME)";

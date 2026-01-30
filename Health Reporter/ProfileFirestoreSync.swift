@@ -20,7 +20,7 @@ enum ProfileFirestoreSync {
     /// שומר שם תצוגה ב-Firestore.
     static func saveDisplayName(_ name: String, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
-            completion?(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "אין משתמש מחובר"]))
+            completion?(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
             return
         }
         let db = Firestore.firestore()
@@ -45,7 +45,7 @@ enum ProfileFirestoreSync {
     /// שומר URL תמונת פרופיל ב-Firestore (מתאים ל-users/{uid}).
     static func savePhotoURL(_ url: String, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
-            completion?(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "אין משתמש מחובר"]))
+            completion?(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
             return
         }
         let db = Firestore.firestore()
@@ -73,11 +73,11 @@ enum ProfileFirestoreSync {
     /// מעלה תמונה ל-Storage, מחזיר download URL. path: profile_photos/{uid}.jpg
     static func uploadProfileImage(_ image: UIImage, completion: @escaping (Result<String, Error>) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
-            completion(.failure(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "אין משתמש מחובר"])))
+            completion(.failure(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized])))
             return
         }
         guard let data = image.jpegData(compressionQuality: 0.75) else {
-            completion(.failure(NSError(domain: "ProfileFirestoreSync", code: -2, userInfo: [NSLocalizedDescriptionKey: "שגיאה בהמרת תמונה"])))
+            completion(.failure(NSError(domain: "ProfileFirestoreSync", code: -2, userInfo: [NSLocalizedDescriptionKey: "sync.imageConversionError".localized])))
             return
         }
         let ref = Storage.storage().reference().child("profile_photos/\(uid).jpg")
@@ -94,7 +94,7 @@ enum ProfileFirestoreSync {
                     return
                 }
                 guard let u = url?.absoluteString else {
-                    DispatchQueue.main.async { completion(.failure(NSError(domain: "ProfileFirestoreSync", code: -3, userInfo: [NSLocalizedDescriptionKey: "לא התקבל URL"]))) }
+                    DispatchQueue.main.async { completion(.failure(NSError(domain: "ProfileFirestoreSync", code: -3, userInfo: [NSLocalizedDescriptionKey: "sync.noURLReceived".localized]))) }
                     return
                 }
                 DispatchQueue.main.async { completion(.success(u)) }

@@ -36,7 +36,7 @@ final class LoginViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AIONDesign.background
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupUI()
         setupLoadingOverlay()
     }
@@ -52,16 +52,18 @@ final class LoginViewController: UIViewController {
     }
 
     private func setupUI() {
+        let semantic = LocalizationManager.shared.semanticContentAttribute
+
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = false
         scrollView.keyboardDismissMode = .onDrag
-        scrollView.semanticContentAttribute = .forceRightToLeft
+        scrollView.semanticContentAttribute = semantic
         view.addSubview(scrollView)
 
         stack.axis = .vertical
         stack.spacing = AIONDesign.spacingLarge
         stack.alignment = .fill
-        stack.semanticContentAttribute = .forceRightToLeft
+        stack.semanticContentAttribute = semantic
         stack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stack)
 
@@ -74,21 +76,21 @@ final class LoginViewController: UIViewController {
         logoLabel.textColor = AIONDesign.textPrimary
         logoLabel.textAlignment = .center
 
-        subLabel.text = "התחבר כדי להמשיך"
+        subLabel.text = "login.title".localized
         subLabel.font = .systemFont(ofSize: 17, weight: .regular)
         subLabel.textColor = AIONDesign.textSecondary
         subLabel.textAlignment = .center
 
-        styleField(nameField, placeholder: "שם מלא")
+        styleField(nameField, placeholder: "login.fullName".localized)
         nameField.autocapitalizationType = .words
         nameField.isHidden = true
-        styleField(emailField, placeholder: "אימייל")
+        styleField(emailField, placeholder: "login.email".localized)
         emailField.keyboardType = .emailAddress
         emailField.autocapitalizationType = .none
-        styleField(passwordField, placeholder: "סיסמה")
+        styleField(passwordField, placeholder: "login.password".localized)
         passwordField.isSecureTextEntry = true
 
-        signInButton.setTitle("התחבר", for: .normal)
+        signInButton.setTitle("login.signIn".localized, for: .normal)
         signInButton.titleLabel?.font = AIONDesign.headlineFont()
         signInButton.backgroundColor = AIONDesign.accentPrimary
         signInButton.setTitleColor(.white, for: .normal)
@@ -101,7 +103,7 @@ final class LoginViewController: UIViewController {
         dividerView.translatesAutoresizingMaskIntoConstraints = false
         dividerView.heightAnchor.constraint(equalToConstant: 1).isActive = true
 
-        googleButton.setTitle("  התחבר עם Google", for: .normal)
+        googleButton.setTitle("  " + "login.signInWithGoogle".localized, for: .normal)
         googleButton.setImage(UIImage(systemName: "globe"), for: .normal)
         googleButton.titleLabel?.font = AIONDesign.headlineFont()
         googleButton.tintColor = AIONDesign.textPrimary
@@ -112,7 +114,7 @@ final class LoginViewController: UIViewController {
         googleButton.translatesAutoresizingMaskIntoConstraints = false
         googleButton.addTarget(self, action: #selector(googleTapped), for: .touchUpInside)
         googleButton.heightAnchor.constraint(equalToConstant: 52).isActive = true
-        googleButton.semanticContentAttribute = .forceRightToLeft
+        googleButton.semanticContentAttribute = semantic
 
         appleButton.translatesAutoresizingMaskIntoConstraints = false
         appleButton.layer.cornerRadius = AIONDesign.cornerRadius
@@ -120,7 +122,7 @@ final class LoginViewController: UIViewController {
         appleButton.addTarget(self, action: #selector(appleTapped), for: .touchUpInside)
         appleButton.heightAnchor.constraint(equalToConstant: 52).isActive = true
 
-        signUpHint.text = "אין לך חשבון? הירשם"
+        signUpHint.text = "login.noAccount".localized
         signUpHint.font = .systemFont(ofSize: 15, weight: .regular)
         signUpHint.textColor = AIONDesign.accentSecondary
         signUpHint.textAlignment = .center
@@ -135,23 +137,25 @@ final class LoginViewController: UIViewController {
         logoImageView.widthAnchor.constraint(equalToConstant: 100).isActive = true
         logoImageView.heightAnchor.constraint(equalToConstant: 100).isActive = true
 
+        let textAlign = LocalizationManager.shared.textAlignment
+
         let sectionEmail = UILabel()
-        sectionEmail.text = "הכנס פרטים"
+        sectionEmail.text = "login.enterDetails".localized
         sectionEmail.font = .systemFont(ofSize: 15, weight: .semibold)
         sectionEmail.textColor = AIONDesign.textSecondary
-        sectionEmail.textAlignment = .right
+        sectionEmail.textAlignment = textAlign
 
         let sectionGoogle = UILabel()
-        sectionGoogle.text = "או התחבר עם Google"
+        sectionGoogle.text = "login.orSignInWithGoogle".localized
         sectionGoogle.font = .systemFont(ofSize: 15, weight: .semibold)
         sectionGoogle.textColor = AIONDesign.textSecondary
-        sectionGoogle.textAlignment = .right
+        sectionGoogle.textAlignment = textAlign
 
         let sectionApple = UILabel()
-        sectionApple.text = "או התחבר עם Apple"
+        sectionApple.text = "login.orSignInWithApple".localized
         sectionApple.font = .systemFont(ofSize: 15, weight: .semibold)
         sectionApple.textColor = AIONDesign.textSecondary
-        sectionApple.textAlignment = .right
+        sectionApple.textAlignment = textAlign
 
         stack.addArrangedSubview(header)
         stack.setCustomSpacing(32, after: header)
@@ -191,8 +195,8 @@ final class LoginViewController: UIViewController {
         field.layer.cornerRadius = AIONDesign.cornerRadius
         field.borderStyle = .none
         field.translatesAutoresizingMaskIntoConstraints = false
-        field.textAlignment = .right
-        field.semanticContentAttribute = .forceRightToLeft
+        field.textAlignment = LocalizationManager.shared.textAlignment
+        field.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         let pad: CGFloat = 16
         field.leftView = UIView(frame: CGRect(x: 0, y: 0, width: pad, height: 1))
         field.rightView = UIView(frame: CGRect(x: 0, y: 0, width: pad, height: 1))
@@ -202,8 +206,8 @@ final class LoginViewController: UIViewController {
 
     @objc private func toggleSignUp() {
         isSignUp.toggle()
-        signInButton.setTitle(isSignUp ? "הירשם" : "התחבר", for: .normal)
-        signUpHint.text = isSignUp ? "יש לך חשבון? התחבר" : "אין לך חשבון? הירשם"
+        signInButton.setTitle(isSignUp ? "login.signUp".localized : "login.signIn".localized, for: .normal)
+        signUpHint.text = isSignUp ? "login.hasAccount".localized : "login.noAccount".localized
         nameField.isHidden = !isSignUp
         UIView.animate(withDuration: 0.25) {
             self.stack.layoutIfNeeded()
@@ -214,12 +218,12 @@ final class LoginViewController: UIViewController {
         view.endEditing(true)
         guard let email = emailField.text?.trimmingCharacters(in: .whitespaces), !email.isEmpty,
               let password = passwordField.text, !password.isEmpty else {
-            showAlert(title: "חסרים פרטים", message: "נא להזין אימייל וסיסמה.")
+            showAlert(title: "missingDetails".localized, message: "login.enterEmailPassword".localized)
             return
         }
         if isSignUp {
             guard let name = nameField.text?.trimmingCharacters(in: .whitespaces), !name.isEmpty else {
-                showAlert(title: "חסרים פרטים", message: "נא להזין שם מלא.")
+                showAlert(title: "missingDetails".localized, message: "login.enterFullName".localized)
                 return
             }
         }
@@ -229,7 +233,7 @@ final class LoginViewController: UIViewController {
                 guard let self = self else { return }
                 if let e = err {
                     self.signInButton.isEnabled = true
-                    self.showAlert(title: "שגיאה", message: (e as NSError).localizedDescription)
+                    self.showAlert(title: "error".localized, message: (e as NSError).localizedDescription)
                     return
                 }
                 let changeRequest = result?.user.createProfileChangeRequest()
@@ -249,7 +253,7 @@ final class LoginViewController: UIViewController {
         signInButton.isEnabled = true
         if let e = error {
             let msg = (e as NSError).localizedDescription
-            showAlert(title: "שגיאה", message: msg)
+            showAlert(title: "error".localized, message: msg)
             return
         }
         proceedToApp()
@@ -258,7 +262,7 @@ final class LoginViewController: UIViewController {
     @objc private func googleTapped() {
         view.endEditing(true)
         guard let clientID = FirebaseApp.app()?.options.clientID else {
-            showAlert(title: "שגיאה", message: "לא נמצא Client ID ל-Google. ודא ש-GoogleService-Info.plist מעודכן.")
+            showAlert(title: "error".localized, message: "login.googleClientIdError".localized)
             return
         }
         let config = GIDConfiguration(clientID: clientID)
@@ -269,13 +273,13 @@ final class LoginViewController: UIViewController {
             guard err == nil,
                   let user = result?.user,
                   let idToken = user.idToken?.tokenString else {
-                if let e = err { self?.showAlert(title: "שגיאה", message: (e as NSError).localizedDescription) }
+                if let e = err { self?.showAlert(title: "error".localized, message: (e as NSError).localizedDescription) }
                 return
             }
             let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: user.accessToken.tokenString)
             Auth.auth().signIn(with: credential) { _, err in
                 if let e = err {
-                    self?.showAlert(title: "שגיאה", message: (e as NSError).localizedDescription)
+                    self?.showAlert(title: "error".localized, message: (e as NSError).localizedDescription)
                     return
                 }
                 self?.proceedToApp()
@@ -295,7 +299,7 @@ final class LoginViewController: UIViewController {
 
     private func showAlert(title: String, message: String) {
         let ac = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        ac.addAction(UIAlertAction(title: "אישור", style: .default))
+        ac.addAction(UIAlertAction(title: "ok".localized, style: .default))
         present(ac, animated: true)
     }
 
@@ -311,7 +315,7 @@ final class LoginViewController: UIViewController {
         loadingSpinner.translatesAutoresizingMaskIntoConstraints = false
         loadingOverlay.addSubview(loadingSpinner)
 
-        loadingLabel.text = "מתחבר..."
+        loadingLabel.text = "login.connecting".localized
         loadingLabel.font = .systemFont(ofSize: 17, weight: .medium)
         loadingLabel.textColor = AIONDesign.textPrimary
         loadingLabel.textAlignment = .center
@@ -385,7 +389,7 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
               let nonce = currentNonce,
               let appleIDToken = appleIDCredential.identityToken,
               let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-            showAlert(title: "שגיאה", message: "לא ניתן לקבל מידע מ-Apple.")
+            showAlert(title: "error".localized, message: "login.appleError".localized)
             return
         }
 
@@ -396,7 +400,7 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
         )
         Auth.auth().signIn(with: credential) { [weak self] _, error in
             if let e = error {
-                self?.showAlert(title: "שגיאה", message: (e as NSError).localizedDescription)
+                self?.showAlert(title: "error".localized, message: (e as NSError).localizedDescription)
                 return
             }
             self?.proceedToApp()
@@ -405,7 +409,7 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
         if (error as NSError).code == ASAuthorizationError.canceled.rawValue { return }
-        showAlert(title: "שגיאה", message: (error as NSError).localizedDescription)
+        showAlert(title: "error".localized, message: (error as NSError).localizedDescription)
     }
 }
 

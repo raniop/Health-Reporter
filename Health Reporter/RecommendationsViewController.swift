@@ -39,7 +39,7 @@ class RecommendationsViewController: UIViewController {
         }
         if result.isEmpty {
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty { result.append(RecommendationItem(title: "המלצות", body: trimmed, iconName: "lightbulb.fill")) }
+            if !trimmed.isEmpty { result.append(RecommendationItem(title: "recommendations.title".localized, body: trimmed, iconName: "lightbulb.fill")) }
         }
         return result
     }
@@ -77,7 +77,7 @@ class RecommendationsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "המלצות"
+        title = "recommendations.title".localized
         view.backgroundColor = AIONDesign.background
         view.semanticContentAttribute = .forceRightToLeft
         setupScrollAndStack()
@@ -172,14 +172,14 @@ class RecommendationsViewController: UIViewController {
         iconBg.addSubview(icon)
 
         let titleL = UILabel()
-        titleL.text = "המלצות"
+        titleL.text = "recommendations.title".localized
         titleL.font = .systemFont(ofSize: 28, weight: .bold)
         titleL.textColor = AIONDesign.textPrimary
         titleL.textAlignment = .center
         titleL.translatesAutoresizingMaskIntoConstraints = false
 
         let subL = UILabel()
-        subL.text = "הנחיות מעשיות לפי הנתונים הביומטריים שלך"
+        subL.text = "recommendations.subtitle".localized
         subL.font = .systemFont(ofSize: 14, weight: .medium)
         subL.textColor = AIONDesign.textSecondary
         subL.textAlignment = .center
@@ -329,7 +329,7 @@ private final class RecEmptyView: UIView {
         icon.translatesAutoresizingMaskIntoConstraints = false
 
         let msg = UILabel()
-        msg.text = "אין המלצות כרגע.\nהרץ ניתוח בדשבורד (תובנות AION) כדי לראות המלצות מותאמות."
+        msg.text = "recommendations.noRecommendations".localized
         msg.font = .systemFont(ofSize: 15, weight: .regular)
         msg.textColor = AIONDesign.textSecondary
         msg.textAlignment = .center

@@ -75,12 +75,12 @@ enum DataRange: String, CaseIterable {
         }
     }
 
-    /// טקסט קצר לסרגל: "היום" / "7 ימים" / "30 ימים"
+    /// Short text for segment: "Today" / "7 Days" / "30 Days"
     func segmentTitle() -> String {
         switch self {
-        case .day: return "היום"
-        case .week: return "7 ימים"
-        case .month: return "30 ימים"
+        case .day: return "time.today".localized
+        case .week: return "time.7days".localized
+        case .month: return "time.30days".localized
         }
     }
 }

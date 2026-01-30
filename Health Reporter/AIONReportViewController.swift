@@ -128,7 +128,7 @@ class AIONReportViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = AIONDesign.background
         view.semanticContentAttribute = .forceRightToLeft
-        title = "דוח AION"
+        title = "report.title".localized
         setupScrollAndStack()
         setupHeader()
         rebuildContent()
@@ -177,14 +177,14 @@ class AIONReportViewController: UIViewController {
         accent.translatesAutoresizingMaskIntoConstraints = false
 
         let titleLabel = UILabel()
-        titleLabel.text = "דוח AION"
+        titleLabel.text = "report.title".localized
         titleLabel.font = .systemFont(ofSize: 28, weight: .bold)
         titleLabel.textColor = AIONDesign.textPrimary
-        titleLabel.textAlignment = .right
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let sub = UILabel()
-        sub.text = "תובנות, המלצות וגורמי סיכון"
+        sub.text = "report.subtitle".localized
         sub.font = .systemFont(ofSize: 15, weight: .regular)
         sub.textColor = AIONDesign.textSecondary
         sub.textAlignment = .right
