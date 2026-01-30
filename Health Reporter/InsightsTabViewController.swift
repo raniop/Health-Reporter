@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import FirebaseAuth
 
 // MARK: - Padded Label for badges
 
@@ -237,6 +238,12 @@ final class InsightsTabViewController: UIViewController {
     }
 
     // MARK: - Actions
+
+    @objc private func insightsCardInfoTapped(_ sender: CardInfoButton) {
+        let alert = UIAlertController(title: "dashboard.explanation".localized, message: sender.explanation, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "understand".localized, style: .default))
+        present(alert, animated: true)
+    }
 
     @objc private func refreshTapped() {
         // בדיקה אם יש שינוי משמעותי בנתונים
@@ -491,6 +498,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     let hrvValue = stats?.hrv ?? 0
     let sleepValue = stats?.sleepHours ?? 0
     let dailyActivity = AnalysisCache.loadDailyActivity()
+    let userName = Auth.auth().currentUser?.displayName ?? ""
     WidgetDataManager.shared.updateFromInsights(
         score: score,
         status: status,
@@ -502,7 +510,8 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         standHours: dailyActivity?.standHours ?? 0,
         restingHR: dailyActivity?.restingHR ?? 0 > 0 ? dailyActivity?.restingHR : nil,
         hrv: hrvValue > 0 ? Int(hrvValue) : nil,
-        sleepHours: sleepValue > 0 ? sleepValue : nil
+        sleepHours: sleepValue > 0 ? sleepValue : nil,
+        userName: userName
     )
 
     // ✅ Card is the arrangedSubview (NO wrapper container)
@@ -1201,6 +1210,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         // Info button (top left) - using CardInfoButton like the rest of the app
         let infoBtn = CardInfoButton.make(explanation: explanation)
+        infoBtn.addTarget(self, action: #selector(insightsCardInfoTapped(_:)), for: .touchUpInside)
 
         // Icon (top right)
         let iconView = UIImageView(image: UIImage(systemName: icon))
@@ -2911,6 +2921,7 @@ private func showDiscoveryLoadingAnimation() {
         let hrvValue = stats?.hrv ?? 0
         let sleepValue = stats?.sleepHours ?? 0
         let dailyActivity = AnalysisCache.loadDailyActivity()
+        let userName = Auth.auth().currentUser?.displayName ?? ""
         WidgetDataManager.shared.updateFromInsights(
             score: score,
             status: status,
@@ -2922,7 +2933,8 @@ private func showDiscoveryLoadingAnimation() {
             standHours: dailyActivity?.standHours ?? 0,
             restingHR: dailyActivity?.restingHR ?? 0 > 0 ? dailyActivity?.restingHR : nil,
             hrv: hrvValue > 0 ? Int(hrvValue) : nil,
-            sleepHours: sleepValue > 0 ? sleepValue : nil
+            sleepHours: sleepValue > 0 ? sleepValue : nil,
+            userName: userName
         )
     }
 

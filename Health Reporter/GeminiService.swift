@@ -163,157 +163,236 @@ class GeminiService {
     /// Gemini בוחר את הרכב בעצמו בהתבסס על הניתוח
     /// כולל הקשר מקור נתונים (Garmin/Oura/Apple Watch) להתאמה אישית
     func analyzeHealthDataWithWeeklyComparison(_ healthData: HealthDataModel, currentWeek: WeeklyHealthSnapshot, previousWeek: WeeklyHealthSnapshot, chartBundle: AIONChartDataBundle? = nil, completion: @escaping (String?, [String]?, [String]?, Error?) -> Void) {
-        guard let summary = createHealthSummary(from: healthData, currentWeek: currentWeek, previousWeek: previousWeek),
-              let jsonString = summary.toJSONString() else {
-            completion(nil, nil, nil, NSError(domain: "GeminiService", code: -1, userInfo: [NSLocalizedDescriptionKey: "שגיאה ביצירת סיכום נתונים"]))
-            return
-        }
-        
-        let currentWeekJSON = currentWeek.toJSON()
-        let previousWeekJSON = previousWeek.toJSON()
-        
-        // הדפסת תקופת הזמן שנשלחת
-        print("=== DATE RANGES SENT TO GEMINI ===")
-        print("Current Week: \(currentWeek.weekStartDate) to \(currentWeek.weekEndDate)")
-        print("Previous Week: \(previousWeek.weekStartDate) to \(previousWeek.weekEndDate)")
-        print("Health Data Range (3 months): \(summary.dateRange.start) to \(summary.dateRange.end)")
-        print("=== END DATE RANGES ===\n")
-        
-        let graphsBlock: String
-        if let bundle = chartBundle, let payload = bundle.toAIONReviewPayload().toJSONString() {
-            graphsBlock = """
-            # 6 הגרפים המקצועיים (JSON)
-            נתח את ה־"intersectionality" של הגרפים. דוגמה: "בגרף 1 (Readiness) ו־3 (Sleep): גם שהעומס נמוך, ההתאוששות לא קפצה. בהתבסס על טמפ' השינה – האם הסביבה הבעיה או התזונה?"
-            \(payload)
-            """
-        } else {
-            graphsBlock = ""
-        }
 
-        // Data source context for tailored analysis
-        let dataSourceContext = buildDataSourceContext()
+        // שליפת 90 ימים של נתונים יומיים לבניית ה-Payload החדש
+        HealthKitManager.shared.fetchDailyHealthData(days: 90) { [weak self] dailyEntries in
+            guard let self = self else { return }
 
-        // צירוף התשובה הקודמת כהקשר לשמירה על עקביות
-        var previousResponseContext = ""
-        if let previousResponse = AnalysisCache.loadLatest() {
-            previousResponseContext = """
+            // === חישוב HealthScore מקומי עם HealthScoreEngine ===
+            let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
 
-            # התשובה הקודמת שלך
-            בפעם הקודמת, בהתבסס על נתוני הבריאות שלי, החזרת את התשובה הבאה:
-            ---
-            \(previousResponse)
-            ---
-            חשוב: שמור על עקביות. אל תשנה את הרכב אלא אם יש שינוי משמעותי בנתונים שמצדיק זאת.
+            // שמירת הציון והפירוט ב-Cache לשימוש ב-UI
+            AnalysisCache.saveHealthScoreResult(healthResult)
 
-            """
-            print("=== PREVIOUS RESPONSE CONTEXT ADDED ===")
-            print("Previous response length: \(previousResponse.count) characters")
-        } else {
-            print("=== NO PREVIOUS RESPONSE TO ADD ===")
-        }
+            print("=== LOCAL HEALTH SCORE ===")
+            print("HealthScore: \(healthResult.healthScoreInt)")
+            print("ReliabilityScore: \(healthResult.reliabilityScoreInt)")
+            print("Included domains: \(healthResult.includedDomains.map { $0.domainName })")
+            print("Excluded domains: \(healthResult.excludedDomains)")
+            print("=== END LOCAL HEALTH SCORE ===\n")
 
-        let prompt = """
-        \(previousResponseContext)
-        Act as an elite sports physician, performance coach, and data analyst.
-        RESPOND IN HEBREW ONLY.
+            // בניית ה-Payload החדש עם סינון ערכים חסרים ו-outliers
+            let builder = GeminiHealthPayloadBuilder()
+            let payload = builder.build(from: dailyEntries)
 
-        Analyze all of my health and fitness data from the past three months, not just the most recent day. Always evaluate trends using a rolling 3-month window (sleep, HRV, resting heart rate, training load, recovery, steps, VO₂ max, body composition, stress, injuries, and any available metrics).
-
-        Based on this analysis, answer the following IN HEBREW:
-
-        ## 1. איזה רכב אני עכשיו?
-        בחר דגם רכב ספציפי (לא גנרי).
-        הסבר למה הרכב הזה מתאים לפרופיל הביצועים הפיזי והמנטלי שלי כרגע.
-        **חשוב:** כתוב גם את שם הדגם המדויק באנגלית כפי שמופיע בוויקיפדיה, בפורמט: [CAR_WIKI: English Name]
-        לדוגמה: [CAR_WIKI: Porsche 911 (993)] או [CAR_WIKI: Subaru Forester]
-
-        ## 2. סקירת ביצועים מלאה
-        - **מנוע** (כושר קרדיו, סיבולת, VO₂ max)
-        - **תיבת הילוכים** (התאוששות, איכות שינה, עקביות HRV)
-        - **מתלים** (עמידות לפציעות, גמישות, בריאות מפרקים)
-        - **יעילות דלק** (רמות אנרגיה, ניהול מתח, תזונה)
-        - **אלקטרוניקה** (ריכוז, עקביות, איזון מערכת העצבים)
-
-        ## 3. מה מגביל את הביצועים עכשיו?
-        זהה 2-3 צווארי בקבוק מרכזיים על סמך מגמות הנתונים.
-        סמן סימני אזהרה מוקדמים (אימון יתר, תת-התאוששות, חוסר איזון).
-
-        ## 4. תוכנית אופטימיזציה
-        - אילו "שדרוגים" ישפרו הכי את הביצועים?
-        - איזה טיפול אני מדלג עליו?
-        - מה אני צריך להפסיק לעשות מיד?
-
-        ## 5. תוכנית כוונון ל-30-60 הימים הבאים
-        - **התאמות אימון**: [פירוט]
-        - **שינויים בהתאוששות ושינה**: [פירוט]
-        - **הרגל אחד בעל השפעה גבוהה להוסיף**: [פירוט]
-        - **הרגל אחד להסיר**: [פירוט]
-
-        ## 6. הנחיות פעולה
-        - **STOP:** [משפט אחד – מה להפסיק]
-        - **START:** [משפט אחד – מה להתחיל]
-        - **WATCH:** [משפט אחד – מה לעקוב]
-
-        ## 7. סיכום
-        "אם הרכב הזה ימשיך לנסוע באותו אופן, הנה איפה הוא יהיה בעוד שלושה חודשים."
-
-        ## 8. תוספי תזונה מומלצים
-        בהתבסס על ניתוח 3 חודשים של נתונים (HRV, דופק מנוחה, איכות שינה, עומס אימונים), המלץ על 3-5 תוספי תזונה ספציפיים.
-
-        לכל תוסף ציין:
-        - **שם התוסף** (בעברית ובאנגלית)
-        - **מינון מדויק** ותזמון (לפני שינה/בוקר/אחרי אימון)
-        - **הסיבה הספציפית** מהנתונים של המשתמש
-        - **קטגוריה**: [CATEGORY: sleep/performance/recovery/general]
-
-        פורמט חובה לכל תוסף:
-        **שם התוסף (English Name)** (מינון ותזמון) - הסיבה הספציפית מהנתונים [CATEGORY: xxx]
-
-        דוגמה:
-        **מגנזיום ציטראט (Magnesium Citrate)** (400mg לפני שינה) - ה-HRV שלך נמוך מהממוצע ואיכות השינה ירדה ב-15% בשבוע האחרון. [CATEGORY: sleep]
-
-        התמקד בתוספים מבוססי מחקר מדעי:
-        - אם HRV נמוך → מגנזיום, אשוגנדה
-        - אם עומס אימונים גבוה → אומגה 3 (EPA/DHA), קריאטין מונוהידראט, חלבון מי גבינה
-        - אם שינה לא טובה → מגנזיום, ויטמין D3, L-Theanine
-        - אם התאוששות איטית → ויטמין D3, זינק, אומגה 3, קו-אנזים Q10
-
-        שמור על טון תובנתי, כנה ומעורר מוטיבציה.
-        השתמש בהסברים ברורים, ללא אזעקות רפואיות וללא מילוי מיותר.
-
-        # DATA INPUT
-        - Current Week: \(formatJSONForPrompt(currentWeekJSON))
-        - Previous Week: \(formatJSONForPrompt(previousWeekJSON))
-        - Health Data (3 months): \(jsonString)
-        \(graphsBlock)
-        \(dataSourceContext)
-        """
-        
-        // הדפסת ה-prompt המלא שנשלח ל-Gemini
-        print("=== FULL PROMPT SENT TO GEMINI ===")
-        print(prompt)
-        print("=== END FULL PROMPT ===\n")
-
-        // שמירה לדיבאג (לפני השליחה)
-        GeminiDebugStore.lastPrompt = prompt
-
-        sendRequest(prompt: prompt, temperature: 0.2) { response, error in
-            if let error = error {
-                completion(nil, nil, nil, error)
+            guard let payloadJSON = payload.toJSONString() else {
+                completion(nil, nil, nil, NSError(domain: "GeminiService", code: -1, userInfo: [NSLocalizedDescriptionKey: "שגיאה ביצירת payload לניתוח"]))
                 return
             }
 
-            guard let response = response else {
-                completion(nil, nil, nil, NSError(domain: "GeminiService", code: -2, userInfo: [NSLocalizedDescriptionKey: "לא התקבלה תשובה מ-Gemini"]))
-                return
+            // הדפסת מידע על הנתונים
+            print("=== GEMINI PAYLOAD INFO ===")
+            print("Total days: \(payload.totalDays)")
+            print("Data Reliability Score: \(payload.dataReliabilityScore)/100")
+            print("Weekly summaries: \(payload.weeklySummary.count)")
+            print("Daily entries (last 14): \(payload.dailyLast14.count)")
+            print("Coverage: \(payload.coverageValidDays)")
+            print("Quality flags: \(payload.dataQualityFlags)")
+            print("=== END PAYLOAD INFO ===\n")
+
+            let graphsBlock: String
+            if let bundle = chartBundle, let graphPayload = bundle.toAIONReviewPayload().toJSONString() {
+                graphsBlock = """
+                # 6 הגרפים המקצועיים (JSON)
+                נתח את ה־"intersectionality" של הגרפים. דוגמה: "בגרף 1 (Readiness) ו־3 (Sleep): גם שהעומס נמוך, ההתאוששות לא קפצה. בהתבסס על טמפ' השינה – האם הסביבה הבעיה או התזונה?"
+                \(graphPayload)
+                """
+            } else {
+                graphsBlock = ""
             }
 
-            // שמירה לדיבאג (אחרי קבלת התשובה)
-            GeminiDebugStore.save(prompt: prompt, response: response)
+            // Data source context for tailored analysis
+            let dataSourceContext = self.buildDataSourceContext()
 
-            // פענוח התשובה לחלקים
-            let (insights, recommendations, riskFactors) = self.parseResponse(response)
-            completion(insights, recommendations, riskFactors, nil)
+            // שליפת הרכב הקודם מה-cache (Car Identity Lock)
+            var lastCarModel: String? = nil
+            var lastCarReason: String? = nil
+            if let savedCar = AnalysisCache.loadSelectedCar() {
+                lastCarModel = savedCar.wikiName.isEmpty ? savedCar.name : savedCar.wikiName
+                lastCarReason = savedCar.explanation
+                print("=== LAST CAR LOADED ===")
+                print("Model: \(lastCarModel ?? "nil")")
+                print("Reason: \(lastCarReason?.prefix(100) ?? "nil")...")
+            } else {
+                print("=== NO PREVIOUS CAR FOUND ===")
+            }
+
+            let prompt = """
+            אתה רופא ספורט בכיר (Elite Sports Physician), מאמן ביצועים (Performance Coach) ו-Data Analyst.
+            ענה בעברית בלבד. אסור להמציא נתונים.
+
+            המטרה:
+            לנתח מגמות ביצועים ל-90 הימים האחרונים, על בסיס נתונים שבועיים + 14 ימים אחרונים יומיים,
+            ולהפיק אבחון, תוכנית פעולה, ותוספים מבוססי נתונים.
+
+            ==================================================
+            כללי פרשנות נתונים
+            ==================================================
+
+            - כל ערך שהוא 0, null, "", "N/A", "unknown" = נתון חסר.
+            - נתון חסר לא נכנס לממוצעים, מגמות או מסקנות.
+            - לכל מדד מצורף validDays (כמה ימים תקינים).
+            - אם validDays נמוך – הורד ביטחון וציין זאת.
+
+            ==================================================
+            נעילת זהות רכב (Car Identity Lock)
+            ==================================================
+
+            תקבל גם:
+            lastCarModel – הדגם שנבחר בניתוח הקודם.
+            lastCarReason – סיבת הבחירה הקודמת.
+
+            כללים:
+
+            1) אם לא זוהה שינוי מהותי בפרופיל הביצועים הכללי
+            (VO2max, HRV, דופק מנוחה, עומס אימונים, שינה, התאוששות),
+            עליך להחזיר את אותו הדגם בדיוק: lastCarModel.
+
+            2) מותר לשנות רכב רק אם מתקיימים לפחות שניים מהבאים:
+            - שינוי ≥10% ב-VO2max
+            - שינוי עקבי ≥15% ב-HRV
+            - שינוי ברור בדופק מנוחה (±5 bpm)
+            - שינוי קטגוריית עומס (נמוך↔בינוני↔גבוה)
+            - שינוי משמעותי באיכות שינה
+
+            3) אם הרכב הוחלף:
+            ציין:
+            "הרכב הוחלף מ-[CAR_WIKI: old model] ל-[CAR_WIKI: new model]"
+            והסבר בדיוק אילו מדדים הצדיקו זאת.
+
+            4) אסור לבחור רכב חדש לשם גיוון.
+
+            ==================================================
+            מבנה הנתונים שקיבלת
+            ==================================================
+
+            - weeklySummary: סיכום שבועי ל-90 יום (13 שבועות) – מקור עיקרי למגמות
+            - dailyLast14: פירוט יומי ל-14 ימים אחרונים – מקור עיקרי למצב נוכחי
+            - coverageValidDays: כיסוי גלובלי לכל מדד
+            - lastCarModel
+            - lastCarReason
+
+            ==================================================
+            פלט נדרש - JSON ONLY
+            ==================================================
+
+            חשוב ביותר לגבי בחירת הרכב:
+            - הרכב חייב להיות מכונית אמיתית שקיימת בויקיפדיה (לא מושג כמו "Zone 2" או "Recovery Mode")
+            - wikiName חייב להיות שם רכב אמיתי באנגלית שניתן לחפש בויקיפדיה
+            - בחר רכב שמייצג את רמת הביצועים והמאפיינים הספציפיים של המשתמש לפי הנתונים
+            - אתה חופשי לבחור כל רכב אמיתי שקיים - אל תוגבל לדוגמאות!
+            - הדוגמאות הבאות הן רק להמחשה של קטגוריות (אל תשתמש בהן אלא אם הן באמת מתאימות):
+              * ספורט/על: Ferrari, Lamborghini, McLaren, Porsche 911 GT3
+              * ביצועים: BMW M, Mercedes-AMG, Audi RS
+              * יומיומי ספורטיבי: Golf GTI, Civic Type R
+              * יומיומי: Camry, Accord
+            - אל תבחר דוגמה רק כי היא מופיעה כאן! בחר רכב שבאמת מתאים לפרופיל
+
+            החזר את התשובה כ-JSON בלבד, בפורמט הבא בדיוק:
+
+            ```json
+            {
+              "carIdentity": {
+                "model": "שם הרכב בעברית (לדוגמה: פורשה טייקאן)",
+                "wikiName": "שם רכב אמיתי באנגלית לחיפוש בויקיפדיה (e.g., Porsche Taycan)",
+                "explanation": "הסבר למה הרכב הזה מתאים לפרופיל הביצועים של המשתמש (2-3 משפטים מפורטים)"
+              },
+              "performanceReview": {
+                "engine": "תיאור מפורט של הכושר הקרדיו, הסיבולת ו-VO2max (2-3 משפטים)",
+                "transmission": "תיאור מפורט של ההתאוששות, השינה ו-HRV (2-3 משפטים)",
+                "suspension": "תיאור מצב הפציעות, הגמישות והמפרקים (2-3 משפטים)",
+                "fuelEfficiency": "תיאור האנרגיה, הסטרס והתזונה (2-3 משפטים)",
+                "electronics": "תיאור הריכוז, העקביות ואיזון מערכת העצבים (2-3 משפטים)"
+              },
+              "bottlenecks": [
+                "צוואר בקבוק ראשון - תיאור מפורט",
+                "צוואר בקבוק שני - תיאור מפורט"
+              ],
+              "optimizationPlan": {
+                "upgrades": ["שדרוג 1 - פירוט", "שדרוג 2 - פירוט"],
+                "skippedMaintenance": ["טיפול חסר 1 - פירוט"],
+                "stopImmediately": ["דבר להפסיק מיד - פירוט"]
+              },
+              "tuneUpPlan": {
+                "trainingAdjustments": "התאמות מפורטות לאימון לחודש-חודשיים הקרובים",
+                "recoveryChanges": "שינויים מפורטים בהתאוששות ושינה",
+                "habitToAdd": "הרגל אחד חדש להוסיף עם הסבר למה",
+                "habitToRemove": "הרגל אחד להסיר עם הסבר למה"
+              },
+              "directives": {
+                "stop": "משפט אחד ברור - מה להפסיק לעשות מיד",
+                "start": "משפט אחד ברור - מה להתחיל לעשות",
+                "watch": "משפט אחד ברור - מה לעקוב אחריו"
+              },
+              "forecast": "תחזית מפורטת ל-3 חודשים קדימה - אם המגמה הנוכחית תימשך, איפה אהיה",
+              "supplements": [
+                {
+                  "name": "שם התוסף בעברית",
+                  "englishName": "Supplement Name in English",
+                  "dosage": "מינון ותזמון מדויקים",
+                  "reason": "סיבה ספציפית מהנתונים",
+                  "category": "sleep"
+                }
+              ]
+            }
+            ```
+
+            חשוב מאוד:
+            - החזר JSON בלבד, ללא טקסט נוסף לפני או אחרי
+            - כל השדות חובה - אל תשמיט שום שדה
+            - התוכן בעברית (חוץ מ-wikiName ו-englishName שבאנגלית)
+            - קטגוריות תקפות ל-supplements: sleep, performance, recovery, general
+            - wikiName חייב להיות שם של מכונית אמיתית (לא מושג כמו Zone 2)
+            - אם lastCarModel קיים ואין שינוי מהותי, השתמש בו ב-wikiName (רק אם זה שם מכונית אמיתית)
+
+            ==================================================
+            הנתונים:
+            ==================================================
+
+            lastCarModel: \(lastCarModel ?? "null")
+            lastCarReason: \(lastCarReason ?? "null")
+
+            \(payloadJSON)
+            \(graphsBlock)
+            \(dataSourceContext)
+            """
+
+            // הדפסת ה-prompt המלא שנשלח ל-Gemini
+            print("=== FULL PROMPT SENT TO GEMINI ===")
+            print(prompt)
+            print("=== END FULL PROMPT ===\n")
+
+            // שמירה לדיבאג (לפני השליחה)
+            GeminiDebugStore.lastPrompt = prompt
+
+            self.sendRequest(prompt: prompt, temperature: 0.2) { response, error in
+                if let error = error {
+                    completion(nil, nil, nil, error)
+                    return
+                }
+
+                guard let response = response else {
+                    completion(nil, nil, nil, NSError(domain: "GeminiService", code: -2, userInfo: [NSLocalizedDescriptionKey: "לא התקבלה תשובה מ-Gemini"]))
+                    return
+                }
+
+                // שמירה לדיבאג (אחרי קבלת התשובה)
+                GeminiDebugStore.save(prompt: prompt, response: response)
+
+                // פענוח התשובה לחלקים
+                let (insights, recommendations, riskFactors) = self.parseResponse(response)
+                completion(insights, recommendations, riskFactors, nil)
+            }
         }
     }
     

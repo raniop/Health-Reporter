@@ -140,6 +140,89 @@ enum AnalysisCache {
         return score > 0 ? score : nil
     }
 
+    /// שומר את ציון הבריאות (מחושב ע"י HealthScoreEngine)
+    static func saveHealthScore(_ score: Int) {
+        UserDefaults.standard.set(score, forKey: keyHealthScore)
+        print("=== HEALTH SCORE SAVED: \(score) ===")
+    }
+
+    // MARK: - Health Score Result (עם Breakdown)
+
+    private static let keyHealthScoreResult = "AION.HealthScoreResult"
+
+    /// שומר את תוצאת HealthScoreEngine המלאה (כולל breakdown)
+    static func saveHealthScoreResult(_ result: HealthScoringResult) {
+        UserDefaults.standard.set(result.healthScoreInt, forKey: keyHealthScore)
+
+        // שמירת הפירוט כ-JSON
+        if let data = try? JSONEncoder().encode(result) {
+            UserDefaults.standard.set(data, forKey: keyHealthScoreResult)
+        }
+        print("=== HEALTH SCORE RESULT SAVED: \(result.healthScoreInt), reliability: \(result.reliabilityScoreInt) ===")
+    }
+
+    /// טוען את תוצאת HealthScoreEngine המלאה
+    static func loadHealthScoreResult() -> HealthScoringResult? {
+        guard let data = UserDefaults.standard.data(forKey: keyHealthScoreResult) else { return nil }
+        return try? JSONDecoder().decode(HealthScoringResult.self, from: data)
+    }
+
+    /// מייצר הסבר קצר לציון (לתצוגה ב-Tooltip)
+    static func generateScoreExplanation() -> String {
+        guard let result = loadHealthScoreResult() else {
+            return "אין מספיק נתונים לחישוב"
+        }
+
+        var parts: [String] = []
+
+        // הסבר כללי
+        parts.append("הציון מבוסס על שילוב של התאוששות, שינה, כושר, עומס אימונים ורמת פעילות ב־3 החודשים האחרונים, עם דגש על השבועיים האחרונים.")
+        parts.append("")
+        parts.append("נתונים שלא נמדדו לא נכנסים לחישוב, ולכן לא \"מענישים\" על חוסר מדידה.")
+        parts.append("")
+
+        // הוספת הדומיינים שנכללו בחישוב
+        parts.append("פירוט:")
+        for domain in result.includedDomains {
+            let scoreInt = Int(round(domain.domainScore))
+            let weightPercent = Int(round(domain.normalizedWeight * 100))
+
+            let domainHebrew: String
+            switch domain.domainName {
+            case "Recovery": domainHebrew = "התאוששות"
+            case "Sleep": domainHebrew = "שינה"
+            case "Fitness": domainHebrew = "כושר"
+            case "Load Balance": domainHebrew = "איזון עומס"
+            case "Activity": domainHebrew = "פעילות"
+            default: domainHebrew = domain.domainName
+            }
+
+            parts.append("• \(domainHebrew): \(scoreInt) (\(weightPercent)%)")
+        }
+
+        // הוספת הדומיינים שלא נכללו
+        if !result.excludedDomains.isEmpty {
+            let excludedHebrew = result.excludedDomains.map { domain -> String in
+                switch domain {
+                case "Recovery": return "התאוששות"
+                case "Sleep": return "שינה"
+                case "Fitness": return "כושר"
+                case "Load Balance": return "איזון עומס"
+                case "Activity": return "פעילות"
+                default: return domain
+                }
+            }.joined(separator: ", ")
+            parts.append("")
+            parts.append("לא נמדד: \(excludedHebrew)")
+        }
+
+        // הוספת אמינות
+        parts.append("")
+        parts.append("ציון האמינות מציין כמה הנתונים שלך מלאים: \(result.reliabilityScoreInt)%")
+
+        return parts.joined(separator: "\n")
+    }
+
     // MARK: - Daily Activity (לשיתוף עם ווידג'ט)
 
     /// שומר נתוני פעילות יומית מה-Dashboard

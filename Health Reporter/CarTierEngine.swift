@@ -122,4 +122,18 @@ enum CarTierEngine {
         )
         return (score, tierForScore(score))
     }
+
+    // MARK: - New Engine Integration
+
+    /// חישוב ציון + דרגה באמצעות HealthScoreEngine החדש.
+    /// מחזיר גם את התוצאה המפורטת לדיבוג/UI.
+    static func evaluateWithNewEngine(entries: [RawDailyHealthEntry]) -> (score: Int, tier: CarTier, result: HealthScoringResult)? {
+        guard !entries.isEmpty else { return nil }
+
+        let result = HealthScoreEngine.shared.calculate(from: entries)
+        let score = result.healthScoreInt
+        let tier = tierForScore(score)
+
+        return (score, tier, result)
+    }
 }

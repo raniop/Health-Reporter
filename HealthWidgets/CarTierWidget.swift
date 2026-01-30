@@ -24,8 +24,8 @@ struct CarTierWidget: Widget {
                     .background(Color.black)
             }
         }
-        .configurationDisplayName("מד הרכב שלך")
-        .description("הבריאות שלך כרכב - מפיאט פנדה ועד פרארי!")
+        .configurationDisplayName("Your Car Meter")
+        .description("Your health as a car - from Fiat Panda to Ferrari!")
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }
@@ -193,7 +193,7 @@ struct MediumCarTierView: View {
                                     .cornerRadius(3)
                             }
                         }
-                        Text("רמה \(data.carTierIndex + 1) מתוך 5")
+                        Text("Level \(data.carTierIndex + 1) of 5")
                             .font(.system(size: 9))
                             .foregroundColor(.gray)
                     }
@@ -251,7 +251,7 @@ struct MiniStat: View {
     HealthEntry(date: .now, data: .placeholder, carImage: nil)
     HealthEntry(date: .now, data: HealthWidgetData(
         healthScore: 88,
-        healthStatus: "שיא ביצועים",
+        healthStatus: "Peak Performance",
         steps: 12000,
         stepsGoal: 10000,
         calories: 550,
@@ -267,6 +267,7 @@ struct MiniStat: View {
         carName: "Ferrari SF90 Stradale",
         carEmoji: "🏆",
         carImageName: "CarFerrariSF90",
-        carTierIndex: 4
+        carTierIndex: 4,
+        userName: ""
     ), carImage: nil)
 }

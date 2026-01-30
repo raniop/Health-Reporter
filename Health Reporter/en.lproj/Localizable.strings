@@ -473,30 +473,35 @@
 "explanation.hrv" = "A measure affected by sleep and stress. A high value usually means the body is recovering well.";
 "explanation.sleep" = "How many hours you slept. Good sleep helps you feel good and stay healthy.";
 "explanation.strain" = "How much you worked your body (workouts, activity). Important to balance with rest.";
-"explanation.efficiency" = "How your weekly recovery looks. Each column = one day.";
-"explanation.bioSleep" = "Sleep score 0-100 (similar to Apple): duration + quality of sleep stages. Day = last night; week/month = average.";
+"explanation.efficiency" = "Chart showing your recovery efficiency over time. Each bar = one day. Green = good recovery, yellow = moderate, red = low.";
+"explanation.bioSleep" = "Sleep score 0-100 combining duration and quality (deep + REM sleep). 80+ = excellent, 60-80 = good, below 60 = needs improvement.";
 "explanation.bioTemp" = "Body temperature deviation from normal. A big change could indicate fatigue or illness.";
-"explanation.bioRhrOrTemp" = "Temp deviation or resting HR - based on available data. Low resting HR = good fitness.";
-"explanation.directives" = "Recommendations: what to stop, what to start, and what to monitor.";
+"explanation.bioRhrOrTemp" = "Resting Heart Rate (RHR) - key indicator of fitness and recovery. Lower is better. Healthy range: 50-70 bpm.";
+"explanation.directives" = "AI-based action directives from your data. Stop = habits to quit. Start = recommended actions. Watch = things to monitor.";
 "explanation.insight" = "Insight from your data - connections between things (e.g., sleep and metrics).";
-"explanation.correlation" = "How much two metrics are related. Higher number = stronger connection.";
-"explanation.pValue" = "How reliable the result is. Low value = finding is likely real.";
-"explanation.sampleSize" = "Based on how many days the data was calculated.";
-"explanation.biometrics" = "Averages of important metrics: heart rate, strain, heart rate variability.";
-"explanation.focus" = "Things to focus on - regular sleep, training load, etc.";
-"explanation.profileHeight" = "Height from the Health app.";
-"explanation.profileWeight" = "Weight from the Health app.";
-"explanation.highlights" = "Highlights from data: time in bed, breathing rate during sleep, averages - like Apple.";
-"explanation.profileAge" = "Age from birth date, or BMI (from height and weight) if no age.";
-"explanation.activitySteps" = "Total steps in the selected range.";
-"explanation.activityDistance" = "Walking and running distance in km.";
-"explanation.activityCalories" = "Calories burned from activity (not basal).";
-"explanation.activityExercise" = "Exercise minutes (medium-high intensity activity).";
-"explanation.activityFlights" = "Floors climbed (stairs).";
-"explanation.activityMove" = "Move minutes - activity that earns Move credit.";
-"explanation.activityStand" = "Stand hours.";
-"explanation.activityCycling" = "Cycling distance in km.";
-"explanation.activitySwimming" = "Swimming distance in km.";
+"explanation.correlation" = "Correlation measure: how related two metrics are. 1.0 = strong positive, -1.0 = inverse, 0 = no connection.";
+"explanation.pValue" = "P-Value - statistical reliability measure. Below 0.05 = finding is likely real, not random. Lower = more reliable.";
+"explanation.sampleSize" = "Number of days the data is based on. 30+ days = more reliable insights.";
+"explanation.biometrics" = "Summary of key biometrics: RHR, HRV, and physical load - for overall health assessment.";
+"explanation.focus" = "Focus areas - key improvement areas identified from analyzing your data.";
+"explanation.profileHeight" = "Your height from Apple Health. Used for BMI and other calculations.";
+"explanation.profileWeight" = "Your current weight from Apple Health. Regular updates enable accurate tracking.";
+"explanation.highlights" = "Daily highlights: time in bed, breathing rate, steps and distance - to understand your daily activity.";
+"explanation.profileAge" = "Your age from birth date. Used to calibrate personalized health recommendations.";
+"explanation.activitySteps" = "Number of steps taken. Recommended: 10,000/day. Regular walking improves heart health and mood.";
+"explanation.activityDistance" = "Total distance covered on foot (walking + running). Daily target: 5-8 km.";
+"explanation.activityCalories" = "Active calories - energy burned from movement (not basal metabolism). Target: 300-500/day.";
+"explanation.activityExercise" = "Minutes of medium-high intensity activity. WHO recommendation: 150+ minutes/week.";
+"explanation.activityFlights" = "Number of floors climbed. Climbing stairs burns twice the calories of regular walking.";
+"explanation.activityMove" = "Active minutes throughout the day. Goal: stay active all day, not just during workouts.";
+"explanation.activityStand" = "Hours with at least 1 minute of standing/moving. Target: 12 hours/day. Prolonged sitting is harmful.";
+"explanation.activityCycling" = "Cycling distance. Excellent aerobic activity that's easy on the joints.";
+"explanation.activitySwimming" = "Swimming distance. Full-body workout that improves endurance and strengthens muscles.";
+
+/* Hero Card Mini KPI Explanations */
+"explanation.heroSleep" = "Your average sleep duration for the selected period.\n\nQuality sleep is the foundation for body recovery. Adults need 7-9 hours of sleep per night.\n\nTips for improvement:\n• Maintain a consistent bedtime\n• Avoid screens one hour before sleep\n• Keep your room dark and cool";
+"explanation.heroHRV" = "Heart Rate Variability - an important measure of recovery and stress.\n\nHigh HRV indicates a flexible nervous system and good recovery capacity. Low HRV may indicate fatigue, stress, or illness.\n\nValues vary between individuals - it's important to track your personal trend over time.";
+"explanation.heroStrain" = "Your physical strain score - how hard your body worked.\n\nHigh strain means your body worked hard (workouts, activity). Low strain indicates a more relaxed day.\n\nBalance is key: high strain days should be balanced with recovery days to improve performance and health.";
 
 /* Directives Labels */
 "directives.stop" = "STOP";

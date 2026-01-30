@@ -15,15 +15,12 @@ final class CardInfoButton: UIButton {
         let b = CardInfoButton(type: .system)
         b.explanation = explanation
         b.translatesAutoresizingMaskIntoConstraints = false
-        let config = UIImage.SymbolConfiguration(pointSize: 10, weight: .medium)
-        b.setImage(UIImage(systemName: "info.circle.fill", withConfiguration: config), for: .normal)
-        b.tintColor = AIONDesign.accentPrimary.withAlphaComponent(0.85)
-        b.backgroundColor = AIONDesign.accentPrimary.withAlphaComponent(0.12)
-        b.layer.cornerRadius = 9
-        b.clipsToBounds = true
+        let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        b.setImage(UIImage(systemName: "info.circle", withConfiguration: config), for: .normal)
+        b.tintColor = AIONDesign.textTertiary
         NSLayoutConstraint.activate([
-            b.widthAnchor.constraint(equalToConstant: 20),
-            b.heightAnchor.constraint(equalToConstant: 20),
+            b.widthAnchor.constraint(equalToConstant: 30),
+            b.heightAnchor.constraint(equalToConstant: 30),
         ])
         return b
     }

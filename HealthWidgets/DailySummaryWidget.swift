@@ -24,8 +24,8 @@ struct DailySummaryWidget: Widget {
                     .background(Color.black)
             }
         }
-        .configurationDisplayName("סיכום יומי")
-        .description("כל נתוני הבריאות שלך במבט אחד")
+        .configurationDisplayName("Daily Summary")
+        .description("All your health data at a glance")
         .supportedFamilies([.systemLarge, .systemMedium])
         .contentMarginsDisabled()
     }
@@ -127,9 +127,9 @@ struct LargeDailySummaryView: View {
                     }
 
                     VStack(alignment: .trailing, spacing: 8) {
-                        MiniStatRow(label: "תנועה", value: "\(data.calories)/\(data.caloriesGoal) קק\"ל", color: .pink)
-                        MiniStatRow(label: "אימון", value: "\(data.exerciseMinutes)/\(data.exerciseGoal) דק'", color: .green)
-                        MiniStatRow(label: "עמידה", value: "\(data.standHours)/\(data.standGoal) שע'", color: .cyan)
+                        MiniStatRow(label: "Move", value: "\(data.calories)/\(data.caloriesGoal) kcal", color: .pink)
+                        MiniStatRow(label: "Exercise", value: "\(data.exerciseMinutes)/\(data.exerciseGoal) min", color: .green)
+                        MiniStatRow(label: "Stand", value: "\(data.standHours)/\(data.standGoal) hr", color: .cyan)
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
@@ -143,12 +143,12 @@ struct LargeDailySummaryView: View {
                     GridItem(.flexible()),
                     GridItem(.flexible())
                 ], spacing: 12) {
-                    StatCard(icon: "figure.walk", value: formatNumber(data.steps), label: "צעדים", color: .orange)
-                    StatCard(icon: "heart.fill", value: "\(data.heartRate)", label: "דופק", color: .red)
+                    StatCard(icon: "figure.walk", value: formatNumber(data.steps), label: "Steps", color: .orange)
+                    StatCard(icon: "heart.fill", value: "\(data.heartRate)", label: "Heart Rate", color: .red)
                     StatCard(icon: "waveform.path.ecg", value: "\(data.hrv)", label: "HRV", color: .purple)
-                    StatCard(icon: "bed.double.fill", value: String(format: "%.1f", data.sleepHours), label: "שינה", color: .indigo)
-                    StatCard(icon: "flame.fill", value: "\(data.calories)", label: "קלוריות", color: .pink)
-                    StatCard(icon: "figure.run", value: "\(data.exerciseMinutes)", label: "אימון", color: .green)
+                    StatCard(icon: "bed.double.fill", value: String(format: "%.1f", data.sleepHours), label: "Sleep", color: .indigo)
+                    StatCard(icon: "flame.fill", value: "\(data.calories)", label: "Calories", color: .pink)
+                    StatCard(icon: "figure.run", value: "\(data.exerciseMinutes)", label: "Exercise", color: .green)
                 }
 
                 Spacer()
@@ -159,7 +159,7 @@ struct LargeDailySummaryView: View {
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.gray)
                     Spacer()
-                    Text("עודכן: \(timeString)")
+                    Text("Updated: \(timeString)")
                         .font(.system(size: 10))
                         .foregroundColor(.gray.opacity(0.7))
                 }
@@ -170,17 +170,25 @@ struct LargeDailySummaryView: View {
 
     var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
-        if hour < 5 { return "לילה טוב" }
-        if hour < 12 { return "בוקר טוב" }
-        if hour < 17 { return "צהריים טובים" }
-        if hour < 21 { return "ערב טוב" }
-        return "לילה טוב"
+        let timeGreeting: String
+        if hour < 5 { timeGreeting = "Good Night" }
+        else if hour < 12 { timeGreeting = "Good Morning" }
+        else if hour < 17 { timeGreeting = "Good Afternoon" }
+        else if hour < 21 { timeGreeting = "Good Evening" }
+        else { timeGreeting = "Good Night" }
+
+        // Add user's first name if available
+        if !data.userName.isEmpty {
+            let firstName = data.userName.components(separatedBy: " ").first ?? data.userName
+            return "\(timeGreeting), \(firstName)"
+        }
+        return timeGreeting
     }
 
     var dateString: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "he_IL")
-        formatter.dateFormat = "EEEE, d MMMM"
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.dateFormat = "EEEE, MMMM d"
         return formatter.string(from: Date())
     }
 
@@ -229,14 +237,17 @@ struct MediumDailySummaryView: View {
                             .rotationEffect(.degrees(-90))
                         VStack(spacing: 0) {
                             Text("\(data.healthScore)")
-                                .font(.system(size: 24, weight: .bold))
+                                .font(.system(size: 28, weight: .bold))
                                 .foregroundColor(.white)
                             Text(data.healthStatus)
-                                .font(.system(size: 9))
+                                .font(.system(size: 10))
                                 .foregroundColor(scoreColor)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                         }
+                        .padding(.horizontal, 4)
                     }
-                    .frame(width: 70, height: 70)
+                    .frame(width: 105, height: 105)
 
                     Text("AION")
                         .font(.system(size: 10, weight: .semibold))

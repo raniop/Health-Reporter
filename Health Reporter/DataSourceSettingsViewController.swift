@@ -202,8 +202,8 @@ final class DataSourceSettingsViewController: UIViewController {
         infoCard.layer.cornerRadius = AIONDesign.cornerRadius
         infoCard.translatesAutoresizingMaskIntoConstraints = false
 
-        let infoIcon = UIImageView(image: UIImage(systemName: "info.circle.fill"))
-        infoIcon.tintColor = AIONDesign.accentPrimary
+        let infoIcon = UIImageView(image: UIImage(systemName: "info.circle"))
+        infoIcon.tintColor = AIONDesign.textTertiary
         infoIcon.contentMode = .scaleAspectFit
         infoIcon.translatesAutoresizingMaskIntoConstraints = false
 

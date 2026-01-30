@@ -31,6 +31,9 @@ struct SharedWidgetData: Codable {
     var carEmoji: String
     var carImageName: String
     var carTierIndex: Int
+
+    // User info
+    var userName: String
 }
 
 /// Manages widget data updates
@@ -56,7 +59,8 @@ final class WidgetDataManager {
         carName: String,
         carEmoji: String,
         carImageName: String,
-        carTierIndex: Int
+        carTierIndex: Int,
+        userName: String = ""
     ) {
         let data = SharedWidgetData(
             healthScore: healthScore,
@@ -76,7 +80,8 @@ final class WidgetDataManager {
             carName: carName,
             carEmoji: carEmoji,
             carImageName: carImageName,
-            carTierIndex: carTierIndex
+            carTierIndex: carTierIndex,
+            userName: userName
         )
 
         saveData(data)
@@ -94,7 +99,8 @@ final class WidgetDataManager {
         restingHR: Int?,
         hrv: Int?,
         sleepHours: Double?,
-        carTier: CarTier? = nil
+        carTier: CarTier? = nil,
+        userName: String = ""
     ) {
         // Get car tier from score if not provided
         let tier = carTier ?? CarTierEngine.tierForScore(score)
@@ -112,7 +118,8 @@ final class WidgetDataManager {
             carName: tier.name,
             carEmoji: tier.emoji,
             carImageName: tier.imageName,
-            carTierIndex: tier.tierIndex
+            carTierIndex: tier.tierIndex,
+            userName: userName
         )
     }
 
@@ -128,7 +135,8 @@ final class WidgetDataManager {
         standHours: Int = 0,
         restingHR: Int? = nil,
         hrv: Int? = nil,
-        sleepHours: Double? = nil
+        sleepHours: Double? = nil,
+        userName: String = ""
     ) {
         // Get tier index from score for the progress bar
         let tier = CarTierEngine.tierForScore(score)
@@ -146,7 +154,8 @@ final class WidgetDataManager {
             carName: carName,
             carEmoji: carEmoji,
             carImageName: "",  // Will use emoji instead
-            carTierIndex: tier.tierIndex
+            carTierIndex: tier.tierIndex,
+            userName: userName
         )
     }
 

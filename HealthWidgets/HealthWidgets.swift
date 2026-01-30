@@ -33,10 +33,13 @@ struct HealthWidgetData: Codable {
     var carImageName: String
     var carTierIndex: Int
 
+    // User info
+    var userName: String
+
     static var placeholder: HealthWidgetData {
         HealthWidgetData(
             healthScore: 72,
-            healthStatus: "מצב טוב",
+            healthStatus: "Good",
             steps: 6543,
             stepsGoal: 10000,
             calories: 320,
@@ -52,7 +55,8 @@ struct HealthWidgetData: Codable {
             carName: "BMW M3",
             carEmoji: "🏎️",
             carImageName: "CarBMWM3",
-            carTierIndex: 2
+            carTierIndex: 2,
+            userName: ""
         )
     }
 }

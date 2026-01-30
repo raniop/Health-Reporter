@@ -7,6 +7,61 @@
 
 import Foundation
 
+// MARK: - JSON Response Models (Codable)
+
+/// מודל JSON מובנה לתשובת Gemini
+struct CarAnalysisJSONResponse: Codable {
+    let carIdentity: CarIdentityJSON
+    let performanceReview: PerformanceReviewJSON
+    let bottlenecks: [String]
+    let optimizationPlan: OptimizationPlanJSON
+    let tuneUpPlan: TuneUpPlanJSON
+    let directives: DirectivesJSON
+    let forecast: String
+    let supplements: [SupplementJSON]
+}
+
+struct CarIdentityJSON: Codable {
+    let model: String
+    let wikiName: String
+    let explanation: String
+}
+
+struct PerformanceReviewJSON: Codable {
+    let engine: String
+    let transmission: String
+    let suspension: String
+    let fuelEfficiency: String
+    let electronics: String
+}
+
+struct OptimizationPlanJSON: Codable {
+    let upgrades: [String]
+    let skippedMaintenance: [String]
+    let stopImmediately: [String]
+}
+
+struct TuneUpPlanJSON: Codable {
+    let trainingAdjustments: String
+    let recoveryChanges: String
+    let habitToAdd: String
+    let habitToRemove: String
+}
+
+struct DirectivesJSON: Codable {
+    let stop: String
+    let start: String
+    let watch: String
+}
+
+struct SupplementJSON: Codable {
+    let name: String
+    let englishName: String?
+    let dosage: String
+    let reason: String
+    let category: String
+}
+
 // MARK: - Supplement Recommendation Model
 
 /// מודל המלצת תוסף תזונה
@@ -75,7 +130,101 @@ struct CarAnalysisResponse {
 /// Parser שמחלץ את הנתונים מתשובת Gemini
 enum CarAnalysisParser {
 
+    // MARK: - JSON Parsing (Primary)
+
+    /// מנסה לפרסר את התשובה כ-JSON מובנה
+    static func parseJSON(_ response: String) -> CarAnalysisResponse? {
+        // ניקוי - הסרת ```json ו-``` אם קיימים
+        var cleaned = response.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleaned.hasPrefix("```json") {
+            cleaned = String(cleaned.dropFirst(7))
+        } else if cleaned.hasPrefix("```") {
+            cleaned = String(cleaned.dropFirst(3))
+        }
+        if cleaned.hasSuffix("```") {
+            cleaned = String(cleaned.dropLast(3))
+        }
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Decode
+        guard let data = cleaned.data(using: .utf8) else {
+            print("=== JSON PARSE: Failed to convert to data ===")
+            return nil
+        }
+
+        do {
+            let json = try JSONDecoder().decode(CarAnalysisJSONResponse.self, from: data)
+            print("=== JSON PARSE: Successfully decoded JSON response ===")
+            return convertJSONToResponse(json, rawResponse: response)
+        } catch {
+            print("=== JSON PARSE ERROR: \(error) ===")
+            return nil
+        }
+    }
+
+    /// ממיר את ה-JSON המפורסר למודל CarAnalysisResponse
+    private static func convertJSONToResponse(_ json: CarAnalysisJSONResponse, rawResponse: String) -> CarAnalysisResponse {
+        // המרת supplements
+        let supplements = json.supplements.map { s in
+            let category: SupplementCategory
+            switch s.category.lowercased() {
+            case "sleep": category = .sleep
+            case "performance": category = .performance
+            case "recovery": category = .recovery
+            default: category = .general
+            }
+            return SupplementRecommendation(
+                name: s.name,
+                dosage: s.dosage,
+                reason: s.reason,
+                category: category
+            )
+        }
+
+        return CarAnalysisResponse(
+            carModel: json.carIdentity.model,
+            carExplanation: json.carIdentity.explanation,
+            carImageURL: "",
+            carWikiName: json.carIdentity.wikiName,
+            engine: json.performanceReview.engine,
+            transmission: json.performanceReview.transmission,
+            suspension: json.performanceReview.suspension,
+            fuelEfficiency: json.performanceReview.fuelEfficiency,
+            electronics: json.performanceReview.electronics,
+            bottlenecks: json.bottlenecks,
+            warningSignals: [],
+            upgrades: json.optimizationPlan.upgrades,
+            skippedMaintenance: json.optimizationPlan.skippedMaintenance,
+            stopImmediately: json.optimizationPlan.stopImmediately,
+            trainingAdjustments: json.tuneUpPlan.trainingAdjustments,
+            recoveryChanges: json.tuneUpPlan.recoveryChanges,
+            habitToAdd: json.tuneUpPlan.habitToAdd,
+            habitToRemove: json.tuneUpPlan.habitToRemove,
+            directiveStop: json.directives.stop,
+            directiveStart: json.directives.start,
+            directiveWatch: json.directives.watch,
+            summary: json.forecast,
+            supplements: supplements,
+            rawResponse: rawResponse
+        )
+    }
+
+    // MARK: - Main Parse Function
+
     static func parse(_ response: String) -> CarAnalysisResponse {
+        // נסיון ראשון: JSON מובנה
+        if let jsonResult = parseJSON(response) {
+            print("=== PARSER: Used JSON mode successfully ===")
+            return jsonResult
+        }
+
+        print("=== PARSER: JSON failed, falling back to regex-based parsing ===")
+        return parseLegacy(response)
+    }
+
+    // MARK: - Legacy Regex-Based Parsing (Fallback)
+
+    private static func parseLegacy(_ response: String) -> CarAnalysisResponse {
         var result = CarAnalysisResponse(
             carModel: "",
             carExplanation: "",

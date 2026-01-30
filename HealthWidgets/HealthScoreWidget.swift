@@ -24,8 +24,8 @@ struct HealthScoreWidget: Widget {
                     .background(Color.black)
             }
         }
-        .configurationDisplayName("ציון בריאות")
-        .description("הציון הכללי שלך ביום זה")
+        .configurationDisplayName("Health Score")
+        .description("Your overall score for today")
         .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular])
         .contentMarginsDisabled()
     }
@@ -139,7 +139,7 @@ struct RectangularHealthScoreView: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("ציון בריאות")
+                Text("Health Score")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 Text("\(data.healthScore)")
@@ -166,7 +166,7 @@ struct RectangularHealthScoreView: View {
     HealthEntry(date: .now, data: .placeholder, carImage: nil)
     HealthEntry(date: .now, data: HealthWidgetData(
         healthScore: 85,
-        healthStatus: "מצוין",
+        healthStatus: "Excellent",
         steps: 8500,
         stepsGoal: 10000,
         calories: 420,
@@ -182,6 +182,7 @@ struct RectangularHealthScoreView: View {
         carName: "Porsche 911 Turbo",
         carEmoji: "🏁",
         carImageName: "CarPorsche911",
-        carTierIndex: 3
+        carTierIndex: 3,
+        userName: ""
     ), carImage: nil)
 }

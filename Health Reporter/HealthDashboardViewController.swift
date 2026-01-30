@@ -121,6 +121,14 @@ class HealthDashboardViewController: UIViewController {
 
         // Listen for force Gemini analysis from Debug screen
         NotificationCenter.default.addObserver(self, selector: #selector(forceGeminiAnalysisFromDebug), name: NSNotification.Name("ForceGeminiAnalysis"), object: nil)
+
+        // Listen for app returning from background - refresh score
+        NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+    }
+
+    @objc private func appWillEnterForeground() {
+        // רענון הציון כשהאפליקציה חוזרת מרקע (נתונים חדשים עשויים להיות זמינים)
+        loadData(silent: true)
     }
 
     @objc private func forceGeminiAnalysisFromDebug() {
@@ -144,6 +152,8 @@ class HealthDashboardViewController: UIViewController {
         super.viewWillAppear(animated)
         loadHeaderAvatar()
         updateGreeting()
+        // תמיד רענון מלא כדי לקבל נתונים עדכניים (אנימציה רק בפעם הראשונה)
+        loadData(silent: true)
     }
 
     // MARK: - Setup UI
@@ -299,6 +309,52 @@ class HealthDashboardViewController: UIViewController {
     private func setupHeroCard() {
         heroCard.translatesAutoresizingMaskIntoConstraints = false
         heroCard.configurePlaceholder()
+
+        // Tooltip callback - להסבר על הציון
+        heroCard.onInfoTapped = { [weak self] in
+            self?.showScoreExplanation()
+        }
+
+        // Callbacks להסברים על Mini KPIs
+        heroCard.onSleepTapped = { [weak self] in
+            self?.showMiniKPIExplanation(
+                title: "metric.sleep".localized,
+                message: "explanation.heroSleep".localized
+            )
+        }
+        heroCard.onHRVTapped = { [weak self] in
+            self?.showMiniKPIExplanation(
+                title: "HRV",
+                message: "explanation.heroHRV".localized
+            )
+        }
+        heroCard.onStrainTapped = { [weak self] in
+            self?.showMiniKPIExplanation(
+                title: "metric.strain".localized,
+                message: "explanation.heroStrain".localized
+            )
+        }
+    }
+
+    private func showScoreExplanation() {
+        let explanation = AnalysisCache.generateScoreExplanation()
+        let alert = UIAlertController(
+            title: "איך הציון מחושב?",
+            message: explanation,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "הבנתי", style: .default))
+        present(alert, animated: true)
+    }
+
+    private func showMiniKPIExplanation(title: String, message: String) {
+        let alert = UIAlertController(
+            title: title,
+            message: message,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "understand".localized, style: .default))
+        present(alert, animated: true)
     }
 
     // MARK: - Activity Rings
@@ -564,10 +620,13 @@ class HealthDashboardViewController: UIViewController {
         let rhrTake = Array(bundle.rhrTrend.points.suffix(n))
         let sleepTake = Array(bundle.sleep.points.suffix(n)).filter { ($0.totalHours ?? 0) > 0 }
 
-        // Compute CarTier score
-        let eval = CarTierEngine.evaluate(bundle: bundle)
-        let score = eval?.score ?? 0
-        let tier = eval?.tier ?? CarTierEngine.tiers[0]
+        // Compute CarTier score - משתמשים בציון מ-HealthScoreEngine
+        // אם אין ציון שמור או שאין מספיק נתונים, מציגים placeholder
+        let healthResult = AnalysisCache.loadHealthScoreResult()
+        let hasValidScore = healthResult != nil && healthResult!.reliabilityScoreInt > 0
+        let score = hasValidScore ? (AnalysisCache.loadHealthScore() ?? 0) : 0
+        let tier = CarTierEngine.tierForScore(max(1, score)) // min 1 למניעת crash
+        print("=== DASHBOARD UI: HealthScoreEngine score: \(score), hasValidScore: \(hasValidScore) ===")
 
         // Sleep text
         let sleepText: String
@@ -777,6 +836,9 @@ class HealthDashboardViewController: UIViewController {
         let hrv = Int(chartBundle?.hrvTrend.points.last?.value ?? 0)
         let rhr = Int(chartBundle?.rhrTrend.points.last?.value ?? 0)
 
+        // Get user's display name for widget
+        let userName = Auth.auth().currentUser?.displayName ?? ""
+
         // Update widget with real data from app
         WidgetDataManager.shared.updateFromDashboard(
             score: score,
@@ -788,7 +850,8 @@ class HealthDashboardViewController: UIViewController {
             restingHR: rhr > 0 ? rhr : nil,
             hrv: hrv > 0 ? hrv : nil,
             sleepHours: sleepHours > 0 ? sleepHours : nil,
-            carTier: tier
+            carTier: tier,
+            userName: userName
         )
 
         // Save daily activity for InsightsTab to use
@@ -995,7 +1058,17 @@ class HealthDashboardViewController: UIViewController {
         useRefreshControlForCurrentLoad = useRefreshControl
         if forceAnalysis { GeminiService.shared.cancelCurrentRequest() }
         if !silent && !useRefreshControl { showLoading("dashboard.loadingData".localized) }
-        HealthKitManager.shared.fetchAllHealthData(for: selectedRange) { [weak self] data, err in
+
+        // === חישוב HealthScore מקומי - מחכים לתוצאה לפני שממשיכים ===
+        HealthKitManager.shared.fetchDailyHealthData(days: 90) { [weak self] dailyEntries in
+            guard let self = self else { return }
+
+            let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
+            AnalysisCache.saveHealthScoreResult(healthResult)
+            print("=== DASHBOARD: HealthScore calculated: \(healthResult.healthScoreInt), Reliability: \(healthResult.reliabilityScoreInt) ===")
+
+            // ממשיכים לטעון את שאר הנתונים רק אחרי שהציון חושב
+            HealthKitManager.shared.fetchAllHealthData(for: self.selectedRange) { [weak self] data, err in
             guard let self = self else { return }
             if let err = err {
                 DispatchQueue.main.async {
@@ -1019,6 +1092,7 @@ class HealthDashboardViewController: UIViewController {
                     self.endRefreshingIfNeeded()
                 }
                 self.resolveAnalysisSource(forceAnalysis: forceAnalysis, loadId: currentLoadId, chartBundle: bundle)
+            }
             }
         }
     }

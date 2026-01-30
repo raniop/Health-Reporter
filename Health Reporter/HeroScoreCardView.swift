@@ -9,11 +9,18 @@ import UIKit
 
 final class HeroScoreCardView: UIView {
 
+    // MARK: - Callbacks
+    var onInfoTapped: (() -> Void)?
+    var onSleepTapped: (() -> Void)?
+    var onHRVTapped: (() -> Void)?
+    var onStrainTapped: (() -> Void)?
+
     // MARK: - Subviews
 
     private let ringContainer = UIView()
     private let scoreLabel = UILabel()
     private let tierLabel = UILabel()
+    private let infoButton = UIButton(type: .system)
     private let carImageView = UIImageView()
     private let carNameLabel = UILabel()
     private let separatorLine = UIView()
@@ -40,7 +47,11 @@ final class HeroScoreCardView: UIView {
     private var animStartTime: CFTimeInterval = 0
     private var targetScore: Int = 0
     private var currentAnimScore: Int = 0
-    private let animDuration: CFTimeInterval = 0.8
+    private let animDuration: CFTimeInterval = 2.0  // משך איטי יותר לאפקט יפה
+    private var lastHapticValue: Int = -10  // לעקוב אחר הפטיק כל 10 נקודות
+    private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
+    private var isAnimating: Bool = false  // מניעת הפעלה כפולה של אנימציה
+    private var lastAnimatedScore: Int = -1  // לזכור איזה ציון כבר הונפש
 
     // Ring dimensions
     private let ringDiameter: CGFloat = 160
@@ -94,6 +105,18 @@ final class HeroScoreCardView: UIView {
         tierLabel.textAlignment = .center
         tierLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(tierLabel)
+
+        // Info button (i) - להסבר על הציון
+        let cfg = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        infoButton.setImage(UIImage(systemName: "info.circle", withConfiguration: cfg), for: .normal)
+        infoButton.tintColor = AIONDesign.textTertiary
+        infoButton.translatesAutoresizingMaskIntoConstraints = false
+        infoButton.addTarget(self, action: #selector(infoButtonTapped), for: .touchUpInside)
+        addSubview(infoButton)
+    }
+
+    @objc private func infoButtonTapped() {
+        onInfoTapped?()
     }
 
     private func setupCarImage() {
@@ -121,21 +144,24 @@ final class HeroScoreCardView: UIView {
             iconView: sleepIcon,
             valueLabel: sleepValueLabel,
             label: "metric.sleep".localized,
-            tint: AIONDesign.accentPrimary
+            tint: AIONDesign.accentPrimary,
+            tag: 0
         )
         let hrvKPI = makeMiniKPI(
             icon: "waveform.path.ecg",
             iconView: hrvIcon,
             valueLabel: hrvValueLabel,
             label: "HRV",
-            tint: AIONDesign.accentSecondary
+            tint: AIONDesign.accentSecondary,
+            tag: 1
         )
         let strainKPI = makeMiniKPI(
             icon: "flame.fill",
             iconView: strainIcon,
             valueLabel: strainValueLabel,
             label: "metric.strain".localized,
-            tint: AIONDesign.accentWarning
+            tint: AIONDesign.accentWarning,
+            tag: 2
         )
 
         miniKPIStack.addArrangedSubview(sleepKPI)
@@ -143,12 +169,14 @@ final class HeroScoreCardView: UIView {
         miniKPIStack.addArrangedSubview(strainKPI)
     }
 
-    private func makeMiniKPI(icon: String, iconView: UIImageView, valueLabel: UILabel, label: String, tint: UIColor) -> UIView {
+    private func makeMiniKPI(icon: String, iconView: UIImageView, valueLabel: UILabel, label: String, tint: UIColor, tag: Int) -> UIView {
         let stack = UIStackView()
         stack.axis = .vertical
         stack.alignment = .center
         stack.spacing = 4
         stack.semanticContentAttribute = .forceRightToLeft
+        stack.isUserInteractionEnabled = true
+        stack.tag = tag
 
         let cfg = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
         iconView.image = UIImage(systemName: icon, withConfiguration: cfg)
@@ -172,7 +200,21 @@ final class HeroScoreCardView: UIView {
         stack.addArrangedSubview(valueLabel)
         stack.addArrangedSubview(titleLabel)
 
+        // הוספת לחיצה
+        let tap = UITapGestureRecognizer(target: self, action: #selector(miniKPITapped(_:)))
+        stack.addGestureRecognizer(tap)
+
         return stack
+    }
+
+    @objc private func miniKPITapped(_ gesture: UITapGestureRecognizer) {
+        guard let view = gesture.view else { return }
+        switch view.tag {
+        case 0: onSleepTapped?()
+        case 1: onHRVTapped?()
+        case 2: onStrainTapped?()
+        default: break
+        }
     }
 
     private func setupConstraints() {
@@ -190,6 +232,12 @@ final class HeroScoreCardView: UIView {
             // Tier label below score
             tierLabel.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: -2),
             tierLabel.centerXAnchor.constraint(equalTo: ringContainer.centerXAnchor),
+
+            // Info button - top right corner
+            infoButton.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            infoButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            infoButton.widthAnchor.constraint(equalToConstant: 30),
+            infoButton.heightAnchor.constraint(equalToConstant: 30),
 
             // Separator below tier label (car removed)
             separatorLine.topAnchor.constraint(equalTo: ringContainer.bottomAnchor, constant: 16),
@@ -266,20 +314,29 @@ final class HeroScoreCardView: UIView {
         strainText: String,
         animated: Bool = true
     ) {
-        tierLabel.text = tier.tierLabel
-        tierLabel.textColor = tier.color
-        // Car removed - not relevant for this page
-
         // Mini KPIs
         sleepValueLabel.text = sleepText
         hrvValueLabel.text = hrvText
         strainValueLabel.text = strainText
 
+        // אם אין ציון (0), מציגים placeholder
+        if score <= 0 {
+            scoreLabel.text = "—"
+            tierLabel.text = "dashboard.noData".localized
+            tierLabel.textColor = AIONDesign.textTertiary
+            progressRingLayer.strokeEnd = 0
+            return
+        }
+
+        tierLabel.text = tier.tierLabel
+        tierLabel.textColor = tier.color
+
         // Score + Ring animation
-        if animated {
+        // לא מפעילים אנימציה אם כבר רצה אחת לאותו ציון או שכבר באמצע אנימציה
+        if animated && !isAnimating && lastAnimatedScore != score {
             animateScoreCounter(to: score)
             animateRing(to: CGFloat(score) / 100.0)
-        } else {
+        } else if !isAnimating {
             scoreLabel.text = "\(score)"
             progressRingLayer.strokeEnd = CGFloat(score) / 100.0
         }
@@ -316,40 +373,77 @@ final class HeroScoreCardView: UIView {
     }
 
     func animateScoreCounter(to target: Int) {
+        // מניעת הפעלה כפולה
+        guard !isAnimating else { return }
+
+        isAnimating = true
         targetScore = target
         currentAnimScore = 0
+        lastHapticValue = -10
         scoreLabel.text = "0"
         animStartTime = CACurrentMediaTime()
+        lightHaptic.prepare()
 
         displayLink?.invalidate()
         displayLink = CADisplayLink(target: self, selector: #selector(updateCounter))
         displayLink?.add(to: .main, forMode: .common)
     }
 
+    /// איפוס מצב האנימציה (לקריאה מבחוץ לפני רענון)
+    func resetAnimationState() {
+        lastAnimatedScore = -1
+    }
+
     @objc private func updateCounter() {
         let elapsed = CACurrentMediaTime() - animStartTime
         let progress = min(1.0, elapsed / animDuration)
 
-        // Ease out
-        let eased = 1 - pow(1 - progress, 3)
+        // עקומת easing דרמטית - מהירה בהתחלה, איטית מאוד לקראת הסוף
+        // שילוב של ease-out חזק עם האטה לוגריתמית
+        let eased: Double
+        if progress < 0.7 {
+            // 70% מהזמן מגיעים ל-90% מהערך (מהיר)
+            let normalizedProgress = progress / 0.7
+            eased = 0.9 * (1 - pow(1 - normalizedProgress, 2))
+        } else {
+            // 30% האחרונים לעשות את ה-10% הנותרים (איטי מאוד)
+            let normalizedProgress = (progress - 0.7) / 0.3
+            let slowEased = pow(normalizedProgress, 2.5)  // חזקה גבוהה = האטה חזקה
+            eased = 0.9 + 0.1 * slowEased
+        }
+
         let current = Int(round(Double(targetScore) * eased))
+
+        // הפטיק קל כל 10 נקודות (רק אם הציון גבוה מספיק)
+        if targetScore >= 20 && current >= lastHapticValue + 10 && current < targetScore {
+            lastHapticValue = (current / 10) * 10
+            lightHaptic.impactOccurred(intensity: 0.3)
+        }
+
+        // אנימציית scale קלה בזמן הספירה
+        let scaleProgress = sin(progress * .pi)  // עולה ויורד
+        let scale = 1.0 + 0.02 * scaleProgress
+        scoreLabel.transform = CGAffineTransform(scaleX: scale, y: scale)
+
         scoreLabel.text = "\(current)"
 
         if progress >= 1.0 {
             displayLink?.invalidate()
             displayLink = nil
             scoreLabel.text = "\(targetScore)"
+            isAnimating = false
+            lastAnimatedScore = targetScore
 
-            // Haptic feedback
+            // הפטיק חזק בסיום
             let gen = UIImpactFeedbackGenerator(style: .medium)
             gen.prepare()
             gen.impactOccurred()
 
-            // Subtle bounce
-            UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseOut) {
-                self.scoreLabel.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
+            // Bounce גמר מרשים
+            UIView.animate(withDuration: 0.2, delay: 0, usingSpringWithDamping: 0.5, initialSpringVelocity: 0.8, options: []) {
+                self.scoreLabel.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
             } completion: { _ in
-                UIView.animate(withDuration: 0.1) {
+                UIView.animate(withDuration: 0.15, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.3, options: []) {
                     self.scoreLabel.transform = .identity
                 }
             }

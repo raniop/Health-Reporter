@@ -1975,4 +1975,341 @@ class HealthKitManager {
         }
         healthStore.execute(q)
     }
+
+    // MARK: - Daily Health Data for Gemini Payload
+
+    /// שליפת נתוני בריאות יומיים ל-X ימים (ברירת מחדל: 90 ימים)
+    /// מחזיר מערך של RawDailyHealthEntry לשימוש ב-GeminiHealthPayloadBuilder
+    func fetchDailyHealthData(days: Int = 90, completion: @escaping ([RawDailyHealthEntry]) -> Void) {
+        let calendar = Calendar.current
+        let endDate = Date()
+        guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else {
+            completion([])
+            return
+        }
+
+        var entries: [Date: RawDailyHealthEntry] = [:]
+        let group = DispatchGroup()
+
+        // Initialize entries for each day
+        for dayOffset in 0..<days {
+            if let date = calendar.date(byAdding: .day, value: -dayOffset, to: endDate) {
+                let dayStart = calendar.startOfDay(for: date)
+                entries[dayStart] = RawDailyHealthEntry(date: dayStart)
+            }
+        }
+
+        // Fetch Sleep Data (daily)
+        group.enter()
+        fetchDailySleepData(startDate: startDate, endDate: endDate) { sleepData in
+            for (date, data) in sleepData {
+                let dayStart = calendar.startOfDay(for: date)
+                entries[dayStart]?.sleepHours = data.totalHours
+                entries[dayStart]?.deepSleepHours = data.deepHours
+                entries[dayStart]?.remSleepHours = data.remHours
+            }
+            group.leave()
+        }
+
+        // Fetch HRV Data (daily)
+        group.enter()
+        fetchDailyMetric(.heartRateVariabilitySDNN, unit: HKUnit.secondUnit(with: .milli), startDate: startDate, endDate: endDate) { hrvData in
+            for (date, value) in hrvData {
+                let dayStart = calendar.startOfDay(for: date)
+                entries[dayStart]?.hrvMs = value
+            }
+            group.leave()
+        }
+
+        // Fetch Resting Heart Rate (daily)
+        group.enter()
+        fetchDailyMetric(.restingHeartRate, unit: HKUnit(from: "count/min"), startDate: startDate, endDate: endDate) { rhrData in
+            for (date, value) in rhrData {
+                let dayStart = calendar.startOfDay(for: date)
+                entries[dayStart]?.restingHR = value
+            }
+            group.leave()
+        }
+
+        // Fetch Steps (daily)
+        group.enter()
+        fetchDailySteps(startDate: startDate, endDate: endDate) { stepsData in
+            for (date, value) in stepsData {
+                let dayStart = calendar.startOfDay(for: date)
+                entries[dayStart]?.steps = value
+            }
+            group.leave()
+        }
+
+        // Fetch Active Calories (daily)
+        group.enter()
+        fetchDailyActiveCalories(startDate: startDate, endDate: endDate) { caloriesData in
+            for (date, value) in caloriesData {
+                let dayStart = calendar.startOfDay(for: date)
+                entries[dayStart]?.activeCalories = value
+            }
+            group.leave()
+        }
+
+        // Fetch VO2 Max (daily - usually less frequent)
+        group.enter()
+        fetchDailyMetric(.vo2Max, unit: HKUnit(from: "ml/kg*min"), startDate: startDate, endDate: endDate) { vo2Data in
+            for (date, value) in vo2Data {
+                let dayStart = calendar.startOfDay(for: date)
+                entries[dayStart]?.vo2max = value
+            }
+            group.leave()
+        }
+
+        // Fetch Weight (daily - usually less frequent)
+        group.enter()
+        fetchDailyMetric(.bodyMass, unit: HKUnit.gramUnit(with: .kilo), startDate: startDate, endDate: endDate) { weightData in
+            for (date, value) in weightData {
+                let dayStart = calendar.startOfDay(for: date)
+                entries[dayStart]?.weightKg = value
+            }
+            group.leave()
+        }
+
+        // Fetch Body Fat % (daily - usually less frequent)
+        group.enter()
+        fetchDailyMetric(.bodyFatPercentage, unit: HKUnit.percent(), startDate: startDate, endDate: endDate) { bfData in
+            for (date, value) in bfData {
+                let dayStart = calendar.startOfDay(for: date)
+                entries[dayStart]?.bodyFatPercent = value * 100 // Convert from 0-1 to 0-100
+            }
+            group.leave()
+        }
+
+        // Fetch Workouts (count per day)
+        group.enter()
+        fetchDailyWorkoutCount(startDate: startDate, endDate: endDate) { workoutData in
+            for (date, count) in workoutData {
+                let dayStart = calendar.startOfDay(for: date)
+                entries[dayStart]?.workoutCount = count
+            }
+            group.leave()
+        }
+
+        group.notify(queue: .main) {
+            // Convert to sorted array
+            let result = entries.values.sorted { $0.date < $1.date }
+            completion(result)
+        }
+    }
+
+    // MARK: - Helper: Fetch Daily Metric
+
+    private func fetchDailyMetric(_ identifier: HKQuantityTypeIdentifier, unit: HKUnit, startDate: Date, endDate: Date, completion: @escaping ([(Date, Double)]) -> Void) {
+        guard let quantityType = HKQuantityType.quantityType(forIdentifier: identifier) else {
+            completion([])
+            return
+        }
+
+        let calendar = Calendar.current
+        var interval = DateComponents()
+        interval.day = 1
+
+        let anchorDate = calendar.startOfDay(for: startDate)
+
+        let query = HKStatisticsCollectionQuery(
+            quantityType: quantityType,
+            quantitySamplePredicate: HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate),
+            options: [.discreteAverage],
+            anchorDate: anchorDate,
+            intervalComponents: interval
+        )
+
+        query.initialResultsHandler = { _, results, _ in
+            var data: [(Date, Double)] = []
+
+            results?.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
+                if let average = statistics.averageQuantity()?.doubleValue(for: unit) {
+                    data.append((statistics.startDate, average))
+                }
+            }
+
+            DispatchQueue.main.async {
+                completion(data)
+            }
+        }
+
+        healthStore.execute(query)
+    }
+
+    // MARK: - Helper: Fetch Daily Steps
+
+    private func fetchDailySteps(startDate: Date, endDate: Date, completion: @escaping ([(Date, Double)]) -> Void) {
+        guard let stepsType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
+            completion([])
+            return
+        }
+
+        let calendar = Calendar.current
+        var interval = DateComponents()
+        interval.day = 1
+
+        let anchorDate = calendar.startOfDay(for: startDate)
+
+        let query = HKStatisticsCollectionQuery(
+            quantityType: stepsType,
+            quantitySamplePredicate: HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate),
+            options: [.cumulativeSum],
+            anchorDate: anchorDate,
+            intervalComponents: interval
+        )
+
+        query.initialResultsHandler = { _, results, _ in
+            var data: [(Date, Double)] = []
+
+            results?.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
+                if let sum = statistics.sumQuantity()?.doubleValue(for: HKUnit.count()) {
+                    data.append((statistics.startDate, sum))
+                }
+            }
+
+            DispatchQueue.main.async {
+                completion(data)
+            }
+        }
+
+        healthStore.execute(query)
+    }
+
+    // MARK: - Helper: Fetch Daily Active Calories
+
+    private func fetchDailyActiveCalories(startDate: Date, endDate: Date, completion: @escaping ([(Date, Double)]) -> Void) {
+        guard let caloriesType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
+            completion([])
+            return
+        }
+
+        let calendar = Calendar.current
+        var interval = DateComponents()
+        interval.day = 1
+
+        let anchorDate = calendar.startOfDay(for: startDate)
+
+        let query = HKStatisticsCollectionQuery(
+            quantityType: caloriesType,
+            quantitySamplePredicate: HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate),
+            options: [.cumulativeSum],
+            anchorDate: anchorDate,
+            intervalComponents: interval
+        )
+
+        query.initialResultsHandler = { _, results, _ in
+            var data: [(Date, Double)] = []
+
+            results?.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
+                if let sum = statistics.sumQuantity()?.doubleValue(for: HKUnit.kilocalorie()) {
+                    data.append((statistics.startDate, sum))
+                }
+            }
+
+            DispatchQueue.main.async {
+                completion(data)
+            }
+        }
+
+        healthStore.execute(query)
+    }
+
+    // MARK: - Helper: Fetch Daily Sleep Data
+
+    struct DailySleepData {
+        var totalHours: Double
+        var deepHours: Double?
+        var remHours: Double?
+    }
+
+    private func fetchDailySleepData(startDate: Date, endDate: Date, completion: @escaping ([(Date, DailySleepData)]) -> Void) {
+        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
+            completion([])
+            return
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+
+        let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, _ in
+            let calendar = Calendar.current
+            var dailyData: [Date: DailySleepData] = [:]
+
+            guard let sleepSamples = samples as? [HKCategorySample] else {
+                DispatchQueue.main.async { completion([]) }
+                return
+            }
+
+            for sample in sleepSamples {
+                // Use end date for the day (sleep typically ends in the morning)
+                let dayStart = calendar.startOfDay(for: sample.endDate)
+                let duration = sample.endDate.timeIntervalSince(sample.startDate) / 3600.0 // hours
+
+                if dailyData[dayStart] == nil {
+                    dailyData[dayStart] = DailySleepData(totalHours: 0, deepHours: nil, remHours: nil)
+                }
+
+                // Get current values to avoid overlapping accesses
+                var current = dailyData[dayStart] ?? DailySleepData(totalHours: 0, deepHours: nil, remHours: nil)
+
+                // iOS 16+ sleep stages
+                if #available(iOS 16.0, *) {
+                    switch sample.value {
+                    case HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+                         HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue:
+                        current.totalHours += duration
+                    case HKCategoryValueSleepAnalysis.asleepDeep.rawValue:
+                        current.totalHours += duration
+                        current.deepHours = (current.deepHours ?? 0) + duration
+                    case HKCategoryValueSleepAnalysis.asleepREM.rawValue:
+                        current.totalHours += duration
+                        current.remHours = (current.remHours ?? 0) + duration
+                    default:
+                        break
+                    }
+                } else {
+                    // iOS 15 and earlier
+                    if sample.value == HKCategoryValueSleepAnalysis.asleep.rawValue {
+                        current.totalHours += duration
+                    }
+                }
+
+                dailyData[dayStart] = current
+            }
+
+            let result = dailyData.map { ($0.key, $0.value) }.sorted { $0.0 < $1.0 }
+            DispatchQueue.main.async { completion(result) }
+        }
+
+        healthStore.execute(query)
+    }
+
+    // MARK: - Helper: Fetch Daily Workout Count
+
+    private func fetchDailyWorkoutCount(startDate: Date, endDate: Date, completion: @escaping ([(Date, Int)]) -> Void) {
+        let workoutType = HKObjectType.workoutType()
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+
+        let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, _ in
+            let calendar = Calendar.current
+            var dailyCount: [Date: Int] = [:]
+
+            guard let workouts = samples as? [HKWorkout] else {
+                DispatchQueue.main.async { completion([]) }
+                return
+            }
+
+            for workout in workouts {
+                let dayStart = calendar.startOfDay(for: workout.startDate)
+                dailyCount[dayStart, default: 0] += 1
+            }
+
+            let result = dailyCount.map { ($0.key, $0.value) }.sorted { $0.0 < $1.0 }
+            DispatchQueue.main.async { completion(result) }
+        }
+
+        healthStore.execute(query)
+    }
 }

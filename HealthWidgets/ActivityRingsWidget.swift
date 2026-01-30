@@ -24,8 +24,8 @@ struct ActivityRingsWidget: Widget {
                     .background(Color.black)
             }
         }
-        .configurationDisplayName("טבעות פעילות")
-        .description("תנועה, אימון ועמידה")
+        .configurationDisplayName("Activity Rings")
+        .description("Move, Exercise and Stand")
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }
@@ -89,9 +89,9 @@ struct SmallActivityRingsView: View {
 
                 // Stats
                 HStack(spacing: 12) {
-                    StatLabel(value: "\(data.calories)", unit: "קק\"ל", color: .pink)
-                    StatLabel(value: "\(data.exerciseMinutes)", unit: "דק'", color: .green)
-                    StatLabel(value: "\(data.standHours)", unit: "שע'", color: .cyan)
+                    StatLabel(value: "\(data.calories)", unit: "kcal", color: .pink)
+                    StatLabel(value: "\(data.exerciseMinutes)", unit: "min", color: .green)
+                    StatLabel(value: "\(data.standHours)", unit: "hr", color: .cyan)
                 }
             }
             .padding(12)
@@ -138,25 +138,25 @@ struct MediumActivityRingsView: View {
                 VStack(alignment: .trailing, spacing: 10) {
                     ActivityStatRow(
                         icon: "flame.fill",
-                        title: "תנועה",
+                        title: "Move",
                         value: "\(data.calories)/\(data.caloriesGoal)",
-                        unit: "קק\"ל",
+                        unit: "kcal",
                         color: .pink
                     )
 
                     ActivityStatRow(
                         icon: "figure.run",
-                        title: "אימון",
+                        title: "Exercise",
                         value: "\(data.exerciseMinutes)/\(data.exerciseGoal)",
-                        unit: "דק'",
+                        unit: "min",
                         color: .green
                     )
 
                     ActivityStatRow(
                         icon: "figure.stand",
-                        title: "עמידה",
+                        title: "Stand",
                         value: "\(data.standHours)/\(data.standGoal)",
-                        unit: "שע'",
+                        unit: "hr",
                         color: .cyan
                     )
                 }
