@@ -7,6 +7,7 @@
 
 import WidgetKit
 import SwiftUI
+import UIKit
 
 // MARK: - Shared Data Model
 
@@ -60,26 +61,45 @@ struct HealthWidgetData: Codable {
 
 struct WidgetDataLoader {
     static let appGroupID = "group.com.rani.Health-Reporter"
+    static let carImageFileName = "widget_car_image.jpg"
 
     static func loadData() -> HealthWidgetData {
         guard let userDefaults = UserDefaults(suiteName: appGroupID) else {
-            print("Widget: ❌ Failed to access App Group")
+            print("Widget: Failed to access App Group")
             return .placeholder
         }
 
         guard let data = userDefaults.data(forKey: "widgetData") else {
-            print("Widget: ⚠️ No data found in App Group, using placeholder")
+            print("Widget: No data found in App Group, using placeholder")
             return .placeholder
         }
 
         do {
             let widgetData = try JSONDecoder().decode(HealthWidgetData.self, from: data)
-            print("Widget: ✅ Loaded data - Score: \(widgetData.healthScore), Car: \(widgetData.carName)")
+            print("Widget: Loaded data - Score: \(widgetData.healthScore), Car: \(widgetData.carName)")
             return widgetData
         } catch {
-            print("Widget: ❌ Decode error: \(error)")
+            print("Widget: Decode error: \(error)")
             return .placeholder
         }
+    }
+
+    /// Loads car image from App Group if available
+    static func loadCarImage() -> UIImage? {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else {
+            return nil
+        }
+
+        let imageURL = containerURL.appendingPathComponent(carImageFileName)
+
+        guard FileManager.default.fileExists(atPath: imageURL.path),
+              let imageData = try? Data(contentsOf: imageURL),
+              let image = UIImage(data: imageData) else {
+            return nil
+        }
+
+        print("Widget: Loaded car image from App Group")
+        return image
     }
 }
 
@@ -87,21 +107,23 @@ struct WidgetDataLoader {
 
 struct HealthTimelineProvider: TimelineProvider {
     func placeholder(in context: Context) -> HealthEntry {
-        HealthEntry(date: Date(), data: .placeholder)
+        HealthEntry(date: Date(), data: .placeholder, carImage: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (HealthEntry) -> Void) {
         let data = WidgetDataLoader.loadData()
-        let entry = HealthEntry(date: Date(), data: data)
+        let carImage = WidgetDataLoader.loadCarImage()
+        let entry = HealthEntry(date: Date(), data: data, carImage: carImage)
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<HealthEntry>) -> Void) {
         let data = WidgetDataLoader.loadData()
-        let entry = HealthEntry(date: Date(), data: data)
+        let carImage = WidgetDataLoader.loadCarImage()
+        let entry = HealthEntry(date: Date(), data: data, carImage: carImage)
 
-        // Update every 15 minutes
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
+        // Update every 5 minutes for more frequent updates
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 5, to: Date())!
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
     }
@@ -110,6 +132,7 @@ struct HealthTimelineProvider: TimelineProvider {
 struct HealthEntry: TimelineEntry {
     let date: Date
     let data: HealthWidgetData
+    let carImage: UIImage?
 }
 
 // MARK: - Shared UI Components

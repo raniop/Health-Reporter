@@ -66,10 +66,23 @@ final class ActivityViewController: UIViewController {
         title = "פעילות"
         view.backgroundColor = AIONDesign.background
         view.semanticContentAttribute = .forceRightToLeft
-        navigationController?.navigationBar.barStyle = .black
-        navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
         setupUI()
         loadData()
+
+        // Listen for background color changes
+        NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func backgroundColorDidChange() {
+        view.backgroundColor = AIONDesign.background
+        navigationController?.navigationBar.barStyle = AIONDesign.navBarStyle
+        navigationController?.navigationBar.barTintColor = AIONDesign.background
+        navigationController?.navigationBar.backgroundColor = AIONDesign.background
+        navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
     }
 
     private func setupUI() {

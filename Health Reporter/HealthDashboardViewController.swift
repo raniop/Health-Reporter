@@ -15,6 +15,9 @@ class HealthDashboardViewController: UIViewController {
 
     private var selectedRange: DataRange = .week
     private var chartBundle: AIONChartDataBundle?
+
+    /// גישה ציבורית ל-chartBundle לצורך בדיקת שינויים משמעותיים
+    var currentChartBundle: AIONChartDataBundle? { chartBundle }
     private var healthData: HealthDataModel?
     private var insightsText: String = ""
     private var recommendationsText: String = ""
@@ -56,14 +59,14 @@ class HealthDashboardViewController: UIViewController {
         let l = UILabel()
         l.text = "טוען..."
         l.font = AIONDesign.bodyFont()
-        l.textColor = .white
+        l.textColor = AIONDesign.textPrimary
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
     private let loadingSpinner: UIActivityIndicatorView = {
         let i = UIActivityIndicatorView(style: .large)
-        i.color = .white
+        i.color = AIONDesign.accentPrimary
         i.translatesAutoresizingMaskIntoConstraints = false
         return i
     }()
@@ -112,6 +115,29 @@ class HealthDashboardViewController: UIViewController {
         setupUI()
         checkHealthKitAuthorization()
         loadHeaderAvatar()
+
+        // Listen for background color changes
+        NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
+
+        // Listen for force Gemini analysis from Debug screen
+        NotificationCenter.default.addObserver(self, selector: #selector(forceGeminiAnalysisFromDebug), name: NSNotification.Name("ForceGeminiAnalysis"), object: nil)
+    }
+
+    @objc private func forceGeminiAnalysisFromDebug() {
+        print("=== FORCE GEMINI ANALYSIS FROM DEBUG SCREEN ===")
+        loadData(forceAnalysis: true)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func backgroundColorDidChange() {
+        view.backgroundColor = AIONDesign.background
+        navigationController?.navigationBar.barStyle = AIONDesign.navBarStyle
+        navigationController?.navigationBar.barTintColor = AIONDesign.background
+        navigationController?.navigationBar.backgroundColor = AIONDesign.background
+        navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -762,6 +788,15 @@ class HealthDashboardViewController: UIViewController {
             sleepHours: sleepHours > 0 ? sleepHours : nil,
             carTier: tier
         )
+
+        // Save daily activity for InsightsTab to use
+        AnalysisCache.saveDailyActivity(
+            steps: Int(data.steps ?? 0),
+            calories: Int(data.activeEnergy ?? 0),
+            exerciseMinutes: Int(data.exerciseMinutes ?? 0),
+            standHours: Int(data.standHours ?? 0),
+            restingHR: rhr > 0 ? rhr : nil
+        )
     }
 
     // MARK: - Highlights (with icons)
@@ -926,6 +961,20 @@ class HealthDashboardViewController: UIViewController {
     // MARK: - HealthKit Authorization & Data Loading
 
     private func checkHealthKitAuthorization() {
+        // בדוק אם יש נתונים ב-cache מה-Splash Screen
+        if HealthDataCache.shared.isLoaded {
+            self.healthData = HealthDataCache.shared.healthData
+            self.chartBundle = HealthDataCache.shared.chartBundle
+            if let bundle = self.chartBundle {
+                let score = self.updateReadinessAndMetrics(from: bundle)
+                AnalysisCache.saveWeeklyStats(from: bundle, score: score)
+            }
+            // הרץ ניתוח Gemini ברקע אם צריך
+            self.resolveAnalysisSource(forceAnalysis: false, loadId: loadId, chartBundle: chartBundle)
+            return
+        }
+
+        // Fallback: אם אין cache, טען מ-HealthKit
         guard HealthKitManager.shared.isHealthDataAvailable() else {
             showAlert(title: "שגיאה", message: "HealthKit לא זמין במכשיר זה.")
             return
@@ -1000,12 +1049,27 @@ class HealthDashboardViewController: UIViewController {
         }
 
         // בדיקה אם צריך להריץ ניתוח חדש
-        if !AnalysisCache.shouldRunAnalysis(forceAnalysis: forceAnalysis, currentHealthDataHash: currentHealthDataHash) {
-            // שימוש בקאש - נתוני הבריאות לא השתנו
-            if let cached = AnalysisCache.loadLatest() {
-                print("=== USING CACHE: Health data unchanged ===")
-                finishWithCache(cached)
-                return
+        // משתמשים ב-hasSignificantChange שדורש 3 ימים + 10% שינוי HRV
+        // זה מונע החלפת רכב תכופה מדי
+        if !forceAnalysis {
+            if let bundle = chartBundle {
+                // יש chartBundle - בודקים שינוי משמעותי (3 ימים + 10% HRV)
+                if !AnalysisCache.hasSignificantChange(currentBundle: bundle) {
+                    if let cached = AnalysisCache.loadLatest() {
+                        print("=== USING CACHE: No significant change (3 days + 10% HRV required) ===")
+                        finishWithCache(cached)
+                        return
+                    }
+                }
+            } else {
+                // אין chartBundle - בודקים רק hash (fallback)
+                if !AnalysisCache.shouldRunAnalysis(forceAnalysis: false, currentHealthDataHash: currentHealthDataHash) {
+                    if let cached = AnalysisCache.loadLatest() {
+                        print("=== USING CACHE: Health data unchanged (hash match) ===")
+                        finishWithCache(cached)
+                        return
+                    }
+                }
             }
         }
 

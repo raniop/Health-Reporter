@@ -27,6 +27,7 @@ struct ActivityRingsWidget: Widget {
         .configurationDisplayName("טבעות פעילות")
         .description("תנועה, אימון ועמידה")
         .supportedFamilies([.systemSmall, .systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
@@ -55,11 +56,8 @@ struct SmallActivityRingsView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(white: 0.12), Color(white: 0.08)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            // Pure black background
+            Color.black
 
             VStack(spacing: 8) {
                 // Activity Rings
@@ -108,11 +106,8 @@ struct MediumActivityRingsView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(white: 0.12), Color(white: 0.08)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            // Pure black background
+            Color.black
 
             HStack(spacing: 16) {
                 // Activity Rings
@@ -178,5 +173,5 @@ struct MediumActivityRingsView: View {
 #Preview(as: .systemMedium) {
     ActivityRingsWidget()
 } timeline: {
-    HealthEntry(date: .now, data: .placeholder)
+    HealthEntry(date: .now, data: .placeholder, carImage: nil)
 }

@@ -13,12 +13,12 @@ final class NutritionViewController: UIViewController {
 
     var supplements: [SupplementRecommendation] = []
 
-    // MARK: - UI Colors (matching app theme)
+    // MARK: - UI Colors (דינמי לפי רקע בהיר/כהה)
 
-    private let bgColor = UIColor(red: 0.06, green: 0.06, blue: 0.08, alpha: 1.0)
-    private let cardBgColor = UIColor(red: 0.11, green: 0.11, blue: 0.13, alpha: 1.0)
-    private let textWhite = UIColor.white
-    private let textGray = UIColor(white: 0.7, alpha: 1.0)
+    private var bgColor: UIColor { AIONDesign.background }
+    private var cardBgColor: UIColor { AIONDesign.surface }
+    private var textWhite: UIColor { AIONDesign.textPrimary }
+    private var textGray: UIColor { AIONDesign.textSecondary }
     private let accentGreen = UIColor(red: 0.2, green: 0.85, blue: 0.5, alpha: 1.0)
     private let accentCyan = UIColor(red: 0.0, green: 0.85, blue: 0.95, alpha: 1.0)
 
@@ -221,7 +221,7 @@ final class NutritionViewController: UIViewController {
 
         // קו הפרדה
         let separator = UIView()
-        separator.backgroundColor = UIColor.white.withAlphaComponent(0.1)
+        separator.backgroundColor = AIONDesign.separator
         separator.translatesAutoresizingMaskIntoConstraints = false
 
         // סיבה

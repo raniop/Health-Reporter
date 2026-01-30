@@ -42,7 +42,7 @@ private final class GradientCardBackground: UIView {
             color.withAlphaComponent(0.5).cgColor,
             color.withAlphaComponent(0.25).cgColor,
             color.withAlphaComponent(0.1).cgColor,
-            UIColor(red: 0.11, green: 0.11, blue: 0.13, alpha: 1.0).cgColor
+            AIONDesign.surface.cgColor
         ]
         gradientLayer.locations = [0.0, 0.3, 0.6, 1.0]
         gradientLayer.startPoint = CGPoint(x: 0, y: 0)
@@ -83,7 +83,7 @@ final class InsightsTabViewController: UIViewController {
 
     private let loadingView: UIView = {
         let v = UIView()
-        v.backgroundColor = UIColor(red: 0.06, green: 0.06, blue: 0.08, alpha: 1.0)
+        v.backgroundColor = AIONDesign.background
         v.translatesAutoresizingMaskIntoConstraints = false
         v.isHidden = true
         return v
@@ -91,7 +91,7 @@ final class InsightsTabViewController: UIViewController {
 
     private let loadingSpinner: UIActivityIndicatorView = {
         let s = UIActivityIndicatorView(style: .large)
-        s.color = UIColor(red: 0.0, green: 0.8, blue: 0.9, alpha: 1.0)
+        s.color = AIONDesign.accentPrimary
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
     }()
@@ -100,25 +100,25 @@ final class InsightsTabViewController: UIViewController {
         let l = UILabel()
         l.text = "מנתח נתונים..."
         l.font = .systemFont(ofSize: 16, weight: .medium)
-        l.textColor = UIColor(white: 0.6, alpha: 1.0)
+        l.textColor = AIONDesign.textSecondary
         l.textAlignment = .center
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
 
-    // MARK: - Colors
+    // MARK: - Colors (דינמי לפי רקע בהיר/כהה)
 
-    private let bgColor = UIColor(red: 0.06, green: 0.06, blue: 0.08, alpha: 1.0)
-    private let cardBgColor = UIColor(red: 0.11, green: 0.11, blue: 0.13, alpha: 1.0)
+    private var bgColor: UIColor { AIONDesign.background }
+    private var cardBgColor: UIColor { AIONDesign.surface }
+    private var textWhite: UIColor { AIONDesign.textPrimary }
+    private var textGray: UIColor { AIONDesign.textSecondary }
+    private var textDarkGray: UIColor { AIONDesign.textTertiary }
     private let accentCyan = UIColor(red: 0.0, green: 0.85, blue: 0.95, alpha: 1.0)
     private let accentGreen = UIColor(red: 0.2, green: 0.9, blue: 0.5, alpha: 1.0)
     private let accentOrange = UIColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1.0)
     private let accentRed = UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1.0)
     private let accentPurple = UIColor(red: 0.6, green: 0.4, blue: 1.0, alpha: 1.0)
     private let accentBlue = UIColor(red: 0.3, green: 0.6, blue: 1.0, alpha: 1.0)
-    private let textWhite = UIColor.white
-    private let textGray = UIColor(white: 0.65, alpha: 1.0)
-    private let textDarkGray = UIColor(white: 0.45, alpha: 1.0)
 
     // MARK: - Properties
 
@@ -144,13 +144,22 @@ final class InsightsTabViewController: UIViewController {
         title = "תובנות"
         view.backgroundColor = bgColor
         view.semanticContentAttribute = .forceRightToLeft
-        navigationController?.navigationBar.barStyle = .black
-        navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: textWhite]
 
         setupUI()
         setupRefreshButton()
         setupAnalysisObserver()
         refreshContent()
+
+        // Listen for background color changes
+        NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
+    }
+
+    @objc private func backgroundColorDidChange() {
+        view.backgroundColor = AIONDesign.background
+        navigationController?.navigationBar.barStyle = AIONDesign.navBarStyle
+        navigationController?.navigationBar.barTintColor = AIONDesign.background
+        navigationController?.navigationBar.backgroundColor = AIONDesign.background
+        navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: textWhite]
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -160,6 +169,7 @@ final class InsightsTabViewController: UIViewController {
 
     deinit {
         if let o = analysisObserver { NotificationCenter.default.removeObserver(o) }
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Setup
@@ -229,10 +239,40 @@ final class InsightsTabViewController: UIViewController {
     // MARK: - Actions
 
     @objc private func refreshTapped() {
-        // תמיד קוראים ל-Gemini מחדש - הוא מקבל את התשובה הקודמת כהקשר
-        // ואם אין שינוי בנתונים, הוא אמור לשמור על עקביות
+        // בדיקה אם יש שינוי משמעותי בנתונים
+        if let dashboard = (tabBarController?.viewControllers?.first as? UINavigationController)?.viewControllers.first as? HealthDashboardViewController,
+           let bundle = dashboard.currentChartBundle {
+
+            if !AnalysisCache.hasSignificantChange(currentBundle: bundle) {
+                // אין שינוי משמעותי - הצג הודעה
+                showNoSignificantChangeAlert()
+                return
+            }
+        }
+
+        // יש שינוי משמעותי או אין נתונים - קרא ל-Gemini
         showLoading()
 
+        if let dashboard = (tabBarController?.viewControllers?.first as? UINavigationController)?.viewControllers.first as? HealthDashboardViewController {
+            dashboard.runAnalysisForInsights(forceAnalysis: true)
+        }
+    }
+
+    private func showNoSignificantChangeAlert() {
+        let alert = UIAlertController(
+            title: "אין שינוי משמעותי",
+            message: "הנתונים שלך לא השתנו מספיק כדי להצדיק ניתוח חדש. הניתוח יתעדכן אוטומטית כשיהיה שינוי משמעותי ב-HRV, שינה או פעילות.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "הבנתי", style: .default))
+        alert.addAction(UIAlertAction(title: "רענן בכל זאת", style: .destructive) { [weak self] _ in
+            self?.forceRefresh()
+        })
+        present(alert, animated: true)
+    }
+
+    private func forceRefresh() {
+        showLoading()
         if let dashboard = (tabBarController?.viewControllers?.first as? UINavigationController)?.viewControllers.first as? HealthDashboardViewController {
             dashboard.runAnalysisForInsights(forceAnalysis: true)
         }
@@ -268,6 +308,19 @@ final class InsightsTabViewController: UIViewController {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         discoveryContainer = nil
         carCardView = nil
+
+        // ✅ בדיקה: אם המשתמש לא גילה עדיין - הצג Discovery Flow (גם אם יש cache)
+        let hasDiscovered = UserDefaults.standard.bool(forKey: "AION.HasDiscoveredCar")
+        if !hasDiscovered {
+            addFirstTimeDiscoveryExperience()
+            return
+        }
+
+        // ✅ בדיקה: אם יש רכב חדש ממתין לחשיפה - הצג Car Upgrade Reveal
+        if AnalysisCache.hasPendingCarReveal() {
+            addCarUpgradeRevealExperience()
+            return
+        }
 
         guard let insights = AnalysisCache.loadLatest(), !insights.isEmpty else {
             addEmptyState()
@@ -362,7 +415,7 @@ final class InsightsTabViewController: UIViewController {
 // MARK: - Hero Car Card (Like Dashboard)
 
 private func addHeroCarCard(parsed: CarAnalysisResponse) {
-    // Get score and tier
+    // Get score (for display only, not for car selection)
     let stats = AnalysisCache.loadWeeklyStats()
     let score: Int
     if let savedScore = AnalysisCache.loadHealthScore() {
@@ -377,9 +430,8 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         )
         print("=== INSIGHTS: No saved score, calculated: \(score) ===")
     }
-    let tier = CarTierEngine.tierForScore(score)
 
-    // Clean car name
+    // Determine car name - priority: Gemini > Saved > Placeholder
     let cleanedGeminiCar = cleanCarName(parsed.carModel)
     let invalidWords = [
         "strain", "training", "score", "wiki", "generation", "first", "second", "third",
@@ -388,19 +440,67 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     ]
     let lowerCar = cleanedGeminiCar.lowercased()
     let containsInvalidWord = invalidWords.contains { lowerCar.contains($0) }
-    let isValidCarName = !cleanedGeminiCar.isEmpty && !containsInvalidWord && cleanedGeminiCar.count > 3 && cleanedGeminiCar.count < 40
+    let isValidGeminiCar = !cleanedGeminiCar.isEmpty && !containsInvalidWord && cleanedGeminiCar.count > 3 && cleanedGeminiCar.count < 40
 
-    let carName = isValidCarName ? cleanedGeminiCar : tier.name
-    let carEmoji = isValidCarName ? "🚗" : tier.emoji
+    let carName: String
+    let wikiName: String
+    let explanation: String
 
-    // Update widget
+    if isValidGeminiCar {
+        // Gemini returned a valid car - check if changed and save
+        carName = cleanedGeminiCar
+        wikiName = parsed.carWikiName
+        explanation = parsed.carExplanation
+        AnalysisCache.checkAndSetCarChange(newCarName: carName, newWikiName: wikiName, newExplanation: explanation)
+        print("=== INSIGHTS: Using Gemini car: \(carName) ===")
+    } else if let savedCar = AnalysisCache.loadSelectedCar() {
+        // Gemini didn't return valid car - use saved car
+        carName = savedCar.name
+        wikiName = savedCar.wikiName
+        explanation = savedCar.explanation
+        print("=== INSIGHTS: Using saved car: \(carName) ===")
+    } else {
+        // No car at all - show placeholder
+        carName = "ממתין לניתוח..."
+        wikiName = ""
+        explanation = "הרכב שלך ייבחר לאחר ניתוח ראשון של הנתונים"
+        print("=== INSIGHTS: No car available, showing placeholder ===")
+    }
+
+    // Determine status based on score
+    let status: String
+    switch score {
+    case 80...100: status = "שיא ביצועים"
+    case 65..<80: status = "מצוין"
+    case 45..<65: status = "מצב טוב"
+    case 25..<45: status = "בסדר"
+    default: status = "צריך טיפול"
+    }
+
+    // Determine color based on score
+    let tierColor: UIColor
+    switch score {
+    case 80...100: tierColor = AIONDesign.accentSuccess
+    case 65..<80: tierColor = AIONDesign.accentSecondary
+    case 45..<65: tierColor = AIONDesign.accentPrimary
+    case 25..<45: tierColor = AIONDesign.accentWarning
+    default: tierColor = AIONDesign.accentDanger
+    }
+
+    // Update widget with car name and real activity data
     let hrvValue = stats?.hrv ?? 0
     let sleepValue = stats?.sleepHours ?? 0
+    let dailyActivity = AnalysisCache.loadDailyActivity()
     WidgetDataManager.shared.updateFromInsights(
         score: score,
-        status: tier.tierLabel,
+        status: status,
         carName: carName,
-        carEmoji: carEmoji,
+        carEmoji: "🚗",
+        steps: dailyActivity?.steps ?? 0,
+        activeCalories: dailyActivity?.calories ?? 0,
+        exerciseMinutes: dailyActivity?.exerciseMinutes ?? 0,
+        standHours: dailyActivity?.standHours ?? 0,
+        restingHR: dailyActivity?.restingHR ?? 0 > 0 ? dailyActivity?.restingHR : nil,
         hrv: hrvValue > 0 ? Int(hrvValue) : nil,
         sleepHours: sleepValue > 0 ? sleepValue : nil
     )
@@ -444,12 +544,9 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     card.addSubview(gradientView)
 
     // Load car image
-    let wikiSearchName = isValidCarName ? parsed.carWikiName : tier.name
-    if !wikiSearchName.isEmpty {
-        fetchCarImageFromWikipedia(carName: wikiSearchName, into: bgImageView, fallbackEmoji: "")
+    if !wikiName.isEmpty {
+        fetchCarImageFromWikipedia(carName: wikiName, into: bgImageView, fallbackEmoji: "")
     }
-
-    let tierColor = tier.color
 
     // Car name
     let carNameLabel = UILabel()
@@ -468,7 +565,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
     // Status badge
     let statusBadge = PaddedLabel()
-    statusBadge.text = tier.tierLabel
+    statusBadge.text = status
     statusBadge.font = .systemFont(ofSize: 14, weight: .bold)
     statusBadge.textColor = .white
     statusBadge.backgroundColor = tierColor
@@ -493,7 +590,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     progressBar.translatesAutoresizingMaskIntoConstraints = false
 
     // Explanation
-    let rawExplanation = parsed.carExplanation.isEmpty ? "הרכב נבחר על סמך ניתוח נתוני הבריאות שלך." : parsed.carExplanation
+    let rawExplanation = explanation.isEmpty ? "הרכב נבחר על סמך ניתוח נתוני הבריאות שלך." : explanation
     let explanationText = cleanExplanationText(rawExplanation, carName: carName)
 
     let explanationLabel = UILabel()
@@ -881,6 +978,9 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                             imageView.image = image
                             imageView.contentMode = .scaleAspectFill
                             imageView.backgroundColor = .clear
+
+                            // Save car image for widget
+                            WidgetDataManager.shared.saveCarImage(image)
                         } else {
                             print("=== CAR IMAGE: Failed to decode - \(imgError?.localizedDescription ?? "unknown") ===")
                             self.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
@@ -1822,6 +1922,377 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         stack.addArrangedSubview(card)
     }
 
+    // MARK: - Car Upgrade Reveal Experience (כשהרכב משתנה)
+
+    private func addCarUpgradeRevealExperience() {
+        isShowingDiscoveryFlow = true
+
+        let container = UIView()
+        container.backgroundColor = .clear
+        container.translatesAutoresizingMaskIntoConstraints = false
+        self.discoveryContainer = container
+
+        // גרדיאנט רקע זהב-סגול (מייצג upgrade/שינוי)
+        let gradientLayer = CAGradientLayer()
+        gradientLayer.colors = [
+            UIColor(red: 0.85, green: 0.65, blue: 0.13, alpha: 0.3).cgColor, // זהב
+            UIColor(red: 0.15, green: 0.1, blue: 0.3, alpha: 1.0).cgColor,
+            cardBgColor.cgColor
+        ]
+        gradientLayer.locations = [0.0, 0.4, 1.0]
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
+
+        let gradientView = UIView()
+        gradientView.translatesAutoresizingMaskIntoConstraints = false
+        gradientView.layer.insertSublayer(gradientLayer, at: 0)
+        gradientView.layer.cornerRadius = 24
+        gradientView.clipsToBounds = true
+        container.addSubview(gradientView)
+
+        // תמונת רכב מכוסה עם סרט
+        let carImageContainer = UIView()
+        carImageContainer.translatesAutoresizingMaskIntoConstraints = false
+
+        // תמונת הרכב המכוסה (ללא רקע)
+        let coveredCarImage = UIImageView(image: UIImage(named: "newCarClear"))
+        coveredCarImage.contentMode = .scaleAspectFit
+        coveredCarImage.translatesAutoresizingMaskIntoConstraints = false
+        coveredCarImage.layer.cornerRadius = 16
+        coveredCarImage.clipsToBounds = true
+        carImageContainer.addSubview(coveredCarImage)
+
+        // ספרקלס מסביב
+        let sparkleLeft = UILabel()
+        sparkleLeft.text = "✨"
+        sparkleLeft.font = .systemFont(ofSize: 28)
+        sparkleLeft.translatesAutoresizingMaskIntoConstraints = false
+        carImageContainer.addSubview(sparkleLeft)
+
+        let sparkleRight = UILabel()
+        sparkleRight.text = "✨"
+        sparkleRight.font = .systemFont(ofSize: 28)
+        sparkleRight.translatesAutoresizingMaskIntoConstraints = false
+        carImageContainer.addSubview(sparkleRight)
+
+        // כותרת
+        let titleLabel = UILabel()
+        titleLabel.text = "יש לך רכב חדש!"
+        titleLabel.font = .systemFont(ofSize: 26, weight: .bold)
+        titleLabel.textColor = textWhite
+        titleLabel.textAlignment = .center
+        titleLabel.numberOfLines = 0
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // תת-כותרת עם הרכב הקודם
+        let subtitleLabel = UILabel()
+        if let pending = AnalysisCache.getPendingCar(), !pending.previousName.isEmpty {
+            subtitleLabel.text = "הנתונים שלך השתנו משמעותית\nהגיע הזמן להחליף את ה-\(pending.previousName)"
+        } else {
+            subtitleLabel.text = "הנתונים שלך השתנו משמעותית\nהגיע הזמן לגלות את הרכב המעודכן"
+        }
+        subtitleLabel.font = .systemFont(ofSize: 15, weight: .regular)
+        subtitleLabel.textColor = textGray
+        subtitleLabel.textAlignment = .center
+        subtitleLabel.numberOfLines = 0
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // כפתור CTA
+        let ctaButton = UIButton(type: .system)
+        ctaButton.translatesAutoresizingMaskIntoConstraints = false
+
+        // גרדיאנט לכפתור (זהב-כתום)
+        let buttonGradient = CAGradientLayer()
+        buttonGradient.colors = [
+            UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0).cgColor, // זהב
+            UIColor(red: 1.0, green: 0.6, blue: 0.0, alpha: 1.0).cgColor   // כתום
+        ]
+        buttonGradient.startPoint = CGPoint(x: 0, y: 0.5)
+        buttonGradient.endPoint = CGPoint(x: 1, y: 0.5)
+        buttonGradient.cornerRadius = 28
+
+        ctaButton.layer.insertSublayer(buttonGradient, at: 0)
+        ctaButton.setTitle("🎁  גלה את הרכב החדש", for: .normal)
+        ctaButton.setTitleColor(.black, for: .normal)
+        ctaButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .bold)
+        ctaButton.layer.cornerRadius = 28
+        ctaButton.clipsToBounds = true
+        ctaButton.addTarget(self, action: #selector(revealNewCarTapped), for: .touchUpInside)
+
+        // הוספה לcontainer
+        container.addSubview(carImageContainer)
+        container.addSubview(titleLabel)
+        container.addSubview(subtitleLabel)
+        container.addSubview(ctaButton)
+
+        // Constraints
+        NSLayoutConstraint.activate([
+            gradientView.topAnchor.constraint(equalTo: container.topAnchor),
+            gradientView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            gradientView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            gradientView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+
+            carImageContainer.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
+            carImageContainer.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            carImageContainer.widthAnchor.constraint(equalTo: container.widthAnchor, constant: -24),
+            carImageContainer.heightAnchor.constraint(equalToConstant: 220),
+
+            coveredCarImage.topAnchor.constraint(equalTo: carImageContainer.topAnchor),
+            coveredCarImage.centerXAnchor.constraint(equalTo: carImageContainer.centerXAnchor),
+            coveredCarImage.widthAnchor.constraint(equalTo: carImageContainer.widthAnchor),
+            coveredCarImage.heightAnchor.constraint(equalTo: carImageContainer.heightAnchor),
+
+            sparkleLeft.trailingAnchor.constraint(equalTo: coveredCarImage.leadingAnchor, constant: 30),
+            sparkleLeft.topAnchor.constraint(equalTo: carImageContainer.topAnchor, constant: 20),
+
+            sparkleRight.leadingAnchor.constraint(equalTo: coveredCarImage.trailingAnchor, constant: -30),
+            sparkleRight.topAnchor.constraint(equalTo: carImageContainer.topAnchor, constant: 20),
+
+            titleLabel.topAnchor.constraint(equalTo: carImageContainer.bottomAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            titleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
+
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
+            subtitleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            subtitleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
+
+            ctaButton.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 28),
+            ctaButton.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            ctaButton.widthAnchor.constraint(equalToConstant: 260),
+            ctaButton.heightAnchor.constraint(equalToConstant: 56),
+            ctaButton.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -32),
+        ])
+
+        stack.addArrangedSubview(container)
+
+        // עדכון גרדיאנט אחרי layout
+        DispatchQueue.main.async {
+            gradientLayer.frame = gradientView.bounds
+            buttonGradient.frame = ctaButton.bounds
+        }
+
+        // אנימציות - זוהר על התמונה
+        coveredCarImage.layer.shadowColor = UIColor.white.cgColor
+        coveredCarImage.layer.shadowRadius = 20
+        coveredCarImage.layer.shadowOpacity = 0.3
+        coveredCarImage.layer.shadowOffset = .zero
+
+        ctaButton.startPulseAnimation()
+
+        // אנימציית sparkles
+        sparkleLeft.layer.add(createSparkleAnimation(delay: 0), forKey: "sparkle")
+        sparkleRight.layer.add(createSparkleAnimation(delay: 0.5), forKey: "sparkle")
+    }
+
+    private func createSparkleAnimation(delay: Double) -> CAAnimation {
+        let animation = CABasicAnimation(keyPath: "opacity")
+        animation.fromValue = 0.3
+        animation.toValue = 1.0
+        animation.duration = 0.8
+        animation.autoreverses = true
+        animation.repeatCount = .infinity
+        animation.beginTime = CACurrentMediaTime() + delay
+        animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        return animation
+    }
+
+    @objc private func revealNewCarTapped() {
+        // Haptic feedback
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+
+        // אנימציית חשיפה מהירה (הנתונים כבר קיימים)
+        showUpgradeRevealAnimation()
+    }
+
+    private func showUpgradeRevealAnimation() {
+        guard let container = discoveryContainer else { return }
+
+        // ביטול מינימום גובה קודם
+        discoveryMinHeightConstraint?.isActive = false
+        discoveryMinHeightConstraint = nil
+
+        // ניקוי הcontainer
+        container.subviews.forEach { $0.removeFromSuperview() }
+
+        // רקע עם particles
+        particleBackground = ParticleBackground(in: container)
+        particleBackground?.start()
+
+        // Container מרכזי
+        let centerStack = UIStackView()
+        centerStack.axis = .vertical
+        centerStack.spacing = 20
+        centerStack.alignment = .center
+        centerStack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(centerStack)
+
+        // אייקון מונפש
+        let iconLabel = UILabel()
+        iconLabel.text = "🔄"
+        iconLabel.font = .systemFont(ofSize: 60)
+        iconLabel.textAlignment = .center
+
+        // טקסט סטטוס
+        let statusLabel = UILabel()
+        statusLabel.text = "מכין את הרכב החדש..."
+        statusLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        statusLabel.textColor = textWhite
+        statusLabel.textAlignment = .center
+
+        // Progress bar
+        let progressBar = AnimatedProgressBar()
+        progressBar.progressColor = UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0) // זהב
+        progressBar.translatesAutoresizingMaskIntoConstraints = false
+
+        centerStack.addArrangedSubview(iconLabel)
+        centerStack.addArrangedSubview(statusLabel)
+        centerStack.addArrangedSubview(progressBar)
+
+        let minHeight = container.heightAnchor.constraint(greaterThanOrEqualToConstant: 300)
+        minHeight.priority = .defaultHigh
+        discoveryMinHeightConstraint = minHeight
+
+        NSLayoutConstraint.activate([
+            minHeight,
+            centerStack.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            centerStack.topAnchor.constraint(equalTo: container.topAnchor, constant: 60),
+            centerStack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 40),
+            centerStack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -40),
+
+            progressBar.heightAnchor.constraint(equalToConstant: 8),
+            progressBar.widthAnchor.constraint(equalTo: centerStack.widthAnchor),
+        ])
+
+        // אנימציית pulse + סיבוב
+        iconLabel.startPulseAnimation()
+        let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
+        rotation.fromValue = 0
+        rotation.toValue = CGFloat.pi * 2
+        rotation.duration = 1.5
+        rotation.repeatCount = .infinity
+        iconLabel.layer.add(rotation, forKey: "rotation")
+
+        // שלב 1: מכין (1.5 שניות)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            progressBar.animateProgress(to: 0.5, duration: 1.2)
+        }
+
+        // שלב 2: חושף (1 שנייה)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            iconLabel.text = "🎉"
+            iconLabel.layer.removeAnimation(forKey: "rotation")
+            statusLabel.text = "מוכן!"
+            progressBar.animateProgress(to: 1.0, duration: 0.5)
+        }
+
+        // חשיפה! (אחרי 2.5 שניות)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+            self?.showUpgradeRevealResult()
+        }
+    }
+
+    private func showUpgradeRevealResult() {
+        guard let container = discoveryContainer else { return }
+
+        particleBackground?.stop()
+
+        // טעינת הנתונים מה-pending
+        guard let pending = AnalysisCache.getPendingCar() else {
+            // אם אין נתונים, פשוט ננקה ונטען מחדש
+            AnalysisCache.clearPendingCarReveal()
+            refreshContent()
+            return
+        }
+
+        // Flash effect
+        container.flashWhite(duration: 0.3) { [weak self] in
+            guard let self = self else { return }
+
+            // ניקוי הcontainer
+            container.subviews.forEach { $0.removeFromSuperview() }
+
+            // Confetti!
+            self.confettiEmitter = ConfettiEmitter(in: container)
+            self.confettiEmitter?.start()
+
+            // Haptic
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+
+            // קריאה ל-parsed data מ-cache
+            if let insights = AnalysisCache.loadLatest() {
+                let parsed = CarAnalysisParser.parse(insights)
+                self.buildRevealedCarCard(in: container, parsed: parsed)
+            } else {
+                // אם אין insights, נבנה כרטיס פשוט מהנתונים שיש לנו
+                self.buildSimpleRevealCard(in: container, pending: pending)
+            }
+
+            // ניקוי ה-pending (הרכב החדש נשמר כנוכחי)
+            AnalysisCache.clearPendingCarReveal()
+        }
+    }
+
+    private func buildSimpleRevealCard(in container: UIView, pending: (name: String, wikiName: String, explanation: String, previousName: String)) {
+        // כרטיס פשוט אם אין parsed data מלא
+        let card = UIView()
+        card.backgroundColor = cardBgColor
+        card.layer.cornerRadius = 20
+        card.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(card)
+
+        let carLabel = UILabel()
+        carLabel.text = "🚗"
+        carLabel.font = .systemFont(ofSize: 80)
+        carLabel.textAlignment = .center
+        carLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(carLabel)
+
+        let nameLabel = UILabel()
+        nameLabel.text = pending.name
+        nameLabel.font = .systemFont(ofSize: 24, weight: .bold)
+        nameLabel.textColor = textWhite
+        nameLabel.textAlignment = .center
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(nameLabel)
+
+        let changeLabel = UILabel()
+        if !pending.previousName.isEmpty {
+            changeLabel.text = "\(pending.previousName) → \(pending.name)"
+        } else {
+            changeLabel.text = pending.name
+        }
+        changeLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        changeLabel.textColor = accentCyan
+        changeLabel.textAlignment = .center
+        changeLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(changeLabel)
+
+        NSLayoutConstraint.activate([
+            card.topAnchor.constraint(equalTo: container.topAnchor),
+            card.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            card.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            card.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+
+            carLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 40),
+            carLabel.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+
+            nameLabel.topAnchor.constraint(equalTo: carLabel.bottomAnchor, constant: 20),
+            nameLabel.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+
+            changeLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 12),
+            changeLabel.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            changeLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -40),
+        ])
+
+        // אנימציות
+        card.alpha = 0
+        card.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+        UIView.animate(withDuration: 0.5, delay: 0.1, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
+            card.alpha = 1
+            card.transform = .identity
+        }
+    }
+
     // MARK: - First Time Discovery Experience
 
     private func addFirstTimeDiscoveryExperience() {
@@ -1850,25 +2321,24 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         gradientView.clipsToBounds = true
         container.addSubview(gradientView)
 
-        // אייקון רכב מסתורי עם זוהר
+        // סימן שאלה מעל התמונה
+        let questionLabel = UILabel()
+        questionLabel.text = "❓"
+        questionLabel.font = .systemFont(ofSize: 44)
+        questionLabel.textAlignment = .center
+        questionLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // תמונת רכב מכוסה עם סרט
         let mysteryCarContainer = UIView()
         mysteryCarContainer.translatesAutoresizingMaskIntoConstraints = false
 
-        let mysteryCarLabel = UILabel()
-        mysteryCarLabel.text = "🚗"
-        mysteryCarLabel.font = .systemFont(ofSize: 80)
-        mysteryCarLabel.textAlignment = .center
-        mysteryCarLabel.translatesAutoresizingMaskIntoConstraints = false
-        mysteryCarLabel.alpha = 0.3 // סילואט כהה
-        mysteryCarContainer.addSubview(mysteryCarLabel)
-
-        // סימן שאלה מעל הרכב
-        let questionLabel = UILabel()
-        questionLabel.text = "❓"
-        questionLabel.font = .systemFont(ofSize: 40)
-        questionLabel.textAlignment = .center
-        questionLabel.translatesAutoresizingMaskIntoConstraints = false
-        mysteryCarContainer.addSubview(questionLabel)
+        // תמונת הרכב המכוסה (ללא רקע)
+        let coveredCarImage = UIImageView(image: UIImage(named: "newCarClear"))
+        coveredCarImage.contentMode = .scaleAspectFit
+        coveredCarImage.translatesAutoresizingMaskIntoConstraints = false
+        coveredCarImage.layer.cornerRadius = 16
+        coveredCarImage.clipsToBounds = true
+        mysteryCarContainer.addSubview(coveredCarImage)
 
         // כותרת
         let titleLabel = UILabel()
@@ -1911,6 +2381,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         ctaButton.addTarget(self, action: #selector(discoverCarTapped), for: .touchUpInside)
 
         // הוספה לcontainer
+        container.addSubview(questionLabel)
         container.addSubview(mysteryCarContainer)
         container.addSubview(titleLabel)
         container.addSubview(subtitleLabel)
@@ -1923,18 +2394,22 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
             gradientView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             gradientView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
 
-            mysteryCarContainer.topAnchor.constraint(equalTo: container.topAnchor, constant: 40),
+            // סימן שאלה מעל התמונה
+            questionLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 12),
+            questionLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+
+            // תמונת הרכב מתחת לסימן שאלה - גדולה ומרשימה
+            mysteryCarContainer.topAnchor.constraint(equalTo: questionLabel.bottomAnchor, constant: 4),
             mysteryCarContainer.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            mysteryCarContainer.widthAnchor.constraint(equalToConstant: 120),
-            mysteryCarContainer.heightAnchor.constraint(equalToConstant: 100),
+            mysteryCarContainer.widthAnchor.constraint(equalTo: container.widthAnchor, constant: -24),
+            mysteryCarContainer.heightAnchor.constraint(equalToConstant: 220),
 
-            mysteryCarLabel.centerXAnchor.constraint(equalTo: mysteryCarContainer.centerXAnchor),
-            mysteryCarLabel.centerYAnchor.constraint(equalTo: mysteryCarContainer.centerYAnchor, constant: 10),
+            coveredCarImage.topAnchor.constraint(equalTo: mysteryCarContainer.topAnchor),
+            coveredCarImage.centerXAnchor.constraint(equalTo: mysteryCarContainer.centerXAnchor),
+            coveredCarImage.widthAnchor.constraint(equalTo: mysteryCarContainer.widthAnchor),
+            coveredCarImage.heightAnchor.constraint(equalTo: mysteryCarContainer.heightAnchor),
 
-            questionLabel.centerXAnchor.constraint(equalTo: mysteryCarContainer.centerXAnchor),
-            questionLabel.topAnchor.constraint(equalTo: mysteryCarContainer.topAnchor),
-
-            titleLabel.topAnchor.constraint(equalTo: mysteryCarContainer.bottomAnchor, constant: 24),
+            titleLabel.topAnchor.constraint(equalTo: mysteryCarContainer.bottomAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
             titleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
 
@@ -1942,11 +2417,11 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
             subtitleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
             subtitleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
 
-            ctaButton.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 32),
+            ctaButton.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 28),
             ctaButton.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            ctaButton.widthAnchor.constraint(equalToConstant: 240),
+            ctaButton.widthAnchor.constraint(equalToConstant: 260),
             ctaButton.heightAnchor.constraint(equalToConstant: 56),
-            ctaButton.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -40),
+            ctaButton.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -32),
         ])
 
         stack.addArrangedSubview(container)
@@ -1957,8 +2432,12 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
             buttonGradient.frame = ctaButton.bounds
         }
 
-        // אנימציות
-        mysteryCarContainer.addGlowEffect(color: accentPurple, radius: 30)
+        // אנימציות - זוהר על התמונה
+        coveredCarImage.layer.shadowColor = accentPurple.cgColor
+        coveredCarImage.layer.shadowRadius = 25
+        coveredCarImage.layer.shadowOpacity = 0.5
+        coveredCarImage.layer.shadowOffset = .zero
+
         ctaButton.startPulseAnimation()
         questionLabel.layer.add(self.createFloatAnimation(), forKey: "float")
     }
@@ -2119,7 +2598,7 @@ private func showDiscoveryLoadingAnimation() {
         discoveryMinHeightConstraint?.isActive = false
         discoveryMinHeightConstraint = nil
 
-        // Get score and tier
+        // Get score (for display only)
         let stats = AnalysisCache.loadWeeklyStats()
         let score: Int
         if let savedScore = AnalysisCache.loadHealthScore() {
@@ -2132,10 +2611,12 @@ private func showDiscoveryLoadingAnimation() {
                 strainAvg: stats?.strain
             )
         }
-        let tier = CarTierEngine.tierForScore(score)
 
-        // Determine car name
+        // Determine car name - priority: Gemini > Saved > Placeholder
         let carName: String
+        let wikiName: String
+        let explanation: String
+
         if let parsed = parsed {
             let cleanedName = cleanCarName(parsed.carModel)
             let invalidWords = ["strain", "training", "score", "wiki", "generation"]
@@ -2143,9 +2624,50 @@ private func showDiscoveryLoadingAnimation() {
             let isValid = !cleanedName.isEmpty &&
                           !invalidWords.contains(where: { lowerCar.contains($0) }) &&
                           cleanedName.count > 3 && cleanedName.count < 40
-            carName = isValid ? cleanedName : tier.name
+
+            if isValid {
+                carName = cleanedName
+                wikiName = parsed.carWikiName
+                explanation = parsed.carExplanation
+                AnalysisCache.checkAndSetCarChange(newCarName: carName, newWikiName: wikiName, newExplanation: explanation)
+            } else if let savedCar = AnalysisCache.loadSelectedCar() {
+                carName = savedCar.name
+                wikiName = savedCar.wikiName
+                explanation = savedCar.explanation
+            } else {
+                carName = "ממתין לניתוח..."
+                wikiName = ""
+                explanation = "הרכב שלך ייבחר לאחר ניתוח ראשון של הנתונים"
+            }
+        } else if let savedCar = AnalysisCache.loadSelectedCar() {
+            carName = savedCar.name
+            wikiName = savedCar.wikiName
+            explanation = savedCar.explanation
         } else {
-            carName = tier.name
+            carName = "ממתין לניתוח..."
+            wikiName = ""
+            explanation = "הרכב שלך ייבחר לאחר ניתוח ראשון של הנתונים"
+        }
+
+        // Determine status and color based on score
+        let status: String
+        let tierColor: UIColor
+        switch score {
+        case 80...100:
+            status = "שיא ביצועים"
+            tierColor = AIONDesign.accentSuccess
+        case 65..<80:
+            status = "מצוין"
+            tierColor = AIONDesign.accentSecondary
+        case 45..<65:
+            status = "מצב טוב"
+            tierColor = AIONDesign.accentPrimary
+        case 25..<45:
+            status = "בסדר"
+            tierColor = AIONDesign.accentWarning
+        default:
+            status = "צריך טיפול"
+            tierColor = AIONDesign.accentDanger
         }
 
         // כרטיס רקע
@@ -2202,10 +2724,10 @@ private func showDiscoveryLoadingAnimation() {
 
         // Badge סטטוס
         let statusBadge = PaddedLabel()
-        statusBadge.text = tier.tierLabel
+        statusBadge.text = status
         statusBadge.font = .systemFont(ofSize: 14, weight: .bold)
         statusBadge.textColor = .white
-        statusBadge.backgroundColor = tier.color
+        statusBadge.backgroundColor = tierColor
         statusBadge.layer.cornerRadius = 16
         statusBadge.clipsToBounds = true
         statusBadge.alpha = 0
@@ -2216,7 +2738,7 @@ private func showDiscoveryLoadingAnimation() {
         let scoreLabel = UILabel()
         scoreLabel.text = "0/100"
         scoreLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        scoreLabel.textColor = tier.color
+        scoreLabel.textColor = tierColor
         scoreLabel.layer.shadowColor = UIColor.black.cgColor
         scoreLabel.layer.shadowOffset = CGSize(width: 0, height: 1)
         scoreLabel.layer.shadowOpacity = 0.8
@@ -2227,7 +2749,7 @@ private func showDiscoveryLoadingAnimation() {
 
         // Progress bar
         let progressBar = AnimatedProgressBar()
-        progressBar.progressColor = tier.color
+        progressBar.progressColor = tierColor
         progressBar.alpha = 0
         progressBar.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(progressBar)
@@ -2305,8 +2827,9 @@ private func showDiscoveryLoadingAnimation() {
         ])
 
         // טעינת תמונה
-        let wikiName = parsed?.carWikiName ?? tier.name
-        fetchCarImageFromWikipedia(carName: wikiName, into: bgImageView, fallbackEmoji: tier.emoji)
+        if !wikiName.isEmpty {
+            fetchCarImageFromWikipedia(carName: wikiName, into: bgImageView, fallbackEmoji: "🚗")
+        }
 
         // עדכון גרדיאנט
         DispatchQueue.main.async {
@@ -2384,14 +2907,20 @@ private func showDiscoveryLoadingAnimation() {
         // סימון שהמשתמש כבר גילה
         UserDefaults.standard.set(true, forKey: "AION.HasDiscoveredCar")
 
-        // עדכון widget
+        // עדכון widget עם נתוני פעילות אמיתיים
         let hrvValue = stats?.hrv ?? 0
         let sleepValue = stats?.sleepHours ?? 0
+        let dailyActivity = AnalysisCache.loadDailyActivity()
         WidgetDataManager.shared.updateFromInsights(
             score: score,
-            status: tier.tierLabel,
+            status: status,
             carName: carName,
-            carEmoji: tier.emoji,
+            carEmoji: "🚗",
+            steps: dailyActivity?.steps ?? 0,
+            activeCalories: dailyActivity?.calories ?? 0,
+            exerciseMinutes: dailyActivity?.exerciseMinutes ?? 0,
+            standHours: dailyActivity?.standHours ?? 0,
+            restingHR: dailyActivity?.restingHR ?? 0 > 0 ? dailyActivity?.restingHR : nil,
             hrv: hrvValue > 0 ? Int(hrvValue) : nil,
             sleepHours: sleepValue > 0 ? sleepValue : nil
         )

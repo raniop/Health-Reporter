@@ -9,14 +9,15 @@ import SwiftUI
 import Charts
 
 // MARK: - Chart colors (ציאן / טורקיז / ליים – בהתאמה ללוגו)
+// צבעי surface ו-text דינמיים לפי רקע בהיר/כהה
 private enum ChartColors {
-    static let primary = Color(uiColor: UIColor(hex: "#00B4D8")!)
-    static let secondary = Color(uiColor: UIColor(hex: "#00C9A7")!)
-    static let success = Color(uiColor: UIColor(hex: "#7BED9F")!)
-    static let surface = Color(uiColor: UIColor(hex: "#1C1C1E")!)
-    static let background = Color(uiColor: UIColor(hex: "#0D0D0F")!)
-    static let textSecondary = Color(uiColor: UIColor(hex: "#EBEBF5")!).opacity(0.5)
-    
+    static let primary = Color(uiColor: AIONDesign.accentPrimary)
+    static let secondary = Color(uiColor: AIONDesign.accentSecondary)
+    static let success = Color(uiColor: AIONDesign.accentSuccess)
+    static var surface: Color { Color(uiColor: AIONDesign.surface) }
+    static var background: Color { Color(uiColor: AIONDesign.background) }
+    static var textSecondary: Color { Color(uiColor: AIONDesign.textSecondary) }
+
     static var lineGradient: LinearGradient {
         LinearGradient(
             colors: [primary, secondary, success],

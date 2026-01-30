@@ -12,7 +12,7 @@ class GeminiDebugViewController: UIViewController {
     // MARK: - UI Components
 
     private let segmentedControl: UISegmentedControl = {
-        let sc = UISegmentedControl(items: ["שאילתה", "תשובה", "הבדלים"])
+        let sc = UISegmentedControl(items: ["שאילתה", "תשובה", "הבדלים", "היסטוריה"])
         sc.selectedSegmentIndex = 0
         sc.translatesAutoresizingMaskIntoConstraints = false
         return sc
@@ -63,12 +63,33 @@ class GeminiDebugViewController: UIViewController {
         return btn
     }()
 
+    private let forceGeminiButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.setTitle("🔄 קרא ל-Gemini עכשיו", for: .normal)
+        btn.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+        btn.backgroundColor = .systemOrange
+        btn.setTitleColor(.white, for: .normal)
+        btn.layer.cornerRadius = 10
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        return btn
+    }()
+
+    private let geminiSpinner: UIActivityIndicatorView = {
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.color = .white
+        spinner.hidesWhenStopped = true
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        return spinner
+    }()
+
     // MARK: - Data
 
     private var promptText: String = "אין שאילתה שמורה"
     private var responseText: String = "אין תשובה שמורה"
     private var differencesText: String = "אין הבדלים להצגה"
     private var differencesAttributedText: NSAttributedString?
+    private var historyEntries: [DebugLogEntry] = []
+    private var historyAttributedText: NSAttributedString?
 
     // MARK: - Lifecycle
 
@@ -99,10 +120,14 @@ class GeminiDebugViewController: UIViewController {
         buttonsStack.spacing = 20
         buttonsStack.translatesAutoresizingMaskIntoConstraints = false
 
+        // Add spinner to force button
+        forceGeminiButton.addSubview(geminiSpinner)
+
         view.addSubview(timestampLabel)
         view.addSubview(segmentedControl)
         view.addSubview(statsLabel)
         view.addSubview(textView)
+        view.addSubview(forceGeminiButton)
         view.addSubview(buttonsStack)
 
         NSLayoutConstraint.activate([
@@ -121,7 +146,15 @@ class GeminiDebugViewController: UIViewController {
             textView.topAnchor.constraint(equalTo: statsLabel.bottomAnchor, constant: 8),
             textView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             textView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            textView.bottomAnchor.constraint(equalTo: buttonsStack.topAnchor, constant: -12),
+            textView.bottomAnchor.constraint(equalTo: forceGeminiButton.topAnchor, constant: -12),
+
+            forceGeminiButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            forceGeminiButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            forceGeminiButton.heightAnchor.constraint(equalToConstant: 44),
+            forceGeminiButton.bottomAnchor.constraint(equalTo: buttonsStack.topAnchor, constant: -12),
+
+            geminiSpinner.centerYAnchor.constraint(equalTo: forceGeminiButton.centerYAnchor),
+            geminiSpinner.trailingAnchor.constraint(equalTo: forceGeminiButton.trailingAnchor, constant: -16),
 
             buttonsStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             buttonsStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12)
@@ -131,6 +164,7 @@ class GeminiDebugViewController: UIViewController {
         segmentedControl.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
         copyButton.addTarget(self, action: #selector(copyTapped), for: .touchUpInside)
         shareButton.addTarget(self, action: #selector(shareTapped), for: .touchUpInside)
+        forceGeminiButton.addTarget(self, action: #selector(forceGeminiTapped), for: .touchUpInside)
     }
 
     private func loadData() {
@@ -154,6 +188,74 @@ class GeminiDebugViewController: UIViewController {
 
         // Calculate differences
         calculateDifferences()
+
+        // Load history
+        loadHistory()
+    }
+
+    private func loadHistory() {
+        historyEntries = GeminiDebugStore.loadHistory()
+
+        if historyEntries.isEmpty {
+            historyAttributedText = nil
+            return
+        }
+
+        let attributed = NSMutableAttributedString()
+
+        // Title
+        let titleAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 16, weight: .bold),
+            .foregroundColor: UIColor.label
+        ]
+        attributed.append(NSAttributedString(string: "📜 היסטוריה (\(historyEntries.count) רשומות, 7 ימים אחרונים)\n\n", attributes: titleAttrs))
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "he_IL")
+        dateFormatter.dateFormat = "dd/MM HH:mm"
+
+        for (index, entry) in historyEntries.enumerated() {
+            // Date header
+            let dateAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 14, weight: .semibold),
+                .foregroundColor: UIColor.systemOrange
+            ]
+            attributed.append(NSAttributedString(string: "[\(dateFormatter.string(from: entry.timestamp))]\n", attributes: dateAttrs))
+
+            // Car name
+            let carAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 13, weight: .medium),
+                .foregroundColor: UIColor.label
+            ]
+            let carName = entry.carName ?? "לא זוהה"
+            attributed.append(NSAttributedString(string: "🚗 רכב: \(carName)\n", attributes: carAttrs))
+
+            // Health score
+            let scoreAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 13, weight: .regular),
+                .foregroundColor: UIColor.secondaryLabel
+            ]
+            let scoreText = entry.healthScore.map { "💯 ציון: \($0)" } ?? "💯 ציון: לא זוהה"
+            attributed.append(NSAttributedString(string: "\(scoreText)\n", attributes: scoreAttrs))
+
+            // Prompt/Response sizes
+            let sizeAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 11, weight: .regular),
+                .foregroundColor: UIColor.tertiaryLabel
+            ]
+            attributed.append(NSAttributedString(string: "📝 שאילתה: \(entry.prompt.count) תווים | תשובה: \(entry.response.count) תווים\n", attributes: sizeAttrs))
+
+            // Separator
+            if index < historyEntries.count - 1 {
+                let separatorAttrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.systemFont(ofSize: 8, weight: .regular),
+                    .foregroundColor: UIColor.separator
+                ]
+                attributed.append(NSAttributedString(string: "───────────────────────────\n\n", attributes: separatorAttrs))
+            }
+        }
+
+        historyAttributedText = attributed
     }
 
     private func calculateDifferences() {
@@ -164,98 +266,155 @@ class GeminiDebugViewController: UIViewController {
             return
         }
 
-        // Parse both responses
-        let previousParsed = parseResponse(previousResponse)
-        let currentParsed = parseResponse(currentResponse)
+        let attributed = NSMutableAttributedString()
 
-        var differences: [(field: String, old: String, new: String)] = []
+        // כותרת
+        let titleAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 16, weight: .bold),
+            .foregroundColor: UIColor.label
+        ]
 
-        // Compare car name
-        if previousParsed.carName != currentParsed.carName {
-            differences.append(("🚗 רכב", previousParsed.carName, currentParsed.carName))
-        }
+        // סטטיסטיקות בסיסיות
+        let prevLen = previousResponse.count
+        let currLen = currentResponse.count
+        let lenDiff = currLen - prevLen
 
-        // Compare health score
-        if previousParsed.healthScore != currentParsed.healthScore {
-            differences.append(("💯 ציון בריאות", previousParsed.healthScore, currentParsed.healthScore))
-        }
+        attributed.append(NSAttributedString(string: "📊 סטטיסטיקות\n", attributes: titleAttrs))
 
-        // Compare health status
-        if previousParsed.healthStatus != currentParsed.healthStatus {
-            differences.append(("📊 מצב בריאות", previousParsed.healthStatus, currentParsed.healthStatus))
-        }
+        let statsAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 13, weight: .regular),
+            .foregroundColor: UIColor.secondaryLabel
+        ]
+        attributed.append(NSAttributedString(string: "תשובה קודמת: \(prevLen.formatted()) תווים\n", attributes: statsAttrs))
+        attributed.append(NSAttributedString(string: "תשובה נוכחית: \(currLen.formatted()) תווים\n", attributes: statsAttrs))
 
-        // Compare explanation (summarized)
-        if previousParsed.explanation != currentParsed.explanation {
-            let oldSummary = String(previousParsed.explanation.prefix(100)) + (previousParsed.explanation.count > 100 ? "..." : "")
-            let newSummary = String(currentParsed.explanation.prefix(100)) + (currentParsed.explanation.count > 100 ? "..." : "")
-            differences.append(("📝 הסבר", oldSummary, newSummary))
-        }
+        let diffColor: UIColor = lenDiff > 0 ? .systemGreen : (lenDiff < 0 ? .systemRed : .secondaryLabel)
+        let diffAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: diffColor
+        ]
+        let diffSign = lenDiff > 0 ? "+" : ""
+        attributed.append(NSAttributedString(string: "הפרש: \(diffSign)\(lenDiff) תווים\n\n", attributes: diffAttrs))
 
-        // Build attributed text
-        if differences.isEmpty {
-            differencesText = "✅ אין הבדלים בין התשובות!\n\nהתשובה הנוכחית זהה לתשובה הקודמת."
-            differencesAttributedText = nil
-        } else {
-            let attributed = NSMutableAttributedString()
+        // השוואת רכב
+        let prevCar = GeminiDebugStore.extractCarName(from: previousResponse) ?? "לא זוהה"
+        let currCar = GeminiDebugStore.extractCarName(from: currentResponse) ?? "לא זוהה"
 
-            // Title
-            let titleAttrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 16, weight: .bold),
-                .foregroundColor: UIColor.label
-            ]
-            attributed.append(NSAttributedString(string: "🔄 נמצאו \(differences.count) הבדלים:\n\n", attributes: titleAttrs))
+        attributed.append(NSAttributedString(string: "🚗 רכב\n", attributes: titleAttrs))
 
-            for (index, diff) in differences.enumerated() {
-                // Field name
-                let fieldAttrs: [NSAttributedString.Key: Any] = [
-                    .font: UIFont.systemFont(ofSize: 14, weight: .semibold),
-                    .foregroundColor: UIColor.label
-                ]
-                attributed.append(NSAttributedString(string: "\(diff.field)\n", attributes: fieldAttrs))
-
-                // Old value (red)
-                let oldAttrs: [NSAttributedString.Key: Any] = [
-                    .font: UIFont.systemFont(ofSize: 13, weight: .regular),
-                    .foregroundColor: UIColor.systemRed,
-                    .strikethroughStyle: NSUnderlineStyle.single.rawValue
-                ]
-                attributed.append(NSAttributedString(string: "- \(diff.old)\n", attributes: oldAttrs))
-
-                // New value (green)
-                let newAttrs: [NSAttributedString.Key: Any] = [
-                    .font: UIFont.systemFont(ofSize: 13, weight: .regular),
-                    .foregroundColor: UIColor.systemGreen
-                ]
-                attributed.append(NSAttributedString(string: "+ \(diff.new)\n", attributes: newAttrs))
-
-                // Separator
-                if index < differences.count - 1 {
-                    attributed.append(NSAttributedString(string: "\n", attributes: [:]))
-                }
-            }
-
-            // Timestamps
-            let timestampAttrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 11, weight: .regular),
+        if prevCar == currCar {
+            let sameAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 13, weight: .regular),
                 .foregroundColor: UIColor.secondaryLabel
             ]
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "he_IL")
-            formatter.dateFormat = "dd/MM HH:mm"
-
-            attributed.append(NSAttributedString(string: "\n\n", attributes: [:]))
-
-            if let prevTime = GeminiDebugStore.previousTimestamp {
-                attributed.append(NSAttributedString(string: "תשובה קודמת: \(formatter.string(from: prevTime))\n", attributes: timestampAttrs))
-            }
-            if let currTime = GeminiDebugStore.timestamp {
-                attributed.append(NSAttributedString(string: "תשובה נוכחית: \(formatter.string(from: currTime))", attributes: timestampAttrs))
-            }
-
-            differencesAttributedText = attributed
-            differencesText = attributed.string
+            attributed.append(NSAttributedString(string: "ללא שינוי: \(currCar)\n\n", attributes: sameAttrs))
+        } else {
+            let oldAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 13, weight: .regular),
+                .foregroundColor: UIColor.systemRed,
+                .strikethroughStyle: NSUnderlineStyle.single.rawValue
+            ]
+            let newAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 13, weight: .medium),
+                .foregroundColor: UIColor.systemGreen
+            ]
+            attributed.append(NSAttributedString(string: "- \(prevCar)\n", attributes: oldAttrs))
+            attributed.append(NSAttributedString(string: "+ \(currCar)\n\n", attributes: newAttrs))
         }
+
+        // השוואת שורות - מציאת הבדלים אמיתיים
+        let prevLines = previousResponse.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        let currLines = currentResponse.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        let prevSet = Set(prevLines)
+        let currSet = Set(currLines)
+
+        let removed = prevSet.subtracting(currSet)
+        let added = currSet.subtracting(prevSet)
+
+        attributed.append(NSAttributedString(string: "📝 שינויים בתוכן\n", attributes: titleAttrs))
+
+        if removed.isEmpty && added.isEmpty {
+            let noChangeAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 13, weight: .regular),
+                .foregroundColor: UIColor.systemGreen
+            ]
+            attributed.append(NSAttributedString(string: "✅ התוכן זהה (רק הבדלי רווחים/שורות)\n\n", attributes: noChangeAttrs))
+        } else {
+            let summaryAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 12, weight: .regular),
+                .foregroundColor: UIColor.secondaryLabel
+            ]
+            attributed.append(NSAttributedString(string: "\(removed.count) שורות נמחקו, \(added.count) שורות נוספו\n\n", attributes: summaryAttrs))
+
+            // שורות שנמחקו (מקסימום 10)
+            if !removed.isEmpty {
+                let removedHeaderAttrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+                    .foregroundColor: UIColor.systemRed
+                ]
+                attributed.append(NSAttributedString(string: "נמחקו:\n", attributes: removedHeaderAttrs))
+
+                let removedLineAttrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.monospacedSystemFont(ofSize: 11, weight: .regular),
+                    .foregroundColor: UIColor.systemRed.withAlphaComponent(0.8)
+                ]
+                for (index, line) in removed.prefix(10).enumerated() {
+                    let truncated = line.count > 80 ? String(line.prefix(80)) + "..." : line
+                    attributed.append(NSAttributedString(string: "- \(truncated)\n", attributes: removedLineAttrs))
+                    if index == 9 && removed.count > 10 {
+                        attributed.append(NSAttributedString(string: "  ...ועוד \(removed.count - 10) שורות\n", attributes: summaryAttrs))
+                    }
+                }
+                attributed.append(NSAttributedString(string: "\n", attributes: [:]))
+            }
+
+            // שורות שנוספו (מקסימום 10)
+            if !added.isEmpty {
+                let addedHeaderAttrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+                    .foregroundColor: UIColor.systemGreen
+                ]
+                attributed.append(NSAttributedString(string: "נוספו:\n", attributes: addedHeaderAttrs))
+
+                let addedLineAttrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.monospacedSystemFont(ofSize: 11, weight: .regular),
+                    .foregroundColor: UIColor.systemGreen.withAlphaComponent(0.8)
+                ]
+                for (index, line) in added.prefix(10).enumerated() {
+                    let truncated = line.count > 80 ? String(line.prefix(80)) + "..." : line
+                    attributed.append(NSAttributedString(string: "+ \(truncated)\n", attributes: addedLineAttrs))
+                    if index == 9 && added.count > 10 {
+                        attributed.append(NSAttributedString(string: "  ...ועוד \(added.count - 10) שורות\n", attributes: summaryAttrs))
+                    }
+                }
+            }
+        }
+
+        // Timestamps
+        let timestampAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 11, weight: .regular),
+            .foregroundColor: UIColor.tertiaryLabel
+        ]
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "he_IL")
+        formatter.dateFormat = "dd/MM HH:mm"
+
+        attributed.append(NSAttributedString(string: "\n", attributes: [:]))
+
+        if let prevTime = GeminiDebugStore.previousTimestamp {
+            attributed.append(NSAttributedString(string: "תשובה קודמת: \(formatter.string(from: prevTime))\n", attributes: timestampAttrs))
+        }
+        if let currTime = GeminiDebugStore.timestamp {
+            attributed.append(NSAttributedString(string: "תשובה נוכחית: \(formatter.string(from: currTime))", attributes: timestampAttrs))
+        }
+
+        differencesAttributedText = attributed
+        differencesText = attributed.string
     }
 
     private func parseResponse(_ response: String) -> (carName: String, healthScore: String, healthStatus: String, explanation: String) {
@@ -357,6 +516,16 @@ class GeminiDebugViewController: UIViewController {
             }
             statsLabel.text = "השוואה בין תשובה קודמת לנוכחית"
 
+        case 3: // היסטוריה
+            if let attributed = historyAttributedText {
+                textView.attributedText = attributed
+            } else {
+                textView.attributedText = nil
+                textView.text = "אין היסטוריה שמורה"
+                textView.font = .systemFont(ofSize: 14, weight: .regular)
+            }
+            statsLabel.text = "\(historyEntries.count) רשומות ב-7 הימים האחרונים"
+
         default:
             break
         }
@@ -375,12 +544,64 @@ class GeminiDebugViewController: UIViewController {
         updateDisplay()
     }
 
+    @objc private func forceGeminiTapped() {
+        // התחלת טעינה
+        forceGeminiButton.isEnabled = false
+        forceGeminiButton.setTitle("קורא ל-Gemini...", for: .normal)
+        geminiSpinner.startAnimating()
+
+        // שליחת notification ל-Dashboard לבצע ניתוח
+        NotificationCenter.default.post(
+            name: NSNotification.Name("ForceGeminiAnalysis"),
+            object: nil
+        )
+
+        // מאזין לתוצאה
+        var observer: NSObjectProtocol?
+        observer = NotificationCenter.default.addObserver(
+            forName: HealthDashboardViewController.analysisDidCompleteNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            if let obs = observer {
+                NotificationCenter.default.removeObserver(obs)
+            }
+            self.onGeminiComplete()
+        }
+
+        // Timeout אחרי 60 שניות
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
+            guard let self = self, !self.forceGeminiButton.isEnabled else { return }
+            if let obs = observer {
+                NotificationCenter.default.removeObserver(obs)
+            }
+            self.onGeminiComplete(timeout: true)
+        }
+    }
+
+    private func onGeminiComplete(timeout: Bool = false) {
+        geminiSpinner.stopAnimating()
+        forceGeminiButton.isEnabled = true
+        forceGeminiButton.setTitle("🔄 קרא ל-Gemini עכשיו", for: .normal)
+
+        if timeout {
+            showToast("Timeout!")
+        } else {
+            showToast("הושלם!")
+            // רענון הנתונים
+            loadData()
+            updateDisplay()
+        }
+    }
+
     @objc private func copyTapped() {
         let text: String
         switch segmentedControl.selectedSegmentIndex {
         case 0: text = promptText
         case 1: text = responseText
         case 2: text = differencesText
+        case 3: text = historyAttributedText?.string ?? "אין היסטוריה"
         default: text = ""
         }
 
@@ -408,6 +629,9 @@ class GeminiDebugViewController: UIViewController {
         case 2:
             text = differencesText
             label = "Gemini Differences"
+        case 3:
+            text = historyAttributedText?.string ?? "אין היסטוריה"
+            label = "Gemini History (7 days)"
         default:
             text = ""
             label = ""
@@ -447,7 +671,22 @@ class GeminiDebugViewController: UIViewController {
     }
 }
 
-// MARK: - Debug Store (Singleton to save prompt/response)
+// MARK: - Debug Log Entry
+
+struct DebugLogEntry: Codable {
+    let timestamp: Date
+    let prompt: String
+    let response: String
+    let carName: String?
+    let healthScore: Int?
+
+    /// מזהה ייחודי לכל entry
+    var id: String {
+        ISO8601DateFormatter().string(from: timestamp)
+    }
+}
+
+// MARK: - Debug Store (Singleton to save prompt/response with 7-day history)
 
 enum GeminiDebugStore {
     private static let promptKey = "GeminiDebug.LastPrompt"
@@ -455,6 +694,12 @@ enum GeminiDebugStore {
     private static let timestampKey = "GeminiDebug.Timestamp"
     private static let previousResponseKey = "GeminiDebug.PreviousResponse"
     private static let previousTimestampKey = "GeminiDebug.PreviousTimestamp"
+    private static let historyKey = "GeminiDebug.History"
+
+    /// מקסימום ימים לשמירה
+    private static let maxDays: Int = 7
+    /// מקסימום entries לשמירה
+    private static let maxEntries: Int = 30
 
     static var lastPrompt: String? {
         get { UserDefaults.standard.string(forKey: promptKey) }
@@ -481,6 +726,136 @@ enum GeminiDebugStore {
         set { UserDefaults.standard.set(newValue, forKey: previousTimestampKey) }
     }
 
+    // MARK: - History Management
+
+    /// טוען את כל ההיסטוריה
+    static func loadHistory() -> [DebugLogEntry] {
+        guard let data = UserDefaults.standard.data(forKey: historyKey) else { return [] }
+        do {
+            let entries = try JSONDecoder().decode([DebugLogEntry].self, from: data)
+            return entries.sorted { $0.timestamp > $1.timestamp }
+        } catch {
+            print("=== GEMINI DEBUG: Failed to decode history: \(error) ===")
+            return []
+        }
+    }
+
+    /// שומר את ההיסטוריה
+    private static func saveHistory(_ entries: [DebugLogEntry]) {
+        do {
+            let data = try JSONEncoder().encode(entries)
+            UserDefaults.standard.set(data, forKey: historyKey)
+        } catch {
+            print("=== GEMINI DEBUG: Failed to encode history: \(error) ===")
+        }
+    }
+
+    /// מוסיף entry חדש להיסטוריה
+    private static func addToHistory(_ entry: DebugLogEntry) {
+        var history = loadHistory()
+
+        // הוספת ה-entry החדש בתחילת הרשימה
+        history.insert(entry, at: 0)
+
+        // הסרת entries ישנים מ-7 ימים
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -maxDays, to: Date()) ?? Date()
+        history = history.filter { $0.timestamp > cutoffDate }
+
+        // הגבלה למקסימום entries
+        if history.count > maxEntries {
+            history = Array(history.prefix(maxEntries))
+        }
+
+        saveHistory(history)
+        print("=== GEMINI DEBUG: History now has \(history.count) entries ===")
+    }
+
+    /// מחלץ שם רכב מתשובת Gemini
+    /// מחלץ שם רכב מתשובת Gemini (public לשימוש ב-calculateDifferences)
+    static func extractCarName(from response: String) -> String? {
+        // 1. חיפוש [CAR_WIKI: ...] - הפורמט העיקרי של Gemini
+        let wikiPatterns = [
+            #"\[CAR_WIKI:\s*([^\]\n]+)\]"#,
+            #"CAR_WIKI:\s*([^\]\n]+)"#,
+        ]
+        for pattern in wikiPatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+               let match = regex.firstMatch(in: response, options: [], range: NSRange(response.startIndex..., in: response)),
+               let range = Range(match.range(at: 1), in: response) {
+                var name = String(response[range]).trimmingCharacters(in: .whitespaces)
+                // הסרת (generation) וכו'
+                if let paren = name.firstIndex(of: "(") {
+                    name = String(name[..<paren]).trimmingCharacters(in: .whitespaces)
+                }
+                if !name.isEmpty && name.count > 2 {
+                    return name
+                }
+            }
+        }
+
+        // 2. חיפוש "אתה כרגע כמו X" או "אתה כרגע X"
+        let carPatterns = [
+            #"אתה כרגע כמו\s+\*\*([^*]+)\*\*"#,
+            #"אתה כרגע\s+\*\*([^*]+)\*\*"#,
+            #"אתה כרגע כמו\s+([^:,\n]+)"#,
+            #"אתה כרגע\s+([A-Za-z][A-Za-z0-9\s\-]+)"#,
+            #"\(([A-Z][a-z]+\s+[A-Za-z0-9\s\-]+)\)"#,  // שם באנגלית בסוגריים
+        ]
+        for pattern in carPatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+               let match = regex.firstMatch(in: response, options: [], range: NSRange(response.startIndex..., in: response)),
+               let range = Range(match.range(at: 1), in: response) {
+                var name = String(response[range])
+                    .replacingOccurrences(of: "**", with: "")
+                    .trimmingCharacters(in: .whitespaces)
+                // הסרת נקודה או נקודתיים בסוף
+                while name.hasSuffix(".") || name.hasSuffix(":") {
+                    name = String(name.dropLast()).trimmingCharacters(in: .whitespaces)
+                }
+                if !name.isEmpty && name.count > 2 && name.count < 60 {
+                    return name
+                }
+            }
+        }
+
+        // 3. Fallback - חיפוש ישן
+        let lines = response.components(separatedBy: .newlines)
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("רכב:") || trimmed.hasPrefix("**רכב:**") ||
+               trimmed.hasPrefix("שם הרכב:") || trimmed.hasPrefix("**שם הרכב:**") {
+                return trimmed
+                    .replacingOccurrences(of: "**רכב:**", with: "")
+                    .replacingOccurrences(of: "רכב:", with: "")
+                    .replacingOccurrences(of: "**שם הרכב:**", with: "")
+                    .replacingOccurrences(of: "שם הרכב:", with: "")
+                    .trimmingCharacters(in: .whitespaces)
+            }
+        }
+        return nil
+    }
+
+    /// מחלץ ציון בריאות מתשובת Gemini
+    private static func extractHealthScore(from response: String) -> Int? {
+        let lines = response.components(separatedBy: .newlines)
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("ציון בריאות:") || trimmed.hasPrefix("**ציון בריאות:**") ||
+               trimmed.hasPrefix("ציון:") || trimmed.hasPrefix("**ציון:**") {
+                let value = trimmed
+                    .replacingOccurrences(of: "**ציון בריאות:**", with: "")
+                    .replacingOccurrences(of: "ציון בריאות:", with: "")
+                    .replacingOccurrences(of: "**ציון:**", with: "")
+                    .replacingOccurrences(of: "ציון:", with: "")
+                    .trimmingCharacters(in: .whitespaces)
+                // מחלץ מספר מהטקסט
+                let numbers = value.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+                return Int(numbers)
+            }
+        }
+        return nil
+    }
+
     static func save(prompt: String, response: String) {
         // Save current as previous before overwriting
         if let currentResponse = lastResponse, let currentTimestamp = timestamp {
@@ -491,6 +866,23 @@ enum GeminiDebugStore {
         lastPrompt = prompt
         lastResponse = response
         timestamp = Date()
+
+        // הוספה להיסטוריה
+        let entry = DebugLogEntry(
+            timestamp: Date(),
+            prompt: prompt,
+            response: response,
+            carName: extractCarName(from: response),
+            healthScore: extractHealthScore(from: response)
+        )
+        addToHistory(entry)
+
         print("=== GEMINI DEBUG: Saved prompt (\(prompt.count) chars) and response (\(response.count) chars) ===")
+    }
+
+    /// מנקה את כל ההיסטוריה
+    static func clearHistory() {
+        UserDefaults.standard.removeObject(forKey: historyKey)
+        print("=== GEMINI DEBUG: History cleared ===")
     }
 }

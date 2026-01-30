@@ -23,6 +23,25 @@ enum AnalysisCache {
     static let keyAvgHRV = "AION.WeeklyStats.AvgHRV"
     static let keyHealthScore = "AION.WeeklyStats.HealthScore"
 
+    // Selected Car Keys (שמירת הרכב שנבחר ע"י Gemini)
+    static let keyLastCarName = "AION.SelectedCar.Name"
+    static let keyLastCarWikiName = "AION.SelectedCar.WikiName"
+    static let keyLastCarExplanation = "AION.SelectedCar.Explanation"
+
+    // Pending Car Reveal Keys (כשרכב חדש ממתין לחשיפה)
+    static let keyPendingCarReveal = "AION.PendingCarReveal"
+    static let keyNewCarName = "AION.NewCar.Name"
+    static let keyNewCarWikiName = "AION.NewCar.WikiName"
+    static let keyNewCarExplanation = "AION.NewCar.Explanation"
+    static let keyPreviousCarName = "AION.PreviousCar.Name"
+
+    // Daily Activity Keys (לשיתוף עם ווידג'ט)
+    static let keyDailySteps = "AION.DailyActivity.Steps"
+    static let keyDailyCalories = "AION.DailyActivity.Calories"
+    static let keyDailyExercise = "AION.DailyActivity.ExerciseMinutes"
+    static let keyDailyStandHours = "AION.DailyActivity.StandHours"
+    static let keyDailyRestingHR = "AION.DailyActivity.RestingHR"
+
     // MARK: - Cache Duration
     /// מטמון תקף ל-24 שעות (לא נקרא ל-Gemini שוב גם אם יש שינוי)
     static let maxAgeSeconds: TimeInterval = 24 * 3600
@@ -121,6 +140,140 @@ enum AnalysisCache {
         return score > 0 ? score : nil
     }
 
+    // MARK: - Daily Activity (לשיתוף עם ווידג'ט)
+
+    /// שומר נתוני פעילות יומית מה-Dashboard
+    static func saveDailyActivity(steps: Int, calories: Int, exerciseMinutes: Int, standHours: Int, restingHR: Int?) {
+        UserDefaults.standard.set(steps, forKey: keyDailySteps)
+        UserDefaults.standard.set(calories, forKey: keyDailyCalories)
+        UserDefaults.standard.set(exerciseMinutes, forKey: keyDailyExercise)
+        UserDefaults.standard.set(standHours, forKey: keyDailyStandHours)
+        if let hr = restingHR {
+            UserDefaults.standard.set(hr, forKey: keyDailyRestingHR)
+        }
+        print("=== DAILY ACTIVITY SAVED: steps=\(steps), cal=\(calories), ex=\(exerciseMinutes), stand=\(standHours) ===")
+    }
+
+    /// טוען נתוני פעילות יומית
+    static func loadDailyActivity() -> (steps: Int, calories: Int, exerciseMinutes: Int, standHours: Int, restingHR: Int)? {
+        let steps = UserDefaults.standard.integer(forKey: keyDailySteps)
+        let calories = UserDefaults.standard.integer(forKey: keyDailyCalories)
+        let exerciseMinutes = UserDefaults.standard.integer(forKey: keyDailyExercise)
+        let standHours = UserDefaults.standard.integer(forKey: keyDailyStandHours)
+        let restingHR = UserDefaults.standard.integer(forKey: keyDailyRestingHR)
+        return (steps, calories, exerciseMinutes, standHours, restingHR)
+    }
+
+    // MARK: - Selected Car (שמירת הרכב מ-Gemini)
+
+    /// שומר את הרכב שנבחר ע"י Gemini
+    static func saveSelectedCar(name: String, wikiName: String, explanation: String) {
+        UserDefaults.standard.set(name, forKey: keyLastCarName)
+        UserDefaults.standard.set(wikiName, forKey: keyLastCarWikiName)
+        UserDefaults.standard.set(explanation, forKey: keyLastCarExplanation)
+        print("=== SELECTED CAR SAVED ===")
+        print("Name: \(name), Wiki: \(wikiName)")
+    }
+
+    /// טוען את הרכב השמור
+    static func loadSelectedCar() -> (name: String, wikiName: String, explanation: String)? {
+        guard let name = UserDefaults.standard.string(forKey: keyLastCarName),
+              !name.isEmpty else { return nil }
+        let wikiName = UserDefaults.standard.string(forKey: keyLastCarWikiName) ?? ""
+        let explanation = UserDefaults.standard.string(forKey: keyLastCarExplanation) ?? ""
+        return (name, wikiName, explanation)
+    }
+
+    // MARK: - Pending Car Reveal (רכב חדש ממתין לחשיפה)
+
+    /// בודק אם הרכב השתנה ושומר כ-pending reveal אם כן
+    static func checkAndSetCarChange(newCarName: String, newWikiName: String, newExplanation: String) {
+        // טוען את הרכב הקודם
+        if let previousCar = loadSelectedCar() {
+            // אם הרכב שונה - שומר כ-pending reveal
+            if previousCar.name != newCarName {
+                UserDefaults.standard.set(true, forKey: keyPendingCarReveal)
+                UserDefaults.standard.set(newCarName, forKey: keyNewCarName)
+                UserDefaults.standard.set(newWikiName, forKey: keyNewCarWikiName)
+                UserDefaults.standard.set(newExplanation, forKey: keyNewCarExplanation)
+                UserDefaults.standard.set(previousCar.name, forKey: keyPreviousCarName)
+                print("=== CAR CHANGED: \(previousCar.name) → \(newCarName) ===")
+                return
+            }
+        }
+        // אם אין שינוי או אין רכב קודם - פשוט שומר
+        saveSelectedCar(name: newCarName, wikiName: newWikiName, explanation: newExplanation)
+    }
+
+    /// בודק אם יש רכב חדש ממתין לחשיפה
+    static func hasPendingCarReveal() -> Bool {
+        UserDefaults.standard.bool(forKey: keyPendingCarReveal)
+    }
+
+    /// מחזיר את פרטי הרכב החדש הממתין לחשיפה
+    static func getPendingCar() -> (name: String, wikiName: String, explanation: String, previousName: String)? {
+        guard hasPendingCarReveal(),
+              let name = UserDefaults.standard.string(forKey: keyNewCarName) else { return nil }
+        let wikiName = UserDefaults.standard.string(forKey: keyNewCarWikiName) ?? ""
+        let explanation = UserDefaults.standard.string(forKey: keyNewCarExplanation) ?? ""
+        let previousName = UserDefaults.standard.string(forKey: keyPreviousCarName) ?? ""
+        return (name, wikiName, explanation, previousName)
+    }
+
+    /// מנקה את ה-pending reveal ושומר את הרכב החדש כנוכחי
+    static func clearPendingCarReveal() {
+        // שומר את הרכב החדש כרכב הנוכחי
+        if let pending = getPendingCar() {
+            saveSelectedCar(name: pending.name, wikiName: pending.wikiName, explanation: pending.explanation)
+        }
+        // מנקה את ה-pending
+        UserDefaults.standard.removeObject(forKey: keyPendingCarReveal)
+        UserDefaults.standard.removeObject(forKey: keyNewCarName)
+        UserDefaults.standard.removeObject(forKey: keyNewCarWikiName)
+        UserDefaults.standard.removeObject(forKey: keyNewCarExplanation)
+        UserDefaults.standard.removeObject(forKey: keyPreviousCarName)
+        print("=== PENDING CAR REVEAL CLEARED ===")
+    }
+
+    /// בודק אם יש שינוי משמעותי בנתונים שמצדיק קריאה חדשה ל-Gemini
+    /// שינוי משמעותי = שני התנאים יחד:
+    /// 1. עברו לפחות 3 ימים מהניתוח האחרון
+    /// 2. שינוי ב-HRV של לפחות 10% (לטובה או לרעה)
+    static func hasSignificantChange(currentBundle: AIONChartDataBundle) -> Bool {
+        guard let stats = loadWeeklyStats() else {
+            print("=== NO PREVIOUS STATS - SIGNIFICANT CHANGE: YES ===")
+            return true // אין נתונים קודמים - צריך ניתוח ראשון
+        }
+
+        // בדיקת זמן - האם עברו לפחות 3 ימים?
+        guard let lastDate = lastUpdateDate() else {
+            print("=== NO LAST DATE - SIGNIFICANT CHANGE: YES ===")
+            return true
+        }
+
+        let daysSince = Date().timeIntervalSince(lastDate) / (24 * 3600)
+        guard daysSince >= 3 else {
+            print("=== ONLY \(Int(daysSince)) DAYS SINCE LAST ANALYSIS - NO CHANGE ===")
+            return false // לא עברו 3 ימים - לא משנים
+        }
+
+        // חישוב שינוי ב-HRV
+        let hrvValues = currentBundle.hrvTrend.points.map(\.value)
+        let currentHRV = hrvValues.isEmpty ? 0 : hrvValues.reduce(0, +) / Double(hrvValues.count)
+
+        let hrvChange = stats.hrv > 0 ? abs(currentHRV - stats.hrv) / stats.hrv : 0
+
+        if hrvChange >= 0.10 {
+            print("=== SIGNIFICANT CHANGE: HRV changed by \(Int(hrvChange * 100))% AND \(Int(daysSince)) days passed ===")
+            return true
+        }
+
+        print("=== NO SIGNIFICANT CHANGE ===")
+        print("Days since last: \(Int(daysSince)), HRV change: \(Int(hrvChange * 100))%")
+        print("Both conditions required: 3+ days AND 10%+ HRV change")
+        return false
+    }
+
     // MARK: - Load
 
     /// טוען את המטמון אם תקף (תוך 24 שעות)
@@ -206,6 +359,18 @@ enum AnalysisCache {
         UserDefaults.standard.removeObject(forKey: keyAvgStrain)
         UserDefaults.standard.removeObject(forKey: keyAvgHRV)
         UserDefaults.standard.removeObject(forKey: keyHealthScore)
+
+        // Clear selected car
+        UserDefaults.standard.removeObject(forKey: keyLastCarName)
+        UserDefaults.standard.removeObject(forKey: keyLastCarWikiName)
+        UserDefaults.standard.removeObject(forKey: keyLastCarExplanation)
+
+        // Clear pending car reveal
+        UserDefaults.standard.removeObject(forKey: keyPendingCarReveal)
+        UserDefaults.standard.removeObject(forKey: keyNewCarName)
+        UserDefaults.standard.removeObject(forKey: keyNewCarWikiName)
+        UserDefaults.standard.removeObject(forKey: keyNewCarExplanation)
+        UserDefaults.standard.removeObject(forKey: keyPreviousCarName)
 
         if let url = fileURL {
             try? FileManager.default.removeItem(at: url)

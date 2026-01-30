@@ -40,14 +40,15 @@ final class ProfileViewController: UIViewController {
         title = "פרופיל"
         view.backgroundColor = AIONDesign.background
         view.semanticContentAttribute = .forceRightToLeft
-        navigationController?.navigationBar.barStyle = .black
-        navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
         setupUI()
         updateUserInfo()
         loadProfilePhoto()
 
         // Listen for data source changes
         NotificationCenter.default.addObserver(self, selector: #selector(dataSourceDidChange), name: .dataSourceChanged, object: nil)
+
+        // Listen for background color changes
+        NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
     }
 
     deinit {
@@ -207,12 +208,22 @@ final class ProfileViewController: UIViewController {
             dataSourceCard.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
         ])
 
+        // Background Color Card
+        let bgColorCard = makeBackgroundColorCard()
+        stack.addArrangedSubview(bgColorCard)
+
+        NSLayoutConstraint.activate([
+            bgColorCard.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            bgColorCard.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+        ])
+
         stack.setCustomSpacing(6, after: avatarView)
         stack.setCustomSpacing(12, after: nameRowContainer)
         stack.setCustomSpacing(6, after: badgeContainer)
         stack.setCustomSpacing(AIONDesign.spacingLarge * 2, after: tierLabel)
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: metricsStack)
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: dataSourceCard)
+        stack.setCustomSpacing(AIONDesign.spacingLarge, after: bgColorCard)
 
         let logoutContainer = UIView()
         logoutContainer.translatesAutoresizingMaskIntoConstraints = false
@@ -364,6 +375,155 @@ final class ProfileViewController: UIViewController {
                 }
             }
         }
+    }
+
+    // MARK: - Background Color Selection
+
+    private func makeBackgroundColorCard() -> UIView {
+        let card = UIView()
+        card.backgroundColor = AIONDesign.surface
+        card.layer.cornerRadius = AIONDesign.cornerRadius
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.tag = 998 // For updating later
+
+        // כותרת
+        let titleLabel = UILabel()
+        titleLabel.text = "צבע רקע"
+        titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.textColor = AIONDesign.textPrimary
+        titleLabel.textAlignment = .right
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // אייקון
+        let iconView = UIImageView(image: UIImage(systemName: "paintpalette.fill"))
+        iconView.tintColor = AIONDesign.accentPrimary
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        // שורת צבעים
+        let colorsStack = UIStackView()
+        colorsStack.axis = .horizontal
+        colorsStack.spacing = 8
+        colorsStack.distribution = .fillEqually
+        colorsStack.translatesAutoresizingMaskIntoConstraints = false
+        colorsStack.tag = 997
+
+        for (index, bgColor) in BackgroundColor.allCases.enumerated() {
+            let colorView = makeColorOption(bgColor, index: index)
+            colorsStack.addArrangedSubview(colorView)
+        }
+
+        card.addSubview(titleLabel)
+        card.addSubview(iconView)
+        card.addSubview(colorsStack)
+
+        NSLayoutConstraint.activate([
+            iconView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+            iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            iconView.widthAnchor.constraint(equalToConstant: 24),
+            iconView.heightAnchor.constraint(equalToConstant: 24),
+
+            titleLabel.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -10),
+            titleLabel.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),
+
+            colorsStack.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 14),
+            colorsStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+            colorsStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+            colorsStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -AIONDesign.spacing),
+            colorsStack.heightAnchor.constraint(equalToConstant: 44),
+        ])
+
+        return card
+    }
+
+    private func makeColorOption(_ bgColor: BackgroundColor, index: Int) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.tag = index
+
+        let colorCircle = UIView()
+        colorCircle.backgroundColor = bgColor.color
+        colorCircle.layer.cornerRadius = 18
+        colorCircle.layer.borderWidth = bgColor == BackgroundColor.current ? 3 : 2
+        colorCircle.layer.borderColor = bgColor == BackgroundColor.current
+            ? AIONDesign.accentPrimary.cgColor
+            : AIONDesign.textTertiary.cgColor
+        colorCircle.translatesAutoresizingMaskIntoConstraints = false
+        colorCircle.tag = 100 + index // For finding later
+
+        container.addSubview(colorCircle)
+
+        NSLayoutConstraint.activate([
+            colorCircle.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            colorCircle.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            colorCircle.widthAnchor.constraint(equalToConstant: 36),
+            colorCircle.heightAnchor.constraint(equalToConstant: 36),
+        ])
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(backgroundColorTapped(_:)))
+        container.addGestureRecognizer(tap)
+        container.isUserInteractionEnabled = true
+
+        return container
+    }
+
+    @objc private func backgroundColorTapped(_ sender: UITapGestureRecognizer) {
+        guard let tappedView = sender.view,
+              tappedView.tag < BackgroundColor.allCases.count else { return }
+
+        let selectedColor = BackgroundColor.allCases[tappedView.tag]
+
+        // אם זה כבר הצבע הנוכחי, לא לעשות כלום
+        guard selectedColor != BackgroundColor.current else { return }
+
+        // Haptic
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
+        // הצגת אישור למשתמש
+        let alert = UIAlertController(
+            title: "שינוי צבע רקע",
+            message: "כדי שהשינוי ייכנס לתוקף, האפליקציה תיסגר. בפעם הבאה שתפתח אותה, הצבע החדש יופעל.",
+            preferredStyle: .alert
+        )
+
+        alert.addAction(UIAlertAction(title: "ביטול", style: .cancel))
+
+        alert.addAction(UIAlertAction(title: "אישור וסגירה", style: .default) { [weak self] _ in
+            // שמירת הצבע החדש
+            BackgroundColor.current = selectedColor
+
+            // עדכון ויזואלי של הבחירה
+            self?.updateBackgroundColorSelection()
+
+            // סגירת האפליקציה אחרי השהייה קצרה
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                exit(0)
+            }
+        })
+
+        present(alert, animated: true)
+    }
+
+    private func updateBackgroundColorSelection() {
+        guard let card = stack.viewWithTag(998),
+              let colorsStack = card.viewWithTag(997) as? UIStackView else { return }
+
+        for (index, container) in colorsStack.arrangedSubviews.enumerated() {
+            guard let colorCircle = container.viewWithTag(100 + index) else { continue }
+            let bgColor = BackgroundColor.allCases[index]
+            colorCircle.layer.borderWidth = bgColor == BackgroundColor.current ? 3 : 2
+            colorCircle.layer.borderColor = bgColor == BackgroundColor.current
+                ? AIONDesign.accentPrimary.cgColor
+                : AIONDesign.textTertiary.cgColor
+        }
+    }
+
+    @objc private func backgroundColorDidChange() {
+        view.backgroundColor = AIONDesign.background
+        navigationController?.navigationBar.barStyle = AIONDesign.navBarStyle
+        navigationController?.navigationBar.barTintColor = AIONDesign.background
+        navigationController?.navigationBar.backgroundColor = AIONDesign.background
+        navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
     }
 
     @objc private func profileCardInfoTapped(_ sender: CardInfoButton) {
@@ -566,7 +726,7 @@ private extension ProfileViewController {
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(overlay)
         let sp = UIActivityIndicatorView(style: .large)
-        sp.color = .white
+        sp.color = AIONDesign.textPrimary
         sp.center = CGPoint(x: overlay.bounds.midX, y: overlay.bounds.midY)
         sp.autoresizingMask = [.flexibleTopMargin, .flexibleBottomMargin, .flexibleLeftMargin, .flexibleRightMargin]
         overlay.addSubview(sp)

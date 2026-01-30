@@ -27,6 +27,7 @@ struct HealthScoreWidget: Widget {
         .configurationDisplayName("ציון בריאות")
         .description("הציון הכללי שלך ביום זה")
         .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular])
+        .contentMarginsDisabled()
     }
 }
 
@@ -66,12 +67,8 @@ struct SmallHealthScoreView: View {
 
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                colors: [Color(white: 0.12), Color(white: 0.08)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            // Pure black background
+            Color.black
 
             VStack(spacing: 8) {
                 // Score circle
@@ -166,7 +163,7 @@ struct RectangularHealthScoreView: View {
 #Preview(as: .systemSmall) {
     HealthScoreWidget()
 } timeline: {
-    HealthEntry(date: .now, data: .placeholder)
+    HealthEntry(date: .now, data: .placeholder, carImage: nil)
     HealthEntry(date: .now, data: HealthWidgetData(
         healthScore: 85,
         healthStatus: "מצוין",
@@ -186,5 +183,5 @@ struct RectangularHealthScoreView: View {
         carEmoji: "🏁",
         carImageName: "CarPorsche911",
         carTierIndex: 3
-    ))
+    ), carImage: nil)
 }

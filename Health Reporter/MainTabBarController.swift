@@ -41,13 +41,35 @@ final class MainTabBarController: UITabBarController {
         ]
 
         for nav in viewControllers as? [UINavigationController] ?? [] {
-            nav.navigationBar.barTintColor = AIONDesign.background
-            nav.navigationBar.backgroundColor = AIONDesign.background
-            nav.navigationBar.isTranslucent = false
-            nav.navigationBar.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
-            nav.navigationBar.tintColor = AIONDesign.accentPrimary
-            nav.navigationBar.barStyle = .black
+            configureNavigationBar(nav.navigationBar)
         }
+
+        // Listen for background color changes
+        NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func backgroundColorDidChange() {
+        for nav in viewControllers as? [UINavigationController] ?? [] {
+            configureNavigationBar(nav.navigationBar)
+        }
+    }
+
+    private func configureNavigationBar(_ navBar: UINavigationBar) {
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = AIONDesign.background
+        appearance.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
+        appearance.largeTitleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
+
+        navBar.standardAppearance = appearance
+        navBar.scrollEdgeAppearance = appearance
+        navBar.compactAppearance = appearance
+        navBar.tintColor = AIONDesign.accentPrimary
+        navBar.barStyle = AIONDesign.navBarStyle
     }
 
     /// עיצוב Liquid Glass ל־tab bar (iOS 26): רקע ברירת מחדל, שקיפות, ללא דריסה של רקע מלא.

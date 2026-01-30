@@ -7,6 +7,7 @@
 
 import Foundation
 import WidgetKit
+import UIKit
 
 /// Data structure shared with widgets (must match HealthWidgetData in widget extension)
 struct SharedWidgetData: Codable {
@@ -189,5 +190,51 @@ extension WidgetDataManager {
     /// Call this from background fetch or after significant health data updates
     func scheduleWidgetUpdate() {
         refreshWidgets()
+    }
+}
+
+// MARK: - Car Image Management
+
+extension WidgetDataManager {
+    private var carImageFileName: String { "widget_car_image.jpg" }
+
+    /// Saves car image to App Group for widget access
+    func saveCarImage(_ image: UIImage) {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else {
+            print("WidgetDataManager: Failed to get App Group container")
+            return
+        }
+
+        let imageURL = containerURL.appendingPathComponent(carImageFileName)
+
+        // Compress and save as JPEG for smaller file size
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            print("WidgetDataManager: Failed to convert image to JPEG")
+            return
+        }
+
+        do {
+            try imageData.write(to: imageURL)
+            print("WidgetDataManager: Car image saved to App Group")
+
+            // Refresh widgets to show new image
+            refreshWidgets()
+        } catch {
+            print("WidgetDataManager: Failed to save car image - \(error)")
+        }
+    }
+
+    /// Returns the URL of the saved car image (for widget to load)
+    func getCarImageURL() -> URL? {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else {
+            return nil
+        }
+
+        let imageURL = containerURL.appendingPathComponent(carImageFileName)
+
+        if FileManager.default.fileExists(atPath: imageURL.path) {
+            return imageURL
+        }
+        return nil
     }
 }

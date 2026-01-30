@@ -24,7 +24,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func setRootByAuth() {
         let root: UIViewController
         if Auth.auth().currentUser != nil {
-            root = MainTabBarController()
+            // משתמש מחובר - הצג Splash Screen שיטען נתונים ואז יעבור ל-Main
+            root = SplashViewController()
         } else {
             root = LoginViewController()
         }

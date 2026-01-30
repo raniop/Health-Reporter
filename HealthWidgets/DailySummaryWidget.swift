@@ -27,6 +27,7 @@ struct DailySummaryWidget: Widget {
         .configurationDisplayName("סיכום יומי")
         .description("כל נתוני הבריאות שלך במבט אחד")
         .supportedFamilies([.systemLarge, .systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
@@ -64,11 +65,8 @@ struct LargeDailySummaryView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(white: 0.12), Color(white: 0.08)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            // Pure black background
+            Color.black
 
             VStack(spacing: 12) {
                 // Header with score
@@ -216,11 +214,8 @@ struct MediumDailySummaryView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(white: 0.12), Color(white: 0.08)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            // Pure black background
+            Color.black
 
             HStack(spacing: 16) {
                 // Left side - Score
@@ -282,5 +277,5 @@ struct MediumDailySummaryView: View {
 #Preview(as: .systemLarge) {
     DailySummaryWidget()
 } timeline: {
-    HealthEntry(date: .now, data: .placeholder)
+    HealthEntry(date: .now, data: .placeholder, carImage: nil)
 }

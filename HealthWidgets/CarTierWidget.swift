@@ -27,6 +27,7 @@ struct CarTierWidget: Widget {
         .configurationDisplayName("מד הרכב שלך")
         .description("הבריאות שלך כרכב - מפיאט פנדה ועד פרארי!")
         .supportedFamilies([.systemSmall, .systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
@@ -39,11 +40,11 @@ struct CarTierWidgetView: View {
     var body: some View {
         switch family {
         case .systemSmall:
-            SmallCarTierView(data: entry.data)
+            SmallCarTierView(data: entry.data, carImage: entry.carImage)
         case .systemMedium:
-            MediumCarTierView(data: entry.data)
+            MediumCarTierView(data: entry.data, carImage: entry.carImage)
         default:
-            SmallCarTierView(data: entry.data)
+            SmallCarTierView(data: entry.data, carImage: entry.carImage)
         }
     }
 }
@@ -52,6 +53,7 @@ struct CarTierWidgetView: View {
 
 struct SmallCarTierView: View {
     let data: HealthWidgetData
+    let carImage: UIImage?
 
     var tierColor: Color {
         switch data.carTierIndex {
@@ -66,18 +68,23 @@ struct SmallCarTierView: View {
 
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                colors: [Color(white: 0.15), Color(white: 0.05)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            // Pure black background
+            Color.black
 
             VStack(spacing: 6) {
-                // Car emoji
-                Text(data.carEmoji)
-                    .font(.system(size: 50))
-                    .shadow(color: tierColor.opacity(0.5), radius: 10)
+                // Car image or emoji fallback
+                if let uiImage = carImage {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 60, height: 40)
+                        .cornerRadius(6)
+                        .shadow(color: tierColor.opacity(0.5), radius: 10)
+                } else {
+                    Text(data.carEmoji)
+                        .font(.system(size: 50))
+                        .shadow(color: tierColor.opacity(0.5), radius: 10)
+                }
 
                 // Score
                 Text("\(data.healthScore)")
@@ -103,6 +110,7 @@ struct SmallCarTierView: View {
 
 struct MediumCarTierView: View {
     let data: HealthWidgetData
+    let carImage: UIImage?
 
     var tierColor: Color {
         switch data.carTierIndex {
@@ -117,17 +125,13 @@ struct MediumCarTierView: View {
 
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                colors: [Color(white: 0.15), Color(white: 0.05)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            // Pure black background
+            Color.black
 
             HStack(spacing: 16) {
                 // Left side - Car visual
                 VStack(spacing: 8) {
-                    // Car emoji with glow
+                    // Car image with glow or emoji fallback
                     ZStack {
                         // Glow effect
                         Circle()
@@ -135,8 +139,16 @@ struct MediumCarTierView: View {
                             .frame(width: 80, height: 80)
                             .blur(radius: 10)
 
-                        Text(data.carEmoji)
-                            .font(.system(size: 55))
+                        if let uiImage = carImage {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 80, height: 55)
+                                .cornerRadius(8)
+                        } else {
+                            Text(data.carEmoji)
+                                .font(.system(size: 55))
+                        }
                     }
 
                     // Car name
@@ -236,7 +248,7 @@ struct MiniStat: View {
 #Preview(as: .systemMedium) {
     CarTierWidget()
 } timeline: {
-    HealthEntry(date: .now, data: .placeholder)
+    HealthEntry(date: .now, data: .placeholder, carImage: nil)
     HealthEntry(date: .now, data: HealthWidgetData(
         healthScore: 88,
         healthStatus: "שיא ביצועים",
@@ -256,5 +268,5 @@ struct MiniStat: View {
         carEmoji: "🏆",
         carImageName: "CarFerrariSF90",
         carTierIndex: 4
-    ))
+    ), carImage: nil)
 }

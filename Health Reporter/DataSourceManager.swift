@@ -324,4 +324,5 @@ final class DataSourceManager {
 
 extension Notification.Name {
     static let dataSourceChanged = Notification.Name("dataSourceChanged")
+    static let backgroundColorChanged = Notification.Name("backgroundColorChanged")
 }
