@@ -13,63 +13,166 @@ import Foundation
 struct CarAnalysisJSONResponse: Codable {
     let carIdentity: CarIdentityJSON
     let performanceReview: PerformanceReviewJSON
-    let bottlenecks: [String]
+
+    // Bilingual bottlenecks
+    let bottlenecks_he: [String]
+    let bottlenecks_en: [String]
+    let bottlenecks: [String]?  // Legacy
+
     let optimizationPlan: OptimizationPlanJSON
     let tuneUpPlan: TuneUpPlanJSON
     let directives: DirectivesJSON
-    let forecast: String
+
+    // Bilingual forecast/summary
+    let forecast_he: String
+    let forecast_en: String
+    let forecast: String?  // Legacy
+
     let supplements: [SupplementJSON]
 }
 
 struct CarIdentityJSON: Codable {
-    let model: String
+    // Bilingual fields
+    let model_he: String
+    let model_en: String
     let wikiName: String
-    let explanation: String
+    let explanation_he: String
+    let explanation_en: String
+
+    // Backward compatibility - single language fields (legacy)
+    let model: String?
+    let explanation: String?
 }
 
 struct PerformanceReviewJSON: Codable {
-    let engine: String
-    let transmission: String
-    let suspension: String
-    let fuelEfficiency: String
-    let electronics: String
+    // Bilingual fields
+    let engine_he: String
+    let engine_en: String
+    let transmission_he: String
+    let transmission_en: String
+    let suspension_he: String
+    let suspension_en: String
+    let fuelEfficiency_he: String
+    let fuelEfficiency_en: String
+    let electronics_he: String
+    let electronics_en: String
+
+    // Backward compatibility - single language fields (legacy)
+    let engine: String?
+    let transmission: String?
+    let suspension: String?
+    let fuelEfficiency: String?
+    let electronics: String?
 }
 
 struct OptimizationPlanJSON: Codable {
-    let upgrades: [String]
-    let skippedMaintenance: [String]
-    let stopImmediately: [String]
+    // Bilingual fields
+    let upgrades_he: [String]
+    let upgrades_en: [String]
+    let skippedMaintenance_he: [String]
+    let skippedMaintenance_en: [String]
+    let stopImmediately_he: [String]
+    let stopImmediately_en: [String]
+
+    // Backward compatibility - single language fields (legacy)
+    let upgrades: [String]?
+    let skippedMaintenance: [String]?
+    let stopImmediately: [String]?
 }
 
 struct TuneUpPlanJSON: Codable {
-    let trainingAdjustments: String
-    let recoveryChanges: String
-    let habitToAdd: String
-    let habitToRemove: String
+    // Bilingual fields
+    let trainingAdjustments_he: String
+    let trainingAdjustments_en: String
+    let recoveryChanges_he: String
+    let recoveryChanges_en: String
+    let habitToAdd_he: String
+    let habitToAdd_en: String
+    let habitToRemove_he: String
+    let habitToRemove_en: String
+
+    // Backward compatibility - single language fields (legacy)
+    let trainingAdjustments: String?
+    let recoveryChanges: String?
+    let habitToAdd: String?
+    let habitToRemove: String?
 }
 
 struct DirectivesJSON: Codable {
-    let stop: String
-    let start: String
-    let watch: String
+    // Bilingual fields
+    let stop_he: String
+    let stop_en: String
+    let start_he: String
+    let start_en: String
+    let watch_he: String
+    let watch_en: String
+
+    // Backward compatibility - single language fields (legacy)
+    let stop: String?
+    let start: String?
+    let watch: String?
 }
 
 struct SupplementJSON: Codable {
-    let name: String
-    let englishName: String?
-    let dosage: String
-    let reason: String
+    // Bilingual fields
+    let name_he: String
+    let name_en: String
+    let dosage_he: String
+    let dosage_en: String
+    let reason_he: String
+    let reason_en: String
     let category: String
+
+    // Backward compatibility - single language fields (legacy)
+    let name: String?
+    let englishName: String?
+    let dosage: String?
+    let reason: String?
 }
 
 // MARK: - Supplement Recommendation Model
 
-/// מודל המלצת תוסף תזונה
+/// מודל המלצת תוסף תזונה - תומך בשתי שפות
 struct SupplementRecommendation {
-    let name: String        // שם התוסף (עברית + אנגלית)
-    let dosage: String      // מינון ותזמון
-    let reason: String      // סיבה ספציפית מהנתונים
+    // Bilingual storage
+    let nameHe: String
+    let nameEn: String
+    let dosageHe: String
+    let dosageEn: String
+    let reasonHe: String
+    let reasonEn: String
     let category: SupplementCategory
+
+    // Language-aware computed properties
+    private var isHebrew: Bool {
+        LocalizationManager.shared.currentLanguage == .hebrew
+    }
+
+    var name: String { isHebrew ? nameHe : nameEn }
+    var dosage: String { isHebrew ? dosageHe : dosageEn }
+    var reason: String { isHebrew ? reasonHe : reasonEn }
+
+    // Convenience initializer for legacy single-language usage
+    init(nameHe: String, nameEn: String, dosageHe: String, dosageEn: String, reasonHe: String, reasonEn: String, category: SupplementCategory) {
+        self.nameHe = nameHe
+        self.nameEn = nameEn
+        self.dosageHe = dosageHe
+        self.dosageEn = dosageEn
+        self.reasonHe = reasonHe
+        self.reasonEn = reasonEn
+        self.category = category
+    }
+
+    // Legacy initializer - uses same value for both languages
+    init(name: String, dosage: String, reason: String, category: SupplementCategory) {
+        self.nameHe = name
+        self.nameEn = name
+        self.dosageHe = dosage
+        self.dosageEn = dosage
+        self.reasonHe = reason
+        self.reasonEn = reason
+        self.category = category
+    }
 }
 
 /// קטגוריות תוספי תזונה
@@ -83,48 +186,109 @@ enum SupplementCategory: String, CaseIterable {
 // MARK: - Car Analysis Response
 
 /// מודל שמייצג את התשובה המלאה של Gemini
+/// תומך בשתי שפות (עברית ואנגלית) עם computed properties שמחזירים לפי השפה הנוכחית
 struct CarAnalysisResponse {
+    // MARK: - Bilingual Storage (Hebrew + English)
+
     // 1. איזה רכב אני עכשיו?
-    var carModel: String
-    var carExplanation: String
+    var carModelHe: String
+    var carModelEn: String
+    var carExplanationHe: String
+    var carExplanationEn: String
     var carImageURL: String  // קישור לתמונת הרכב (נטען מ-Wikipedia)
     var carWikiName: String  // שם הרכב באנגלית לחיפוש בוויקיפדיה
 
     // 2. סקירת ביצועים מלאה
-    var engine: String           // מנוע
-    var transmission: String     // תיבת הילוכים
-    var suspension: String       // מתלים
-    var fuelEfficiency: String   // יעילות דלק
-    var electronics: String      // אלקטרוניקה
+    var engineHe: String
+    var engineEn: String
+    var transmissionHe: String
+    var transmissionEn: String
+    var suspensionHe: String
+    var suspensionEn: String
+    var fuelEfficiencyHe: String
+    var fuelEfficiencyEn: String
+    var electronicsHe: String
+    var electronicsEn: String
 
     // 3. מה מגביל את הביצועים
-    var bottlenecks: [String]
+    var bottlenecksHe: [String]
+    var bottlenecksEn: [String]
     var warningSignals: [String]
 
     // 4. תוכנית אופטימיזציה
-    var upgrades: [String]
-    var skippedMaintenance: [String]
-    var stopImmediately: [String]
+    var upgradesHe: [String]
+    var upgradesEn: [String]
+    var skippedMaintenanceHe: [String]
+    var skippedMaintenanceEn: [String]
+    var stopImmediatelyHe: [String]
+    var stopImmediatelyEn: [String]
 
     // 5. תוכנית כוונון
-    var trainingAdjustments: String
-    var recoveryChanges: String
-    var habitToAdd: String
-    var habitToRemove: String
+    var trainingAdjustmentsHe: String
+    var trainingAdjustmentsEn: String
+    var recoveryChangesHe: String
+    var recoveryChangesEn: String
+    var habitToAddHe: String
+    var habitToAddEn: String
+    var habitToRemoveHe: String
+    var habitToRemoveEn: String
 
     // 6. הנחיות פעולה
-    var directiveStop: String
-    var directiveStart: String
-    var directiveWatch: String
+    var directiveStopHe: String
+    var directiveStopEn: String
+    var directiveStartHe: String
+    var directiveStartEn: String
+    var directiveWatchHe: String
+    var directiveWatchEn: String
 
     // 7. סיכום
-    var summary: String
+    var summaryHe: String
+    var summaryEn: String
 
     // 8. תוספי תזונה מומלצים
     var supplements: [SupplementRecommendation]
 
     // התשובה המקורית (לצורך fallback)
     var rawResponse: String
+
+    // MARK: - Language-Aware Computed Properties
+
+    private var isHebrew: Bool {
+        LocalizationManager.shared.currentLanguage == .hebrew
+    }
+
+    // 1. Car Identity
+    var carModel: String { isHebrew ? carModelHe : carModelEn }
+    var carExplanation: String { isHebrew ? carExplanationHe : carExplanationEn }
+
+    // 2. Performance Review
+    var engine: String { isHebrew ? engineHe : engineEn }
+    var transmission: String { isHebrew ? transmissionHe : transmissionEn }
+    var suspension: String { isHebrew ? suspensionHe : suspensionEn }
+    var fuelEfficiency: String { isHebrew ? fuelEfficiencyHe : fuelEfficiencyEn }
+    var electronics: String { isHebrew ? electronicsHe : electronicsEn }
+
+    // 3. Bottlenecks
+    var bottlenecks: [String] { isHebrew ? bottlenecksHe : bottlenecksEn }
+
+    // 4. Optimization Plan
+    var upgrades: [String] { isHebrew ? upgradesHe : upgradesEn }
+    var skippedMaintenance: [String] { isHebrew ? skippedMaintenanceHe : skippedMaintenanceEn }
+    var stopImmediately: [String] { isHebrew ? stopImmediatelyHe : stopImmediatelyEn }
+
+    // 5. Tune Up Plan
+    var trainingAdjustments: String { isHebrew ? trainingAdjustmentsHe : trainingAdjustmentsEn }
+    var recoveryChanges: String { isHebrew ? recoveryChangesHe : recoveryChangesEn }
+    var habitToAdd: String { isHebrew ? habitToAddHe : habitToAddEn }
+    var habitToRemove: String { isHebrew ? habitToRemoveHe : habitToRemoveEn }
+
+    // 6. Directives
+    var directiveStop: String { isHebrew ? directiveStopHe : directiveStopEn }
+    var directiveStart: String { isHebrew ? directiveStartHe : directiveStartEn }
+    var directiveWatch: String { isHebrew ? directiveWatchHe : directiveWatchEn }
+
+    // 7. Summary
+    var summary: String { isHebrew ? summaryHe : summaryEn }
 }
 
 /// Parser שמחלץ את הנתונים מתשובת Gemini
@@ -148,21 +312,19 @@ enum CarAnalysisParser {
 
         // Decode
         guard let data = cleaned.data(using: .utf8) else {
-            print("=== JSON PARSE: Failed to convert to data ===")
             return nil
         }
 
         do {
             let json = try JSONDecoder().decode(CarAnalysisJSONResponse.self, from: data)
-            print("=== JSON PARSE: Successfully decoded JSON response ===")
             return convertJSONToResponse(json, rawResponse: response)
         } catch {
-            print("=== JSON PARSE ERROR: \(error) ===")
             return nil
         }
     }
 
     /// ממיר את ה-JSON המפורסר למודל CarAnalysisResponse
+    /// תומך גם בפורמט bilingual חדש (_he/_en) וגם בפורמט legacy (שדה אחד)
     private static func convertJSONToResponse(_ json: CarAnalysisJSONResponse, rawResponse: String) -> CarAnalysisResponse {
         // המרת supplements
         let supplements = json.supplements.map { s in
@@ -173,37 +335,88 @@ enum CarAnalysisParser {
             case "recovery": category = .recovery
             default: category = .general
             }
+            // Use bilingual fields, fallback to legacy if empty
+            let nameHe = s.name_he.isEmpty ? (s.name ?? s.name_he) : s.name_he
+            let nameEn = s.name_en.isEmpty ? (s.englishName ?? s.name ?? s.name_en) : s.name_en
+            let dosageHe = s.dosage_he.isEmpty ? (s.dosage ?? s.dosage_he) : s.dosage_he
+            let dosageEn = s.dosage_en.isEmpty ? (s.dosage ?? s.dosage_en) : s.dosage_en
+            let reasonHe = s.reason_he.isEmpty ? (s.reason ?? s.reason_he) : s.reason_he
+            let reasonEn = s.reason_en.isEmpty ? (s.reason ?? s.reason_en) : s.reason_en
+
             return SupplementRecommendation(
-                name: s.name,
-                dosage: s.dosage,
-                reason: s.reason,
+                nameHe: nameHe,
+                nameEn: nameEn,
+                dosageHe: dosageHe,
+                dosageEn: dosageEn,
+                reasonHe: reasonHe,
+                reasonEn: reasonEn,
                 category: category
             )
         }
 
+        // Helper to get bilingual value with legacy fallback
+        let carIdentity = json.carIdentity
+        let perf = json.performanceReview
+        let opt = json.optimizationPlan
+        let tune = json.tuneUpPlan
+        let dir = json.directives
+
         return CarAnalysisResponse(
-            carModel: json.carIdentity.model,
-            carExplanation: json.carIdentity.explanation,
+            // Car Identity
+            carModelHe: carIdentity.model_he.isEmpty ? (carIdentity.model ?? carIdentity.model_he) : carIdentity.model_he,
+            carModelEn: carIdentity.model_en.isEmpty ? (carIdentity.model ?? carIdentity.model_en) : carIdentity.model_en,
+            carExplanationHe: carIdentity.explanation_he.isEmpty ? (carIdentity.explanation ?? carIdentity.explanation_he) : carIdentity.explanation_he,
+            carExplanationEn: carIdentity.explanation_en.isEmpty ? (carIdentity.explanation ?? carIdentity.explanation_en) : carIdentity.explanation_en,
             carImageURL: "",
-            carWikiName: json.carIdentity.wikiName,
-            engine: json.performanceReview.engine,
-            transmission: json.performanceReview.transmission,
-            suspension: json.performanceReview.suspension,
-            fuelEfficiency: json.performanceReview.fuelEfficiency,
-            electronics: json.performanceReview.electronics,
-            bottlenecks: json.bottlenecks,
+            carWikiName: carIdentity.wikiName,
+
+            // Performance Review
+            engineHe: perf.engine_he.isEmpty ? (perf.engine ?? perf.engine_he) : perf.engine_he,
+            engineEn: perf.engine_en.isEmpty ? (perf.engine ?? perf.engine_en) : perf.engine_en,
+            transmissionHe: perf.transmission_he.isEmpty ? (perf.transmission ?? perf.transmission_he) : perf.transmission_he,
+            transmissionEn: perf.transmission_en.isEmpty ? (perf.transmission ?? perf.transmission_en) : perf.transmission_en,
+            suspensionHe: perf.suspension_he.isEmpty ? (perf.suspension ?? perf.suspension_he) : perf.suspension_he,
+            suspensionEn: perf.suspension_en.isEmpty ? (perf.suspension ?? perf.suspension_en) : perf.suspension_en,
+            fuelEfficiencyHe: perf.fuelEfficiency_he.isEmpty ? (perf.fuelEfficiency ?? perf.fuelEfficiency_he) : perf.fuelEfficiency_he,
+            fuelEfficiencyEn: perf.fuelEfficiency_en.isEmpty ? (perf.fuelEfficiency ?? perf.fuelEfficiency_en) : perf.fuelEfficiency_en,
+            electronicsHe: perf.electronics_he.isEmpty ? (perf.electronics ?? perf.electronics_he) : perf.electronics_he,
+            electronicsEn: perf.electronics_en.isEmpty ? (perf.electronics ?? perf.electronics_en) : perf.electronics_en,
+
+            // Bottlenecks
+            bottlenecksHe: json.bottlenecks_he.isEmpty ? (json.bottlenecks ?? json.bottlenecks_he) : json.bottlenecks_he,
+            bottlenecksEn: json.bottlenecks_en.isEmpty ? (json.bottlenecks ?? json.bottlenecks_en) : json.bottlenecks_en,
             warningSignals: [],
-            upgrades: json.optimizationPlan.upgrades,
-            skippedMaintenance: json.optimizationPlan.skippedMaintenance,
-            stopImmediately: json.optimizationPlan.stopImmediately,
-            trainingAdjustments: json.tuneUpPlan.trainingAdjustments,
-            recoveryChanges: json.tuneUpPlan.recoveryChanges,
-            habitToAdd: json.tuneUpPlan.habitToAdd,
-            habitToRemove: json.tuneUpPlan.habitToRemove,
-            directiveStop: json.directives.stop,
-            directiveStart: json.directives.start,
-            directiveWatch: json.directives.watch,
-            summary: json.forecast,
+
+            // Optimization Plan
+            upgradesHe: opt.upgrades_he.isEmpty ? (opt.upgrades ?? opt.upgrades_he) : opt.upgrades_he,
+            upgradesEn: opt.upgrades_en.isEmpty ? (opt.upgrades ?? opt.upgrades_en) : opt.upgrades_en,
+            skippedMaintenanceHe: opt.skippedMaintenance_he.isEmpty ? (opt.skippedMaintenance ?? opt.skippedMaintenance_he) : opt.skippedMaintenance_he,
+            skippedMaintenanceEn: opt.skippedMaintenance_en.isEmpty ? (opt.skippedMaintenance ?? opt.skippedMaintenance_en) : opt.skippedMaintenance_en,
+            stopImmediatelyHe: opt.stopImmediately_he.isEmpty ? (opt.stopImmediately ?? opt.stopImmediately_he) : opt.stopImmediately_he,
+            stopImmediatelyEn: opt.stopImmediately_en.isEmpty ? (opt.stopImmediately ?? opt.stopImmediately_en) : opt.stopImmediately_en,
+
+            // Tune Up Plan
+            trainingAdjustmentsHe: tune.trainingAdjustments_he.isEmpty ? (tune.trainingAdjustments ?? tune.trainingAdjustments_he) : tune.trainingAdjustments_he,
+            trainingAdjustmentsEn: tune.trainingAdjustments_en.isEmpty ? (tune.trainingAdjustments ?? tune.trainingAdjustments_en) : tune.trainingAdjustments_en,
+            recoveryChangesHe: tune.recoveryChanges_he.isEmpty ? (tune.recoveryChanges ?? tune.recoveryChanges_he) : tune.recoveryChanges_he,
+            recoveryChangesEn: tune.recoveryChanges_en.isEmpty ? (tune.recoveryChanges ?? tune.recoveryChanges_en) : tune.recoveryChanges_en,
+            habitToAddHe: tune.habitToAdd_he.isEmpty ? (tune.habitToAdd ?? tune.habitToAdd_he) : tune.habitToAdd_he,
+            habitToAddEn: tune.habitToAdd_en.isEmpty ? (tune.habitToAdd ?? tune.habitToAdd_en) : tune.habitToAdd_en,
+            habitToRemoveHe: tune.habitToRemove_he.isEmpty ? (tune.habitToRemove ?? tune.habitToRemove_he) : tune.habitToRemove_he,
+            habitToRemoveEn: tune.habitToRemove_en.isEmpty ? (tune.habitToRemove ?? tune.habitToRemove_en) : tune.habitToRemove_en,
+
+            // Directives
+            directiveStopHe: dir.stop_he.isEmpty ? (dir.stop ?? dir.stop_he) : dir.stop_he,
+            directiveStopEn: dir.stop_en.isEmpty ? (dir.stop ?? dir.stop_en) : dir.stop_en,
+            directiveStartHe: dir.start_he.isEmpty ? (dir.start ?? dir.start_he) : dir.start_he,
+            directiveStartEn: dir.start_en.isEmpty ? (dir.start ?? dir.start_en) : dir.start_en,
+            directiveWatchHe: dir.watch_he.isEmpty ? (dir.watch ?? dir.watch_he) : dir.watch_he,
+            directiveWatchEn: dir.watch_en.isEmpty ? (dir.watch ?? dir.watch_en) : dir.watch_en,
+
+            // Summary
+            summaryHe: json.forecast_he.isEmpty ? (json.forecast ?? json.forecast_he) : json.forecast_he,
+            summaryEn: json.forecast_en.isEmpty ? (json.forecast ?? json.forecast_en) : json.forecast_en,
+
             supplements: supplements,
             rawResponse: rawResponse
         )
@@ -214,85 +427,97 @@ enum CarAnalysisParser {
     static func parse(_ response: String) -> CarAnalysisResponse {
         // נסיון ראשון: JSON מובנה
         if let jsonResult = parseJSON(response) {
-            print("=== PARSER: Used JSON mode successfully ===")
             return jsonResult
         }
 
-        print("=== PARSER: JSON failed, falling back to regex-based parsing ===")
         return parseLegacy(response)
     }
 
     // MARK: - Legacy Regex-Based Parsing (Fallback)
 
     private static func parseLegacy(_ response: String) -> CarAnalysisResponse {
-        var result = CarAnalysisResponse(
-            carModel: "",
-            carExplanation: "",
+        // Legacy parser - uses same value for both Hebrew and English
+        // (since legacy format only has one language)
+
+        let carModel = extractCarModel(from: response)
+        let carExplanation = extractCarExplanation(from: response)
+        let carWikiName = extractCarWikiName(from: response)
+
+        let engine = extractPerformanceSection(from: response, sectionName: "מנוע", nextSections: ["תיבת הילוכים", "TRANSMISSION"])
+        let transmission = extractPerformanceSection(from: response, sectionName: "תיבת הילוכים", nextSections: ["מתלים", "SUSPENSION"])
+        let suspension = extractPerformanceSection(from: response, sectionName: "מתלים", nextSections: ["יעילות דלק", "FUEL"])
+        let fuelEfficiency = extractPerformanceSection(from: response, sectionName: "יעילות דלק", nextSections: ["אלקטרוניקה", "ELECTRONICS"])
+        let electronics = extractPerformanceSection(from: response, sectionName: "אלקטרוניקה", nextSections: ["3.", "מה מגביל", "BOTTLENECK"])
+
+        let bottlenecks = extractBottlenecks(from: response)
+        let warningSignals = extractWarningSignals(from: response)
+
+        let upgrades = extractListItems(from: response, sectionMarkers: ["UPGRADES", "שדרוגים", "upgrades"])
+        let skippedMaintenance = extractListItems(from: response, sectionMarkers: ["MAINTENANCE", "טיפול אני מדלג", "maintenance"])
+        let stopImmediately = extractListItems(from: response, sectionMarkers: ["STOP IMMEDIATELY", "להפסיק לעשות מיד", "stop doing immediately"])
+
+        let trainingAdjustments = extractSection(from: response, markers: ["TRAINING ADJUSTMENTS", "התאמות אימון", "**התאמות אימון**", "התאמות אימון:"])
+        let recoveryChanges = extractSection(from: response, markers: ["RECOVERY CHANGES", "שינויים בהתאוששות", "**שינויים בהתאוששות ושינה**", "שינויים בהתאוששות"])
+        let habitToAdd = extractSection(from: response, markers: ["HABIT TO ADD", "הרגל להוסיף", "**הרגל אחד בעל השפעה גבוהה להוסיף**", "הרגל אחד להוסיף:", "הרגל להוסיף:"])
+        let habitToRemove = extractSection(from: response, markers: ["HABIT TO REMOVE", "הרגל להסיר", "**הרגל אחד להסיר**", "הרגל אחד להסיר:", "הרגל להסיר:"])
+
+        let directives = extractDirectives(from: response)
+        let summary = extractSummary(from: response)
+        let supplements = extractSupplements(from: response)
+
+        return CarAnalysisResponse(
+            // For legacy, use same value for both languages
+            carModelHe: carModel,
+            carModelEn: carModel,
+            carExplanationHe: carExplanation,
+            carExplanationEn: carExplanation,
             carImageURL: "",
-            carWikiName: "",
-            engine: "",
-            transmission: "",
-            suspension: "",
-            fuelEfficiency: "",
-            electronics: "",
-            bottlenecks: [],
-            warningSignals: [],
-            upgrades: [],
-            skippedMaintenance: [],
-            stopImmediately: [],
-            trainingAdjustments: "",
-            recoveryChanges: "",
-            habitToAdd: "",
-            habitToRemove: "",
-            directiveStop: "",
-            directiveStart: "",
-            directiveWatch: "",
-            summary: "",
-            supplements: [],
+            carWikiName: carWikiName,
+
+            engineHe: engine,
+            engineEn: engine,
+            transmissionHe: transmission,
+            transmissionEn: transmission,
+            suspensionHe: suspension,
+            suspensionEn: suspension,
+            fuelEfficiencyHe: fuelEfficiency,
+            fuelEfficiencyEn: fuelEfficiency,
+            electronicsHe: electronics,
+            electronicsEn: electronics,
+
+            bottlenecksHe: bottlenecks,
+            bottlenecksEn: bottlenecks,
+            warningSignals: warningSignals,
+
+            upgradesHe: upgrades,
+            upgradesEn: upgrades,
+            skippedMaintenanceHe: skippedMaintenance,
+            skippedMaintenanceEn: skippedMaintenance,
+            stopImmediatelyHe: stopImmediately,
+            stopImmediatelyEn: stopImmediately,
+
+            trainingAdjustmentsHe: trainingAdjustments,
+            trainingAdjustmentsEn: trainingAdjustments,
+            recoveryChangesHe: recoveryChanges,
+            recoveryChangesEn: recoveryChanges,
+            habitToAddHe: habitToAdd,
+            habitToAddEn: habitToAdd,
+            habitToRemoveHe: habitToRemove,
+            habitToRemoveEn: habitToRemove,
+
+            directiveStopHe: directives.stop,
+            directiveStopEn: directives.stop,
+            directiveStartHe: directives.start,
+            directiveStartEn: directives.start,
+            directiveWatchHe: directives.watch,
+            directiveWatchEn: directives.watch,
+
+            summaryHe: summary,
+            summaryEn: summary,
+
+            supplements: supplements,
             rawResponse: response
         )
-
-        // 1. חילוץ שם הרכב + שם לוויקי
-        result.carModel = extractCarModel(from: response)
-        result.carExplanation = extractCarExplanation(from: response)
-        result.carWikiName = extractCarWikiName(from: response)
-
-        // 2. סקירת ביצועים - מחפש כותרת בשורה נפרדת או בפורמט markdown
-        // Note: The section content starts AFTER the marker line, not at a colon/parenthesis
-        result.engine = extractPerformanceSection(from: response, sectionName: "מנוע", nextSections: ["תיבת הילוכים", "TRANSMISSION"])
-        result.transmission = extractPerformanceSection(from: response, sectionName: "תיבת הילוכים", nextSections: ["מתלים", "SUSPENSION"])
-        result.suspension = extractPerformanceSection(from: response, sectionName: "מתלים", nextSections: ["יעילות דלק", "FUEL"])
-        result.fuelEfficiency = extractPerformanceSection(from: response, sectionName: "יעילות דלק", nextSections: ["אלקטרוניקה", "ELECTRONICS"])
-        result.electronics = extractPerformanceSection(from: response, sectionName: "אלקטרוניקה", nextSections: ["3.", "מה מגביל", "BOTTLENECK"])
-
-        // 3. צווארי בקבוק וסימני אזהרה
-        result.bottlenecks = extractBottlenecks(from: response)
-        result.warningSignals = extractWarningSignals(from: response)
-
-        // 4. תוכנית אופטימיזציה
-        result.upgrades = extractListItems(from: response, sectionMarkers: ["UPGRADES", "שדרוגים", "upgrades"])
-        result.skippedMaintenance = extractListItems(from: response, sectionMarkers: ["MAINTENANCE", "טיפול אני מדלג", "maintenance"])
-        result.stopImmediately = extractListItems(from: response, sectionMarkers: ["STOP IMMEDIATELY", "להפסיק לעשות מיד", "stop doing immediately"])
-
-        // 5. תוכנית כוונון
-        result.trainingAdjustments = extractSection(from: response, markers: ["TRAINING ADJUSTMENTS", "התאמות אימון", "**התאמות אימון**", "התאמות אימון:"])
-        result.recoveryChanges = extractSection(from: response, markers: ["RECOVERY CHANGES", "שינויים בהתאוששות", "**שינויים בהתאוששות ושינה**", "שינויים בהתאוששות"])
-        result.habitToAdd = extractSection(from: response, markers: ["HABIT TO ADD", "הרגל להוסיף", "**הרגל אחד בעל השפעה גבוהה להוסיף**", "הרגל אחד להוסיף:", "הרגל להוסיף:"])
-        result.habitToRemove = extractSection(from: response, markers: ["HABIT TO REMOVE", "הרגל להסיר", "**הרגל אחד להסיר**", "הרגל אחד להסיר:", "הרגל להסיר:"])
-
-        // 6. הנחיות פעולה (STOP/START/WATCH)
-        let directives = extractDirectives(from: response)
-        result.directiveStop = directives.stop
-        result.directiveStart = directives.start
-        result.directiveWatch = directives.watch
-
-        // 7. סיכום
-        result.summary = extractSummary(from: response)
-
-        // 8. תוספי תזונה מומלצים
-        result.supplements = extractSupplements(from: response)
-
-        return result
     }
 
     // MARK: - Extraction Helpers
@@ -322,8 +547,6 @@ enum CarAnalysisParser {
             }
         }
 
-        print("=== SECTION 1 FOR CAR MODEL: '\(section1.prefix(400))' ===")
-
         // קודם כל - מחפש שם רכב באנגלית מה-CAR_WIKI tag (הכי אמין!)
         // מחפש ידנית כדי לא לקרוא לפונקציה אחרת
         let wikiPatterns = [
@@ -340,7 +563,6 @@ enum CarAnalysisParser {
                     wikiCarName = String(wikiCarName[..<parenStart]).trimmingCharacters(in: .whitespaces)
                 }
                 if !wikiCarName.isEmpty && wikiCarName.count > 3 && !wikiCarName.hasPrefix("http") {
-                    print("=== EXTRACTED CAR MODEL (from WIKI tag): '\(wikiCarName)' ===")
                     return wikiCarName
                 }
             }
@@ -391,7 +613,6 @@ enum CarAnalysisParser {
                     let isBlacklisted = blacklist.contains { lower.hasPrefix($0) || lower == $0 }
 
                     if !isBlacklisted && !carName.isEmpty && carName.count > 2 && carName.count < 60 {
-                        print("=== EXTRACTED CAR MODEL: '\(carName)' (pattern: \(pattern)) ===")
                         return carName
                     }
                 }
@@ -401,11 +622,9 @@ enum CarAnalysisParser {
         // Fallback: try to find car name from CAR_WIKI tag
         let wikiName = extractCarWikiName(from: text)
         if !wikiName.isEmpty {
-            print("=== EXTRACTED CAR MODEL FROM WIKI NAME: '\(wikiName)' ===")
             return wikiName
         }
 
-        print("=== CAR MODEL: COULD NOT EXTRACT ===")
         return "רכב לא מזוהה"
     }
 
@@ -510,7 +729,6 @@ enum CarAnalysisParser {
         // הסרת tags אחרים (URL וכו')
         explanation = removeImageURL(from: explanation)
 
-        print("=== EXTRACTED CAR EXPLANATION: '\(explanation.prefix(150))...' ===")
         return explanation
     }
 
@@ -557,7 +775,6 @@ enum CarAnalysisParser {
                 }
 
                 if !name.isEmpty && !name.hasPrefix("http") {
-                    print("=== EXTRACTED CAR WIKI NAME: \(name) ===")
                     return name
                 }
             }
@@ -575,13 +792,11 @@ enum CarAnalysisParser {
                let range = Range(match.range(at: 1), in: text) {
                 let name = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
                 if name.count >= 5 && name.count < 50 {
-                    print("=== EXTRACTED CAR NAME (fallback): \(name) ===")
                     return name
                 }
             }
         }
 
-        print("=== NO CAR WIKI NAME FOUND ===")
         return ""
     }
 
@@ -678,7 +893,6 @@ enum CarAnalysisParser {
             content = String(content.dropFirst()).trimmingCharacters(in: .whitespaces)
         }
 
-        print("=== EXTRACTED \(sectionName): '\(content.prefix(100))...' ===")
         return content
     }
 
@@ -778,8 +992,6 @@ enum CarAnalysisParser {
                         .trimmingCharacters(in: .whitespacesAndNewlines)
                 }
             }
-
-            print("=== EXTRACTED BOTTLENECKS CONTENT: '\(content.prefix(150))...' ===")
 
             // Split by sentences if long enough
             if content.count > 20 {
@@ -1090,11 +1302,6 @@ enum CarAnalysisParser {
             }
 
             if !supplements.isEmpty { break }
-        }
-
-        print("=== EXTRACTED \(supplements.count) SUPPLEMENTS ===")
-        for sup in supplements {
-            print("  - \(sup.name) (\(sup.dosage)): \(sup.reason.prefix(50))... [\(sup.category.rawValue)]")
         }
 
         return supplements

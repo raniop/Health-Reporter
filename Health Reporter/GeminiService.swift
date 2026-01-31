@@ -45,8 +45,25 @@ class GeminiService {
     
     private var currentTask: URLSessionDataTask?
     private let taskQueue = DispatchQueue(label: "GeminiService.task")
+    private var isAnalysisInProgress = false
+    private let maxRetries = 2
 
     private init() {}
+
+    /// בודק אם יש ניתוח בתהליך כרגע
+    var isRunning: Bool {
+        return isAnalysisInProgress
+    }
+
+    /// שגיאות שכדאי לנסות שוב
+    private func isRetryableError(_ error: Error) -> Bool {
+        let ns = error as NSError
+        // Timeout, network connection lost, not connected to internet
+        return ns.code == NSURLErrorTimedOut ||
+               ns.code == NSURLErrorNetworkConnectionLost ||
+               ns.code == NSURLErrorNotConnectedToInternet ||
+               ns.code == -8 // HTTP error (e.g., 503 Service Unavailable)
+    }
 
     /// מבטל בקשה ל‑Gemini שנמצאת כרגע בביצוע (למשל ברענון / שינוי טווח).
     func cancelCurrentRequest() {
@@ -174,13 +191,6 @@ class GeminiService {
             // שמירת הציון והפירוט ב-Cache לשימוש ב-UI
             AnalysisCache.saveHealthScoreResult(healthResult)
 
-            print("=== LOCAL HEALTH SCORE ===")
-            print("HealthScore: \(healthResult.healthScoreInt)")
-            print("ReliabilityScore: \(healthResult.reliabilityScoreInt)")
-            print("Included domains: \(healthResult.includedDomains.map { $0.domainName })")
-            print("Excluded domains: \(healthResult.excludedDomains)")
-            print("=== END LOCAL HEALTH SCORE ===\n")
-
             // בניית ה-Payload החדש עם סינון ערכים חסרים ו-outliers
             let builder = GeminiHealthPayloadBuilder()
             let payload = builder.build(from: dailyEntries)
@@ -189,16 +199,6 @@ class GeminiService {
                 completion(nil, nil, nil, NSError(domain: "GeminiService", code: -1, userInfo: [NSLocalizedDescriptionKey: "שגיאה ביצירת payload לניתוח"]))
                 return
             }
-
-            // הדפסת מידע על הנתונים
-            print("=== GEMINI PAYLOAD INFO ===")
-            print("Total days: \(payload.totalDays)")
-            print("Data Reliability Score: \(payload.dataReliabilityScore)/100")
-            print("Weekly summaries: \(payload.weeklySummary.count)")
-            print("Daily entries (last 14): \(payload.dailyLast14.count)")
-            print("Coverage: \(payload.coverageValidDays)")
-            print("Quality flags: \(payload.dataQualityFlags)")
-            print("=== END PAYLOAD INFO ===\n")
 
             let graphsBlock: String
             if let bundle = chartBundle, let graphPayload = bundle.toAIONReviewPayload().toJSONString() {
@@ -220,16 +220,15 @@ class GeminiService {
             if let savedCar = AnalysisCache.loadSelectedCar() {
                 lastCarModel = savedCar.wikiName.isEmpty ? savedCar.name : savedCar.wikiName
                 lastCarReason = savedCar.explanation
-                print("=== LAST CAR LOADED ===")
-                print("Model: \(lastCarModel ?? "nil")")
-                print("Reason: \(lastCarReason?.prefix(100) ?? "nil")...")
-            } else {
-                print("=== NO PREVIOUS CAR FOUND ===")
             }
+
+            // שליפת התשובה הקודמת להקשר
+            let previousAnalysis = AnalysisCache.loadLatest() ?? ""
+            let previousAnalysisBlock = previousAnalysis.isEmpty ? "אין ניתוח קודם זמין" : previousAnalysis
 
             let prompt = """
             אתה רופא ספורט בכיר (Elite Sports Physician), מאמן ביצועים (Performance Coach) ו-Data Analyst.
-            ענה בעברית בלבד. אסור להמציא נתונים.
+            אסור להמציא נתונים.
 
             המטרה:
             לנתח מגמות ביצועים ל-90 הימים האחרונים, על בסיס נתונים שבועיים + 14 ימים אחרונים יומיים,
@@ -283,7 +282,7 @@ class GeminiService {
             - lastCarReason
 
             ==================================================
-            פלט נדרש - JSON ONLY
+            פלט נדרש - JSON ONLY עם תמיכה בשתי שפות
             ==================================================
 
             חשוב ביותר לגבי בחירת הרכב:
@@ -298,49 +297,77 @@ class GeminiService {
               * יומיומי: Camry, Accord
             - אל תבחר דוגמה רק כי היא מופיעה כאן! בחר רכב שבאמת מתאים לפרופיל
 
+            דרישה קריטית - שתי שפות:
+            כל שדה טקסטואלי חייב להיות בשתי גרסאות: עברית (_he) ואנגלית (_en).
+            זה חיוני לתמיכה בשני השפות באפליקציה.
+
             החזר את התשובה כ-JSON בלבד, בפורמט הבא בדיוק:
 
             ```json
             {
               "carIdentity": {
-                "model": "שם הרכב בעברית (לדוגמה: פורשה טייקאן)",
+                "model_he": "שם הרכב בעברית (לדוגמה: פורשה טייקאן)",
+                "model_en": "Car name in English (e.g., Porsche Taycan)",
                 "wikiName": "שם רכב אמיתי באנגלית לחיפוש בויקיפדיה (e.g., Porsche Taycan)",
-                "explanation": "הסבר למה הרכב הזה מתאים לפרופיל הביצועים של המשתמש (2-3 משפטים מפורטים)"
+                "explanation_he": "הסבר למה הרכב הזה מתאים לפרופיל הביצועים של המשתמש (2-3 משפטים מפורטים)",
+                "explanation_en": "Explanation why this car matches the user's performance profile (2-3 detailed sentences)"
               },
               "performanceReview": {
-                "engine": "תיאור מפורט של הכושר הקרדיו, הסיבולת ו-VO2max (2-3 משפטים)",
-                "transmission": "תיאור מפורט של ההתאוששות, השינה ו-HRV (2-3 משפטים)",
-                "suspension": "תיאור מצב הפציעות, הגמישות והמפרקים (2-3 משפטים)",
-                "fuelEfficiency": "תיאור האנרגיה, הסטרס והתזונה (2-3 משפטים)",
-                "electronics": "תיאור הריכוז, העקביות ואיזון מערכת העצבים (2-3 משפטים)"
+                "engine_he": "תיאור מפורט של הכושר הקרדיו, הסיבולת ו-VO2max (2-3 משפטים)",
+                "engine_en": "Detailed description of cardio fitness, endurance and VO2max (2-3 sentences)",
+                "transmission_he": "תיאור מפורט של ההתאוששות, השינה ו-HRV (2-3 משפטים)",
+                "transmission_en": "Detailed description of recovery, sleep and HRV (2-3 sentences)",
+                "suspension_he": "תיאור מצב הפציעות, הגמישות והמפרקים (2-3 משפטים)",
+                "suspension_en": "Description of injury status, flexibility and joints (2-3 sentences)",
+                "fuelEfficiency_he": "תיאור האנרגיה, הסטרס והתזונה (2-3 משפטים)",
+                "fuelEfficiency_en": "Description of energy, stress and nutrition (2-3 sentences)",
+                "electronics_he": "תיאור הריכוז, העקביות ואיזון מערכת העצבים (2-3 משפטים)",
+                "electronics_en": "Description of focus, consistency and nervous system balance (2-3 sentences)"
               },
-              "bottlenecks": [
+              "bottlenecks_he": [
                 "צוואר בקבוק ראשון - תיאור מפורט",
                 "צוואר בקבוק שני - תיאור מפורט"
               ],
+              "bottlenecks_en": [
+                "First bottleneck - detailed description",
+                "Second bottleneck - detailed description"
+              ],
               "optimizationPlan": {
-                "upgrades": ["שדרוג 1 - פירוט", "שדרוג 2 - פירוט"],
-                "skippedMaintenance": ["טיפול חסר 1 - פירוט"],
-                "stopImmediately": ["דבר להפסיק מיד - פירוט"]
+                "upgrades_he": ["שדרוג 1 - פירוט", "שדרוג 2 - פירוט"],
+                "upgrades_en": ["Upgrade 1 - details", "Upgrade 2 - details"],
+                "skippedMaintenance_he": ["טיפול חסר 1 - פירוט"],
+                "skippedMaintenance_en": ["Skipped maintenance 1 - details"],
+                "stopImmediately_he": ["דבר להפסיק מיד - פירוט"],
+                "stopImmediately_en": ["Stop immediately - details"]
               },
               "tuneUpPlan": {
-                "trainingAdjustments": "התאמות מפורטות לאימון לחודש-חודשיים הקרובים",
-                "recoveryChanges": "שינויים מפורטים בהתאוששות ושינה",
-                "habitToAdd": "הרגל אחד חדש להוסיף עם הסבר למה",
-                "habitToRemove": "הרגל אחד להסיר עם הסבר למה"
+                "trainingAdjustments_he": "התאמות מפורטות לאימון לחודש-חודשיים הקרובים",
+                "trainingAdjustments_en": "Detailed training adjustments for the next 1-2 months",
+                "recoveryChanges_he": "שינויים מפורטים בהתאוששות ושינה",
+                "recoveryChanges_en": "Detailed recovery and sleep changes",
+                "habitToAdd_he": "הרגל אחד חדש להוסיף עם הסבר למה",
+                "habitToAdd_en": "One new habit to add with explanation",
+                "habitToRemove_he": "הרגל אחד להסיר עם הסבר למה",
+                "habitToRemove_en": "One habit to remove with explanation"
               },
               "directives": {
-                "stop": "משפט אחד ברור - מה להפסיק לעשות מיד",
-                "start": "משפט אחד ברור - מה להתחיל לעשות",
-                "watch": "משפט אחד ברור - מה לעקוב אחריו"
+                "stop_he": "משפט אחד ברור - מה להפסיק לעשות מיד",
+                "stop_en": "One clear sentence - what to stop doing immediately",
+                "start_he": "משפט אחד ברור - מה להתחיל לעשות",
+                "start_en": "One clear sentence - what to start doing",
+                "watch_he": "משפט אחד ברור - מה לעקוב אחריו",
+                "watch_en": "One clear sentence - what to monitor"
               },
-              "forecast": "תחזית מפורטת ל-3 חודשים קדימה - אם המגמה הנוכחית תימשך, איפה אהיה",
+              "forecast_he": "תחזית מפורטת ל-3 חודשים קדימה - אם המגמה הנוכחית תימשך, איפה אהיה",
+              "forecast_en": "Detailed 3-month forecast - where will I be if current trends continue",
               "supplements": [
                 {
-                  "name": "שם התוסף בעברית",
-                  "englishName": "Supplement Name in English",
-                  "dosage": "מינון ותזמון מדויקים",
-                  "reason": "סיבה ספציפית מהנתונים",
+                  "name_he": "שם התוסף בעברית",
+                  "name_en": "Supplement Name in English",
+                  "dosage_he": "מינון ותזמון מדויקים",
+                  "dosage_en": "Exact dosage and timing",
+                  "reason_he": "סיבה ספציפית מהנתונים",
+                  "reason_en": "Specific reason from the data",
                   "category": "sleep"
                 }
               ]
@@ -350,7 +377,7 @@ class GeminiService {
             חשוב מאוד:
             - החזר JSON בלבד, ללא טקסט נוסף לפני או אחרי
             - כל השדות חובה - אל תשמיט שום שדה
-            - התוכן בעברית (חוץ מ-wikiName ו-englishName שבאנגלית)
+            - כל שדה טקסטואלי חייב להופיע בשתי גרסאות: _he (עברית) ו-_en (אנגלית)
             - קטגוריות תקפות ל-supplements: sleep, performance, recovery, general
             - wikiName חייב להיות שם של מכונית אמיתית (לא מושג כמו Zone 2)
             - אם lastCarModel קיים ואין שינוי מהותי, השתמש בו ב-wikiName (רק אם זה שם מכונית אמיתית)
@@ -365,12 +392,13 @@ class GeminiService {
             \(payloadJSON)
             \(graphsBlock)
             \(dataSourceContext)
-            """
 
-            // הדפסת ה-prompt המלא שנשלח ל-Gemini
-            print("=== FULL PROMPT SENT TO GEMINI ===")
-            print(prompt)
-            print("=== END FULL PROMPT ===\n")
+            ==================================================
+            הניתוח הקודם שלך (לרפרנס והמשכיות)
+            ==================================================
+
+            \(previousAnalysisBlock)
+            """
 
             // שמירה לדיבאג (לפני השליחה)
             GeminiDebugStore.lastPrompt = prompt
@@ -511,7 +539,19 @@ class GeminiService {
     }
     
     private func sendRequest(prompt: String, systemInstruction: String? = nil, temperature: Double = 0.2, completion: @escaping (String?, Error?) -> Void) {
+        // מניעת קריאות כפולות
+        guard !isAnalysisInProgress else {
+            completion(nil, NSError(domain: "GeminiService", code: -10, userInfo: [NSLocalizedDescriptionKey: "ניתוח כבר בתהליך"]))
+            return
+        }
+        isAnalysisInProgress = true
+
+        sendRequestInternal(prompt: prompt, systemInstruction: systemInstruction, temperature: temperature, retryCount: 0, completion: completion)
+    }
+
+    private func sendRequestInternal(prompt: String, systemInstruction: String?, temperature: Double, retryCount: Int, completion: @escaping (String?, Error?) -> Void) {
         guard let url = URL(string: "\(baseURL)?key=\(apiKey)") else {
+            isAnalysisInProgress = false
             completion(nil, NSError(domain: "GeminiService", code: -3, userInfo: [NSLocalizedDescriptionKey: "URL לא תקין"]))
             return
         }
@@ -550,16 +590,44 @@ class GeminiService {
         }
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             self?.taskQueue.async { self?.currentTask = nil }
+
+            // טיפול בשגיאות עם retry
             if let error = error {
                 let ns = error as NSError
-                if ns.code == NSURLErrorCancelled { return }
+                if ns.code == NSURLErrorCancelled {
+                    self?.isAnalysisInProgress = false
+                    return
+                }
+
+                // בדוק אם שווה לנסות שוב
+                if let self = self, self.isRetryableError(error), retryCount < self.maxRetries {
+                    let delay = Double(retryCount + 1) * 2.0 // Exponential backoff: 2s, 4s
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                        self?.sendRequestInternal(prompt: prompt, systemInstruction: systemInstruction, temperature: temperature, retryCount: retryCount + 1, completion: completion)
+                    }
+                    return
+                }
+
+                self?.isAnalysisInProgress = false
                 completion(nil, error)
                 return
             }
-            
+
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
                 let userMessage = Self.parseAPIError(statusCode: httpResponse.statusCode, data: data)
-                completion(nil, NSError(domain: "GeminiService", code: -8, userInfo: [NSLocalizedDescriptionKey: userMessage]))
+                let httpError = NSError(domain: "GeminiService", code: -8, userInfo: [NSLocalizedDescriptionKey: userMessage])
+
+                // Retry על שגיאות HTTP מסוימות (503, 429, 500)
+                if let self = self, [500, 502, 503, 429].contains(httpResponse.statusCode), retryCount < self.maxRetries {
+                    let delay = Double(retryCount + 1) * 2.0
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                        self?.sendRequestInternal(prompt: prompt, systemInstruction: systemInstruction, temperature: temperature, retryCount: retryCount + 1, completion: completion)
+                    }
+                    return
+                }
+
+                self?.isAnalysisInProgress = false
+                completion(nil, httpError)
                 return
             }
             
@@ -568,12 +636,15 @@ class GeminiService {
                 return
             }
             
+            // הצלחה - סיום הניתוח
+            self?.isAnalysisInProgress = false
+
             do {
                 guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                     completion(nil, NSError(domain: "GeminiService", code: -5, userInfo: [NSLocalizedDescriptionKey: "פורמט תשובה לא תקין - לא JSON"]))
                     return
                 }
-                
+
                 // בדיקה אם יש שגיאה בתשובה (תשובה 200 אבל error ב-JSON)
                 if let error = json["error"] as? [String: Any],
                    let message = error["message"] as? String {
@@ -581,43 +652,35 @@ class GeminiService {
                     completion(nil, NSError(domain: "GeminiService", code: -6, userInfo: [NSLocalizedDescriptionKey: userMessage]))
                     return
                 }
-                
+
                 // ניסיון לפרסר את התשובה
                 if let candidates = json["candidates"] as? [[String: Any]],
                    let firstCandidate = candidates.first {
-                    
+
                     if let content = firstCandidate["content"] as? [String: Any],
                        let parts = content["parts"] as? [[String: Any]],
                        let firstPart = parts.first,
                        let text = firstPart["text"] as? String {
                         let finishReason = firstCandidate["finishReason"] as? String
-                        
-                        print("=== GEMINI RAW RESPONSE RECEIVED ===")
-                        print("Finish reason: \(finishReason ?? "nil")")
-                        print("Response length: \(text.count)")
-                        print("First 1000 chars: \(String(text.prefix(1000)))")
-                        print("=== END GEMINI RAW RESPONSE ===\n")
-                        
+
                         if finishReason == "MAX_TOKENS" && !text.isEmpty {
                             let truncated = text + "\n\n_(התשובה נקטעה בסוף – הוגדל maxOutputTokens להרצה הבאה.)_"
-                            print("=== WARNING: Response truncated (MAX_TOKENS) ===")
                             completion(truncated, nil)
                         } else if finishReason != "STOP" && finishReason != nil {
-                            print("=== GEMINI ERROR: Finish reason = \(finishReason!) ===")
                             completion(nil, NSError(domain: "GeminiService", code: -7, userInfo: [NSLocalizedDescriptionKey: "סיבה: \(finishReason!)"]))
                         } else {
                             completion(text, nil)
                         }
                         return
                     }
-                    
+
                     let finishReason = firstCandidate["finishReason"] as? String
                     if finishReason == "MAX_TOKENS" {
                         completion(nil, NSError(domain: "GeminiService", code: -7, userInfo: [NSLocalizedDescriptionKey: "התשובה נקטעה - יותר מדי מילים"]))
                         return
                     }
                 }
-                
+
                 completion(nil, NSError(domain: "GeminiService", code: -5, userInfo: [NSLocalizedDescriptionKey: "פורמט תשובה לא תקין. בדוק את הקונסול לפרטים נוספים."]))
             } catch {
                 completion(nil, error)
@@ -630,8 +693,6 @@ class GeminiService {
     }
     
     private func parseResponse(_ response: String) -> (insights: String, recommendations: [String], riskFactors: [String]) {
-        print("=== PARSING GEMINI RESPONSE ===")
-        print("Input length: \(response.count)")
         var insights = response
         var recommendations: [String] = []
         var riskFactors: [String] = []
@@ -794,16 +855,7 @@ class GeminiService {
             // נשמור את כל התשובה כתובנות אבל נדגיש את ההמלצות
             insights = response
         }
-        
-        print("=== PARSED RESPONSE RESULTS ===")
-        print("Insights length: \(insights.count)")
-        print("Recommendations count: \(recommendations.count)")
-        print("Risk factors count: \(riskFactors.count)")
-        if !recommendations.isEmpty {
-            print("First recommendation (first 200 chars): \(String(recommendations[0].prefix(200)))")
-        }
-        print("=== END PARSED RESPONSE ===\n")
-        
+
         return (insights, recommendations, riskFactors)
     }
 }

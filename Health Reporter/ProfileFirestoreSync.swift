@@ -16,15 +16,19 @@ enum ProfileFirestoreSync {
     private static let usersCollection = "users"
     private static let fieldPhotoURL = "photoURL"
     private static let fieldDisplayName = "displayName"
+    private static let fieldDisplayNameLower = "displayNameLower"
 
-    /// שומר שם תצוגה ב-Firestore.
+    /// שומר שם תצוגה ב-Firestore (כולל גרסה קטנה לחיפוש).
     static func saveDisplayName(_ name: String, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
             completion?(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
             return
         }
         let db = Firestore.firestore()
-        db.collection(usersCollection).document(uid).setData([fieldDisplayName: name], merge: true) { err in
+        db.collection(usersCollection).document(uid).setData([
+            fieldDisplayName: name,
+            fieldDisplayNameLower: name.lowercased()
+        ], merge: true) { err in
             DispatchQueue.main.async { completion?(err) }
         }
     }

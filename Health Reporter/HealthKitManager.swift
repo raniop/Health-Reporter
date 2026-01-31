@@ -815,19 +815,6 @@ class HealthKitManager {
             let totalSecondsDouble = merged.map { iv in iv.end.timeIntervalSince(iv.start) }.reduce(0, +)
             let totalSeconds = Int64(ceil(totalSecondsDouble))
             let sleepHours = Double(totalSeconds) / 3600.0
-            #if DEBUG
-            let fmt = DateFormatter()
-            fmt.dateFormat = "HH:mm:ss"
-            let rangeStr = merged.isEmpty ? "—" : "\(fmt.string(from: merged[0].start))–\(fmt.string(from: merged[merged.count - 1].end))"
-            let rawSum = intervals.map { $0.end.timeIntervalSince($0.start) }.reduce(0, +)
-            print("[Sleep DEBUG] samples=\(samples.count) merged=\(merged.count) rawSum=\(rawSum) mergedSum=\(totalSecondsDouble) totalSeconds=\(totalSeconds) range=\(rangeStr) → \(Int(totalSeconds)/3600)h \(Int(totalSeconds)%3600/60)m")
-            if merged.count <= 12 {
-                for (i, iv) in merged.enumerated() {
-                    let d = iv.end.timeIntervalSince(iv.start)
-                    print("[Sleep DEBUG]   merged[\(i)] \(fmt.string(from: iv.start))–\(fmt.string(from: iv.end)) = \(Int(d))s")
-                }
-            }
-            #endif
             for sample in samples {
                 sleepDataArray.append(SleepData(startDate: sample.startDate, endDate: sample.endDate, value: HKCategoryValueSleepAnalysis(rawValue: sample.value) ?? .asleepUnspecified))
             }

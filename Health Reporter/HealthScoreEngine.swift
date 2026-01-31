@@ -221,30 +221,22 @@ final class HealthScoreEngine {
     // MARK: - Public API
 
     func calculate(from entries: [RawDailyHealthEntry]) -> HealthScoringResult {
-        print("=== HEALTH SCORE ENGINE START ===")
-        print("Input: \(entries.count) days")
-
         // Handle empty data
         guard !entries.isEmpty else {
-            print("No data - returning default scores")
             return createEmptyResult()
         }
 
         // Step 0: Clean data
         let cleanedData = cleanData(from: entries)
-        print("Cleaned: \(cleanedData.totalDays) days, outliers: \(cleanedData.outlierCounts)")
 
         // Step 1: Calculate coverage
         let coverage = calculateCoverage(from: cleanedData)
-        print("Coverage90: \(coverage.coverage90)")
-        print("Coverage14: \(coverage.coverage14)")
 
         // Steps 2-4: Calculate domain scores
         let domainResults = calculateDomainScores(cleanedData: cleanedData, coverage: coverage)
 
         // Step 5: Calculate final health score
         let (healthScore, includedDomains, excludedDomains) = calculateFinalHealthScore(domainResults: domainResults)
-        print("HealthScore: \(healthScore)")
 
         // Step 6: Calculate reliability score
         let reliabilityScore = calculateReliabilityScore(
@@ -252,8 +244,6 @@ final class HealthScoreEngine {
             outlierCounts: cleanedData.outlierCounts,
             totalDays: cleanedData.totalDays
         )
-        print("ReliabilityScore: \(reliabilityScore)")
-        print("=== HEALTH SCORE ENGINE END ===")
 
         // Step 7: Build result
         return HealthScoringResult(

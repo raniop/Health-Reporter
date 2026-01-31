@@ -507,3 +507,43 @@
 "directives.stop" = "STOP";
 "directives.start" = "START";
 "directives.watch" = "WATCH";
+
+/* Social & Leaderboard */
+"tab.social" = "Social";
+"social.title" = "Social";
+"social.subtitle" = "Compete with friends";
+"social.friends" = "Friends";
+"social.requests" = "Requests";
+"social.search" = "Search";
+"social.leaderboard" = "Leaderboard";
+"social.global" = "Global";
+"social.friendsOnly" = "Friends";
+"social.sendRequest" = "Send Request";
+"social.accept" = "Accept";
+"social.decline" = "Decline";
+"social.remove" = "Remove";
+"social.noFriends" = "No friends yet\nSearch for users and add them as friends";
+"social.noRequests" = "No pending friend requests";
+"social.noResults" = "No users found";
+"social.searchHint" = "Type a name to search for users";
+"social.searchPlaceholder" = "Search by name...";
+"social.recentSearches" = "Recent Searches";
+"social.privacyToggle" = "Appear on global leaderboard";
+"social.privacyTitle" = "Privacy Settings";
+"social.privacyOffMessage" = "If you turn this off, you won't appear on the global leaderboard. Friends can still see your score.";
+"social.yourRank" = "Your Rank";
+"social.removeFriend" = "Remove Friend";
+"social.confirmRemove" = "Are you sure you want to remove %@ from your friends?";
+"social.emptyGlobalLeaderboard" = "No users on the leaderboard yet";
+"social.emptyFriendsLeaderboard" = "Add friends to see their scores";
+"social.alreadyFriends" = "Already friends";
+"social.requestPending" = "Request pending";
+"social.sentYouRequest" = "Sent you a request";
+"social.wantsToBeYourFriend" = "Wants to be your friend";
+"social.unknownUser" = "Unknown user";
+
+/* Unified Trends & Activity Tab */
+"tab.unified" = "Performance";
+"unified.title" = "Performance";
+"unified.activity" = "Activity";
+"unified.trends" = "Trends";

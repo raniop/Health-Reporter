@@ -63,7 +63,7 @@ final class ActivityViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "activity.title".localized
+        // title removed - managed by parent UnifiedTrendsActivityViewController
         view.backgroundColor = AIONDesign.background
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupUI()
@@ -405,7 +405,8 @@ final class ActivityViewController: UIViewController {
                 series = ts
                 g.leave()
             }
-            g.notify(queue: .main) {
+            g.notify(queue: .main) { [weak self] in
+                guard let self = self else { return }
                 self.showLoading(false)
                 if useRefreshControl { self.refreshControl.endRefreshing() }
                 self.summary = summary

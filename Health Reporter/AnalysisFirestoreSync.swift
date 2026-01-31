@@ -91,6 +91,5 @@ enum AnalysisFirestoreSync {
             fieldRecommendations: FieldValue.delete(),
             fieldLastAnalysisDate: FieldValue.delete(),
         ]) { _ in }
-        print("=== FIRESTORE ANALYSIS DATA CLEARED ===")
     }
 }

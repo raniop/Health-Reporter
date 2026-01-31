@@ -76,11 +76,6 @@ enum AnalysisCache {
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return }
         try? data.write(to: url)
-
-        print("=== ANALYSIS CACHE SAVED ===")
-        print("Insights length: \(insights.count)")
-        print("Health data hash: \(healthDataHash)")
-        print("Date: \(now)")
     }
 
     /// שומר סטטיסטיקות שבועיות (נגזרות מ-chartBundle) + ציון הבריאות
@@ -109,11 +104,6 @@ enum AnalysisCache {
         // שמירת הציון עצמו (לא חישוב מחדש ב-Insights)
         if let s = score {
             UserDefaults.standard.set(s, forKey: keyHealthScore)
-            print("=== WEEKLY STATS SAVED (with score) ===")
-            print("Score: \(s), Avg Sleep: \(avgSleep)h, Readiness: \(avgReadiness), Strain: \(avgStrain), HRV: \(avgHRV)ms")
-        } else {
-            print("=== WEEKLY STATS SAVED ===")
-            print("Avg Sleep: \(avgSleep)h, Readiness: \(avgReadiness), Strain: \(avgStrain), HRV: \(avgHRV)ms")
         }
     }
 
@@ -143,7 +133,6 @@ enum AnalysisCache {
     /// שומר את ציון הבריאות (מחושב ע"י HealthScoreEngine)
     static func saveHealthScore(_ score: Int) {
         UserDefaults.standard.set(score, forKey: keyHealthScore)
-        print("=== HEALTH SCORE SAVED: \(score) ===")
     }
 
     // MARK: - Health Score Result (עם Breakdown)
@@ -158,7 +147,6 @@ enum AnalysisCache {
         if let data = try? JSONEncoder().encode(result) {
             UserDefaults.standard.set(data, forKey: keyHealthScoreResult)
         }
-        print("=== HEALTH SCORE RESULT SAVED: \(result.healthScoreInt), reliability: \(result.reliabilityScoreInt) ===")
     }
 
     /// טוען את תוצאת HealthScoreEngine המלאה
@@ -234,7 +222,6 @@ enum AnalysisCache {
         if let hr = restingHR {
             UserDefaults.standard.set(hr, forKey: keyDailyRestingHR)
         }
-        print("=== DAILY ACTIVITY SAVED: steps=\(steps), cal=\(calories), ex=\(exerciseMinutes), stand=\(standHours) ===")
     }
 
     /// טוען נתוני פעילות יומית
@@ -254,8 +241,6 @@ enum AnalysisCache {
         UserDefaults.standard.set(name, forKey: keyLastCarName)
         UserDefaults.standard.set(wikiName, forKey: keyLastCarWikiName)
         UserDefaults.standard.set(explanation, forKey: keyLastCarExplanation)
-        print("=== SELECTED CAR SAVED ===")
-        print("Name: \(name), Wiki: \(wikiName)")
     }
 
     /// טוען את הרכב השמור
@@ -267,20 +252,68 @@ enum AnalysisCache {
         return (name, wikiName, explanation)
     }
 
+    // MARK: - Car Name Normalization
+
+    /// מנרמל שם רכב להשוואה - מסיר רווחים, הופך ל-lowercase, מסיר סוגריים
+    /// זה מונע false positives כשהרכב זהה אבל השם שונה במעט (רווחים, case, סוגריים)
+    private static func normalizeCarName(_ name: String) -> String {
+        var normalized = name
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        // הסרת תוכן בסוגריים (לדוגמה: "Porsche Taycan (2024)" → "porsche taycan")
+        if let parenIndex = normalized.firstIndex(of: "(") {
+            normalized = String(normalized[..<parenIndex])
+                .trimmingCharacters(in: .whitespaces)
+        }
+
+        // הסרת תווים מיוחדים
+        normalized = normalized
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+
+        // הסרת רווחים כפולים
+        while normalized.contains("  ") {
+            normalized = normalized.replacingOccurrences(of: "  ", with: " ")
+        }
+
+        return normalized
+    }
+
     // MARK: - Pending Car Reveal (רכב חדש ממתין לחשיפה)
 
     /// בודק אם הרכב השתנה ושומר כ-pending reveal אם כן
+    /// משתמש בהשוואה מנורמלת + wikiName כדי למנוע false positives
     static func checkAndSetCarChange(newCarName: String, newWikiName: String, newExplanation: String) {
-        // טוען את הרכב הקודם
-        if let previousCar = loadSelectedCar() {
-            // אם הרכב שונה - שומר כ-pending reveal
-            if previousCar.name != newCarName {
+        // אם כבר יש pending reveal לאותו רכב - לא לעשות כלום
+        if hasPendingCarReveal() {
+            if let pending = getPendingCar() {
+                // השוואה מנורמלת
+                if normalizeCarName(pending.name) == normalizeCarName(newCarName) {
+                    return
+                }
+            }
+        }
+
+        // טוען את הרכב הנוכחי (לא את ה-pending)
+        if let currentCar = loadSelectedCar() {
+            // השוואה מנורמלת של השמות
+            let normalizedCurrent = normalizeCarName(currentCar.name)
+            let normalizedNew = normalizeCarName(newCarName)
+
+            // בדיקה נוספת: אם ה-wikiName זהה - זה אותו רכב!
+            // wikiName תמיד באנגלית ולא מושפע משינוי שפה
+            let wikiMatch = !currentCar.wikiName.isEmpty &&
+                            !newWikiName.isEmpty &&
+                            normalizeCarName(currentCar.wikiName) == normalizeCarName(newWikiName)
+
+            // רק אם השמות שונים וגם ה-wikiName שונה - אז זה באמת רכב חדש
+            if normalizedCurrent != normalizedNew && !wikiMatch {
                 UserDefaults.standard.set(true, forKey: keyPendingCarReveal)
                 UserDefaults.standard.set(newCarName, forKey: keyNewCarName)
                 UserDefaults.standard.set(newWikiName, forKey: keyNewCarWikiName)
                 UserDefaults.standard.set(newExplanation, forKey: keyNewCarExplanation)
-                UserDefaults.standard.set(previousCar.name, forKey: keyPreviousCarName)
-                print("=== CAR CHANGED: \(previousCar.name) → \(newCarName) ===")
+                UserDefaults.standard.set(currentCar.name, forKey: keyPreviousCarName)
                 return
             }
         }
@@ -299,7 +332,16 @@ enum AnalysisCache {
               let name = UserDefaults.standard.string(forKey: keyNewCarName) else { return nil }
         let wikiName = UserDefaults.standard.string(forKey: keyNewCarWikiName) ?? ""
         let explanation = UserDefaults.standard.string(forKey: keyNewCarExplanation) ?? ""
-        let previousName = UserDefaults.standard.string(forKey: keyPreviousCarName) ?? ""
+
+        // עדיפות 1: הרכב מהשאילתא הקודמת בהיסטוריה (הכי מדויק)
+        // עדיפות 2: הרכב השמור ב-keyPreviousCarName (fallback)
+        let previousName: String
+        if let historyPrevious = GeminiDebugStore.getPreviousCarFromHistory(), !historyPrevious.isEmpty {
+            previousName = historyPrevious
+        } else {
+            previousName = UserDefaults.standard.string(forKey: keyPreviousCarName) ?? ""
+        }
+
         return (name, wikiName, explanation, previousName)
     }
 
@@ -315,7 +357,6 @@ enum AnalysisCache {
         UserDefaults.standard.removeObject(forKey: keyNewCarWikiName)
         UserDefaults.standard.removeObject(forKey: keyNewCarExplanation)
         UserDefaults.standard.removeObject(forKey: keyPreviousCarName)
-        print("=== PENDING CAR REVEAL CLEARED ===")
     }
 
     /// בודק אם יש שינוי משמעותי בנתונים שמצדיק קריאה חדשה ל-Gemini
@@ -324,19 +365,16 @@ enum AnalysisCache {
     /// 2. שינוי ב-HRV של לפחות 10% (לטובה או לרעה)
     static func hasSignificantChange(currentBundle: AIONChartDataBundle) -> Bool {
         guard let stats = loadWeeklyStats() else {
-            print("=== NO PREVIOUS STATS - SIGNIFICANT CHANGE: YES ===")
             return true // אין נתונים קודמים - צריך ניתוח ראשון
         }
 
         // בדיקת זמן - האם עברו לפחות 3 ימים?
         guard let lastDate = lastUpdateDate() else {
-            print("=== NO LAST DATE - SIGNIFICANT CHANGE: YES ===")
             return true
         }
 
         let daysSince = Date().timeIntervalSince(lastDate) / (24 * 3600)
         guard daysSince >= 3 else {
-            print("=== ONLY \(Int(daysSince)) DAYS SINCE LAST ANALYSIS - NO CHANGE ===")
             return false // לא עברו 3 ימים - לא משנים
         }
 
@@ -346,15 +384,7 @@ enum AnalysisCache {
 
         let hrvChange = stats.hrv > 0 ? abs(currentHRV - stats.hrv) / stats.hrv : 0
 
-        if hrvChange >= 0.10 {
-            print("=== SIGNIFICANT CHANGE: HRV changed by \(Int(hrvChange * 100))% AND \(Int(daysSince)) days passed ===")
-            return true
-        }
-
-        print("=== NO SIGNIFICANT CHANGE ===")
-        print("Days since last: \(Int(daysSince)), HRV change: \(Int(hrvChange * 100))%")
-        print("Both conditions required: 3+ days AND 10%+ HRV change")
-        return false
+        return hrvChange >= 0.10
     }
 
     // MARK: - Load
@@ -386,7 +416,6 @@ enum AnalysisCache {
     /// זה מונע שינוי רכב כשהנתונים לא השתנו.
     static func shouldRunAnalysis(forceAnalysis: Bool, currentHealthDataHash: String) -> Bool {
         if forceAnalysis {
-            print("=== SHOULD RUN ANALYSIS: force=true ===")
             return true
         }
 
@@ -394,13 +423,9 @@ enum AnalysisCache {
         if let cached = loadFromUserDefaults() {
             // אם ה-hash זהה - הנתונים לא השתנו - לא צריך לקרוא ל-Gemini!
             if cached.healthDataHash == currentHealthDataHash {
-                print("=== USING CACHE: health data unchanged (hash match) ===")
                 return false
             }
             // רק אם ה-hash שונה - צריך ניתוח חדש
-            print("=== SHOULD RUN ANALYSIS: health data changed ===")
-            print("Cached hash: \(cached.healthDataHash)")
-            print("Current hash: \(currentHealthDataHash)")
             return true
         }
 
@@ -408,14 +433,11 @@ enum AnalysisCache {
         if let cached = loadFromFile() {
             // אם ה-hash זהה - לא צריך לקרוא ל-Gemini!
             if cached.healthDataHash == currentHealthDataHash {
-                print("=== USING FILE CACHE: health data unchanged (hash match) ===")
                 return false
             }
-            print("=== SHOULD RUN ANALYSIS: health data changed (file) ===")
             return true
         }
 
-        print("=== SHOULD RUN ANALYSIS: no cache found ===")
         return true
     }
 
@@ -458,8 +480,6 @@ enum AnalysisCache {
         if let url = fileURL {
             try? FileManager.default.removeItem(at: url)
         }
-
-        print("=== ANALYSIS CACHE CLEARED ===")
     }
 
     // MARK: - Private Helpers

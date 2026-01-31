@@ -2,11 +2,12 @@
 //  MainTabBarController.swift
 //  Health Reporter
 //
-//  טאב בר ראשי – Dashboard, Trends, Insights, Profile. עיצוב Pro Lab.
+//  טאב בר ראשי – Dashboard, פעילות+מגמות, Insights, Social, Profile. עיצוב Pro Lab.
 //
 
 import UIKit
 import HealthKit
+import FirebaseAuth
 
 final class MainTabBarController: UITabBarController {
 
@@ -14,29 +15,31 @@ final class MainTabBarController: UITabBarController {
         super.viewDidLoad()
         requestHealthKitAuthorizationUpfront()
         configureLiquidGlassTabBar()
+        syncCurrentUserProfile()
         tabBar.tintColor = AIONDesign.accentPrimary
         tabBar.unselectedItemTintColor = AIONDesign.textTertiary
 
         let dash = HealthDashboardViewController()
         dash.tabBarItem = UITabBarItem(title: "tab.dashboard".localized, image: UIImage(systemName: "square.grid.2x2"), tag: 0)
 
-        let trends = TrendsViewController()
-        trends.tabBarItem = UITabBarItem(title: "tab.trends".localized, image: UIImage(systemName: "chart.line.uptrend.xyaxis"), tag: 1)
-
-        let activity = ActivityViewController()
-        activity.tabBarItem = UITabBarItem(title: "tab.activity".localized, image: UIImage(systemName: "figure.run"), tag: 2)
+        // מסך משולב פעילות + מגמות
+        let unified = UnifiedTrendsActivityViewController()
+        unified.tabBarItem = UITabBarItem(title: "tab.unified".localized, image: UIImage(systemName: "figure.run"), tag: 1)
 
         let insights = InsightsTabViewController()
-        insights.tabBarItem = UITabBarItem(title: "tab.insights".localized, image: UIImage(systemName: "sparkles"), tag: 3)
+        insights.tabBarItem = UITabBarItem(title: "tab.insights".localized, image: UIImage(systemName: "sparkles"), tag: 2)
+
+        let social = SocialHubViewController()
+        social.tabBarItem = UITabBarItem(title: "tab.social".localized, image: UIImage(systemName: "person.2"), tag: 3)
 
         let profile = ProfileViewController()
         profile.tabBarItem = UITabBarItem(title: "tab.profile".localized, image: UIImage(systemName: "person.circle"), tag: 4)
 
         viewControllers = [
             UINavigationController(rootViewController: dash),
-            UINavigationController(rootViewController: trends),
-            UINavigationController(rootViewController: activity),
+            UINavigationController(rootViewController: unified),
             UINavigationController(rootViewController: insights),
+            UINavigationController(rootViewController: social),
             UINavigationController(rootViewController: profile),
         ]
 
@@ -85,5 +88,21 @@ final class MainTabBarController: UITabBarController {
     private func requestHealthKitAuthorizationUpfront() {
         guard HKHealthStore.isHealthDataAvailable() else { return }
         HealthKitManager.shared.requestAuthorization { _, _ in }
+    }
+
+    /// מסנכרן את פרטי המשתמש ל-Firestore (כדי שניתן יהיה לחפש אותו ולהציג תמונה).
+    /// רץ פעם אחת בכל פתיחת אפליקציה למשתמשים מחוברים.
+    private func syncCurrentUserProfile() {
+        guard let user = Auth.auth().currentUser else { return }
+
+        // סנכרון שם
+        if let displayName = user.displayName, !displayName.isEmpty {
+            ProfileFirestoreSync.saveDisplayName(displayName)
+        }
+
+        // סנכרון תמונת פרופיל
+        if let photoURL = user.photoURL?.absoluteString {
+            ProfileFirestoreSync.savePhotoURL(photoURL)
+        }
     }
 }

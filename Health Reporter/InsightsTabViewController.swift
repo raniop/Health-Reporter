@@ -127,6 +127,8 @@ final class InsightsTabViewController: UIViewController {
     private var confettiEmitter: ConfettiEmitter?
     private var particleBackground: ParticleBackground?
     private var isShowingDiscoveryFlow = false
+    private var isAnimatingContent = false  // מניעת אנימציות מתנגשות
+    private var hasLoadedInitialContent = false  // מניעת טעינה כפולה
     private var currentSupplements: [SupplementRecommendation] = []
 
     // Discovery UI elements (for animation access)
@@ -149,7 +151,7 @@ final class InsightsTabViewController: UIViewController {
         setupUI()
         setupRefreshButton()
         setupAnalysisObserver()
-        refreshContent()
+        // הערה: refreshContent נקרא ב-viewWillAppear, לא כאן, כדי למנוע קריאה כפולה
 
         // Listen for background color changes
         NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
@@ -165,7 +167,11 @@ final class InsightsTabViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        refreshContent()
+        // טעינה ראשונית בלבד - מניעת קריאות כפולות
+        if !hasLoadedInitialContent {
+            hasLoadedInitialContent = true
+            refreshContent()
+        }
     }
 
     deinit {
@@ -302,6 +308,9 @@ final class InsightsTabViewController: UIViewController {
     private func refreshContent() {
         hideLoading()
 
+        // מניעת אנימציות מתנגשות - אם אנימציה כבר רצה, דחה את הרענון
+        guard !isAnimatingContent else { return }
+
         // אם אנחנו באמצע flow של גילוי - לא למחוק
         if isShowingDiscoveryFlow {
             // בדיקה אם הניתוח הסתיים
@@ -323,6 +332,29 @@ final class InsightsTabViewController: UIViewController {
             return
         }
 
+        // ✅ בדיקה מוקדמת: אם יש נתונים חדשים - בדוק אם הרכב השתנה לפני הצגת UI
+        if let insights = AnalysisCache.loadLatest(), !insights.isEmpty {
+            let parsed = CarAnalysisParser.parse(insights)
+            let cleanedGeminiCar = cleanCarName(parsed.carModel)
+            let invalidWords = [
+                "strain", "training", "score", "wiki", "generation", "first", "second", "third",
+                "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth",
+                "model year", "version", "series"
+            ]
+            let lowerCar = cleanedGeminiCar.lowercased()
+            let containsInvalidWord = invalidWords.contains { lowerCar.contains($0) }
+            let isValidGeminiCar = !cleanedGeminiCar.isEmpty && !containsInvalidWord && cleanedGeminiCar.count > 3 && cleanedGeminiCar.count < 40
+
+            if isValidGeminiCar {
+                // בדיקה אם הרכב השתנה - זה יקבע את hasPendingCarReveal
+                AnalysisCache.checkAndSetCarChange(
+                    newCarName: cleanedGeminiCar,
+                    newWikiName: parsed.carWikiName,
+                    newExplanation: parsed.carExplanation
+                )
+            }
+        }
+
         // ✅ בדיקה: אם יש רכב חדש ממתין לחשיפה - הצג Car Upgrade Reveal
         if AnalysisCache.hasPendingCarReveal() {
             addCarUpgradeRevealExperience()
@@ -334,35 +366,7 @@ final class InsightsTabViewController: UIViewController {
             return
         }
 
-        // === DEBUG LOGS ===
-        print("\n" + String(repeating: "=", count: 60))
-        print("=== INSIGHTS TAB: GEMINI RESPONSE FROM CACHE ===")
-        print(String(repeating: "=", count: 60))
-        print("Raw insights length: \(insights.count) characters")
-        print("\n--- RAW GEMINI RESPONSE ---")
-        print(insights)
-        print("--- END RAW RESPONSE ---\n")
-
         let parsed = CarAnalysisParser.parse(insights)
-
-        // === DEBUG: Parsed values ===
-        print("=== PARSED VALUES ===")
-        print("Car Model: '\(parsed.carModel)'")
-        print("Car Wiki Name: '\(parsed.carWikiName)'")
-        print("Car Explanation: '\(parsed.carExplanation.prefix(200))...'")
-        print("Engine: '\(parsed.engine.prefix(100))...'")
-        print("Transmission: '\(parsed.transmission.prefix(100))...'")
-        print("Suspension: '\(parsed.suspension.prefix(100))...'")
-        print("Fuel Efficiency: '\(parsed.fuelEfficiency.prefix(100))...'")
-        print("Electronics: '\(parsed.electronics.prefix(100))...'")
-        print("Bottlenecks count: \(parsed.bottlenecks.count)")
-        print("Warning Signals count: \(parsed.warningSignals.count)")
-        print("Upgrades count: \(parsed.upgrades.count)")
-        print("Directive STOP: '\(parsed.directiveStop)'")
-        print("Directive START: '\(parsed.directiveStart)'")
-        print("Directive WATCH: '\(parsed.directiveWatch)'")
-        print("Summary: '\(parsed.summary.prefix(150))...'")
-        print(String(repeating: "=", count: 60) + "\n")
 
         // Build Premium UI
         addHeader()
@@ -427,7 +431,6 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     let score: Int
     if let savedScore = AnalysisCache.loadHealthScore() {
         score = savedScore
-        print("=== INSIGHTS: Using saved score from Dashboard: \(score) ===")
     } else {
         score = CarTierEngine.computeHealthScore(
             readinessAvg: stats?.readiness,
@@ -435,7 +438,6 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
             hrvAvg: stats?.hrv,
             strainAvg: stats?.strain
         )
-        print("=== INSIGHTS: No saved score, calculated: \(score) ===")
     }
 
     // Determine car name - priority: Gemini > Saved > Placeholder
@@ -454,24 +456,25 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     let explanation: String
 
     if isValidGeminiCar {
-        // Gemini returned a valid car - check if changed and save
+        // Gemini returned a valid car - save it (change detection already done in refreshContent)
         carName = cleanedGeminiCar
         wikiName = parsed.carWikiName
         explanation = parsed.carExplanation
-        AnalysisCache.checkAndSetCarChange(newCarName: carName, newWikiName: wikiName, newExplanation: explanation)
-        print("=== INSIGHTS: Using Gemini car: \(carName) ===")
+        // Note: checkAndSetCarChange is now called in refreshContent() before we get here
+        // Here we just save the car (if no pending reveal was triggered)
+        if !AnalysisCache.hasPendingCarReveal() {
+            AnalysisCache.saveSelectedCar(name: carName, wikiName: wikiName, explanation: explanation)
+        }
     } else if let savedCar = AnalysisCache.loadSelectedCar() {
         // Gemini didn't return valid car - use saved car
         carName = savedCar.name
         wikiName = savedCar.wikiName
         explanation = savedCar.explanation
-        print("=== INSIGHTS: Using saved car: \(carName) ===")
     } else {
         // No car at all - show placeholder
         carName = "insights.waitingForAnalysis".localized
         wikiName = ""
         explanation = "insights.carSelectedAfter".localized
-        print("=== INSIGHTS: No car available, showing placeholder ===")
     }
 
     // Determine status based on score
@@ -536,21 +539,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     bgImageView.backgroundColor = UIColor(white: 0.15, alpha: 1)
     bgImageView.translatesAutoresizingMaskIntoConstraints = false
 
-    // Gradient overlay - קל יותר כדי לראות את התמונה
-    let gradientLayer = CAGradientLayer()
-    gradientLayer.colors = [
-        UIColor.black.withAlphaComponent(0.4).cgColor,
-        UIColor.black.withAlphaComponent(0.1).cgColor,
-        UIColor.black.withAlphaComponent(0.5).cgColor
-    ]
-    gradientLayer.locations = [0.0, 0.4, 1.0]
-
-    let gradientView = UIView()
-    gradientView.translatesAutoresizingMaskIntoConstraints = false
-    gradientView.layer.insertSublayer(gradientLayer, at: 0)
-
     card.addSubview(bgImageView)
-    card.addSubview(gradientView)
 
     // Load car image
     if !wikiName.isEmpty {
@@ -673,19 +662,12 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         bgImageView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
         bgImageView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
 
-        // gradient על כל הכרטיס
-        gradientView.topAnchor.constraint(equalTo: card.topAnchor),
-        gradientView.leadingAnchor.constraint(equalTo: card.leadingAnchor),
-        gradientView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
-        gradientView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
-
         progressBar.heightAnchor.constraint(equalToConstant: 6),
         buttonsStack.heightAnchor.constraint(equalToConstant: 44),
     ])
 
-    // Update gradient + progress
+    // Update progress bar
     DispatchQueue.main.async {
-        gradientLayer.frame = gradientView.bounds
         progressBar.setProgress(CGFloat(score) / 100.0)
     }
 
@@ -921,14 +903,11 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         var seen = Set<String>()
         candidates = candidates.filter { seen.insert($0).inserted }
 
-        print("=== WIKI API: Will try candidates: \(candidates) ===")
-
         tryWikipediaCandidates(candidates: candidates, index: 0, into: imageView, fallbackEmoji: fallbackEmoji)
     }
 
     private func tryWikipediaCandidates(candidates: [String], index: Int, into imageView: UIImageView, fallbackEmoji: String) {
         guard index < candidates.count else {
-            print("=== WIKI API: All candidates exhausted, showing fallback ===")
             DispatchQueue.main.async { [weak self] in
                 self?.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
             }
@@ -940,25 +919,20 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         let apiURL = "https://en.wikipedia.org/api/rest_v1/page/summary/\(wikiTitle)"
 
         guard let url = URL(string: apiURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? apiURL) else {
-            print("=== WIKI API: Invalid URL for '\(wikiTitle)' ===")
             tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji)
             return
         }
 
-        print("=== WIKI API: Trying candidate [\(index + 1)/\(candidates.count)] '\(carName)' -> \(url.absoluteString) ===")
-
         URLSession.shared.dataTask(with: url) { [weak self, weak imageView] data, response, error in
             guard let self = self, let imageView = imageView else { return }
 
-            if let error = error {
-                print("=== WIKI API ERROR: \(error.localizedDescription) ===")
+            if error != nil {
                 self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji)
                 return
             }
 
             guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                print("=== WIKI API: Failed to parse JSON for '\(carName)' ===")
                 self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji)
                 return
             }
@@ -975,15 +949,12 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                     return
                 }
 
-                print("=== WIKI API: Found thumbnail for '\(carName)' -> \(thumbURL) ===")
-
                 // Download the actual image
-                URLSession.shared.dataTask(with: imageURL) { [weak self, weak imageView] imgData, _, imgError in
+                URLSession.shared.dataTask(with: imageURL) { [weak self, weak imageView] imgData, _, _ in
                     DispatchQueue.main.async {
                         guard let self = self, let imageView = imageView else { return }
 
                         if let imgData = imgData, let image = UIImage(data: imgData) {
-                            print("=== CAR IMAGE LOADED SUCCESSFULLY from '\(carName)' ===")
                             imageView.image = image
                             imageView.contentMode = .scaleAspectFill
                             imageView.backgroundColor = .clear
@@ -991,13 +962,11 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                             // Save car image for widget
                             WidgetDataManager.shared.saveCarImage(image)
                         } else {
-                            print("=== CAR IMAGE: Failed to decode - \(imgError?.localizedDescription ?? "unknown") ===")
                             self.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
                         }
                     }
                 }.resume()
             } else {
-                print("=== WIKI API: No thumbnail for '\(carName)', trying next candidate ===")
                 self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji)
             }
         }.resume()
@@ -2583,6 +2552,8 @@ private func showDiscoveryLoadingAnimation() {
 
     private func showRevealAnimation(parsed: CarAnalysisResponse?) {
         guard let container = discoveryContainer else { return }
+        guard !isAnimatingContent else { return }  // מניעת אנימציות מתנגשות
+        isAnimatingContent = true
 
         // Flash effect
         container.flashWhite(duration: 0.3) { [weak self] in
@@ -2702,19 +2673,6 @@ private func showDiscoveryLoadingAnimation() {
         bgImageView.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(bgImageView)
 
-        // גרדיאנט - קל יותר כדי לראות את התמונה
-        let gradientLayer = CAGradientLayer()
-        gradientLayer.colors = [
-            UIColor.black.withAlphaComponent(0.4).cgColor,
-            UIColor.black.withAlphaComponent(0.1).cgColor,
-            UIColor.black.withAlphaComponent(0.5).cgColor
-        ]
-        gradientLayer.locations = [0.0, 0.4, 1.0]
-        let gradientView = UIView()
-        gradientView.translatesAutoresizingMaskIntoConstraints = false
-        gradientView.layer.insertSublayer(gradientLayer, at: 0)
-        card.addSubview(gradientView)
-
         // שם הרכב - בכותרת למעלה בגדול
         let carNameLabel = UILabel()
         carNameLabel.text = carName  // מציג מיד את השם!
@@ -2804,12 +2762,6 @@ private func showDiscoveryLoadingAnimation() {
             bgImageView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
             bgImageView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
 
-            // gradient על כל הכרטיס
-            gradientView.topAnchor.constraint(equalTo: card.topAnchor),
-            gradientView.leadingAnchor.constraint(equalTo: card.leadingAnchor),
-            gradientView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
-            gradientView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
-
             carNameLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),
             carNameLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
             carNameLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
@@ -2839,11 +2791,6 @@ private func showDiscoveryLoadingAnimation() {
         // טעינת תמונה
         if !wikiName.isEmpty {
             fetchCarImageFromWikipedia(carName: wikiName, into: bgImageView, fallbackEmoji: "🚗")
-        }
-
-        // עדכון גרדיאנט
-        DispatchQueue.main.async {
-            gradientLayer.frame = gradientView.bounds
         }
 
         // === אנימציות חשיפה ===
@@ -2911,6 +2858,7 @@ private func showDiscoveryLoadingAnimation() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
             guard let self = self else { return }
             self.isShowingDiscoveryFlow = false
+            self.isAnimatingContent = false  // סיום האנימציות
             self.addRemainingContent(parsed: parsed)
         }
 

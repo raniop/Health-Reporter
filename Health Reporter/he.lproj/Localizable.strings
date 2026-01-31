@@ -341,7 +341,7 @@
 "insights.needsCare" = "צריך טיפול";
 "insights.requiresAttention" = "דורש תשומת לב";
 "insights.discoverNewCar" = "גלה את הרכב החדש";
-"insights.checkAgain" = "בדוק שוב";
+"insights.checkAgain" = "גלה שוב";
 "insights.startDiscovery" = "התחל גילוי";
 "insights.discoverCar" = "גלה את הרכב שלי";
 
@@ -360,7 +360,7 @@
 "nutrition.supplementRecommendations" = "המלצות תוספי תזונה";
 "nutrition.basedOnAnalysis" = "מבוסס על ניתוח 3 חודשים של נתוני הבריאות שלך";
 "nutrition.whyRecommended" = "למה מומלץ עבורך:";
-"nutrition.noRecommendationsYet" = "אין עדיין המלצות תוספים\nלחץ על ׳בדוק שוב׳ במסך תובנות לקבלת ניתוח חדש";
+"nutrition.noRecommendationsYet" = "אין עדיין המלצות תוספים\nלחץ על ׳גלה שוב׳ במסך תובנות לקבלת ניתוח חדש";
 "nutrition.disclaimer" = "המלצות אלו מבוססות על ניתוח AI של נתוני הבריאות שלך ואינן מהוות תחליף לייעוץ רפואי מקצועי. התייעץ עם רופא לפני נטילת תוספים חדשים.";
 
 /* Data Sources */
@@ -512,3 +512,43 @@
 "directives.stop" = "עצור";
 "directives.start" = "התחל";
 "directives.watch" = "עקוב";
+
+/* Social & Leaderboard */
+"tab.social" = "חברים";
+"social.title" = "חברים";
+"social.subtitle" = "התחרו עם חברים";
+"social.friends" = "חברים";
+"social.requests" = "בקשות";
+"social.search" = "חיפוש";
+"social.leaderboard" = "לוח תוצאות";
+"social.global" = "עולמי";
+"social.friendsOnly" = "חברים";
+"social.sendRequest" = "שלח בקשה";
+"social.accept" = "אשר";
+"social.decline" = "דחה";
+"social.remove" = "הסר";
+"social.noFriends" = "עדיין אין חברים\nחפש משתמשים והוסף אותם כחברים";
+"social.noRequests" = "אין בקשות חברות ממתינות";
+"social.noResults" = "לא נמצאו משתמשים";
+"social.searchHint" = "הקלד שם כדי לחפש משתמשים";
+"social.searchPlaceholder" = "חפש לפי שם...";
+"social.recentSearches" = "חיפושים אחרונים";
+"social.privacyToggle" = "הופע בלוח התוצאות הגלובלי";
+"social.privacyTitle" = "הגדרות פרטיות";
+"social.privacyOffMessage" = "אם תכבה את האפשרות הזו, לא תופיע בלוח התוצאות הגלובלי. חברים עדיין יוכלו לראות את הציון שלך.";
+"social.yourRank" = "הדירוג שלך";
+"social.removeFriend" = "הסר חבר";
+"social.confirmRemove" = "האם אתה בטוח שברצונך להסיר את %@ מרשימת החברים?";
+"social.emptyGlobalLeaderboard" = "אין עדיין משתמשים בלוח התוצאות";
+"social.emptyFriendsLeaderboard" = "הוסף חברים כדי לראות את הציונים שלהם";
+"social.alreadyFriends" = "כבר חברים";
+"social.requestPending" = "בקשה ממתינה";
+"social.sentYouRequest" = "שלח לך בקשה";
+"social.wantsToBeYourFriend" = "רוצה להיות חבר שלך";
+"social.unknownUser" = "משתמש לא ידוע";
+
+/* Unified Trends & Activity Tab */
+"tab.unified" = "ביצועים";
+"unified.title" = "ביצועים";
+"unified.activity" = "פעילות";
+"unified.trends" = "מגמות";

@@ -339,19 +339,25 @@ class GeminiDebugViewController: UIViewController {
         }
         attributed.append(NSAttributedString(string: "\n", attributes: [:]))
 
-        // השוואת תשובות Gemini
-        guard let previousResponse = GeminiDebugStore.previousResponse,
-              let currentResponse = GeminiDebugStore.lastResponse else {
+        // השוואת תשובות Gemini - משתמשים בהיסטוריה!
+        let history = GeminiDebugStore.loadHistory()
+        guard history.count >= 2 else {
             attributed.append(NSAttributedString(string: "📊 השוואת תשובות Gemini\n", attributes: titleAttrs))
             let noCompareAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
                 .foregroundColor: UIColor.secondaryLabel
             ]
-            attributed.append(NSAttributedString(string: "אין תשובה קודמת להשוואה\n", attributes: noCompareAttrs))
+            attributed.append(NSAttributedString(string: "אין תשובה קודמת להשוואה (צריך לפחות 2 שאילתות בהיסטוריה)\n", attributes: noCompareAttrs))
             differencesAttributedText = attributed
             differencesText = attributed.string
             return
         }
+
+        // השאילתא האחרונה (index 0) והשאילתא שלפניה (index 1)
+        let currentEntry = history[0]
+        let previousEntry = history[1]
+        let currentResponse = currentEntry.response
+        let previousResponse = previousEntry.response
 
         // סטטיסטיקות בסיסיות
         let prevLen = previousResponse.count
@@ -375,9 +381,9 @@ class GeminiDebugViewController: UIViewController {
         let diffSign = lenDiff > 0 ? "+" : ""
         attributed.append(NSAttributedString(string: "הפרש: \(diffSign)\(lenDiff) תווים\n\n", attributes: diffAttrs))
 
-        // השוואת רכב
-        let prevCar = GeminiDebugStore.extractCarName(from: previousResponse) ?? "לא זוהה"
-        let currCar = GeminiDebugStore.extractCarName(from: currentResponse) ?? "לא זוהה"
+        // השוואת רכב - מההיסטוריה!
+        let prevCar = previousEntry.carName ?? "לא זוהה"
+        let currCar = currentEntry.carName ?? "לא זוהה"
 
         attributed.append(NSAttributedString(string: "🚗 רכב\n", attributes: titleAttrs))
 
@@ -474,7 +480,7 @@ class GeminiDebugViewController: UIViewController {
             }
         }
 
-        // Timestamps
+        // Timestamps - מההיסטוריה
         let timestampAttrs: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 11, weight: .regular),
             .foregroundColor: UIColor.tertiaryLabel
@@ -484,13 +490,8 @@ class GeminiDebugViewController: UIViewController {
         formatter.dateFormat = "dd/MM HH:mm"
 
         attributed.append(NSAttributedString(string: "\n", attributes: [:]))
-
-        if let prevTime = GeminiDebugStore.previousTimestamp {
-            attributed.append(NSAttributedString(string: "תשובה קודמת: \(formatter.string(from: prevTime))\n", attributes: timestampAttrs))
-        }
-        if let currTime = GeminiDebugStore.timestamp {
-            attributed.append(NSAttributedString(string: "תשובה נוכחית: \(formatter.string(from: currTime))", attributes: timestampAttrs))
-        }
+        attributed.append(NSAttributedString(string: "תשובה קודמת: \(formatter.string(from: previousEntry.timestamp))\n", attributes: timestampAttrs))
+        attributed.append(NSAttributedString(string: "תשובה נוכחית: \(formatter.string(from: currentEntry.timestamp))", attributes: timestampAttrs))
 
         differencesAttributedText = attributed
         differencesText = attributed.string
@@ -956,7 +957,6 @@ enum GeminiDebugStore {
             let entries = try JSONDecoder().decode([DebugLogEntry].self, from: data)
             return entries.sorted { $0.timestamp > $1.timestamp }
         } catch {
-            print("=== GEMINI DEBUG: Failed to decode history: \(error) ===")
             return []
         }
     }
@@ -967,7 +967,7 @@ enum GeminiDebugStore {
             let data = try JSONEncoder().encode(entries)
             UserDefaults.standard.set(data, forKey: historyKey)
         } catch {
-            print("=== GEMINI DEBUG: Failed to encode history: \(error) ===")
+            // Silent failure
         }
     }
 
@@ -988,7 +988,15 @@ enum GeminiDebugStore {
         }
 
         saveHistory(history)
-        print("=== GEMINI DEBUG: History now has \(history.count) entries ===")
+    }
+
+    /// מחזיר את הרכב מהשאילתא הקודמת (השנייה בהיסטוריה)
+    /// משמש לקביעת הרכב הקודם האמיתי במקום keyPreviousCarName
+    static func getPreviousCarFromHistory() -> String? {
+        let history = loadHistory()
+        // ההיסטוריה ממוינת מהחדש לישן, אז index 1 הוא השאילתא הקודמת
+        guard history.count >= 2 else { return nil }
+        return history[1].carName
     }
 
     /// מחלץ שם רכב מתשובת Gemini
@@ -1088,22 +1096,28 @@ enum GeminiDebugStore {
         lastResponse = response
         timestamp = Date()
 
+        // שימוש ב-CarAnalysisParser לחילוץ שם הרכב - אותו parser כמו ב-UI
+        let parsed = CarAnalysisParser.parse(response)
+        let carName: String?
+        if !parsed.carModel.isEmpty && parsed.carModel.count > 3 {
+            carName = parsed.carModel
+        } else {
+            carName = extractCarName(from: response)  // fallback לשיטה הישנה
+        }
+
         // הוספה להיסטוריה
         let entry = DebugLogEntry(
             timestamp: Date(),
             prompt: prompt,
             response: response,
-            carName: extractCarName(from: response),
+            carName: carName,
             healthScore: extractHealthScore(from: response)
         )
         addToHistory(entry)
-
-        print("=== GEMINI DEBUG: Saved prompt (\(prompt.count) chars) and response (\(response.count) chars) ===")
     }
 
     /// מנקה את כל ההיסטוריה
     static func clearHistory() {
         UserDefaults.standard.removeObject(forKey: historyKey)
-        print("=== GEMINI DEBUG: History cleared ===")
     }
 }

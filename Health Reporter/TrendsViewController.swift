@@ -38,7 +38,7 @@ final class TrendsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "trends.title".localized
+        // title removed - managed by parent UnifiedTrendsActivityViewController
         view.backgroundColor = AIONDesign.background
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupTimeframe()

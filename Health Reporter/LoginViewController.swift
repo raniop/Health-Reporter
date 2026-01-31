@@ -236,9 +236,14 @@ final class LoginViewController: UIViewController {
                     self.showAlert(title: "error".localized, message: (e as NSError).localizedDescription)
                     return
                 }
+                let displayName = self.nameField.text?.trimmingCharacters(in: .whitespaces) ?? ""
                 let changeRequest = result?.user.createProfileChangeRequest()
-                changeRequest?.displayName = self.nameField.text?.trimmingCharacters(in: .whitespaces)
+                changeRequest?.displayName = displayName
                 changeRequest?.commitChanges { _ in
+                    // שמירת השם גם ב-Firestore לצורך חיפוש
+                    if !displayName.isEmpty {
+                        ProfileFirestoreSync.saveDisplayName(displayName)
+                    }
                     self.proceedToApp()
                 }
             }
@@ -289,12 +294,20 @@ final class LoginViewController: UIViewController {
 
     private func proceedToApp() {
         showLoading()
+        // סנכרון שם המשתמש ל-Firestore (לצורך חיפוש)
+        syncUserDisplayNameToFirestore()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let scene = self?.view.window?.windowScene,
                   let sd = scene.delegate as? SceneDelegate else { return }
             sd.window?.rootViewController = MainTabBarController()
             UIView.transition(with: sd.window!, duration: 0.3, options: .transitionCrossDissolve, animations: nil)
         }
+    }
+
+    /// מסנכרן את שם המשתמש מ-Firebase Auth ל-Firestore (כדי שניתן יהיה לחפש אותו).
+    private func syncUserDisplayNameToFirestore() {
+        guard let displayName = Auth.auth().currentUser?.displayName, !displayName.isEmpty else { return }
+        ProfileFirestoreSync.saveDisplayName(displayName)
     }
 
     private func showAlert(title: String, message: String) {

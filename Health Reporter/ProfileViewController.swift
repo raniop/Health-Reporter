@@ -731,25 +731,57 @@ final class ProfileViewController: UIViewController {
 
     private func applyProfilePhoto(url: String?) {
         if let u = url, let uu = URL(string: u) {
-            URLSession.shared.dataTask(with: uu) { [weak self] data, _, _ in
-                guard let self = self, let d = data, let img = UIImage(data: d) else { return }
-                DispatchQueue.main.async {
-                    self.avatarImageView.image = img
-                    self.avatarImageView.tintColor = nil
+            URLSession.shared.dataTask(with: uu) { [weak self] data, response, error in
+                guard let self = self else { return }
+
+                // Check for HTTP errors (like 404 - file not found)
+                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+                    // Image doesn't exist, fall back to Auth photo or default
+                    DispatchQueue.main.async {
+                        self.tryAuthPhotoOrDefault()
+                    }
+                    return
                 }
-            }.resume()
-        } else if let u = Auth.auth().currentUser?.photoURL?.absoluteString, let uu = URL(string: u) {
-            URLSession.shared.dataTask(with: uu) { [weak self] data, _, _ in
-                guard let self = self, let d = data, let img = UIImage(data: d) else { return }
+
+                guard let d = data, let img = UIImage(data: d) else {
+                    DispatchQueue.main.async {
+                        self.tryAuthPhotoOrDefault()
+                    }
+                    return
+                }
+
                 DispatchQueue.main.async {
                     self.avatarImageView.image = img
                     self.avatarImageView.tintColor = nil
                 }
             }.resume()
         } else {
-            avatarImageView.image = UIImage(systemName: "person.circle.fill")
-            avatarImageView.tintColor = AIONDesign.textTertiary
+            tryAuthPhotoOrDefault()
         }
+    }
+
+    private func tryAuthPhotoOrDefault() {
+        if let u = Auth.auth().currentUser?.photoURL?.absoluteString, let uu = URL(string: u) {
+            URLSession.shared.dataTask(with: uu) { [weak self] data, _, _ in
+                guard let self = self, let d = data, let img = UIImage(data: d) else {
+                    DispatchQueue.main.async {
+                        self?.setDefaultAvatar()
+                    }
+                    return
+                }
+                DispatchQueue.main.async {
+                    self.avatarImageView.image = img
+                    self.avatarImageView.tintColor = nil
+                }
+            }.resume()
+        } else {
+            setDefaultAvatar()
+        }
+    }
+
+    private func setDefaultAvatar() {
+        avatarImageView.image = UIImage(systemName: "person.circle.fill")
+        avatarImageView.tintColor = AIONDesign.textTertiary
     }
 
     @objc private func changePhotoTapped() {
@@ -824,7 +856,9 @@ extension ProfileViewController: PHPickerViewControllerDelegate {
         guard let r = results.first else { return }
         r.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
             guard let self = self, let img = obj as? UIImage else { return }
-            self.uploadAndSaveProfilePhoto(img)
+            DispatchQueue.main.async {
+                self.uploadAndSaveProfilePhoto(img)
+            }
         }
     }
 }
