@@ -160,6 +160,9 @@
 "time.lastMonth" = "חודש שעבר";
 "time.7days" = "7 ימים";
 "time.30days" = "30 ימים";
+"time.day" = "יום";
+"time.week" = "שבוע";
+"time.month" = "חודש";
 
 /* Metric Labels */
 "metric.strain" = "עומס";
@@ -533,6 +536,7 @@
 "social.searchHint" = "הקלד שם כדי לחפש משתמשים";
 "social.searchPlaceholder" = "חפש לפי שם...";
 "social.recentSearches" = "חיפושים אחרונים";
+"social.recentlyViewed" = "נצפו לאחרונה";
 "social.privacyToggle" = "הופע בלוח התוצאות הגלובלי";
 "social.privacyTitle" = "הגדרות פרטיות";
 "social.privacyOffMessage" = "אם תכבה את האפשרות הזו, לא תופיע בלוח התוצאות הגלובלי. חברים עדיין יוכלו לראות את הציון שלך.";
@@ -546,9 +550,27 @@
 "social.sentYouRequest" = "שלח לך בקשה";
 "social.wantsToBeYourFriend" = "רוצה להיות חבר שלך";
 "social.unknownUser" = "משתמש לא ידוע";
+"social.profile" = "פרופיל";
+"social.healthScore" = "ציון בריאות";
+"social.removeFriendConfirm" = "האם אתה בטוח שברצונך להסיר את %@ מרשימת החברים?";
+"social.aboutUser" = "על המשתמש";
+"social.about" = "אודות";
+"social.activeUser" = "משתמש פעיל באפליקציה";
+"social.sendFriendRequest" = "שלח בקשת חברות";
+"social.requestSent" = "בקשה נשלחה ⏳";
+"social.acceptRequest" = "קבל בקשה ✓";
+"social.declineRequest" = "דחה בקשה";
+"social.aboutExcellent" = "משתמש מצטיין עם ציון בריאות גבוה! 🌟";
+"social.aboutGood" = "משתמש פעיל עם תוצאות טובות 💪";
+"social.aboutProgress" = "בדרך להישגים גדולים יותר 🚀";
+"social.aboutStarting" = "רק התחיל את המסע לבריאות טובה יותר ❤️";
 
 /* Unified Trends & Activity Tab */
 "tab.unified" = "ביצועים";
 "unified.title" = "ביצועים";
 "unified.activity" = "פעילות";
 "unified.trends" = "מגמות";
+
+/* Leaderboard Extended */
+"social.points" = "נקודות";
+"social.pointsToNextRank" = "עוד %d נקודות לדירוג הבא";

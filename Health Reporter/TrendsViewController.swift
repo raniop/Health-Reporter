@@ -144,8 +144,14 @@ final class TrendsViewController: UIViewController {
             sub.trailingAnchor.constraint(equalTo: insightCard.trailingAnchor, constant: -AIONDesign.spacing),
             sub.bottomAnchor.constraint(equalTo: insightCard.bottomAnchor, constant: -(AIONDesign.spacing + 6)),
             info.topAnchor.constraint(equalTo: insightCard.topAnchor, constant: AIONDesign.spacing),
-            info.leftAnchor.constraint(equalTo: insightCard.leftAnchor, constant: AIONDesign.spacing),
         ])
+        // Info button position based on language direction
+        // RTL (Hebrew): info on LEFT, LTR (English): info on RIGHT
+        if LocalizationManager.shared.currentLanguage.isRTL {
+            info.leadingAnchor.constraint(equalTo: insightCard.leadingAnchor, constant: AIONDesign.spacing).isActive = true
+        } else {
+            info.trailingAnchor.constraint(equalTo: insightCard.trailingAnchor, constant: -AIONDesign.spacing).isActive = true
+        }
     }
 
     @objc private func cardInfoTapped(_ sender: CardInfoButton) {
@@ -196,8 +202,14 @@ final class TrendsViewController: UIViewController {
             imp.trailingAnchor.constraint(equalTo: correlationCard.trailingAnchor, constant: -AIONDesign.spacing),
             val.trailingAnchor.constraint(lessThanOrEqualTo: imp.leadingAnchor, constant: -8),
             info.topAnchor.constraint(equalTo: correlationCard.topAnchor, constant: AIONDesign.spacing),
-            info.leftAnchor.constraint(equalTo: correlationCard.leftAnchor, constant: AIONDesign.spacing),
         ])
+        // Info button position based on language direction
+        // RTL (Hebrew): info on LEFT, LTR (English): info on RIGHT
+        if LocalizationManager.shared.currentLanguage.isRTL {
+            info.leadingAnchor.constraint(equalTo: correlationCard.leadingAnchor, constant: AIONDesign.spacing).isActive = true
+        } else {
+            info.trailingAnchor.constraint(equalTo: correlationCard.trailingAnchor, constant: -AIONDesign.spacing).isActive = true
+        }
     }
 
     private func addCorrelationChart(bundle: AIONChartDataBundle) {
@@ -300,8 +312,14 @@ final class TrendsViewController: UIViewController {
             v.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -8),
             v.bottomAnchor.constraint(equalTo: c.bottomAnchor, constant: -14),
             info.topAnchor.constraint(equalTo: c.topAnchor, constant: 10),
-            info.leftAnchor.constraint(equalTo: c.leftAnchor, constant: AIONDesign.spacing),
         ])
+        // Info button position based on language direction
+        // RTL (Hebrew): info on LEFT, LTR (English): info on RIGHT
+        if LocalizationManager.shared.currentLanguage.isRTL {
+            info.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: AIONDesign.spacing).isActive = true
+        } else {
+            info.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -AIONDesign.spacing).isActive = true
+        }
         return (c, v)
     }
 
@@ -342,18 +360,36 @@ final class TrendsViewController: UIViewController {
         let info = CardInfoButton.make(explanation: CardExplanations.focus)
         info.addTarget(self, action: #selector(cardInfoTapped(_:)), for: .touchUpInside)
         row.addSubview(info)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Common constraints
         NSLayoutConstraint.activate([
             info.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
-            info.leftAnchor.constraint(equalTo: row.leftAnchor, constant: AIONDesign.spacing),
-            iv.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -AIONDesign.spacing),
             iv.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             iv.widthAnchor.constraint(equalToConstant: 24),
             iv.heightAnchor.constraint(equalToConstant: 24),
             l.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
             l.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -14),
-            l.leadingAnchor.constraint(equalTo: info.trailingAnchor, constant: 10),
-            l.trailingAnchor.constraint(equalTo: iv.leadingAnchor, constant: -10),
         ])
+
+        // RTL/LTR specific constraints
+        // RTL (Hebrew): info on LEFT, icon on RIGHT. LTR (English): info on RIGHT, icon on LEFT
+        if isRTL {
+            NSLayoutConstraint.activate([
+                info.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: AIONDesign.spacing),
+                iv.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -AIONDesign.spacing),
+                l.leadingAnchor.constraint(equalTo: info.trailingAnchor, constant: 10),
+                l.trailingAnchor.constraint(equalTo: iv.leadingAnchor, constant: -10),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                info.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -AIONDesign.spacing),
+                iv.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: AIONDesign.spacing),
+                l.trailingAnchor.constraint(equalTo: info.leadingAnchor, constant: -10),
+                l.leadingAnchor.constraint(equalTo: iv.trailingAnchor, constant: 10),
+            ])
+        }
         return (row, l)
     }
 
@@ -386,8 +422,14 @@ final class TrendsViewController: UIViewController {
             v.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -10),
             v.bottomAnchor.constraint(equalTo: c.bottomAnchor, constant: -(AIONDesign.spacing + 8)),
             info.topAnchor.constraint(equalTo: c.topAnchor, constant: 10),
-            info.leftAnchor.constraint(equalTo: c.leftAnchor, constant: AIONDesign.spacing),
         ])
+        // Info button position based on language direction
+        // RTL (Hebrew): info on LEFT, LTR (English): info on RIGHT
+        if LocalizationManager.shared.currentLanguage.isRTL {
+            info.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: AIONDesign.spacing).isActive = true
+        } else {
+            info.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -AIONDesign.spacing).isActive = true
+        }
         return (c, v)
     }
 

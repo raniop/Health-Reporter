@@ -127,7 +127,7 @@ class AIONReportViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AIONDesign.background
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         title = "report.title".localized
         setupScrollAndStack()
         setupHeader()
@@ -143,13 +143,13 @@ class AIONReportViewController: UIViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = true
         scrollView.alwaysBounceVertical = true
-        scrollView.semanticContentAttribute = .forceRightToLeft
+        scrollView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         view.addSubview(scrollView)
 
         stack.axis = .vertical
         stack.spacing = AIONDesign.spacingLarge
         stack.alignment = .fill
-        stack.semanticContentAttribute = .forceRightToLeft
+        stack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         stack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stack)
 
@@ -169,7 +169,7 @@ class AIONReportViewController: UIViewController {
     private func setupHeader() {
         let wrap = UIView()
         wrap.translatesAutoresizingMaskIntoConstraints = false
-        wrap.semanticContentAttribute = .forceRightToLeft
+        wrap.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         let accent = UIView()
         accent.backgroundColor = AIONDesign.accentPrimary
@@ -187,7 +187,7 @@ class AIONReportViewController: UIViewController {
         sub.text = "report.subtitle".localized
         sub.font = .systemFont(ofSize: 15, weight: .regular)
         sub.textColor = AIONDesign.textSecondary
-        sub.textAlignment = .right
+        sub.textAlignment = LocalizationManager.shared.textAlignment
         sub.translatesAutoresizingMaskIntoConstraints = false
 
         wrap.addSubview(accent)
@@ -250,7 +250,7 @@ private final class ReportCardView: UIView {
     init(sectionTitle: String, items: [(title: String, body: String)], iconName: String?) {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        semanticContentAttribute = .forceRightToLeft
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         backgroundColor = AIONDesign.surface
         layer.cornerRadius = AIONDesign.cornerRadiusLarge
         layer.shadowColor = UIColor.black.cgColor
@@ -262,7 +262,7 @@ private final class ReportCardView: UIView {
         inner.axis = .vertical
         inner.spacing = AIONDesign.spacing
         inner.alignment = .trailing
-        inner.semanticContentAttribute = .forceRightToLeft
+        inner.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         inner.translatesAutoresizingMaskIntoConstraints = false
         addSubview(inner)
 
@@ -270,7 +270,7 @@ private final class ReportCardView: UIView {
         headerStack.axis = .horizontal
         headerStack.spacing = 8
         headerStack.alignment = .center
-        headerStack.semanticContentAttribute = .forceRightToLeft
+        headerStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         if let icon = iconName {
             let iv = UIImageView(image: UIImage(systemName: icon))
@@ -284,7 +284,7 @@ private final class ReportCardView: UIView {
         l.text = sectionTitle
         l.font = .systemFont(ofSize: 17, weight: .semibold)
         l.textColor = AIONDesign.textPrimary
-        l.textAlignment = .right
+        l.textAlignment = LocalizationManager.shared.textAlignment
         l.numberOfLines = 0
         headerStack.addArrangedSubview(l)
         inner.addArrangedSubview(headerStack)
@@ -294,14 +294,14 @@ private final class ReportCardView: UIView {
             row.axis = .vertical
             row.spacing = 4
             row.alignment = .trailing
-            row.semanticContentAttribute = .forceRightToLeft
+            row.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
             let titL = UILabel()
             titL.text = tit
             titL.font = .systemFont(ofSize: 15, weight: .semibold)
             titL.textColor = AIONDesign.textPrimary
             titL.numberOfLines = 0
-            titL.textAlignment = .right
+            titL.textAlignment = LocalizationManager.shared.textAlignment
 
             row.addArrangedSubview(titL)
             if !body.isEmpty {
@@ -310,7 +310,7 @@ private final class ReportCardView: UIView {
                 bL.font = .systemFont(ofSize: 14, weight: .regular)
                 bL.textColor = AIONDesign.textSecondary
                 bL.numberOfLines = 0
-                bL.textAlignment = .right
+                bL.textAlignment = LocalizationManager.shared.textAlignment
                 row.addArrangedSubview(bL)
             }
             inner.addArrangedSubview(row)
@@ -333,13 +333,13 @@ private final class StatusPillRow: UIView {
     init(pills: [(label: String, color: UIColor)]) {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        semanticContentAttribute = .forceRightToLeft
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         let h = UIStackView()
         h.axis = .horizontal
         h.spacing = 8
         h.distribution = .fill
         h.alignment = .center
-        h.semanticContentAttribute = .forceRightToLeft
+        h.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         h.translatesAutoresizingMaskIntoConstraints = false
         addSubview(h)
         for (l, c) in pills {
@@ -378,13 +378,13 @@ private final class ReportIntroView: UIView {
     init(text: String) {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        semanticContentAttribute = .forceRightToLeft
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         let l = UILabel()
         l.text = text
         l.font = .systemFont(ofSize: 15, weight: .regular)
         l.textColor = AIONDesign.textSecondary
         l.numberOfLines = 0
-        l.textAlignment = .right
+        l.textAlignment = LocalizationManager.shared.textAlignment
         l.translatesAutoresizingMaskIntoConstraints = false
         addSubview(l)
         NSLayoutConstraint.activate([
@@ -403,7 +403,7 @@ private final class ReportFallbackView: UIView {
     init(text: String) {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        semanticContentAttribute = .forceRightToLeft
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         backgroundColor = AIONDesign.surface
         layer.cornerRadius = AIONDesign.cornerRadiusLarge
         layer.shadowColor = UIColor.black.cgColor
@@ -417,10 +417,10 @@ private final class ReportFallbackView: UIView {
         tv.textColor = AIONDesign.textPrimary
         tv.backgroundColor = .clear
         tv.isEditable = false
-        tv.textAlignment = .right
+        tv.textAlignment = LocalizationManager.shared.textAlignment
         tv.textContainerInset = UIEdgeInsets(top: AIONDesign.spacingLarge, left: AIONDesign.spacing, bottom: AIONDesign.spacingLarge, right: AIONDesign.spacing)
         tv.textContainer.lineFragmentPadding = 0
-        tv.semanticContentAttribute = .forceRightToLeft
+        tv.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         tv.translatesAutoresizingMaskIntoConstraints = false
         addSubview(tv)
         NSLayoutConstraint.activate([

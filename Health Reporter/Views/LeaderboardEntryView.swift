@@ -59,7 +59,7 @@ final class LeaderboardEntryView: UIView {
         let l = UILabel()
         l.font = .systemFont(ofSize: 20, weight: .bold)
         l.textColor = AIONDesign.accentPrimary
-        l.textAlignment = .left
+        l.textAlignment = LocalizationManager.shared.textAlignment
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -112,6 +112,7 @@ final class LeaderboardEntryView: UIView {
 
         let isRTL = LocalizationManager.shared.currentLanguage.isRTL
 
+        // Common constraints
         NSLayoutConstraint.activate([
             highlightView.topAnchor.constraint(equalTo: topAnchor),
             highlightView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -120,39 +121,55 @@ final class LeaderboardEntryView: UIView {
 
             heightAnchor.constraint(equalToConstant: 72),
 
-            // Score on leading (left for LTR, right for RTL)
-            scoreLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             scoreLabel.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -4),
-
-            scoreMaxLabel.leadingAnchor.constraint(equalTo: scoreLabel.trailingAnchor, constant: 2),
             scoreMaxLabel.bottomAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: -2),
 
-            // Rank on trailing
-            rankLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
             rankLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
             rankLabel.widthAnchor.constraint(equalToConstant: 32),
 
-            // Avatar next to rank
-            avatarImageView.trailingAnchor.constraint(equalTo: rankLabel.leadingAnchor, constant: -12),
             avatarImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
             avatarImageView.widthAnchor.constraint(equalToConstant: 44),
             avatarImageView.heightAnchor.constraint(equalToConstant: 44),
 
-            // Name and tier labels
-            nameLabel.trailingAnchor.constraint(equalTo: avatarImageView.leadingAnchor, constant: -12),
             nameLabel.topAnchor.constraint(equalTo: topAnchor, constant: 12),
-            nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: scoreMaxLabel.trailingAnchor, constant: 12),
-
-            tierLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
             tierLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
-
-            carNameLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
             carNameLabel.topAnchor.constraint(equalTo: tierLabel.bottomAnchor, constant: 1),
         ])
 
-        nameLabel.textAlignment = .right
-        tierLabel.textAlignment = .right
-        carNameLabel.textAlignment = .right
+        // RTL/LTR specific constraints
+        if isRTL {
+            // RTL: Score on right, Avatar/Rank on left
+            NSLayoutConstraint.activate([
+                scoreLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+                scoreMaxLabel.trailingAnchor.constraint(equalTo: scoreLabel.leadingAnchor, constant: -2),
+
+                rankLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+                avatarImageView.leadingAnchor.constraint(equalTo: rankLabel.trailingAnchor, constant: 12),
+
+                nameLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
+                nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: scoreMaxLabel.leadingAnchor, constant: -12),
+                tierLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+                carNameLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            ])
+        } else {
+            // LTR: Score on left, Avatar/Rank on right
+            NSLayoutConstraint.activate([
+                scoreLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+                scoreMaxLabel.leadingAnchor.constraint(equalTo: scoreLabel.trailingAnchor, constant: 2),
+
+                rankLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+                avatarImageView.trailingAnchor.constraint(equalTo: rankLabel.leadingAnchor, constant: -12),
+
+                nameLabel.trailingAnchor.constraint(equalTo: avatarImageView.leadingAnchor, constant: -12),
+                nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: scoreMaxLabel.trailingAnchor, constant: 12),
+                tierLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
+                carNameLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
+            ])
+        }
+
+        nameLabel.textAlignment = LocalizationManager.shared.textAlignment
+        tierLabel.textAlignment = LocalizationManager.shared.textAlignment
+        carNameLabel.textAlignment = LocalizationManager.shared.textAlignment
     }
 
     // MARK: - Configure

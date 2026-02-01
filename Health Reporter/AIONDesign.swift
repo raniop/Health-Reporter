@@ -114,8 +114,48 @@ enum AIONDesign {
     // MARK: - Layout
     static let cornerRadius: CGFloat = 14
     static let cornerRadiusLarge: CGFloat = 20
+    static let cornerRadiusSmall: CGFloat = 8
     static let spacing: CGFloat = 12
     static let spacingLarge: CGFloat = 20
+    static let spacingSmall: CGFloat = 8
+
+    // MARK: - Glass Morphism
+    static var glassBlurStyle: UIBlurEffect.Style {
+        BackgroundColor.current.isLight ? .systemUltraThinMaterialLight : .systemUltraThinMaterialDark
+    }
+    static let glassTintAlpha: CGFloat = 0.08
+    static let glassBorderAlpha: CGFloat = 0.2
+
+    // MARK: - Shadows
+    struct ShadowStyle {
+        let color: UIColor
+        let offset: CGSize
+        let radius: CGFloat
+        let opacity: Float
+
+        static let small = ShadowStyle(color: .black, offset: CGSize(width: 0, height: 2), radius: 4, opacity: 0.1)
+        static let medium = ShadowStyle(color: .black, offset: CGSize(width: 0, height: 4), radius: 12, opacity: 0.15)
+        static let large = ShadowStyle(color: .black, offset: CGSize(width: 0, height: 8), radius: 24, opacity: 0.2)
+        static let glow = ShadowStyle(color: accentPrimary, offset: .zero, radius: 15, opacity: 0.4)
+    }
+
+    // MARK: - Gradients
+    static let primaryGradient: [CGColor] = [accentPrimary.cgColor, accentSecondary.cgColor]
+    static let successGradient: [CGColor] = [accentSecondary.cgColor, accentSuccess.cgColor]
+    static let celebrationGradient: [CGColor] = [accentPrimary.cgColor, accentSecondary.cgColor, accentSuccess.cgColor]
+    static let goldGradient: [CGColor] = [UIColor(hex: "#FFD700")!.cgColor, UIColor(hex: "#FFA500")!.cgColor]
+    static let silverGradient: [CGColor] = [UIColor(hex: "#C0C0C0")!.cgColor, UIColor(hex: "#A8A8A8")!.cgColor]
+    static let bronzeGradient: [CGColor] = [UIColor(hex: "#CD7F32")!.cgColor, UIColor(hex: "#8B4513")!.cgColor]
+
+    // MARK: - Animation Durations
+    static let animationFast: TimeInterval = 0.2
+    static let animationMedium: TimeInterval = 0.35
+    static let animationSlow: TimeInterval = 0.6
+
+    // MARK: - Spring Animation
+    static let springDamping: CGFloat = 0.7
+    static let springVelocity: CGFloat = 0.5
+    static let springDampingBouncy: CGFloat = 0.5
 
     // MARK: - Typography
     static func titleFont() -> UIFont { .systemFont(ofSize: 22, weight: .bold) }
@@ -130,15 +170,16 @@ enum AIONDesign {
     static func resolveTextTertiary(_ trait: UITraitCollection) -> UIColor { textTertiary }
     static func resolveSeparator(_ trait: UITraitCollection) -> UIColor { separator }
 
-    /// פסקה RTL לעברית – יישור לימין, כיוון כתיבה מימין לשמאל
-    static func rtlParagraphStyle() -> NSParagraphStyle {
+    /// פסקה עם יישור דינמי לפי שפה
+    static func localizedParagraphStyle() -> NSParagraphStyle {
         let p = NSMutableParagraphStyle()
-        p.alignment = .right
-        p.baseWritingDirection = .rightToLeft
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        p.alignment = isRTL ? .right : .left
+        p.baseWritingDirection = isRTL ? .rightToLeft : .leftToRight
         return p
     }
 
-    /// מייצר NSAttributedString עם יישור עברית RTL
+    /// מייצר NSAttributedString עם יישור דינמי לפי שפה
     static func attributedStringRTL(_ text: String, font: UIFont = .systemFont(ofSize: 15, weight: .regular), color: UIColor? = nil) -> NSAttributedString {
         let c = color ?? textPrimary
         return NSAttributedString(
@@ -146,8 +187,76 @@ enum AIONDesign {
             attributes: [
                 .font: font,
                 .foregroundColor: c,
-                .paragraphStyle: rtlParagraphStyle()
+                .paragraphStyle: localizedParagraphStyle()
             ]
         )
+    }
+}
+
+// MARK: - UIView Shadow Extension
+
+extension UIView {
+    func applyShadow(_ style: AIONDesign.ShadowStyle) {
+        layer.shadowColor = style.color.cgColor
+        layer.shadowOffset = style.offset
+        layer.shadowRadius = style.radius
+        layer.shadowOpacity = style.opacity
+        layer.masksToBounds = false
+    }
+
+    func applyGlowEffect(color: UIColor = AIONDesign.accentPrimary, radius: CGFloat = 15, opacity: Float = 0.4) {
+        layer.shadowColor = color.cgColor
+        layer.shadowOffset = .zero
+        layer.shadowRadius = radius
+        layer.shadowOpacity = opacity
+        layer.masksToBounds = false
+    }
+
+    func addGradientBorder(colors: [UIColor], width: CGFloat = 2, cornerRadius: CGFloat? = nil) {
+        let gradient = CAGradientLayer()
+        gradient.frame = bounds
+        gradient.colors = colors.map { $0.cgColor }
+        gradient.startPoint = CGPoint(x: 0, y: 0)
+        gradient.endPoint = CGPoint(x: 1, y: 1)
+
+        let shape = CAShapeLayer()
+        let radius = cornerRadius ?? layer.cornerRadius
+        shape.lineWidth = width
+        shape.path = UIBezierPath(roundedRect: bounds.insetBy(dx: width/2, dy: width/2), cornerRadius: radius).cgPath
+        shape.strokeColor = UIColor.black.cgColor
+        shape.fillColor = UIColor.clear.cgColor
+        gradient.mask = shape
+
+        layer.sublayers?.removeAll { $0.name == "gradientBorder" }
+        gradient.name = "gradientBorder"
+        layer.addSublayer(gradient)
+    }
+
+    func pulseAnimation(scale: CGFloat = 1.05, duration: TimeInterval = 0.15) {
+        UIView.animate(withDuration: duration, animations: {
+            self.transform = CGAffineTransform(scaleX: scale, y: scale)
+        }) { _ in
+            UIView.animate(withDuration: duration) {
+                self.transform = .identity
+            }
+        }
+    }
+
+    func springAnimation(scale: CGFloat = 0.96, completion: (() -> Void)? = nil) {
+        UIView.animate(withDuration: 0.1, animations: {
+            self.transform = CGAffineTransform(scaleX: scale, y: scale)
+        }) { _ in
+            UIView.animate(
+                withDuration: 0.3,
+                delay: 0,
+                usingSpringWithDamping: AIONDesign.springDampingBouncy,
+                initialSpringVelocity: AIONDesign.springVelocity,
+                options: [],
+                animations: {
+                    self.transform = .identity
+                },
+                completion: { _ in completion?() }
+            )
+        }
     }
 }

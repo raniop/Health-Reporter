@@ -75,7 +75,7 @@ final class HeroScoreCardView: UIView {
         backgroundColor = AIONDesign.surface
         layer.cornerRadius = AIONDesign.cornerRadiusLarge
         clipsToBounds = true
-        semanticContentAttribute = .forceRightToLeft
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupRing()
         setupScoreLabels()
@@ -135,7 +135,7 @@ final class HeroScoreCardView: UIView {
         miniKPIStack.axis = .horizontal
         miniKPIStack.distribution = .equalCentering
         miniKPIStack.alignment = .center
-        miniKPIStack.semanticContentAttribute = .forceRightToLeft
+        miniKPIStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         miniKPIStack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(miniKPIStack)
 
@@ -174,7 +174,7 @@ final class HeroScoreCardView: UIView {
         stack.axis = .vertical
         stack.alignment = .center
         stack.spacing = 4
-        stack.semanticContentAttribute = .forceRightToLeft
+        stack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         stack.isUserInteractionEnabled = true
         stack.tag = tag
 
@@ -233,9 +233,8 @@ final class HeroScoreCardView: UIView {
             tierLabel.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: -2),
             tierLabel.centerXAnchor.constraint(equalTo: ringContainer.centerXAnchor),
 
-            // Info button - top right corner
+            // Info button - top corner (right for RTL, left for LTR)
             infoButton.topAnchor.constraint(equalTo: topAnchor, constant: 12),
-            infoButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
             infoButton.widthAnchor.constraint(equalToConstant: 30),
             infoButton.heightAnchor.constraint(equalToConstant: 30),
 
@@ -251,6 +250,15 @@ final class HeroScoreCardView: UIView {
             miniKPIStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -24),
             miniKPIStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -20),
         ])
+
+        // Info button position based on language direction
+        // RTL (Hebrew): info button on LEFT, LTR (English): info button on RIGHT
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        if isRTL {
+            infoButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12).isActive = true
+        } else {
+            infoButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12).isActive = true
+        }
     }
 
     // MARK: - Layout (Ring drawing)

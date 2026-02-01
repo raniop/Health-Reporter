@@ -70,6 +70,9 @@ final class UnifiedTrendsActivityViewController: UIViewController {
             name: .backgroundColorChanged,
             object: nil
         )
+
+        // Analytics: Log screen view
+        AnalyticsService.shared.logScreenView(.trends)
     }
 
     deinit {

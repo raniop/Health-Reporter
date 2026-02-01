@@ -39,6 +39,9 @@ final class LoginViewController: UIViewController {
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupUI()
         setupLoadingOverlay()
+
+        // Analytics: Log screen view
+        AnalyticsService.shared.logScreenView(.login)
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -282,10 +285,15 @@ final class LoginViewController: UIViewController {
                 return
             }
             let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: user.accessToken.tokenString)
-            Auth.auth().signIn(with: credential) { _, err in
+            Auth.auth().signIn(with: credential) { [weak self] _, err in
                 if let e = err {
                     self?.showAlert(title: "error".localized, message: (e as NSError).localizedDescription)
                     return
+                }
+                // Analytics: Log Google login
+                if let userId = Auth.auth().currentUser?.uid {
+                    AnalyticsService.shared.setUserId(userId)
+                    AnalyticsService.shared.logLogin(method: "google")
                 }
                 self?.proceedToApp()
             }
@@ -296,6 +304,17 @@ final class LoginViewController: UIViewController {
         showLoading()
         // סנכרון שם המשתמש ל-Firestore (לצורך חיפוש)
         syncUserDisplayNameToFirestore()
+
+        // Analytics: Log successful login/signup and set user ID
+        if let userId = Auth.auth().currentUser?.uid {
+            AnalyticsService.shared.setUserId(userId)
+            if isSignUp {
+                AnalyticsService.shared.logSignUp(method: "email")
+            } else {
+                AnalyticsService.shared.logLogin(method: "email")
+            }
+        }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let scene = self?.view.window?.windowScene,
                   let sd = scene.delegate as? SceneDelegate else { return }
@@ -415,6 +434,11 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
             if let e = error {
                 self?.showAlert(title: "error".localized, message: (e as NSError).localizedDescription)
                 return
+            }
+            // Analytics: Log Apple login
+            if let userId = Auth.auth().currentUser?.uid {
+                AnalyticsService.shared.setUserId(userId)
+                AnalyticsService.shared.logLogin(method: "apple")
             }
             self?.proceedToApp()
         }

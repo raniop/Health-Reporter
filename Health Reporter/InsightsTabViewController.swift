@@ -155,6 +155,9 @@ final class InsightsTabViewController: UIViewController {
 
         // Listen for background color changes
         NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
+
+        // Analytics: Log screen view
+        AnalyticsService.shared.logScreenView(.insights)
     }
 
     @objc private func backgroundColorDidChange() {
@@ -465,6 +468,10 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         if !AnalysisCache.hasPendingCarReveal() {
             AnalysisCache.saveSelectedCar(name: carName, wikiName: wikiName, explanation: explanation)
         }
+
+        // עדכון שם הרכב מ-Gemini ל-Firestore (לידרבורד וחברים)
+        let tier = CarTierEngine.tierForScore(score)
+        LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: carName)
     } else if let savedCar = AnalysisCache.loadSelectedCar() {
         // Gemini didn't return valid car - use saved car
         carName = savedCar.name
@@ -595,7 +602,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     explanationLabel.text = explanationText
     explanationLabel.font = .systemFont(ofSize: 14, weight: .semibold)
     explanationLabel.textColor = .white
-    explanationLabel.textAlignment = .right
+    explanationLabel.textAlignment = LocalizationManager.shared.textAlignment
     explanationLabel.numberOfLines = 0
     explanationLabel.layer.shadowColor = UIColor.black.cgColor
     explanationLabel.layer.shadowOffset = CGSize(width: 0, height: 1)
@@ -621,6 +628,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     headerRow.alignment = .center
     headerRow.distribution = .fill
     headerRow.spacing = 8
+    // Don't use semanticContentAttribute here - we manually control order
     headerRow.translatesAutoresizingMaskIntoConstraints = false
 
     let spacer = UIView()
@@ -628,9 +636,19 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
     spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-    headerRow.addArrangedSubview(spacer)
-    headerRow.addArrangedSubview(scoreLabel)
-    headerRow.addArrangedSubview(statusBadge)
+    // Order based on language direction
+    // RTL: score-badge on RIGHT (spacer on left)
+    // LTR: badge-score on LEFT (spacer on right)
+    let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+    if isRTL {
+        headerRow.addArrangedSubview(spacer)
+        headerRow.addArrangedSubview(scoreLabel)
+        headerRow.addArrangedSubview(statusBadge)
+    } else {
+        headerRow.addArrangedSubview(statusBadge)
+        headerRow.addArrangedSubview(scoreLabel)
+        headerRow.addArrangedSubview(spacer)
+    }
 
     // Main content stack (packed)
     let contentStack = UIStackView()
@@ -1208,14 +1226,14 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         box.addSubview(titleLabel)
         box.addSubview(valueLabel)
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Common constraints
         NSLayoutConstraint.activate([
             box.heightAnchor.constraint(equalToConstant: 100),
 
             infoBtn.topAnchor.constraint(equalTo: box.topAnchor, constant: 12),
-            infoBtn.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 12),
-
             iconView.topAnchor.constraint(equalTo: box.topAnchor, constant: 12),
-            iconView.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -12),
             iconView.widthAnchor.constraint(equalToConstant: 24),
             iconView.heightAnchor.constraint(equalToConstant: 24),
 
@@ -1225,6 +1243,20 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
             valueLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
             valueLabel.centerXAnchor.constraint(equalTo: box.centerXAnchor),
         ])
+
+        // RTL/LTR specific constraints for info button and icon
+        // RTL (Hebrew): info on LEFT, icon on RIGHT. LTR (English): info on RIGHT, icon on LEFT
+        if isRTL {
+            NSLayoutConstraint.activate([
+                infoBtn.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 12),
+                iconView.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -12),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                infoBtn.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -12),
+                iconView.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 12),
+            ])
+        }
 
         return box
     }
@@ -1274,7 +1306,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         titleLabel.text = title
         titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         titleLabel.textColor = color
-        titleLabel.textAlignment = .right
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         // Content - using UITextView for proper RTL text wrapping
@@ -1282,7 +1314,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         contentTextView.text = cleanDisplayText(content)
         contentTextView.font = .systemFont(ofSize: 14, weight: .regular)
         contentTextView.textColor = textWhite
-        contentTextView.textAlignment = .right
+        contentTextView.textAlignment = LocalizationManager.shared.textAlignment
         contentTextView.backgroundColor = .clear
         contentTextView.isEditable = false
         contentTextView.isScrollEnabled = false
@@ -1295,18 +1327,27 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         card.addSubview(titleLabel)
         card.addSubview(contentTextView)
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
         NSLayoutConstraint.activate([
             emojiLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
-            emojiLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
 
             titleLabel.centerYAnchor.constraint(equalTo: emojiLabel.centerYAnchor),
-            titleLabel.trailingAnchor.constraint(equalTo: emojiLabel.leadingAnchor, constant: -8),
 
             contentTextView.topAnchor.constraint(equalTo: emojiLabel.bottomAnchor, constant: 12),
             contentTextView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
             contentTextView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
             contentTextView.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
         ])
+
+        // Position emoji and title based on language direction
+        if isRTL {
+            emojiLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16).isActive = true
+            titleLabel.trailingAnchor.constraint(equalTo: emojiLabel.leadingAnchor, constant: -8).isActive = true
+        } else {
+            emojiLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16).isActive = true
+            titleLabel.leadingAnchor.constraint(equalTo: emojiLabel.trailingAnchor, constant: 8).isActive = true
+        }
 
         return card
     }
@@ -1370,24 +1411,32 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         title.text = "insights.whatLimitsPerformance".localized
         title.font = .systemFont(ofSize: 16, weight: .bold)
         title.textColor = accentOrange
-        title.textAlignment = .right
+        title.textAlignment = LocalizationManager.shared.textAlignment
         title.translatesAutoresizingMaskIntoConstraints = false
 
         titleContainer.addSubview(icon)
         titleContainer.addSubview(title)
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
         NSLayoutConstraint.activate([
-            icon.trailingAnchor.constraint(equalTo: titleContainer.trailingAnchor),
             icon.centerYAnchor.constraint(equalTo: titleContainer.centerYAnchor),
             icon.widthAnchor.constraint(equalToConstant: 20),
             icon.heightAnchor.constraint(equalToConstant: 20),
-
-            title.trailingAnchor.constraint(equalTo: icon.leadingAnchor, constant: -8),
             title.centerYAnchor.constraint(equalTo: titleContainer.centerYAnchor),
-            title.leadingAnchor.constraint(greaterThanOrEqualTo: titleContainer.leadingAnchor),
-
             titleContainer.heightAnchor.constraint(equalToConstant: 24),
         ])
+
+        // Position icon and title based on language direction
+        if isRTL {
+            icon.trailingAnchor.constraint(equalTo: titleContainer.trailingAnchor).isActive = true
+            title.trailingAnchor.constraint(equalTo: icon.leadingAnchor, constant: -8).isActive = true
+            title.leadingAnchor.constraint(greaterThanOrEqualTo: titleContainer.leadingAnchor).isActive = true
+        } else {
+            icon.leadingAnchor.constraint(equalTo: titleContainer.leadingAnchor).isActive = true
+            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 8).isActive = true
+            title.trailingAnchor.constraint(lessThanOrEqualTo: titleContainer.trailingAnchor).isActive = true
+        }
 
         innerStack.addArrangedSubview(titleContainer)
 
@@ -1433,7 +1482,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         textView.text = cleanDisplayText(text)
         textView.font = .systemFont(ofSize: 14, weight: .regular)
         textView.textColor = textWhite
-        textView.textAlignment = .right
+        textView.textAlignment = LocalizationManager.shared.textAlignment
         textView.backgroundColor = .clear
         textView.isEditable = false
         textView.isScrollEnabled = false
@@ -1520,7 +1569,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         textView.text = text
         textView.font = .systemFont(ofSize: 14, weight: .regular)
         textView.textColor = textWhite
-        textView.textAlignment = .right
+        textView.textAlignment = LocalizationManager.shared.textAlignment
         textView.backgroundColor = .clear
         textView.isEditable = false
         textView.isScrollEnabled = false
@@ -1609,14 +1658,14 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         titleLabel.text = title
         titleLabel.font = .systemFont(ofSize: 14, weight: .semibold)
         titleLabel.textColor = accentPurple
-        titleLabel.textAlignment = .right
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let contentTextView = UITextView()
         contentTextView.text = cleanDisplayText(content)
         contentTextView.font = .systemFont(ofSize: 13, weight: .regular)
         contentTextView.textColor = textGray
-        contentTextView.textAlignment = .right
+        contentTextView.textAlignment = LocalizationManager.shared.textAlignment
         contentTextView.backgroundColor = .clear
         contentTextView.isEditable = false
         contentTextView.isScrollEnabled = false
@@ -1629,19 +1678,29 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         container.addSubview(titleLabel)
         container.addSubview(contentTextView)
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
         NSLayoutConstraint.activate([
             emojiLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 12),
-            emojiLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
 
             titleLabel.centerYAnchor.constraint(equalTo: emojiLabel.centerYAnchor),
-            titleLabel.trailingAnchor.constraint(equalTo: emojiLabel.leadingAnchor, constant: -8),
-            titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: container.leadingAnchor, constant: 12),
 
             contentTextView.topAnchor.constraint(equalTo: emojiLabel.bottomAnchor, constant: 8),
             contentTextView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
             contentTextView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
             contentTextView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -12),
         ])
+
+        // Position emoji and title based on language direction
+        if isRTL {
+            emojiLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12).isActive = true
+            titleLabel.trailingAnchor.constraint(equalTo: emojiLabel.leadingAnchor, constant: -8).isActive = true
+            titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: container.leadingAnchor, constant: 12).isActive = true
+        } else {
+            emojiLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12).isActive = true
+            titleLabel.leadingAnchor.constraint(equalTo: emojiLabel.trailingAnchor, constant: 8).isActive = true
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -12).isActive = true
+        }
 
         return container
     }
@@ -1677,7 +1736,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         titleLabel.text = "insights.nutritionRecommendations".localized
         titleLabel.font = .systemFont(ofSize: 17, weight: .bold)
         titleLabel.textColor = textWhite
-        titleLabel.textAlignment = .right
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         // תיאור
@@ -1685,7 +1744,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         subtitleLabel.text = "insights.recommendedSupplements".localized
         subtitleLabel.font = .systemFont(ofSize: 13, weight: .regular)
         subtitleLabel.textColor = textGray
-        subtitleLabel.textAlignment = .right
+        subtitleLabel.textAlignment = LocalizationManager.shared.textAlignment
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         // Badge עם מספר התוספים
@@ -1704,7 +1763,8 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
         // חץ
         let arrowLabel = UILabel()
-        arrowLabel.text = "←"
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        arrowLabel.text = isRTL ? "←" : "→"
         arrowLabel.font = .systemFont(ofSize: 20, weight: .medium)
         arrowLabel.textColor = accentGreen
         arrowLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -1715,35 +1775,42 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         container.addSubview(countBadge)
         container.addSubview(arrowLabel)
 
+        // Common constraints
         NSLayoutConstraint.activate([
-            // אייקון בצד ימין
             iconLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            iconLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
-
-            // כותרת
             titleLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
-            titleLabel.trailingAnchor.constraint(equalTo: iconLabel.leadingAnchor, constant: -12),
-            titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: arrowLabel.trailingAnchor, constant: 8),
-
-            // תיאור
             subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            subtitleLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
-            subtitleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: arrowLabel.trailingAnchor, constant: 8),
-
-            // Badge
             countBadge.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 8),
-            countBadge.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
             countBadge.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -16),
-
             countLabel.topAnchor.constraint(equalTo: countBadge.topAnchor, constant: 4),
             countLabel.leadingAnchor.constraint(equalTo: countBadge.leadingAnchor, constant: 10),
             countLabel.trailingAnchor.constraint(equalTo: countBadge.trailingAnchor, constant: -10),
             countLabel.bottomAnchor.constraint(equalTo: countBadge.bottomAnchor, constant: -4),
-
-            // חץ בצד שמאל
             arrowLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            arrowLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
         ])
+
+        // Position based on language direction
+        if isRTL {
+            NSLayoutConstraint.activate([
+                iconLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
+                titleLabel.trailingAnchor.constraint(equalTo: iconLabel.leadingAnchor, constant: -12),
+                titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: arrowLabel.trailingAnchor, constant: 8),
+                subtitleLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+                subtitleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: arrowLabel.trailingAnchor, constant: 8),
+                countBadge.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+                arrowLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                iconLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
+                titleLabel.leadingAnchor.constraint(equalTo: iconLabel.trailingAnchor, constant: 12),
+                titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: arrowLabel.leadingAnchor, constant: -8),
+                subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+                subtitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: arrowLabel.leadingAnchor, constant: -8),
+                countBadge.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+                arrowLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
+            ])
+        }
 
         // הוספת ה-container לכפתור
         button.addSubview(container)
@@ -1823,14 +1890,14 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         badge.text = label
         badge.font = .systemFont(ofSize: 12, weight: .bold)
         badge.textColor = color
-        badge.textAlignment = .right
+        badge.textAlignment = LocalizationManager.shared.textAlignment
         badge.translatesAutoresizingMaskIntoConstraints = false
 
         let contentTextView = UITextView()
         contentTextView.text = cleanDisplayText(content)
         contentTextView.font = .systemFont(ofSize: 14, weight: .regular)
         contentTextView.textColor = textWhite
-        contentTextView.textAlignment = .right
+        contentTextView.textAlignment = LocalizationManager.shared.textAlignment
         contentTextView.backgroundColor = .clear
         contentTextView.isEditable = false
         contentTextView.isScrollEnabled = false
@@ -1842,15 +1909,23 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         container.addSubview(badge)
         container.addSubview(contentTextView)
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
         NSLayoutConstraint.activate([
             badge.topAnchor.constraint(equalTo: container.topAnchor),
-            badge.trailingAnchor.constraint(equalTo: container.trailingAnchor),
 
             contentTextView.topAnchor.constraint(equalTo: badge.bottomAnchor, constant: 6),
             contentTextView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             contentTextView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             contentTextView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
+
+        // Position badge based on language direction
+        if isRTL {
+            badge.trailingAnchor.constraint(equalTo: container.trailingAnchor).isActive = true
+        } else {
+            badge.leadingAnchor.constraint(equalTo: container.leadingAnchor).isActive = true
+        }
 
         return container
     }
@@ -2728,7 +2803,7 @@ private func showDiscoveryLoadingAnimation() {
         explanationLabel.text = cleanExplanationText(rawExplanation, carName: carName)
         explanationLabel.font = .systemFont(ofSize: 14, weight: .semibold)
         explanationLabel.textColor = .white
-        explanationLabel.textAlignment = .right
+        explanationLabel.textAlignment = LocalizationManager.shared.textAlignment
         explanationLabel.numberOfLines = 0
         explanationLabel.alpha = 0
         explanationLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -2767,10 +2842,8 @@ private func showDiscoveryLoadingAnimation() {
             carNameLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
 
             statusBadge.topAnchor.constraint(equalTo: carNameLabel.bottomAnchor, constant: 12),
-            statusBadge.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
 
             scoreLabel.centerYAnchor.constraint(equalTo: statusBadge.centerYAnchor),
-            scoreLabel.trailingAnchor.constraint(equalTo: statusBadge.leadingAnchor, constant: -8),
 
             progressBar.topAnchor.constraint(equalTo: statusBadge.bottomAnchor, constant: 8),
             progressBar.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
@@ -2787,6 +2860,16 @@ private func showDiscoveryLoadingAnimation() {
             buttonsStack.heightAnchor.constraint(equalToConstant: 44),
             buttonsStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
         ])
+
+        // Position score and badge based on language direction
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        if isRTL {
+            statusBadge.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16).isActive = true
+            scoreLabel.trailingAnchor.constraint(equalTo: statusBadge.leadingAnchor, constant: -8).isActive = true
+        } else {
+            statusBadge.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16).isActive = true
+            scoreLabel.leadingAnchor.constraint(equalTo: statusBadge.trailingAnchor, constant: 8).isActive = true
+        }
 
         // טעינת תמונה
         if !wikiName.isEmpty {
@@ -3080,7 +3163,7 @@ private func showDiscoveryLoadingAnimation() {
         label.text = title
         label.font = .systemFont(ofSize: 16, weight: .bold)
         label.textColor = color
-        label.textAlignment = .right
+        label.textAlignment = LocalizationManager.shared.textAlignment
 
         container.addArrangedSubview(label)
 
@@ -3092,7 +3175,7 @@ private func showDiscoveryLoadingAnimation() {
         label.text = title
         label.font = .systemFont(ofSize: 14, weight: .semibold)
         label.textColor = color
-        label.textAlignment = .right
+        label.textAlignment = LocalizationManager.shared.textAlignment
         return label
     }
 }

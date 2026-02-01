@@ -9,7 +9,12 @@
       "Bash(python3:*)",
       "Bash(xargs ls:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(firebase projects:list:*)",
+      "Bash(firebase use:*)",
+      "Bash(firebase deploy:*)",
+      "Bash(gcloud iam service-accounts create:*)",
+      "Bash(firebase functions:delete:*)"
     ]
   }
 }

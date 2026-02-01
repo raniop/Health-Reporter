@@ -20,7 +20,7 @@ class AIONSummaryViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AIONDesign.background
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupScrollAndText()
         setupCloseButton()
         updateText()
@@ -43,7 +43,7 @@ class AIONSummaryViewController: UIViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = true
         scrollView.alwaysBounceVertical = true
-        scrollView.semanticContentAttribute = .forceRightToLeft
+        scrollView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         view.addSubview(scrollView)
 
         textView.isEditable = false
@@ -52,8 +52,8 @@ class AIONSummaryViewController: UIViewController {
         textView.layer.cornerRadius = AIONDesign.cornerRadiusLarge
         textView.textContainerInset = UIEdgeInsets(top: AIONDesign.spacingLarge, left: AIONDesign.spacingLarge, bottom: AIONDesign.spacingLarge, right: AIONDesign.spacingLarge)
         textView.textContainer.lineFragmentPadding = 0
-        textView.textAlignment = .right
-        textView.semanticContentAttribute = .forceRightToLeft
+        textView.textAlignment = LocalizationManager.shared.textAlignment
+        textView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         textView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(textView)
 

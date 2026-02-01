@@ -79,7 +79,7 @@ class RecommendationsViewController: UIViewController {
         super.viewDidLoad()
         title = "recommendations.title".localized
         view.backgroundColor = AIONDesign.background
-        view.semanticContentAttribute = .forceRightToLeft
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupScrollAndStack()
         setupHero()
         if !isTabMode { setupCloseButton() }
@@ -120,13 +120,13 @@ class RecommendationsViewController: UIViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = false
         scrollView.alwaysBounceVertical = true
-        scrollView.semanticContentAttribute = .forceRightToLeft
+        scrollView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         view.addSubview(scrollView)
 
         stack.axis = .vertical
         stack.spacing = AIONDesign.spacingLarge
         stack.alignment = .fill
-        stack.semanticContentAttribute = .forceRightToLeft
+        stack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         stack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stack)
 
@@ -244,7 +244,7 @@ private final class RecCardView: UIView {
     init(index: Int, title: String, body: String, iconName: String) {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        semanticContentAttribute = .forceRightToLeft
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         backgroundColor = AIONDesign.surface
         layer.cornerRadius = AIONDesign.cornerRadiusLarge
         layer.borderWidth = 1
@@ -280,7 +280,7 @@ private final class RecCardView: UIView {
         row.axis = .horizontal
         row.spacing = AIONDesign.spacing
         row.alignment = .center
-        row.semanticContentAttribute = .forceRightToLeft
+        row.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         row.translatesAutoresizingMaskIntoConstraints = false
 
         [accent, row, bodyL].forEach { addSubview($0) }
@@ -317,7 +317,7 @@ private final class RecEmptyView: UIView {
     init() {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        semanticContentAttribute = .forceRightToLeft
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         backgroundColor = AIONDesign.surface
         layer.cornerRadius = AIONDesign.cornerRadiusLarge
         layer.borderWidth = 1

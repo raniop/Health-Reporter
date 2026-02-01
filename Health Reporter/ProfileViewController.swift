@@ -51,6 +51,9 @@ final class ProfileViewController: UIViewController {
 
         // Listen for background color changes
         NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
+
+        // Analytics: Log screen view
+        AnalyticsService.shared.logScreenView(.profile)
     }
 
     deinit {
@@ -297,17 +300,33 @@ final class ProfileViewController: UIViewController {
         v.translatesAutoresizingMaskIntoConstraints = false
         c.addSubview(v)
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Common constraints
         NSLayoutConstraint.activate([
             info.topAnchor.constraint(equalTo: c.topAnchor, constant: 10),
-            info.leftAnchor.constraint(equalTo: c.leftAnchor, constant: 10),
             t.centerYAnchor.constraint(equalTo: info.centerYAnchor),
-            t.leadingAnchor.constraint(equalTo: info.trailingAnchor, constant: 6),
-            t.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -10),
             v.topAnchor.constraint(equalTo: t.bottomAnchor, constant: 14),
             v.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: 10),
             v.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -10),
             v.bottomAnchor.constraint(equalTo: c.bottomAnchor, constant: -14),
         ])
+
+        // RTL/LTR specific constraints
+        // RTL (Hebrew): info on LEFT, title on right. LTR (English): info on RIGHT, title on left
+        if isRTL {
+            NSLayoutConstraint.activate([
+                info.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: 10),
+                t.leadingAnchor.constraint(equalTo: info.trailingAnchor, constant: 6),
+                t.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -10),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                info.trailingAnchor.constraint(equalTo: c.trailingAnchor, constant: -10),
+                t.trailingAnchor.constraint(equalTo: info.leadingAnchor, constant: -6),
+                t.leadingAnchor.constraint(equalTo: c.leadingAnchor, constant: 10),
+            ])
+        }
         return (c, v)
     }
 
@@ -328,17 +347,18 @@ final class ProfileViewController: UIViewController {
         titleLabel.text = title
         titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         titleLabel.textColor = AIONDesign.textPrimary
-        titleLabel.textAlignment = .right
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let subtitleLabel = UILabel()
         subtitleLabel.text = subtitle
         subtitleLabel.font = .systemFont(ofSize: 13, weight: .regular)
         subtitleLabel.textColor = AIONDesign.textSecondary
-        subtitleLabel.textAlignment = .right
+        subtitleLabel.textAlignment = LocalizationManager.shared.textAlignment
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        let chevron = UIImageView(image: UIImage(systemName: "chevron.left"))
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        let chevron = UIImageView(image: UIImage(systemName: isRTL ? "chevron.left" : "chevron.right"))
         chevron.tintColor = AIONDesign.textTertiary
         chevron.contentMode = .scaleAspectFit
         chevron.translatesAutoresizingMaskIntoConstraints = false
@@ -348,25 +368,40 @@ final class ProfileViewController: UIViewController {
         card.addSubview(subtitleLabel)
         card.addSubview(chevron)
 
+        // Common constraints
         NSLayoutConstraint.activate([
             card.heightAnchor.constraint(equalToConstant: 64),
 
-            iconView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
             iconView.centerYAnchor.constraint(equalTo: card.centerYAnchor),
             iconView.widthAnchor.constraint(equalToConstant: 28),
             iconView.heightAnchor.constraint(equalToConstant: 28),
 
-            titleLabel.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -12),
             titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-
-            subtitleLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
             subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
 
-            chevron.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
             chevron.centerYAnchor.constraint(equalTo: card.centerYAnchor),
             chevron.widthAnchor.constraint(equalToConstant: 16),
             chevron.heightAnchor.constraint(equalToConstant: 16),
         ])
+
+        // RTL/LTR specific constraints
+        if isRTL {
+            // RTL: icon on right, chevron on left
+            NSLayoutConstraint.activate([
+                iconView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+                titleLabel.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -12),
+                subtitleLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+                chevron.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+            ])
+        } else {
+            // LTR: icon on left, chevron on right
+            NSLayoutConstraint.activate([
+                iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+                titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
+                subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+                chevron.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+            ])
+        }
 
         return card
     }
@@ -429,13 +464,14 @@ final class ProfileViewController: UIViewController {
         card.addSubview(iconView)
         card.addSubview(colorsStack)
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Common constraints
         NSLayoutConstraint.activate([
-            iconView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
             iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
             iconView.widthAnchor.constraint(equalToConstant: 24),
             iconView.heightAnchor.constraint(equalToConstant: 24),
 
-            titleLabel.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -10),
             titleLabel.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),
 
             colorsStack.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 14),
@@ -444,6 +480,19 @@ final class ProfileViewController: UIViewController {
             colorsStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -AIONDesign.spacing),
             colorsStack.heightAnchor.constraint(equalToConstant: 44),
         ])
+
+        // RTL/LTR specific constraints
+        if isRTL {
+            NSLayoutConstraint.activate([
+                iconView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+                titleLabel.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -10),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+                titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 10),
+            ])
+        }
 
         return card
     }
@@ -624,7 +673,7 @@ final class ProfileViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
 
         alert.addAction(UIAlertAction(title: "ok".localized, style: .default) { _ in
-            LocalizationManager.shared.currentLanguage = selectedLanguage
+            LocalizationManager.shared.setLanguage(selectedLanguage)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 exit(0)
             }
@@ -839,6 +888,10 @@ final class ProfileViewController: UIViewController {
 
     @objc private func logoutTapped() {
         do {
+            // Analytics: Log logout and reset analytics data
+            AnalyticsService.shared.logLogout()
+            AnalyticsService.shared.resetAnalyticsData()
+
             try Auth.auth().signOut()
             (view.window?.windowScene?.delegate as? SceneDelegate)?.showLogin()
         } catch {

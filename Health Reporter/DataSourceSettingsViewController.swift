@@ -176,7 +176,7 @@ final class DataSourceSettingsViewController: UIViewController {
 
         strengthsLabel.font = .systemFont(ofSize: 14, weight: .regular)
         strengthsLabel.textColor = AIONDesign.textSecondary
-        strengthsLabel.textAlignment = .right
+        strengthsLabel.textAlignment = LocalizationManager.shared.textAlignment
         strengthsLabel.numberOfLines = 0
         strengthsLabel.translatesAutoresizingMaskIntoConstraints = false
 
@@ -217,17 +217,32 @@ final class DataSourceSettingsViewController: UIViewController {
         infoCard.addSubview(infoIcon)
         infoCard.addSubview(infoLabel)
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Common constraints
         NSLayoutConstraint.activate([
             infoIcon.topAnchor.constraint(equalTo: infoCard.topAnchor, constant: AIONDesign.spacing),
-            infoIcon.trailingAnchor.constraint(equalTo: infoCard.trailingAnchor, constant: -AIONDesign.spacing),
             infoIcon.widthAnchor.constraint(equalToConstant: 20),
             infoIcon.heightAnchor.constraint(equalToConstant: 20),
 
             infoLabel.topAnchor.constraint(equalTo: infoCard.topAnchor, constant: AIONDesign.spacing),
-            infoLabel.leadingAnchor.constraint(equalTo: infoCard.leadingAnchor, constant: AIONDesign.spacing),
-            infoLabel.trailingAnchor.constraint(equalTo: infoIcon.leadingAnchor, constant: -8),
             infoLabel.bottomAnchor.constraint(equalTo: infoCard.bottomAnchor, constant: -AIONDesign.spacing),
         ])
+
+        // RTL/LTR specific constraints
+        if isRTL {
+            NSLayoutConstraint.activate([
+                infoIcon.trailingAnchor.constraint(equalTo: infoCard.trailingAnchor, constant: -AIONDesign.spacing),
+                infoLabel.leadingAnchor.constraint(equalTo: infoCard.leadingAnchor, constant: AIONDesign.spacing),
+                infoLabel.trailingAnchor.constraint(equalTo: infoIcon.leadingAnchor, constant: -8),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                infoIcon.leadingAnchor.constraint(equalTo: infoCard.leadingAnchor, constant: AIONDesign.spacing),
+                infoLabel.leadingAnchor.constraint(equalTo: infoIcon.trailingAnchor, constant: 8),
+                infoLabel.trailingAnchor.constraint(equalTo: infoCard.trailingAnchor, constant: -AIONDesign.spacing),
+            ])
+        }
     }
 
     // MARK: - Load/Save
@@ -322,7 +337,7 @@ final class DataSourceSettingsViewController: UIViewController {
         nameLabel.text = source.displayNameHebrew
         nameLabel.font = .systemFont(ofSize: 15, weight: .medium)
         nameLabel.textColor = AIONDesign.textPrimary
-        nameLabel.textAlignment = .right
+        nameLabel.textAlignment = LocalizationManager.shared.textAlignment
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
 
         let detailLabel = UILabel()
@@ -336,7 +351,7 @@ final class DataSourceSettingsViewController: UIViewController {
         detailLabel.text = detail
         detailLabel.font = .systemFont(ofSize: 12, weight: .regular)
         detailLabel.textColor = AIONDesign.textTertiary
-        detailLabel.textAlignment = .right
+        detailLabel.textAlignment = LocalizationManager.shared.textAlignment
         detailLabel.translatesAutoresizingMaskIntoConstraints = false
 
         row.addSubview(icon)

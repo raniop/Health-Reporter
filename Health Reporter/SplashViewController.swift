@@ -191,7 +191,10 @@ class SplashViewController: UIViewController {
             // סנכרון ל-Firestore (לידרבורד וחיפוש חברים)
             let score = healthResult.healthScoreInt
             let tier = CarTierEngine.tierForScore(score)
-            LeaderboardFirestoreSync.syncScore(score: score, tier: tier)
+            // שימוש בשם הרכב מ-Gemini אם קיים במטמון
+            let cachedCarName = AnalysisCache.loadSelectedCar()?.name
+            print("🚗 [Splash] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
+            LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
         }
     }
 

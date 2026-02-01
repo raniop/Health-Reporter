@@ -15,9 +15,9 @@ enum DataRange: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .day: return "יום"
-        case .week: return "שבוע"
-        case .month: return "חודש"
+        case .day: return "time.day".localized
+        case .week: return "time.week".localized
+        case .month: return "time.month".localized
         }
     }
 
@@ -57,21 +57,22 @@ enum DataRange: String, CaseIterable {
     func displayLabel(relativeTo date: Date = Date()) -> String {
         let (start, end) = interval(relativeTo: date)
         let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "he_IL")
-        fmt.dateFormat = "d בMMMM yyyy"
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        fmt.locale = Locale(identifier: isRTL ? "he_IL" : "en_US")
 
         switch self {
         case .day:
-            return "נתוני יום · \(fmt.string(from: end))"
+            fmt.dateFormat = isRTL ? "d בMMMM yyyy" : "MMMM d, yyyy"
+            return "\("dashboard.dataDay".localized) · \(fmt.string(from: end))"
         case .week:
             fmt.dateFormat = "d"
             let a = fmt.string(from: start)
-            fmt.dateFormat = "d בMMMM yyyy"
+            fmt.dateFormat = isRTL ? "d בMMMM yyyy" : "MMMM d, yyyy"
             let b = fmt.string(from: end)
-            return "נתוני שבוע · \(a)–\(b)"
+            return "\("dashboard.dataWeek".localized) · \(a)–\(b)"
         case .month:
             fmt.dateFormat = "MMMM yyyy"
-            return "נתוני חודש · \(fmt.string(from: end))"
+            return "\("dashboard.dataMonth".localized) · \(fmt.string(from: end))"
         }
     }
 

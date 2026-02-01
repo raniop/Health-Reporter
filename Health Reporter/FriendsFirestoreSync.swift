@@ -173,7 +173,7 @@ enum FriendsFirestoreSync {
                     return
                 }
 
-                let friends: [Friend] = docs.compactMap { doc in
+                var friends: [Friend] = docs.compactMap { doc in
                     let data = doc.data()
                     guard let uid = data["friendUid"] as? String,
                           let displayName = data["displayName"] as? String else { return nil }
@@ -188,7 +188,25 @@ enum FriendsFirestoreSync {
                     )
                 }
 
-                DispatchQueue.main.async { completion(friends) }
+                // Enrich friends with carTier data from publicScores
+                let friendUids = friends.map { $0.uid }
+                fetchScoresForUsers(uids: friendUids) { scoresMap in
+                    for i in friends.indices {
+                        if let scoreData = scoresMap[friends[i].uid] {
+                            friends[i].carTierIndex = scoreData.tierIndex
+                            friends[i].carTierName = scoreData.tierName
+                            friends[i].healthScore = scoreData.score
+                            // Use photoURL from publicScores as fallback if not in friends collection
+                            if friends[i].photoURL == nil || friends[i].photoURL?.isEmpty == true {
+                                friends[i].photoURL = scoreData.photoURL
+                            }
+                        } else {
+                            // Default score of 0 for users without publicScores data
+                            friends[i].healthScore = 0
+                        }
+                    }
+                    DispatchQueue.main.async { completion(friends) }
+                }
             }
     }
 
@@ -451,6 +469,7 @@ enum FriendsFirestoreSync {
                            let tierName = data["carTierName"] as? String {
                             let photoURL = data["photoURL"] as? String
                             scoresMap[doc.documentID] = (score, tierIndex, tierName, photoURL)
+                            print("🚗 [FriendsFirestoreSync] Fetched car for \(doc.documentID): \(tierName)")
                         }
                     }
                     group.leave()
@@ -477,5 +496,38 @@ enum FriendsFirestoreSync {
                 let count = snapshot?.documents.count ?? 0
                 DispatchQueue.main.async { completion(count) }
             }
+    }
+
+    // MARK: - FCM Token Management
+
+    /// Saves the FCM token to Firestore for push notifications
+    static func saveFCMToken(_ token: String, completion: ((Error?) -> Void)? = nil) {
+        guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
+            completion?(NSError(domain: "FriendsFirestoreSync", code: -1,
+                                userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
+            return
+        }
+
+        db.collection(usersCollection).document(currentUid).setData([
+            "fcmToken": token,
+            "fcmTokenUpdatedAt": FieldValue.serverTimestamp()
+        ], merge: true) { error in
+            DispatchQueue.main.async { completion?(error) }
+        }
+    }
+
+    /// Removes the FCM token from Firestore (call on logout)
+    static func removeFCMToken(completion: ((Error?) -> Void)? = nil) {
+        guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
+            completion?(nil) // No error if not logged in
+            return
+        }
+
+        db.collection(usersCollection).document(currentUid).updateData([
+            "fcmToken": FieldValue.delete(),
+            "fcmTokenUpdatedAt": FieldValue.delete()
+        ]) { error in
+            DispatchQueue.main.async { completion?(error) }
+        }
     }
 }

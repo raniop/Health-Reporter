@@ -57,7 +57,11 @@ enum LeaderboardFirestoreSync {
     // MARK: - Score Syncing
 
     /// סנכרון ציון ללידרבורד - נקרא אחרי חישוב ציון חדש
-    static func syncScore(score: Int, tier: CarTier, completion: ((Error?) -> Void)? = nil) {
+    /// - Parameters:
+    ///   - score: ציון הבריאות
+    ///   - tier: ה-tier מהמערך הקבוע (לצורך tierIndex ו-tierLabel)
+    ///   - geminiCarName: שם הרכב האמיתי מ-Gemini (אופציונלי)
+    static func syncScore(score: Int, tier: CarTier, geminiCarName: String? = nil, completion: ((Error?) -> Void)? = nil) {
         guard let currentUser = Auth.auth().currentUser,
               let currentUid = currentUser.uid as String?,
               !currentUid.isEmpty else {
@@ -72,18 +76,24 @@ enum LeaderboardFirestoreSync {
             let photoURL = userData?["photoURL"] as? String ?? currentUser.photoURL?.absoluteString
             let optIn = userData?["leaderboardOptIn"] as? Bool ?? false
 
-            let scoreData: [String: Any] = [
+            // Build scoreData - only include carTierName if we have a geminiCarName
+            var scoreData: [String: Any] = [
                 "uid": currentUid,
                 "displayName": displayName,
                 "displayNameLower": displayName.lowercased(), // For search
                 "photoURL": photoURL as Any,
                 "healthScore": score,
                 "carTierIndex": tier.tierIndex,
-                "carTierName": tier.name,
                 "carTierLabel": tier.tierLabel,
                 "lastUpdated": FieldValue.serverTimestamp(),
                 "isPublic": optIn
             ]
+
+            // Only update carTierName if we have a real name from Gemini
+            // This prevents overwriting the existing car name with default tier name
+            if let carName = geminiCarName {
+                scoreData["carTierName"] = carName
+            }
 
             let batch = db.batch()
 

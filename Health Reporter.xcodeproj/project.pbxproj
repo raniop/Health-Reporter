@@ -12,6 +12,8 @@
 		4F325CB62F25372500233F0A /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA662122F25020A00893900 /* GoogleSignIn */; };
 		4F325CB72F25372500233F0A /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA662132F25020A00893900 /* FirebaseFirestore */; };
 		4F325CB82F25372500233F0A /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA662142F25020A00893900 /* FirebaseStorage */; };
+		4F43D3EF2F2F3D6F00DA00E3 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4F43D3EE2F2F3D6F00DA00E3 /* FirebaseMessaging */; };
+		4F43D3F32F2FF29A00DA00E3 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 4F43D3F22F2FF29A00DA00E3 /* FirebaseAnalytics */; };
 		4FFED07C2F2B5DFD0072D5F8 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FFED07B2F2B5DFD0072D5F8 /* WidgetKit.framework */; };
 		4FFED07E2F2B5DFD0072D5F8 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FFED07D2F2B5DFD0072D5F8 /* SwiftUI.framework */; };
 		4FFED1752F2B67A60072D5F8 /* HealthWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4FFED0792F2B5DFD0072D5F8 /* HealthWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -123,6 +125,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4F43D3F32F2FF29A00DA00E3 /* FirebaseAnalytics in Frameworks */,
+				4F43D3EF2F2F3D6F00DA00E3 /* FirebaseMessaging in Frameworks */,
 				4F325CB82F25372500233F0A /* FirebaseStorage in Frameworks */,
 				4F325CB72F25372500233F0A /* FirebaseFirestore in Frameworks */,
 				4F325CB62F25372500233F0A /* GoogleSignIn in Frameworks */,
@@ -218,6 +222,8 @@
 				4FA662122F25020A00893900 /* GoogleSignIn */,
 				4FA662132F25020A00893900 /* FirebaseFirestore */,
 				4FA662142F25020A00893900 /* FirebaseStorage */,
+				4F43D3EE2F2F3D6F00DA00E3 /* FirebaseMessaging */,
+				4F43D3F22F2FF29A00DA00E3 /* FirebaseAnalytics */,
 			);
 			productName = "Health Reporter";
 			productReference = 4FA660ED2F25020800893900 /* Health Reporter.app */;
@@ -451,7 +457,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 12.4;
+				MARKETING_VERSION = 13.2;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -486,7 +492,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 12.4;
+				MARKETING_VERSION = 13.2;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -849,6 +855,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4F43D3EE2F2F3D6F00DA00E3 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FA662002F25020A00893900 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		4F43D3F22F2FF29A00DA00E3 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FA662002F25020A00893900 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
 		4FA662102F25020A00893900 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4FA662002F25020A00893900 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

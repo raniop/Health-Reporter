@@ -217,10 +217,10 @@ final class ActivityViewController: UIViewController {
         summaryRow2.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         summaryRow2.translatesAutoresizingMaskIntoConstraints = false
 
-        let (c1, l1) = makeMetricCard("activity.stepsMetric".localized, unit: "", explanation: CardExplanations.activitySteps)
-        let (c2, l2) = makeMetricCard("activity.distanceMetric".localized, unit: "activity.km".localized, explanation: CardExplanations.activityDistance)
-        let (c3, l3) = makeMetricCard("activity.caloriesMetric".localized, unit: "kcal", explanation: CardExplanations.activityCalories)
-        let (c4, l4) = makeMetricCard("activity.exerciseMetric".localized, unit: "activity.min".localized, explanation: CardExplanations.activityExercise)
+        let (c1, l1) = makeMetricCard("activity.stepsMetric".localized, unit: "", explanation: CardExplanations.activitySteps, icon: "figure.walk", iconColor: .systemCyan)
+        let (c2, l2) = makeMetricCard("activity.distanceMetric".localized, unit: "activity.km".localized, explanation: CardExplanations.activityDistance, icon: "map.fill", iconColor: .systemGreen)
+        let (c3, l3) = makeMetricCard("activity.caloriesMetric".localized, unit: "kcal", explanation: CardExplanations.activityCalories, icon: "flame.fill", iconColor: .systemOrange)
+        let (c4, l4) = makeMetricCard("activity.exerciseMetric".localized, unit: "activity.min".localized, explanation: CardExplanations.activityExercise, icon: "timer", iconColor: .systemPink)
         stepsValueLabel = l1
         distanceValueLabel = l2
         caloriesValueLabel = l3
@@ -242,9 +242,9 @@ final class ActivityViewController: UIViewController {
         secondaryRow.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         secondaryRow.translatesAutoresizingMaskIntoConstraints = false
 
-        let (c1, l1) = makeMetricCard("activity.floorsMetric".localized, unit: "", explanation: CardExplanations.activityFlights)
-        let (c2, l2) = makeMetricCard("activity.moveMetric".localized, unit: "activity.min".localized, explanation: CardExplanations.activityMove)
-        let (c3, l3) = makeMetricCard("activity.standMetric".localized, unit: "activity.hours".localized, explanation: CardExplanations.activityStand)
+        let (c1, l1) = makeMetricCard("activity.floorsMetric".localized, unit: "", explanation: CardExplanations.activityFlights, icon: "stairs", iconColor: .systemPurple)
+        let (c2, l2) = makeMetricCard("activity.moveMetric".localized, unit: "kcal", explanation: CardExplanations.activityMove, icon: "flame.circle.fill", iconColor: .systemRed)
+        let (c3, l3) = makeMetricCard("activity.standMetric".localized, unit: "activity.hours".localized, explanation: CardExplanations.activityStand, icon: "figure.stand", iconColor: .systemTeal)
         flightsValueLabel = l1
         moveValueLabel = l2
         standValueLabel = l3
@@ -253,7 +253,7 @@ final class ActivityViewController: UIViewController {
         stack.addArrangedSubview(secondaryRow)
     }
 
-    private func makeMetricCard(_ title: String, unit: String, explanation: String) -> (UIView, UILabel) {
+    private func makeMetricCard(_ title: String, unit: String, explanation: String, icon: String, iconColor: UIColor = AIONDesign.accentPrimary) -> (UIView, UILabel) {
         let card = UIView()
         card.backgroundColor = AIONDesign.surface
         card.layer.cornerRadius = AIONDesign.cornerRadius
@@ -262,6 +262,14 @@ final class ActivityViewController: UIViewController {
         let info = CardInfoButton.make(explanation: explanation)
         info.addTarget(self, action: #selector(infoTapped(_:)), for: .touchUpInside)
         card.addSubview(info)
+
+        // Icon
+        let iconConfig = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+        let iconView = UIImageView(image: UIImage(systemName: icon, withConfiguration: iconConfig))
+        iconView.tintColor = iconColor
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(iconView)
 
         let tl = UILabel()
         tl.text = title
@@ -281,17 +289,33 @@ final class ActivityViewController: UIViewController {
         vl.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(vl)
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Common constraints
         NSLayoutConstraint.activate([
-            info.topAnchor.constraint(equalTo: card.topAnchor, constant: 10),
-            info.leftAnchor.constraint(equalTo: card.leftAnchor, constant: AIONDesign.spacing),
-            tl.topAnchor.constraint(equalTo: info.bottomAnchor, constant: 4),
+            info.topAnchor.constraint(equalTo: card.topAnchor, constant: 8),
+            iconView.centerYAnchor.constraint(equalTo: info.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 22),
+            iconView.heightAnchor.constraint(equalToConstant: 22),
+            tl.topAnchor.constraint(equalTo: info.bottomAnchor, constant: 8),
             tl.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 8),
             tl.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -8),
-            vl.topAnchor.constraint(equalTo: tl.bottomAnchor, constant: 6),
+            vl.topAnchor.constraint(equalTo: tl.bottomAnchor, constant: 4),
             vl.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 8),
             vl.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -8),
-            vl.bottomAnchor.constraint(lessThanOrEqualTo: card.bottomAnchor, constant: -12),
+            vl.bottomAnchor.constraint(lessThanOrEqualTo: card.bottomAnchor, constant: -8),
         ])
+
+        // Info button and icon position based on language direction
+        // LTR (English): icon on LEFT, info on RIGHT
+        // RTL (Hebrew): icon on RIGHT, info on LEFT
+        if isRTL {
+            info.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing).isActive = true
+            iconView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing).isActive = true
+        } else {
+            info.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing).isActive = true
+            iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing).isActive = true
+        }
         return (card, vl)
     }
 
@@ -306,7 +330,7 @@ final class ActivityViewController: UIViewController {
             hl.text = title
             hl.font = .systemFont(ofSize: 12, weight: .semibold)
             hl.textColor = AIONDesign.accentPrimary
-            hl.textAlignment = .right
+            hl.textAlignment = LocalizationManager.shared.textAlignment
             hl.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(hl)
 
@@ -320,18 +344,34 @@ final class ActivityViewController: UIViewController {
             addChild(placeholderHost)
             placeholderHost.didMove(toParent: self)
 
+            let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+            // Common constraints
             NSLayoutConstraint.activate([
                 info.topAnchor.constraint(equalTo: container.topAnchor, constant: 12),
-                info.leftAnchor.constraint(equalTo: container.leftAnchor, constant: AIONDesign.spacing),
                 hl.centerYAnchor.constraint(equalTo: info.centerYAnchor),
-                hl.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -AIONDesign.spacing),
-                hl.leadingAnchor.constraint(greaterThanOrEqualTo: info.trailingAnchor, constant: 8),
                 placeholderHost.view.topAnchor.constraint(equalTo: info.bottomAnchor, constant: 8),
                 placeholderHost.view.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: AIONDesign.spacing),
                 placeholderHost.view.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -AIONDesign.spacing),
                 placeholderHost.view.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -AIONDesign.spacing),
                 placeholderHost.view.heightAnchor.constraint(equalToConstant: 180),
             ])
+
+            // RTL/LTR specific constraints
+            // RTL (Hebrew): info on LEFT, title on right. LTR (English): info on RIGHT, title on left
+            if isRTL {
+                NSLayoutConstraint.activate([
+                    info.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: AIONDesign.spacing),
+                    hl.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -AIONDesign.spacing),
+                    hl.leadingAnchor.constraint(greaterThanOrEqualTo: info.trailingAnchor, constant: 8),
+                ])
+            } else {
+                NSLayoutConstraint.activate([
+                    info.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -AIONDesign.spacing),
+                    hl.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: AIONDesign.spacing),
+                    hl.trailingAnchor.constraint(lessThanOrEqualTo: info.leadingAnchor, constant: -8),
+                ])
+            }
         }
 
         let placeholders = [
@@ -460,7 +500,7 @@ final class ActivityViewController: UIViewController {
         caloriesValueLabel?.text = fmt(s.activeEnergyKcal, { String(format: "%.0f", $0) }, "kcal")
         exerciseValueLabel?.text = fmt(s.exerciseMinutes, { String(format: "%.0f", $0) }, "activity.min".localized)
         flightsValueLabel?.text = fmt(s.flightsClimbed, { String(format: "%.0f", $0) }, "")
-        moveValueLabel?.text = fmt(s.moveTimeMinutes, { String(format: "%.0f", $0) }, "activity.min".localized)
+        moveValueLabel?.text = fmt(s.activeEnergyKcal, { String(format: "%.0f", $0) }, "kcal")
         standValueLabel?.text = fmt(s.standHours, { String(format: "%.1f", $0) }, "activity.hours".localized)
 
         // Update Activity Rings - adjust goal by range

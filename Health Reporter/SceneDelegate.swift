@@ -23,11 +23,17 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func setRootByAuth() {
         let root: UIViewController
-        if Auth.auth().currentUser != nil {
+        if let user = Auth.auth().currentUser {
             // משתמש מחובר - הצג Splash Screen שיטען נתונים ואז יעבור ל-Main
             root = SplashViewController()
+
+            // Analytics: Set user ID and language for returning users
+            AnalyticsService.shared.setUserId(user.uid)
+            AnalyticsService.shared.setLanguage(LocalizationManager.shared.currentLanguage.rawValue)
         } else {
             root = LoginViewController()
+            // Analytics: Clear user ID for logged out state
+            AnalyticsService.shared.setUserId(nil)
         }
         window?.rootViewController = root
     }

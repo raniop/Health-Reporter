@@ -8,8 +8,11 @@
 import UIKit
 import HealthKit
 import FirebaseAuth
+import UserNotifications
 
 final class MainTabBarController: UITabBarController {
+
+    private var socialNavController: UINavigationController?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -35,11 +38,14 @@ final class MainTabBarController: UITabBarController {
         let profile = ProfileViewController()
         profile.tabBarItem = UITabBarItem(title: "tab.profile".localized, image: UIImage(systemName: "person.circle"), tag: 4)
 
+        let socialNav = UINavigationController(rootViewController: social)
+        socialNavController = socialNav
+
         viewControllers = [
             UINavigationController(rootViewController: dash),
             UINavigationController(rootViewController: unified),
             UINavigationController(rootViewController: insights),
-            UINavigationController(rootViewController: social),
+            socialNav,
             UINavigationController(rootViewController: profile),
         ]
 
@@ -49,10 +55,56 @@ final class MainTabBarController: UITabBarController {
 
         // Listen for background color changes
         NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
+
+        // Listen for notification to open Social Hub
+        NotificationCenter.default.addObserver(self, selector: #selector(handleOpenSocialHub(_:)), name: NSNotification.Name("OpenSocialHub"), object: nil)
+
+        // Update social tab badge on launch
+        updateSocialTabBadge()
     }
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - Deep Linking
+
+    @objc private func handleOpenSocialHub(_ notification: Notification) {
+        // Switch to Social tab (index 3)
+        selectedIndex = 3
+
+        // Pop to root in case we're deep in navigation
+        socialNavController?.popToRootViewController(animated: false)
+
+        // If this is a friend request notification, switch to the requests segment
+        if let userInfo = notification.userInfo,
+           let type = userInfo["type"] as? String,
+           type == "friend_request_received" {
+            // Give the view controller time to load, then switch to requests segment
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                if let socialVC = self?.socialNavController?.viewControllers.first as? SocialHubViewController {
+                    socialVC.switchToRequestsSegment()
+                }
+            }
+        }
+    }
+
+    // MARK: - Badge Management
+
+    /// עדכון badge בטאב Social לפי מספר הבקשות הממתינות
+    func updateSocialTabBadge() {
+        FriendsFirestoreSync.fetchPendingRequestsCount { [weak self] count in
+            DispatchQueue.main.async {
+                if count > 0 {
+                    self?.socialNavController?.tabBarItem.badgeValue = "\(count)"
+                } else {
+                    self?.socialNavController?.tabBarItem.badgeValue = nil
+                }
+
+                // Update app icon badge
+                UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
+            }
+        }
     }
 
     @objc private func backgroundColorDidChange() {

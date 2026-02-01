@@ -114,14 +114,14 @@ struct DirectivesJSON: Codable {
 }
 
 struct SupplementJSON: Codable {
-    // Bilingual fields
-    let name_he: String
-    let name_en: String
-    let dosage_he: String
-    let dosage_en: String
-    let reason_he: String
-    let reason_en: String
-    let category: String
+    // Bilingual fields - all optional to handle missing fields gracefully
+    let name_he: String?
+    let name_en: String?
+    let dosage_he: String?
+    let dosage_en: String?
+    let reason_he: String?
+    let reason_en: String?
+    let category: String?
 
     // Backward compatibility - single language fields (legacy)
     let name: String?
@@ -319,29 +319,146 @@ enum CarAnalysisParser {
             let json = try JSONDecoder().decode(CarAnalysisJSONResponse.self, from: data)
             return convertJSONToResponse(json, rawResponse: response)
         } catch {
+            print("⚠️ CarAnalysisParser: JSON decode failed - \(error)")
+            // Try manual JSON parsing as fallback
+            if let manualResult = parseJSONManually(cleaned, rawResponse: response) {
+                print("✅ CarAnalysisParser: Manual JSON parsing succeeded")
+                return manualResult
+            }
             return nil
         }
+    }
+
+    /// Fallback manual JSON parsing using JSONSerialization when Codable fails
+    private static func parseJSONManually(_ jsonString: String, rawResponse: String) -> CarAnalysisResponse? {
+        guard let data = jsonString.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            print("⚠️ CarAnalysisParser: Manual JSON parsing failed - invalid JSON")
+            return nil
+        }
+
+        // Extract nested objects
+        let carIdentity = json["carIdentity"] as? [String: Any] ?? [:]
+        let performanceReview = json["performanceReview"] as? [String: Any] ?? [:]
+        let optimizationPlan = json["optimizationPlan"] as? [String: Any] ?? [:]
+        let tuneUpPlan = json["tuneUpPlan"] as? [String: Any] ?? [:]
+        let directives = json["directives"] as? [String: Any] ?? [:]
+
+        // Helper function to safely get string
+        func str(_ dict: [String: Any], _ key: String) -> String {
+            return dict[key] as? String ?? ""
+        }
+
+        // Helper function to safely get string array
+        func strArr(_ dict: [String: Any], _ key: String) -> [String] {
+            return dict[key] as? [String] ?? []
+        }
+
+        // Parse supplements manually
+        var supplements: [SupplementRecommendation] = []
+        if let supplementsArray = json["supplements"] as? [[String: Any]] {
+            for s in supplementsArray {
+                let catStr = (s["category"] as? String ?? "general").lowercased()
+                let category: SupplementCategory
+                switch catStr {
+                case "sleep": category = .sleep
+                case "performance": category = .performance
+                case "recovery": category = .recovery
+                default: category = .general
+                }
+
+                let nameHe = s["name_he"] as? String ?? s["name"] as? String ?? ""
+                let nameEn = s["name_en"] as? String ?? s["englishName"] as? String ?? s["name"] as? String ?? ""
+                let dosageHe = s["dosage_he"] as? String ?? s["dosage"] as? String ?? ""
+                let dosageEn = s["dosage_en"] as? String ?? s["dosage"] as? String ?? dosageHe
+                let reasonHe = s["reason_he"] as? String ?? s["reason"] as? String ?? ""
+                let reasonEn = s["reason_en"] as? String ?? s["reason"] as? String ?? ""
+
+                supplements.append(SupplementRecommendation(
+                    nameHe: nameHe,
+                    nameEn: nameEn,
+                    dosageHe: dosageHe,
+                    dosageEn: dosageEn,
+                    reasonHe: reasonHe,
+                    reasonEn: reasonEn,
+                    category: category
+                ))
+            }
+        }
+
+        return CarAnalysisResponse(
+            carModelHe: str(carIdentity, "model_he").isEmpty ? str(carIdentity, "model") : str(carIdentity, "model_he"),
+            carModelEn: str(carIdentity, "model_en").isEmpty ? str(carIdentity, "model") : str(carIdentity, "model_en"),
+            carExplanationHe: str(carIdentity, "explanation_he").isEmpty ? str(carIdentity, "explanation") : str(carIdentity, "explanation_he"),
+            carExplanationEn: str(carIdentity, "explanation_en").isEmpty ? str(carIdentity, "explanation") : str(carIdentity, "explanation_en"),
+            carImageURL: "",
+            carWikiName: str(carIdentity, "wikiName"),
+
+            engineHe: str(performanceReview, "engine_he").isEmpty ? str(performanceReview, "engine") : str(performanceReview, "engine_he"),
+            engineEn: str(performanceReview, "engine_en").isEmpty ? str(performanceReview, "engine") : str(performanceReview, "engine_en"),
+            transmissionHe: str(performanceReview, "transmission_he").isEmpty ? str(performanceReview, "transmission") : str(performanceReview, "transmission_he"),
+            transmissionEn: str(performanceReview, "transmission_en").isEmpty ? str(performanceReview, "transmission") : str(performanceReview, "transmission_en"),
+            suspensionHe: str(performanceReview, "suspension_he").isEmpty ? str(performanceReview, "suspension") : str(performanceReview, "suspension_he"),
+            suspensionEn: str(performanceReview, "suspension_en").isEmpty ? str(performanceReview, "suspension") : str(performanceReview, "suspension_en"),
+            fuelEfficiencyHe: str(performanceReview, "fuelEfficiency_he").isEmpty ? str(performanceReview, "fuelEfficiency") : str(performanceReview, "fuelEfficiency_he"),
+            fuelEfficiencyEn: str(performanceReview, "fuelEfficiency_en").isEmpty ? str(performanceReview, "fuelEfficiency") : str(performanceReview, "fuelEfficiency_en"),
+            electronicsHe: str(performanceReview, "electronics_he").isEmpty ? str(performanceReview, "electronics") : str(performanceReview, "electronics_he"),
+            electronicsEn: str(performanceReview, "electronics_en").isEmpty ? str(performanceReview, "electronics") : str(performanceReview, "electronics_en"),
+
+            bottlenecksHe: strArr(json as [String: Any], "bottlenecks_he").isEmpty ? strArr(json as [String: Any], "bottlenecks") : strArr(json as [String: Any], "bottlenecks_he"),
+            bottlenecksEn: strArr(json as [String: Any], "bottlenecks_en").isEmpty ? strArr(json as [String: Any], "bottlenecks") : strArr(json as [String: Any], "bottlenecks_en"),
+            warningSignals: [],
+
+            upgradesHe: strArr(optimizationPlan, "upgrades_he").isEmpty ? strArr(optimizationPlan, "upgrades") : strArr(optimizationPlan, "upgrades_he"),
+            upgradesEn: strArr(optimizationPlan, "upgrades_en").isEmpty ? strArr(optimizationPlan, "upgrades") : strArr(optimizationPlan, "upgrades_en"),
+            skippedMaintenanceHe: strArr(optimizationPlan, "skippedMaintenance_he").isEmpty ? strArr(optimizationPlan, "skippedMaintenance") : strArr(optimizationPlan, "skippedMaintenance_he"),
+            skippedMaintenanceEn: strArr(optimizationPlan, "skippedMaintenance_en").isEmpty ? strArr(optimizationPlan, "skippedMaintenance") : strArr(optimizationPlan, "skippedMaintenance_en"),
+            stopImmediatelyHe: strArr(optimizationPlan, "stopImmediately_he").isEmpty ? strArr(optimizationPlan, "stopImmediately") : strArr(optimizationPlan, "stopImmediately_he"),
+            stopImmediatelyEn: strArr(optimizationPlan, "stopImmediately_en").isEmpty ? strArr(optimizationPlan, "stopImmediately") : strArr(optimizationPlan, "stopImmediately_en"),
+
+            trainingAdjustmentsHe: str(tuneUpPlan, "trainingAdjustments_he").isEmpty ? str(tuneUpPlan, "trainingAdjustments") : str(tuneUpPlan, "trainingAdjustments_he"),
+            trainingAdjustmentsEn: str(tuneUpPlan, "trainingAdjustments_en").isEmpty ? str(tuneUpPlan, "trainingAdjustments") : str(tuneUpPlan, "trainingAdjustments_en"),
+            recoveryChangesHe: str(tuneUpPlan, "recoveryChanges_he").isEmpty ? str(tuneUpPlan, "recoveryChanges") : str(tuneUpPlan, "recoveryChanges_he"),
+            recoveryChangesEn: str(tuneUpPlan, "recoveryChanges_en").isEmpty ? str(tuneUpPlan, "recoveryChanges") : str(tuneUpPlan, "recoveryChanges_en"),
+            habitToAddHe: str(tuneUpPlan, "habitToAdd_he").isEmpty ? str(tuneUpPlan, "habitToAdd") : str(tuneUpPlan, "habitToAdd_he"),
+            habitToAddEn: str(tuneUpPlan, "habitToAdd_en").isEmpty ? str(tuneUpPlan, "habitToAdd") : str(tuneUpPlan, "habitToAdd_en"),
+            habitToRemoveHe: str(tuneUpPlan, "habitToRemove_he").isEmpty ? str(tuneUpPlan, "habitToRemove") : str(tuneUpPlan, "habitToRemove_he"),
+            habitToRemoveEn: str(tuneUpPlan, "habitToRemove_en").isEmpty ? str(tuneUpPlan, "habitToRemove") : str(tuneUpPlan, "habitToRemove_en"),
+
+            directiveStopHe: str(directives, "stop_he").isEmpty ? str(directives, "stop") : str(directives, "stop_he"),
+            directiveStopEn: str(directives, "stop_en").isEmpty ? str(directives, "stop") : str(directives, "stop_en"),
+            directiveStartHe: str(directives, "start_he").isEmpty ? str(directives, "start") : str(directives, "start_he"),
+            directiveStartEn: str(directives, "start_en").isEmpty ? str(directives, "start") : str(directives, "start_en"),
+            directiveWatchHe: str(directives, "watch_he").isEmpty ? str(directives, "watch") : str(directives, "watch_he"),
+            directiveWatchEn: str(directives, "watch_en").isEmpty ? str(directives, "watch") : str(directives, "watch_en"),
+
+            summaryHe: str(json as [String: Any], "forecast_he").isEmpty ? str(json as [String: Any], "forecast") : str(json as [String: Any], "forecast_he"),
+            summaryEn: str(json as [String: Any], "forecast_en").isEmpty ? str(json as [String: Any], "forecast") : str(json as [String: Any], "forecast_en"),
+
+            supplements: supplements,
+            rawResponse: rawResponse
+        )
     }
 
     /// ממיר את ה-JSON המפורסר למודל CarAnalysisResponse
     /// תומך גם בפורמט bilingual חדש (_he/_en) וגם בפורמט legacy (שדה אחד)
     private static func convertJSONToResponse(_ json: CarAnalysisJSONResponse, rawResponse: String) -> CarAnalysisResponse {
-        // המרת supplements
+        // המרת supplements - handle nil values gracefully
         let supplements = json.supplements.map { s in
             let category: SupplementCategory
-            switch s.category.lowercased() {
+            switch (s.category ?? "general").lowercased() {
             case "sleep": category = .sleep
             case "performance": category = .performance
             case "recovery": category = .recovery
             default: category = .general
             }
-            // Use bilingual fields, fallback to legacy if empty
-            let nameHe = s.name_he.isEmpty ? (s.name ?? s.name_he) : s.name_he
-            let nameEn = s.name_en.isEmpty ? (s.englishName ?? s.name ?? s.name_en) : s.name_en
-            let dosageHe = s.dosage_he.isEmpty ? (s.dosage ?? s.dosage_he) : s.dosage_he
-            let dosageEn = s.dosage_en.isEmpty ? (s.dosage ?? s.dosage_en) : s.dosage_en
-            let reasonHe = s.reason_he.isEmpty ? (s.reason ?? s.reason_he) : s.reason_he
-            let reasonEn = s.reason_en.isEmpty ? (s.reason ?? s.reason_en) : s.reason_en
+            // Use bilingual fields, fallback to legacy if nil or empty
+            let nameHe = (s.name_he?.isEmpty ?? true) ? (s.name ?? s.name_he ?? "") : (s.name_he ?? "")
+            let nameEn = (s.name_en?.isEmpty ?? true) ? (s.englishName ?? s.name ?? s.name_en ?? "") : (s.name_en ?? "")
+            let dosageHe = (s.dosage_he?.isEmpty ?? true) ? (s.dosage ?? s.dosage_he ?? "") : (s.dosage_he ?? "")
+            let dosageEn = (s.dosage_en?.isEmpty ?? true) ? (s.dosage ?? s.dosage_en ?? dosageHe) : (s.dosage_en ?? "")
+            let reasonHe = (s.reason_he?.isEmpty ?? true) ? (s.reason ?? s.reason_he ?? "") : (s.reason_he ?? "")
+            let reasonEn = (s.reason_en?.isEmpty ?? true) ? (s.reason ?? s.reason_en ?? "") : (s.reason_en ?? "")
 
             return SupplementRecommendation(
                 nameHe: nameHe,

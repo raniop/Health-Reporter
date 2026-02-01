@@ -12,7 +12,7 @@ import Foundation
 struct Friend: Codable {
     let uid: String
     let displayName: String
-    let photoURL: String?
+    var photoURL: String?  // mutable to allow fallback from publicScores
     let addedAt: Date
 
     // Cached score data for leaderboard display

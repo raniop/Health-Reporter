@@ -117,6 +117,9 @@ class HealthDashboardViewController: UIViewController {
         checkHealthKitAuthorization()
         loadHeaderAvatar()
 
+        // Analytics: Log screen view
+        AnalyticsService.shared.logScreenView(.dashboard)
+
         // Listen for background color changes
         NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
 
@@ -270,17 +273,26 @@ class HealthDashboardViewController: UIViewController {
         textStack.addArrangedSubview(greetingLabel)
         textStack.addArrangedSubview(dateLabel)
 
-        // Spacer to push avatar to the left side
+        // Spacer to push elements apart
         let spacer = UIView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        // RTL layout: text on right, avatar on left
-        // Since semanticContentAttribute is forceRightToLeft, first item appears on right
-        headerStack.addArrangedSubview(textStack)
-        headerStack.addArrangedSubview(spacer)
-        headerStack.addArrangedSubview(headerAvatarView)
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Layout based on language direction
+        if isRTL {
+            // RTL: text on right, avatar on left
+            headerStack.addArrangedSubview(textStack)
+            headerStack.addArrangedSubview(spacer)
+            headerStack.addArrangedSubview(headerAvatarView)
+        } else {
+            // LTR: avatar on left, text on right
+            headerStack.addArrangedSubview(headerAvatarView)
+            headerStack.addArrangedSubview(textStack)
+            headerStack.addArrangedSubview(spacer)
+        }
 
         NSLayoutConstraint.activate([
             headerAvatarView.widthAnchor.constraint(equalToConstant: 40),
@@ -452,9 +464,13 @@ class HealthDashboardViewController: UIViewController {
     }
 
     @objc private func periodChanged() {
+        let oldRange = selectedRange
         selectedRange = DataRange.allCases[periodControl.selectedSegmentIndex]
         updateRangeDateLabel()
         loadData(forceAnalysis: false)
+
+        // Analytics: Log period change
+        AnalyticsService.shared.logPeriodChanged(from: oldRange.rawValue, to: selectedRange.rawValue)
     }
 
     // MARK: - Efficiency Chart Card
@@ -467,7 +483,7 @@ class HealthDashboardViewController: UIViewController {
         efficiencyTitleLabel.text = "dashboard.recoveryTrend".localized
         efficiencyTitleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         efficiencyTitleLabel.textColor = AIONDesign.accentPrimary
-        efficiencyTitleLabel.textAlignment = .center
+        efficiencyTitleLabel.textAlignment = LocalizationManager.shared.textAlignment
         efficiencyTitleLabel.translatesAutoresizingMaskIntoConstraints = false
         efficiencyCard.addSubview(efficiencyTitleLabel)
 
@@ -483,18 +499,34 @@ class HealthDashboardViewController: UIViewController {
         hosting.didMove(toParent: self)
         efficiencyHosting = hosting
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Common constraints
         NSLayoutConstraint.activate([
             info.topAnchor.constraint(equalTo: efficiencyCard.topAnchor, constant: AIONDesign.spacing),
-            info.leftAnchor.constraint(equalTo: efficiencyCard.leftAnchor, constant: AIONDesign.spacing),
             efficiencyTitleLabel.centerYAnchor.constraint(equalTo: info.centerYAnchor),
-            efficiencyTitleLabel.leadingAnchor.constraint(equalTo: info.trailingAnchor, constant: 8),
-            efficiencyTitleLabel.trailingAnchor.constraint(equalTo: efficiencyCard.trailingAnchor, constant: -AIONDesign.spacing),
             hosting.view.topAnchor.constraint(equalTo: info.bottomAnchor, constant: 10),
             hosting.view.leadingAnchor.constraint(equalTo: efficiencyCard.leadingAnchor, constant: AIONDesign.spacing),
             hosting.view.trailingAnchor.constraint(equalTo: efficiencyCard.trailingAnchor, constant: -AIONDesign.spacing),
             hosting.view.bottomAnchor.constraint(equalTo: efficiencyCard.bottomAnchor, constant: -AIONDesign.spacing),
             hosting.view.heightAnchor.constraint(equalToConstant: 160),
         ])
+
+        // RTL/LTR specific constraints
+        // RTL (Hebrew): info on LEFT, title on right of info. LTR (English): info on RIGHT, title on left of info
+        if isRTL {
+            NSLayoutConstraint.activate([
+                info.leadingAnchor.constraint(equalTo: efficiencyCard.leadingAnchor, constant: AIONDesign.spacing),
+                efficiencyTitleLabel.leadingAnchor.constraint(equalTo: info.trailingAnchor, constant: 8),
+                efficiencyTitleLabel.trailingAnchor.constraint(equalTo: efficiencyCard.trailingAnchor, constant: -AIONDesign.spacing),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                info.trailingAnchor.constraint(equalTo: efficiencyCard.trailingAnchor, constant: -AIONDesign.spacing),
+                efficiencyTitleLabel.trailingAnchor.constraint(equalTo: info.leadingAnchor, constant: -8),
+                efficiencyTitleLabel.leadingAnchor.constraint(equalTo: efficiencyCard.leadingAnchor, constant: AIONDesign.spacing),
+            ])
+        }
     }
 
     // MARK: - Bio Stack Row
@@ -539,12 +571,18 @@ class HealthDashboardViewController: UIViewController {
         highlightsCard.addSubview(highlightsStack)
         NSLayoutConstraint.activate([
             info.topAnchor.constraint(equalTo: highlightsCard.topAnchor, constant: AIONDesign.spacing),
-            info.leftAnchor.constraint(equalTo: highlightsCard.leftAnchor, constant: AIONDesign.spacing),
             highlightsStack.topAnchor.constraint(equalTo: info.bottomAnchor, constant: 12),
             highlightsStack.leadingAnchor.constraint(equalTo: highlightsCard.leadingAnchor, constant: AIONDesign.spacing),
             highlightsStack.trailingAnchor.constraint(equalTo: highlightsCard.trailingAnchor, constant: -AIONDesign.spacing),
             highlightsStack.bottomAnchor.constraint(equalTo: highlightsCard.bottomAnchor, constant: -AIONDesign.spacing),
         ])
+        // Info button position based on language direction
+        // RTL (Hebrew): info on LEFT, LTR (English): info on RIGHT
+        if LocalizationManager.shared.currentLanguage.isRTL {
+            info.leadingAnchor.constraint(equalTo: highlightsCard.leadingAnchor, constant: AIONDesign.spacing).isActive = true
+        } else {
+            info.trailingAnchor.constraint(equalTo: highlightsCard.trailingAnchor, constant: -AIONDesign.spacing).isActive = true
+        }
     }
 
     // MARK: - Directives Card
@@ -557,8 +595,14 @@ class HealthDashboardViewController: UIViewController {
         directivesCard.addSubview(info)
         NSLayoutConstraint.activate([
             info.topAnchor.constraint(equalTo: directivesCard.topAnchor, constant: AIONDesign.spacing),
-            info.leftAnchor.constraint(equalTo: directivesCard.leftAnchor, constant: AIONDesign.spacing),
         ])
+        // Info button position based on language direction
+        // RTL (Hebrew): info on LEFT, LTR (English): info on RIGHT
+        if LocalizationManager.shared.currentLanguage.isRTL {
+            info.leadingAnchor.constraint(equalTo: directivesCard.leadingAnchor, constant: AIONDesign.spacing).isActive = true
+        } else {
+            info.trailingAnchor.constraint(equalTo: directivesCard.trailingAnchor, constant: -AIONDesign.spacing).isActive = true
+        }
     }
 
     // MARK: - Helpers
@@ -578,8 +622,14 @@ class HealthDashboardViewController: UIViewController {
         card.addSubview(info)
         NSLayoutConstraint.activate([
             info.topAnchor.constraint(equalTo: card.topAnchor, constant: AIONDesign.spacing),
-            info.leftAnchor.constraint(equalTo: card.leftAnchor, constant: AIONDesign.spacing),
         ])
+        // Info button position based on language direction
+        // RTL (Hebrew): info on LEFT, LTR (English): info on RIGHT
+        if LocalizationManager.shared.currentLanguage.isRTL {
+            info.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing).isActive = true
+        } else {
+            info.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing).isActive = true
+        }
     }
 
     @objc private func headerAvatarTapped() {
@@ -597,6 +647,9 @@ class HealthDashboardViewController: UIViewController {
         refreshControl.attributedTitle = NSAttributedString(string: "dashboard.reloadAllData".localized, attributes: [.foregroundColor: AIONDesign.textSecondary])
         showLoading("dashboard.reloadAllData".localized)
         loadData(forceAnalysis: false, useRefreshControl: true)
+
+        // Analytics: Log dashboard refresh
+        AnalyticsService.shared.logDashboardRefresh(period: selectedRange.rawValue)
     }
 
     /// נקרא מעמוד תובנות – מריץ ניתוח (תובנות + המלצות) בלי overlay בדשבורד.
@@ -693,6 +746,12 @@ class HealthDashboardViewController: UIViewController {
             animated: shouldAnimate
         )
         if shouldAnimate { hasAnimatedOnce = true }
+
+        // Analytics: Update user properties with current tier and score
+        if hasValidScore {
+            AnalyticsService.shared.setCarTier(tier)
+            AnalyticsService.shared.setHealthScoreRange(score: score)
+        }
 
         // Bio Sleep Card - גרף מגמה ל-7/30 ימים, ערך בודד ליום אחד
         if !sleepTake.isEmpty {
@@ -1092,7 +1151,10 @@ class HealthDashboardViewController: UIViewController {
         if let healthResult = AnalysisCache.loadHealthScoreResult() {
             let score = healthResult.healthScoreInt
             let tier = CarTierEngine.tierForScore(score)
-            LeaderboardFirestoreSync.syncScore(score: score, tier: tier)
+            // שימוש בשם הרכב מ-Gemini אם קיים במטמון
+            let cachedCarName = AnalysisCache.loadSelectedCar()?.name
+            print("🚗 [Dashboard.syncScoreFromCache] Syncing with cachedCarName: \(cachedCarName ?? "nil")")
+            LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
         }
     }
 
@@ -1113,7 +1175,10 @@ class HealthDashboardViewController: UIViewController {
             // סנכרון הציון ללידרבורד
             let score = healthResult.healthScoreInt
             let tier = CarTierEngine.tierForScore(score)
-            LeaderboardFirestoreSync.syncScore(score: score, tier: tier)
+            // שימוש בשם הרכב מ-Gemini אם קיים במטמון
+            let cachedCarName = AnalysisCache.loadSelectedCar()?.name
+            print("🚗 [Dashboard.loadData] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
+            LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
 
             // ממשיכים לטעון את שאר הנתונים רק אחרי שהציון חושב
             HealthKitManager.shared.fetchAllHealthData(for: self.selectedRange) { [weak self] data, err in

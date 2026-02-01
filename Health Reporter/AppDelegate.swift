@@ -8,13 +8,50 @@
 import UIKit
 import CoreData
 import FirebaseCore
+import FirebaseMessaging
+import UserNotifications
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         FirebaseApp.configure()
+
+        // Setup Push Notifications
+        setupPushNotifications(application: application)
+
         return true
+    }
+
+    // MARK: - Push Notifications Setup
+
+    private func setupPushNotifications(application: UIApplication) {
+        UNUserNotificationCenter.current().delegate = self
+        Messaging.messaging().delegate = self
+
+        // Request notification permissions
+        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+        UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { granted, error in
+            if let error = error {
+                print("Push notification authorization error: \(error)")
+                return
+            }
+            print("Push notification permission granted: \(granted)")
+        }
+
+        // Register for remote notifications
+        application.registerForRemoteNotifications()
+    }
+
+    // MARK: - Remote Notification Registration
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
+        print("APNs token registered successfully")
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("Failed to register for remote notifications: \(error)")
     }
 
     // MARK: UISceneSession Lifecycle
@@ -76,5 +113,76 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
+}
+
+// MARK: - UNUserNotificationCenterDelegate
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+
+    // Handle notification when app is in foreground
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        let userInfo = notification.request.content.userInfo
+        print("Notification received in foreground: \(userInfo)")
+
+        // Show notification banner even when app is in foreground
+        completionHandler([[.banner, .badge, .sound]])
+    }
+
+    // Handle notification tap
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        print("Notification tapped: \(userInfo)")
+
+        // Handle navigation based on notification type
+        if let type = userInfo["type"] as? String {
+            handleNotificationAction(type: type, userInfo: userInfo)
+        }
+
+        completionHandler()
+    }
+
+    private func handleNotificationAction(type: String, userInfo: [AnyHashable: Any]) {
+        // Post notification to navigate to the appropriate screen
+        switch type {
+        case "friend_request_received", "friend_request_accepted":
+            NotificationCenter.default.post(
+                name: NSNotification.Name("OpenSocialHub"),
+                object: nil,
+                userInfo: userInfo as? [String: Any]
+            )
+        default:
+            break
+        }
+    }
+}
+
+// MARK: - MessagingDelegate
+
+extension AppDelegate: MessagingDelegate {
+
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let token = fcmToken else {
+            print("FCM token is nil")
+            return
+        }
+        print("FCM token received: \(token)")
+
+        // Save token to Firestore for the current user
+        FriendsFirestoreSync.saveFCMToken(token) { error in
+            if let error = error {
+                print("Failed to save FCM token: \(error)")
+            } else {
+                print("FCM token saved to Firestore")
+            }
+        }
+    }
 }
 

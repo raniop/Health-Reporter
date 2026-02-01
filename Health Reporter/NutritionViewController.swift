@@ -194,7 +194,7 @@ final class NutritionViewController: UIViewController {
         nameLabel.text = supplement.name
         nameLabel.font = .systemFont(ofSize: 17, weight: .bold)
         nameLabel.textColor = textWhite
-        nameLabel.textAlignment = .right
+        nameLabel.textAlignment = LocalizationManager.shared.textAlignment
         nameLabel.numberOfLines = 0
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
 
@@ -236,7 +236,7 @@ final class NutritionViewController: UIViewController {
         reasonLabel.text = supplement.reason
         reasonLabel.font = .systemFont(ofSize: 14, weight: .regular)
         reasonLabel.textColor = textGray
-        reasonLabel.textAlignment = .right
+        reasonLabel.textAlignment = LocalizationManager.shared.textAlignment
         reasonLabel.numberOfLines = 0
         reasonLabel.translatesAutoresizingMaskIntoConstraints = false
 
@@ -248,19 +248,15 @@ final class NutritionViewController: UIViewController {
         card.addSubview(reasonTitleLabel)
         card.addSubview(reasonLabel)
 
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Common constraints
         NSLayoutConstraint.activate([
-            // אייקון בפינה ימנית עליונה
             pillIcon.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
-            pillIcon.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
 
-            // שם התוסף
             nameLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
-            nameLabel.trailingAnchor.constraint(equalTo: pillIcon.leadingAnchor, constant: -12),
-            nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: card.leadingAnchor, constant: 16),
 
-            // Badge מינון
             dosageBadge.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 10),
-            dosageBadge.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
 
             // קו הפרדה
             separator.topAnchor.constraint(equalTo: dosageBadge.bottomAnchor, constant: 12),
@@ -279,6 +275,23 @@ final class NutritionViewController: UIViewController {
             reasonLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
             reasonLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
         ])
+
+        // RTL/LTR specific constraints
+        if isRTL {
+            NSLayoutConstraint.activate([
+                pillIcon.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+                nameLabel.trailingAnchor.constraint(equalTo: pillIcon.leadingAnchor, constant: -12),
+                nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: card.leadingAnchor, constant: 16),
+                dosageBadge.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                pillIcon.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+                nameLabel.leadingAnchor.constraint(equalTo: pillIcon.trailingAnchor, constant: 12),
+                nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: card.trailingAnchor, constant: -16),
+                dosageBadge.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            ])
+        }
 
         stack.addArrangedSubview(card)
     }

@@ -28,7 +28,13 @@ final class LocalizationManager {
     static let shared = LocalizationManager()
 
     private let languageKey = "AppLanguage"
+    private let manualOverrideKey = "AppLanguageManualOverride"
     private var bundle: Bundle?
+
+    /// Returns true if user manually selected a language (not using device default)
+    var isManualOverride: Bool {
+        return UserDefaults.standard.bool(forKey: manualOverrideKey)
+    }
 
     var currentLanguage: AppLanguage {
         didSet {
@@ -38,12 +44,44 @@ final class LocalizationManager {
         }
     }
 
+    /// Sets language manually (user override)
+    func setLanguage(_ language: AppLanguage) {
+        UserDefaults.standard.set(true, forKey: manualOverrideKey)
+        currentLanguage = language
+    }
+
+    /// Resets to automatic (device language)
+    func resetToAutomatic() {
+        UserDefaults.standard.set(false, forKey: manualOverrideKey)
+        UserDefaults.standard.removeObject(forKey: languageKey)
+        currentLanguage = Self.detectDeviceLanguage()
+    }
+
+    /// Detects the device's preferred language
+    private static func detectDeviceLanguage() -> AppLanguage {
+        // Check device's preferred languages
+        let preferredLanguages = Locale.preferredLanguages
+        for language in preferredLanguages {
+            if language.hasPrefix("he") {
+                return .hebrew
+            } else if language.hasPrefix("en") {
+                return .english
+            }
+        }
+        // Default to English if neither Hebrew nor English is found
+        return .english
+    }
+
     private init() {
-        if let savedLanguage = UserDefaults.standard.string(forKey: languageKey),
+        // Check if user has manually overridden the language
+        if UserDefaults.standard.bool(forKey: manualOverrideKey),
+           let savedLanguage = UserDefaults.standard.string(forKey: languageKey),
            let language = AppLanguage(rawValue: savedLanguage) {
+            // User manually selected a language - use their choice
             currentLanguage = language
         } else {
-            currentLanguage = .hebrew
+            // No manual override - detect from device
+            currentLanguage = Self.detectDeviceLanguage()
         }
         loadBundle()
     }

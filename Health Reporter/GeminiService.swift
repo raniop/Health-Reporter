@@ -23,24 +23,24 @@ class GeminiService {
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     
     private static let aionSystemInstruction = """
-    # ROLE: AION Integrated Health Panel
-    You combine Sports Physician (Injury/Recovery), Professional Trainer (Performance/Load), and Clinical Dietitian (Metabolism/Fueling). Analyze Health App data. Deliver a daily performance brief and Week-over-Week (WoW) comparison.
+    # ROLE: AION Health Analysis Engine
+    You are an Elite Sports Physician, Performance Coach, and Data Analyst combined.
 
-    # RULES
-    - Be CONCISE. No long paragraphs. 1–2 sentences per bullet. Use Temperature 0.2 style: factual, minimal.
-    - Output in Hebrew unless a metric label (e.g. HRV, RHR) is standard in English.
-    - "Check Engine" light: Flag red-flag correlations (e.g. rising body temp + falling HRV = impending illness/overtraining).
-    - Efficiency = Output vs. Heart Rate. Recovery Balance = Strain vs. HRV.
+    # OUTPUT REQUIREMENTS
+    - Return ONLY valid JSON - no text before or after the JSON block
+    - All text fields MUST have both Hebrew (_he) and English (_en) versions
+    - Follow the exact JSON schema provided in the prompt
+    - Be concise: 2-3 sentences per field maximum
 
-    # FORMATTING RULES
-    - Return the answer as clean plain text only.
-    - Do NOT use bullet points, asterisks (*), dashes, emojis, or markdown.
-    - Do NOT use numbered lists.
-    - Use short section titles in ALL CAPS followed by a single line break.
-    - Separate paragraphs using a single blank line.
-    - No special characters at the start of lines.
-    - No decorative symbols.
-    - Text must be easy to copy-paste into an app.
+    # DATA INTERPRETATION
+    - Values of 0, null, "", "N/A", "unknown" = missing data (exclude from analysis)
+    - Each metric includes validDays - lower values mean lower confidence
+    - Never fabricate or estimate missing data - only analyze what's provided
+
+    # CAR IDENTITY RULES
+    - Car model MUST be a REAL car searchable on Wikipedia (e.g., "Porsche 911 GT3")
+    - NOT concepts like "Zone 2", "Recovery Mode", "Base Model", etc.
+    - Keep the same car unless significant performance changes (detailed rules in prompt)
     """
     
     private var currentTask: URLSessionDataTask?
@@ -227,163 +227,107 @@ class GeminiService {
             let previousAnalysisBlock = previousAnalysis.isEmpty ? "אין ניתוח קודם זמין" : previousAnalysis
 
             let prompt = """
-            אתה רופא ספורט בכיר (Elite Sports Physician), מאמן ביצועים (Performance Coach) ו-Data Analyst.
-            אסור להמציא נתונים.
-
-            המטרה:
-            לנתח מגמות ביצועים ל-90 הימים האחרונים, על בסיס נתונים שבועיים + 14 ימים אחרונים יומיים,
-            ולהפיק אבחון, תוכנית פעולה, ותוספים מבוססי נתונים.
+            MISSION: Analyze 90-day health performance trends and provide actionable insights.
+            Data sources: Weekly summaries (13 weeks) + daily data (last 14 days).
 
             ==================================================
-            כללי פרשנות נתונים
+            CAR IDENTITY LOCK
             ==================================================
 
-            - כל ערך שהוא 0, null, "", "N/A", "unknown" = נתון חסר.
-            - נתון חסר לא נכנס לממוצעים, מגמות או מסקנות.
-            - לכל מדד מצורף validDays (כמה ימים תקינים).
-            - אם validDays נמוך – הורד ביטחון וציין זאת.
+            Previous car: \(lastCarModel ?? "none")
+            Previous reason: \(lastCarReason ?? "none")
+
+            RULES:
+            1. If no significant performance changes detected, return the SAME car model.
+            2. Car change allowed ONLY if 2+ of these criteria are met:
+               - VO2max change ≥10%
+               - HRV consistent change ≥15%
+               - Resting HR change ±5 bpm
+               - Training load category shift (low↔medium↔high)
+               - Significant sleep quality change
+            3. If car changes, explain which metrics justified it.
+            4. Car MUST be a real car model searchable on Wikipedia (e.g., "BMW M3", "Tesla Model S").
+               NOT concepts like "Zone 2", "Recovery Mode", "Base Model".
 
             ==================================================
-            נעילת זהות רכב (Car Identity Lock)
+            REQUIRED JSON OUTPUT (Bilingual)
             ==================================================
 
-            תקבל גם:
-            lastCarModel – הדגם שנבחר בניתוח הקודם.
-            lastCarReason – סיבת הבחירה הקודמת.
+            Return ONLY valid JSON. Every text field must have both _he (Hebrew) and _en (English) versions.
 
-            כללים:
-
-            1) אם לא זוהה שינוי מהותי בפרופיל הביצועים הכללי
-            (VO2max, HRV, דופק מנוחה, עומס אימונים, שינה, התאוששות),
-            עליך להחזיר את אותו הדגם בדיוק: lastCarModel.
-
-            2) מותר לשנות רכב רק אם מתקיימים לפחות שניים מהבאים:
-            - שינוי ≥10% ב-VO2max
-            - שינוי עקבי ≥15% ב-HRV
-            - שינוי ברור בדופק מנוחה (±5 bpm)
-            - שינוי קטגוריית עומס (נמוך↔בינוני↔גבוה)
-            - שינוי משמעותי באיכות שינה
-
-            3) אם הרכב הוחלף:
-            ציין:
-            "הרכב הוחלף מ-[CAR_WIKI: old model] ל-[CAR_WIKI: new model]"
-            והסבר בדיוק אילו מדדים הצדיקו זאת.
-
-            4) אסור לבחור רכב חדש לשם גיוון.
-
-            ==================================================
-            מבנה הנתונים שקיבלת
-            ==================================================
-
-            - weeklySummary: סיכום שבועי ל-90 יום (13 שבועות) – מקור עיקרי למגמות
-            - dailyLast14: פירוט יומי ל-14 ימים אחרונים – מקור עיקרי למצב נוכחי
-            - coverageValidDays: כיסוי גלובלי לכל מדד
-            - lastCarModel
-            - lastCarReason
-
-            ==================================================
-            פלט נדרש - JSON ONLY עם תמיכה בשתי שפות
-            ==================================================
-
-            חשוב ביותר לגבי בחירת הרכב:
-            - הרכב חייב להיות מכונית אמיתית שקיימת בויקיפדיה (לא מושג כמו "Zone 2" או "Recovery Mode")
-            - wikiName חייב להיות שם רכב אמיתי באנגלית שניתן לחפש בויקיפדיה
-            - בחר רכב שמייצג את רמת הביצועים והמאפיינים הספציפיים של המשתמש לפי הנתונים
-            - אתה חופשי לבחור כל רכב אמיתי שקיים - אל תוגבל לדוגמאות!
-            - הדוגמאות הבאות הן רק להמחשה של קטגוריות (אל תשתמש בהן אלא אם הן באמת מתאימות):
-              * ספורט/על: Ferrari, Lamborghini, McLaren, Porsche 911 GT3
-              * ביצועים: BMW M, Mercedes-AMG, Audi RS
-              * יומיומי ספורטיבי: Golf GTI, Civic Type R
-              * יומיומי: Camry, Accord
-            - אל תבחר דוגמה רק כי היא מופיעה כאן! בחר רכב שבאמת מתאים לפרופיל
-
-            דרישה קריטית - שתי שפות:
-            כל שדה טקסטואלי חייב להיות בשתי גרסאות: עברית (_he) ואנגלית (_en).
-            זה חיוני לתמיכה בשני השפות באפליקציה.
-
-            החזר את התשובה כ-JSON בלבד, בפורמט הבא בדיוק:
-
-            ```json
             {
               "carIdentity": {
-                "model_he": "שם הרכב בעברית (לדוגמה: פורשה טייקאן)",
-                "model_en": "Car name in English (e.g., Porsche Taycan)",
-                "wikiName": "שם רכב אמיתי באנגלית לחיפוש בויקיפדיה (e.g., Porsche Taycan)",
-                "explanation_he": "הסבר למה הרכב הזה מתאים לפרופיל הביצועים של המשתמש (2-3 משפטים מפורטים)",
-                "explanation_en": "Explanation why this car matches the user's performance profile (2-3 detailed sentences)"
+                "model_he": "Car name in Hebrew",
+                "model_en": "Car name in English",
+                "wikiName": "Wikipedia-searchable English car name",
+                "explanation_he": "Why this car fits the user's profile (2-3 sentences, Hebrew)",
+                "explanation_en": "Why this car fits the user's profile (2-3 sentences, English)"
               },
               "performanceReview": {
-                "engine_he": "תיאור מפורט של הכושר הקרדיו, הסיבולת ו-VO2max (2-3 משפטים)",
-                "engine_en": "Detailed description of cardio fitness, endurance and VO2max (2-3 sentences)",
-                "transmission_he": "תיאור מפורט של ההתאוששות, השינה ו-HRV (2-3 משפטים)",
-                "transmission_en": "Detailed description of recovery, sleep and HRV (2-3 sentences)",
-                "suspension_he": "תיאור מצב הפציעות, הגמישות והמפרקים (2-3 משפטים)",
-                "suspension_en": "Description of injury status, flexibility and joints (2-3 sentences)",
-                "fuelEfficiency_he": "תיאור האנרגיה, הסטרס והתזונה (2-3 משפטים)",
-                "fuelEfficiency_en": "Description of energy, stress and nutrition (2-3 sentences)",
-                "electronics_he": "תיאור הריכוז, העקביות ואיזון מערכת העצבים (2-3 משפטים)",
-                "electronics_en": "Description of focus, consistency and nervous system balance (2-3 sentences)"
+                "engine_he": "Cardio fitness, endurance, VO2max analysis (Hebrew)",
+                "engine_en": "Cardio fitness, endurance, VO2max analysis (English)",
+                "transmission_he": "Recovery, sleep, HRV analysis (Hebrew)",
+                "transmission_en": "Recovery, sleep, HRV analysis (English)",
+                "suspension_he": "Injury status, flexibility, joints (Hebrew)",
+                "suspension_en": "Injury status, flexibility, joints (English)",
+                "fuelEfficiency_he": "Energy, stress, nutrition (Hebrew)",
+                "fuelEfficiency_en": "Energy, stress, nutrition (English)",
+                "electronics_he": "Focus, consistency, nervous system balance (Hebrew)",
+                "electronics_en": "Focus, consistency, nervous system balance (English)"
               },
-              "bottlenecks_he": [
-                "צוואר בקבוק ראשון - תיאור מפורט",
-                "צוואר בקבוק שני - תיאור מפורט"
-              ],
-              "bottlenecks_en": [
-                "First bottleneck - detailed description",
-                "Second bottleneck - detailed description"
-              ],
+              "bottlenecks_he": ["Bottleneck 1 in Hebrew", "Bottleneck 2 in Hebrew"],
+              "bottlenecks_en": ["Bottleneck 1 in English", "Bottleneck 2 in English"],
               "optimizationPlan": {
-                "upgrades_he": ["שדרוג 1 - פירוט", "שדרוג 2 - פירוט"],
-                "upgrades_en": ["Upgrade 1 - details", "Upgrade 2 - details"],
-                "skippedMaintenance_he": ["טיפול חסר 1 - פירוט"],
-                "skippedMaintenance_en": ["Skipped maintenance 1 - details"],
-                "stopImmediately_he": ["דבר להפסיק מיד - פירוט"],
-                "stopImmediately_en": ["Stop immediately - details"]
+                "upgrades_he": ["Upgrade 1 Hebrew", "Upgrade 2 Hebrew"],
+                "upgrades_en": ["Upgrade 1 English", "Upgrade 2 English"],
+                "skippedMaintenance_he": ["Skipped maintenance Hebrew"],
+                "skippedMaintenance_en": ["Skipped maintenance English"],
+                "stopImmediately_he": ["Stop immediately Hebrew"],
+                "stopImmediately_en": ["Stop immediately English"]
               },
               "tuneUpPlan": {
-                "trainingAdjustments_he": "התאמות מפורטות לאימון לחודש-חודשיים הקרובים",
-                "trainingAdjustments_en": "Detailed training adjustments for the next 1-2 months",
-                "recoveryChanges_he": "שינויים מפורטים בהתאוששות ושינה",
-                "recoveryChanges_en": "Detailed recovery and sleep changes",
-                "habitToAdd_he": "הרגל אחד חדש להוסיף עם הסבר למה",
-                "habitToAdd_en": "One new habit to add with explanation",
-                "habitToRemove_he": "הרגל אחד להסיר עם הסבר למה",
-                "habitToRemove_en": "One habit to remove with explanation"
+                "trainingAdjustments_he": "Training adjustments for next 1-2 months (Hebrew)",
+                "trainingAdjustments_en": "Training adjustments for next 1-2 months (English)",
+                "recoveryChanges_he": "Recovery and sleep changes (Hebrew)",
+                "recoveryChanges_en": "Recovery and sleep changes (English)",
+                "habitToAdd_he": "One new habit to add with explanation (Hebrew)",
+                "habitToAdd_en": "One new habit to add with explanation (English)",
+                "habitToRemove_he": "One habit to remove with explanation (Hebrew)",
+                "habitToRemove_en": "One habit to remove with explanation (English)"
               },
               "directives": {
-                "stop_he": "משפט אחד ברור - מה להפסיק לעשות מיד",
-                "stop_en": "One clear sentence - what to stop doing immediately",
-                "start_he": "משפט אחד ברור - מה להתחיל לעשות",
-                "start_en": "One clear sentence - what to start doing",
-                "watch_he": "משפט אחד ברור - מה לעקוב אחריו",
-                "watch_en": "One clear sentence - what to monitor"
+                "stop_he": "One sentence - what to stop (Hebrew)",
+                "stop_en": "One sentence - what to stop (English)",
+                "start_he": "One sentence - what to start (Hebrew)",
+                "start_en": "One sentence - what to start (English)",
+                "watch_he": "One sentence - what to monitor (Hebrew)",
+                "watch_en": "One sentence - what to monitor (English)"
               },
-              "forecast_he": "תחזית מפורטת ל-3 חודשים קדימה - אם המגמה הנוכחית תימשך, איפה אהיה",
-              "forecast_en": "Detailed 3-month forecast - where will I be if current trends continue",
+              "forecast_he": "3-month forecast if current trends continue (Hebrew)",
+              "forecast_en": "3-month forecast if current trends continue (English)",
               "supplements": [
                 {
-                  "name_he": "שם התוסף בעברית",
-                  "name_en": "Supplement Name in English",
-                  "dosage_he": "מינון ותזמון מדויקים",
-                  "dosage_en": "Exact dosage and timing",
-                  "reason_he": "סיבה ספציפית מהנתונים",
-                  "reason_en": "Specific reason from the data",
-                  "category": "sleep"
+                  "name_he": "Supplement name (Hebrew)",
+                  "name_en": "Supplement name (English)",
+                  "dosage_he": "Exact dosage and timing (Hebrew)",
+                  "dosage_en": "Exact dosage and timing (English)",
+                  "reason_he": "Specific reason from data (Hebrew)",
+                  "reason_en": "Specific reason from data (English)",
+                  "category": "sleep|performance|recovery|general"
                 }
               ]
             }
-            ```
 
-            חשוב מאוד:
-            - החזר JSON בלבד, ללא טקסט נוסף לפני או אחרי
-            - כל השדות חובה - אל תשמיט שום שדה
-            - כל שדה טקסטואלי חייב להופיע בשתי גרסאות: _he (עברית) ו-_en (אנגלית)
-            - קטגוריות תקפות ל-supplements: sleep, performance, recovery, general
-            - wikiName חייב להיות שם של מכונית אמיתית (לא מושג כמו Zone 2)
-            - אם lastCarModel קיים ואין שינוי מהותי, השתמש בו ב-wikiName (רק אם זה שם מכונית אמיתית)
+            CRITICAL RULES:
+            - Return JSON ONLY, no text before or after
+            - ALL fields are required - do not omit any
+            - Every text field must have both _he and _en versions
+            - Valid supplement categories: sleep, performance, recovery, general
+            - wikiName must be a REAL car (not a concept)
+            - If lastCarModel exists and is a real car with no major changes, keep it
 
             ==================================================
-            הנתונים:
+            DATA
             ==================================================
 
             lastCarModel: \(lastCarModel ?? "null")
@@ -394,7 +338,7 @@ class GeminiService {
             \(dataSourceContext)
 
             ==================================================
-            הניתוח הקודם שלך (לרפרנס והמשכיות)
+            PREVIOUS ANALYSIS (for continuity)
             ==================================================
 
             \(previousAnalysisBlock)
@@ -460,19 +404,19 @@ class GeminiService {
         }
     }
 
-    /// בונה הקשר מקור נתונים להתאמת הניתוח
+    /// Builds data source context for tailored analysis
     private func buildDataSourceContext() -> String {
         let source = DataSourceManager.shared.effectiveSource()
         let strengths = source.strengths
         let isCalculated = source == .autoDetect || source == .appleWatch
 
         var context = """
-        # מקור נתונים
-        המשתמש משתמש ב-**\(source.displayNameHebrew)**.
+        # DATA SOURCE
+        User device: **\(source.displayName)**.
         """
 
         if !strengths.isEmpty {
-            context += "\n\nחוזקות המכשיר:\n"
+            context += "\n\nDevice strengths:\n"
             context += strengths.map { "- \($0)" }.joined(separator: "\n")
         }
 
@@ -481,46 +425,46 @@ class GeminiService {
         case .garmin:
             context += """
 
-            ## הערות ספציפיות ל-Garmin
-            - נתוני HRV מדויקים במיוחד (24/7 או בשינה)
-            - שלבי שינה מפורטים (Deep, Light, REM, Awake)
-            - VO2 Max ו-Training Status זמינים
-            - הערה: Body Battery ו-Training Load לא מסתנכרנים לאפל הלט׳ - הציון שמוצג מחושב לפי HRV, דופק ושינה
-            - התמקד בטרנדים של HRV ו-RHR כאינדיקטורים להתאוששות
+            ## Garmin-Specific Notes
+            - Highly accurate HRV data (24/7 or sleep-based)
+            - Detailed sleep stages (Deep, Light, REM, Awake)
+            - VO2 Max and Training Status available
+            - Note: Body Battery and Training Load don't sync to HealthKit - displayed scores are calculated from HRV, HR, and sleep
+            - Focus on HRV and RHR trends as recovery indicators
             """
         case .oura:
             context += """
 
-            ## הערות ספציפיות ל-Oura
-            - HRV לילי מדויק ביותר (אלגוריתם 5 דקות)
-            - שלבי שינה מפורטים עם ציון יעילות
-            - סטיית טמפרטורת גוף - אינדיקטור מוקדם למחלה/מתח
-            - הערה: Readiness Score של Oura לא מסתנכרן - הציון שמוצג מחושב לפי HRV, דופק ושינה
-            - אם יש סטיית טמפרטורה חיובית (>0.5°C), שקול להמליץ על הפחתת עומס
+            ## Oura-Specific Notes
+            - Highly accurate nighttime HRV (5-minute algorithm)
+            - Detailed sleep stages with efficiency score
+            - Body temperature deviation - early indicator for illness/stress
+            - Note: Oura Readiness Score doesn't sync - displayed score is calculated from HRV, HR, and sleep
+            - If positive temperature deviation (>0.5°C), consider recommending load reduction
             """
         case .whoop:
             context += """
 
-            ## הערות ספציפיות ל-WHOOP
-            - מדידת HRV רציפה ומדויקת
-            - Recovery Score ו-Strain לא מסתנכרנים - מחושבים מקומית
-            - התמקד ביחס Recovery-to-Strain
+            ## WHOOP-Specific Notes
+            - Continuous and accurate HRV measurement
+            - Recovery Score and Strain don't sync - calculated locally
+            - Focus on Recovery-to-Strain ratio
             """
         case .appleWatch:
             context += """
 
-            ## הערות ספציפיות ל-Apple Watch
-            - מדידת דופק וקלוריות מדויקת
-            - HRV נמדד בנקודות ספציפיות (לא רציף)
-            - שלבי שינה בסיסיים יותר (Core, Deep, REM)
-            - נתוני VO2 Max ו-Walking HRR זמינים
+            ## Apple Watch-Specific Notes
+            - Accurate heart rate and calorie tracking
+            - HRV measured at specific points (not continuous)
+            - Basic sleep stages (Core, Deep, REM)
+            - VO2 Max and Walking HRR available
             """
         case .autoDetect:
             context += """
 
-            ## מצב אוטומטי
-            המערכת מזהה אוטומטית את מקור הנתונים הפעיל ביותר.
-            הציונים (Readiness, Strain) מחושבים לפי האלגוריתם של AION מנתוני HealthKit.
+            ## Auto-Detect Mode
+            System automatically detects the most active data source.
+            Scores (Readiness, Strain) are calculated by AION algorithm from HealthKit data.
             """
         default:
             break
@@ -529,9 +473,9 @@ class GeminiService {
         if isCalculated {
             context += """
 
-            ## הערה על ציונים מחושבים
-            ציון המוכנות (Readiness) והעומס (Strain) **מחושבים** על ידי האפליקציה ולא מגיעים ישירות מהמכשיר.
-            החישוב מבוסס על: HRV (35%), דופק מנוחה (25%), איכות שינה (30%), והתאוששות (10%).
+            ## Note on Calculated Scores
+            Readiness and Strain scores are **calculated** by the app, not from the device directly.
+            Calculation based on: HRV (35%), Resting HR (25%), Sleep Quality (30%), Recovery (10%).
             """
         }
 

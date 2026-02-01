@@ -196,17 +196,25 @@ final class BioStackCardView: UIView {
         // Title
         titleLabel.font = AIONDesign.captionFont()
         titleLabel.textColor = AIONDesign.textSecondary
-        titleLabel.textAlignment = .right
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
         titleLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
 
-        // הוספה ל-header stack (סדר מימין לשמאל)
-        headerStack.addArrangedSubview(titleLabel)
-        headerStack.addArrangedSubview(iconView)
+        // Add to header stack based on language direction
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        if isRTL {
+            // RTL: title on right, icon on left
+            headerStack.addArrangedSubview(titleLabel)
+            headerStack.addArrangedSubview(iconView)
+        } else {
+            // LTR: icon on left, title on right
+            headerStack.addArrangedSubview(iconView)
+            headerStack.addArrangedSubview(titleLabel)
+        }
 
         // Value Label - "ממוצע: X"
         valueLabel.font = .systemFont(ofSize: 14, weight: .semibold)
         valueLabel.textColor = AIONDesign.textPrimary
-        valueLabel.textAlignment = .right
+        valueLabel.textAlignment = LocalizationManager.shared.textAlignment
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
 
         // Progress Bar
@@ -239,13 +247,13 @@ final class BioStackCardView: UIView {
         // Min/Max Labels
         minLabel.font = .systemFont(ofSize: 8, weight: .medium)
         minLabel.textColor = AIONDesign.textTertiary
-        minLabel.textAlignment = .left
+        minLabel.textAlignment = LocalizationManager.shared.textAlignment
         minLabel.translatesAutoresizingMaskIntoConstraints = false
         minLabel.isHidden = true
 
         maxLabel.font = .systemFont(ofSize: 8, weight: .medium)
         maxLabel.textColor = AIONDesign.textTertiary
-        maxLabel.textAlignment = .left
+        maxLabel.textAlignment = LocalizationManager.shared.textAlignment
         maxLabel.translatesAutoresizingMaskIntoConstraints = false
         maxLabel.isHidden = true
 
@@ -259,14 +267,24 @@ final class BioStackCardView: UIView {
         addSubview(maxLabel)
 
         // MARK: - Constraints
-        NSLayoutConstraint.activate([
-            // Header (כותרת + אייקון) - בגובה כפתור info שנמצא ב-8 מלמעלה
-            headerStack.topAnchor.constraint(equalTo: topAnchor, constant: 8),
-            headerStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+        // RTL/LTR: header and value alignment
+        if isRTL {
+            NSLayoutConstraint.activate([
+                headerStack.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+                headerStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+                valueLabel.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 2),
+                valueLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                headerStack.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+                headerStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+                valueLabel.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 2),
+                valueLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            ])
+        }
 
-            // Value ("ממוצע") - צמוד מתחת לכותרת, ללא רווח
-            valueLabel.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 2),
-            valueLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+        NSLayoutConstraint.activate([
 
             // Chart - מתחיל אחרי ה-value
             chartContainer.topAnchor.constraint(equalTo: valueLabel.bottomAnchor, constant: 6),
@@ -497,17 +515,17 @@ final class BioTrendCardView: UIView {
 
         titleLabel.font = AIONDesign.captionFont()
         titleLabel.textColor = AIONDesign.textSecondary
-        titleLabel.textAlignment = .right
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         valueLabel.font = .systemFont(ofSize: 16, weight: .bold)
         valueLabel.textColor = AIONDesign.textPrimary
-        valueLabel.textAlignment = .right
+        valueLabel.textAlignment = LocalizationManager.shared.textAlignment
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
 
         subtitleLabel.font = .systemFont(ofSize: 10, weight: .regular)
         subtitleLabel.textColor = AIONDesign.textTertiary
-        subtitleLabel.textAlignment = .right
+        subtitleLabel.textAlignment = LocalizationManager.shared.textAlignment
         subtitleLabel.numberOfLines = 1
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
 
@@ -755,18 +773,33 @@ final class DirectivesCardView: UIView {
         l.translatesAutoresizingMaskIntoConstraints = false
         b.translatesAutoresizingMaskIntoConstraints = false
         iv.translatesAutoresizingMaskIntoConstraints = false
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Common constraints
         NSLayoutConstraint.activate([
             l.topAnchor.constraint(equalTo: wrap.topAnchor),
-            l.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
             b.topAnchor.constraint(equalTo: l.bottomAnchor, constant: 4),
             b.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
             b.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
             b.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
             iv.topAnchor.constraint(equalTo: l.bottomAnchor, constant: 4),
-            iv.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
             iv.widthAnchor.constraint(equalToConstant: 20),
             iv.heightAnchor.constraint(equalToConstant: 20),
         ])
+
+        // RTL/LTR specific constraints
+        if isRTL {
+            NSLayoutConstraint.activate([
+                l.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
+                iv.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                l.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
+                iv.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
+            ])
+        }
         return (l, b, iv, wrap)
     }
 
