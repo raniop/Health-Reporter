@@ -618,12 +618,24 @@ final class ProfileViewController: UIViewController {
 
         let isRTL = LocalizationManager.shared.currentLanguage.isRTL
 
-        NSLayoutConstraint.activate([
-            iconView.trailingAnchor.constraint(equalTo: isRTL ? card.trailingAnchor : card.leadingAnchor, constant: isRTL ? -AIONDesign.spacing : AIONDesign.spacing),
+        // Icon constraints based on language direction
+        var iconConstraints: [NSLayoutConstraint] = [
             iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
             iconView.widthAnchor.constraint(equalToConstant: 24),
             iconView.heightAnchor.constraint(equalToConstant: 24),
+        ]
 
+        if isRTL {
+            // RTL: icon on right
+            iconConstraints.append(iconView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing))
+        } else {
+            // LTR: icon on left
+            iconConstraints.append(iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing))
+        }
+
+        NSLayoutConstraint.activate(iconConstraints)
+
+        NSLayoutConstraint.activate([
             titleLabel.leadingAnchor.constraint(equalTo: isRTL ? card.leadingAnchor : iconView.trailingAnchor, constant: isRTL ? AIONDesign.spacing : 10),
             titleLabel.trailingAnchor.constraint(equalTo: isRTL ? iconView.leadingAnchor : card.trailingAnchor, constant: isRTL ? -10 : -AIONDesign.spacing),
             titleLabel.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),

@@ -17,6 +17,7 @@ final class UnifiedTrendsActivityViewController: UIViewController {
 
     private let segmentedControl: UISegmentedControl = {
         let items = [
+            "unified.summary".localized,
             "unified.activity".localized,
             "unified.trends".localized
         ]
@@ -37,6 +38,12 @@ final class UnifiedTrendsActivityViewController: UIViewController {
     }()
 
     // MARK: - Children (lazy)
+
+    /// מסך הסיכום (הדשבורד הראשי הישן) – קטגוריה ראשונה בביצועים
+    private lazy var summaryVC: HealthDashboardViewController = {
+        let vc = HealthDashboardViewController()
+        return vc
+    }()
 
     private lazy var activityVC: ActivityViewController = {
         let vc = ActivityViewController()
@@ -112,7 +119,7 @@ final class UnifiedTrendsActivityViewController: UIViewController {
 
     private func restoreLastSegment() {
         let saved = UserDefaults.standard.integer(forKey: lastSegmentKey)
-        currentSegment = (saved == 0 || saved == 1) ? saved : 0
+        currentSegment = (saved >= 0 && saved <= 2) ? saved : 0
         segmentedControl.selectedSegmentIndex = currentSegment
     }
 
@@ -121,15 +128,33 @@ final class UnifiedTrendsActivityViewController: UIViewController {
     }
 
     private func setupInitialChild() {
-        let vc = currentSegment == 0 ? activityVC : trendsVC
+        let vc = childVC(for: currentSegment)
         switchToChild(vc, animated: false)
+    }
+
+    private func childVC(for segmentIndex: Int) -> UIViewController {
+        switch segmentIndex {
+        case 0: return summaryVC
+        case 1: return activityVC
+        default: return trendsVC
+        }
+    }
+
+    /// הדשבורד המוטמע (סיכום) – לשימוש מ־InsightsTabViewController
+    var healthDashboardViewController: HealthDashboardViewController? {
+        summaryVC
+    }
+
+    /// הפעלת ניתוח עבור עמוד התובנות (מעביר ל־HealthDashboardViewController המוטמע)
+    func runAnalysisForInsights(forceAnalysis: Bool = false) {
+        summaryVC.runAnalysisForInsights(forceAnalysis: forceAnalysis)
     }
 
     // MARK: - Child VC Switching
 
     @objc private func segmentChanged() {
         currentSegment = segmentedControl.selectedSegmentIndex
-        let vc = currentSegment == 0 ? activityVC : trendsVC
+        let vc = childVC(for: currentSegment)
         switchToChild(vc, animated: true)
         saveLastSegment()
     }

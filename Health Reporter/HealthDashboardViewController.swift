@@ -78,11 +78,6 @@ class HealthDashboardViewController: UIViewController {
 
     // MARK: - UI Properties
 
-    private let headerStack = UIStackView()
-    private let headerAvatarView = UIImageView()
-    private let greetingLabel = UILabel()
-    private let dateLabel = UILabel()
-
     private let heroCard = HeroScoreCardView()
 
     private let periodSegmentRow = UIStackView()
@@ -115,7 +110,6 @@ class HealthDashboardViewController: UIViewController {
         navigationController?.setNavigationBarHidden(true, animated: false)
         setupUI()
         checkHealthKitAuthorization()
-        loadHeaderAvatar()
 
         // Analytics: Log screen view
         AnalyticsService.shared.logScreenView(.dashboard)
@@ -153,8 +147,6 @@ class HealthDashboardViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadHeaderAvatar()
-        updateGreeting()
 
         // טעינה ראשונית או שימוש ב-cache
         if !hasLoadedInitialData {
@@ -182,7 +174,7 @@ class HealthDashboardViewController: UIViewController {
         view.addSubview(scrollView)
         scrollView.addSubview(contentStack)
 
-        setupHeader()
+        // Header removed - greeting/date/avatar now only in InsightsDashboard
         setupHeroCard()
         setupPeriodSegment()
         setupActivityRings()
@@ -191,7 +183,7 @@ class HealthDashboardViewController: UIViewController {
         setupHighlightsCard()
         setupDirectivesCard()
 
-        contentStack.addArrangedSubview(headerStack)
+        // headerStack removed - greeting/date/avatar now only in InsightsDashboard
         contentStack.addArrangedSubview(heroCard)
         contentStack.addArrangedSubview(periodSegmentRow)
         contentStack.addArrangedSubview(makeSectionLabel("dashboard.activity".localized))
@@ -228,107 +220,6 @@ class HealthDashboardViewController: UIViewController {
             loadingLabel.topAnchor.constraint(equalTo: loadingSpinner.bottomAnchor, constant: 16),
             loadingLabel.centerXAnchor.constraint(equalTo: loadingOverlay.centerXAnchor),
         ])
-    }
-
-    // MARK: - Header (ברכה + תאריך + אוואטר)
-
-    private func setupHeader() {
-        headerStack.axis = .horizontal
-        headerStack.spacing = 10
-        headerStack.alignment = .center
-        headerStack.distribution = .fill
-        headerStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
-        headerStack.translatesAutoresizingMaskIntoConstraints = false
-
-        headerAvatarView.contentMode = .scaleAspectFill
-        headerAvatarView.clipsToBounds = true
-        headerAvatarView.layer.cornerRadius = 20
-        headerAvatarView.backgroundColor = AIONDesign.surface
-        headerAvatarView.image = UIImage(systemName: "person.circle.fill")
-        headerAvatarView.tintColor = AIONDesign.textTertiary
-        headerAvatarView.isUserInteractionEnabled = true
-        headerAvatarView.translatesAutoresizingMaskIntoConstraints = false
-        let tap = UITapGestureRecognizer(target: self, action: #selector(headerAvatarTapped))
-        headerAvatarView.addGestureRecognizer(tap)
-
-        let textStack = UIStackView()
-        textStack.axis = .vertical
-        textStack.spacing = 2
-        textStack.alignment = .fill  // Fill width so text alignment works
-        textStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
-        textStack.translatesAutoresizingMaskIntoConstraints = false
-
-        greetingLabel.font = .systemFont(ofSize: 20, weight: .bold)
-        greetingLabel.textColor = AIONDesign.textPrimary
-        greetingLabel.textAlignment = LocalizationManager.shared.textAlignment
-        greetingLabel.translatesAutoresizingMaskIntoConstraints = false
-        updateGreeting()
-
-        dateLabel.font = .systemFont(ofSize: 13, weight: .regular)
-        dateLabel.textColor = AIONDesign.textSecondary
-        dateLabel.textAlignment = LocalizationManager.shared.textAlignment
-        dateLabel.translatesAutoresizingMaskIntoConstraints = false
-        updateDateLabel()
-
-        textStack.addArrangedSubview(greetingLabel)
-        textStack.addArrangedSubview(dateLabel)
-
-        // Spacer to push elements apart
-        let spacer = UIView()
-        spacer.translatesAutoresizingMaskIntoConstraints = false
-        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
-
-        // Layout based on language direction
-        if isRTL {
-            // RTL: text on right, avatar on left
-            headerStack.addArrangedSubview(textStack)
-            headerStack.addArrangedSubview(spacer)
-            headerStack.addArrangedSubview(headerAvatarView)
-        } else {
-            // LTR: avatar on left, text on right
-            headerStack.addArrangedSubview(headerAvatarView)
-            headerStack.addArrangedSubview(textStack)
-            headerStack.addArrangedSubview(spacer)
-        }
-
-        NSLayoutConstraint.activate([
-            headerAvatarView.widthAnchor.constraint(equalToConstant: 40),
-            headerAvatarView.heightAnchor.constraint(equalToConstant: 40),
-        ])
-    }
-
-    private func updateGreeting() {
-        let hour = Calendar.current.component(.hour, from: Date())
-        let greeting: String
-        if hour < 5 {
-            greeting = "dashboard.goodNight".localized
-        } else if hour < 12 {
-            greeting = "dashboard.goodMorning".localized
-        } else if hour < 17 {
-            greeting = "dashboard.goodAfternoon".localized
-        } else if hour < 21 {
-            greeting = "dashboard.goodEvening".localized
-        } else {
-            greeting = "dashboard.goodNight".localized
-        }
-
-        if let name = Auth.auth().currentUser?.displayName, !name.isEmpty {
-            let firstName = name.components(separatedBy: " ").first ?? name
-            greetingLabel.text = "\(greeting), \(firstName)"
-        } else {
-            greetingLabel.text = greeting
-        }
-    }
-
-    private func updateDateLabel() {
-        let fmt = DateFormatter()
-        let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
-        fmt.locale = Locale(identifier: isHebrew ? "he_IL" : "en_US")
-        fmt.dateFormat = "EEEE, d MMMM yyyy"
-        dateLabel.text = fmt.string(from: Date())
     }
 
     // MARK: - Hero Card
@@ -632,11 +523,6 @@ class HealthDashboardViewController: UIViewController {
         }
     }
 
-    @objc private func headerAvatarTapped() {
-        // Navigate to profile tab (index 4)
-        tabBarController?.selectedIndex = 4
-    }
-
     @objc private func cardInfoTapped(_ sender: CardInfoButton) {
         let alert = UIAlertController(title: "dashboard.explanation".localized, message: sender.explanation, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "understand".localized, style: .default))
@@ -897,37 +783,50 @@ class HealthDashboardViewController: UIViewController {
             }
         }
 
-        // Calculate sleep hours from chart data
+        // Get sleep hours - prefer healthData (today's data) over chartBundle
         let sleepHours: Double
-        if let sleepPoints = chartBundle?.sleep.points, !sleepPoints.isEmpty {
+        if let todaySleep = data.sleepHours, todaySleep > 0 {
+            sleepHours = todaySleep
+        } else if let sleepPoints = chartBundle?.sleep.points, !sleepPoints.isEmpty {
             sleepHours = sleepPoints.last?.totalHours ?? 0
         } else {
             sleepHours = 0
         }
 
-        // Get HRV and RHR
-        let hrv = Int(chartBundle?.hrvTrend.points.last?.value ?? 0)
-        let rhr = Int(chartBundle?.rhrTrend.points.last?.value ?? 0)
+        // Get HRV and RHR - prefer healthData over chartBundle
+        let hrv = Int(data.heartRateVariability ?? chartBundle?.hrvTrend.points.last?.value ?? 0)
+        let rhr = Int(data.restingHeartRate ?? chartBundle?.rhrTrend.points.last?.value ?? 0)
 
         // Get user's display name for widget
         let userName = Auth.auth().currentUser?.displayName ?? ""
 
         // Update widget with real data from app
-        WidgetDataManager.shared.updateFromDashboard(
-            score: score,
-            status: tier.tierLabel,
-            steps: Int(data.steps ?? 0),
-            activeCalories: Int(data.activeEnergy ?? 0),
-            exerciseMinutes: Int(data.exerciseMinutes ?? 0),
-            standHours: Int(data.standHours ?? 0),
-            restingHR: rhr > 0 ? rhr : nil,
-            hrv: hrv > 0 ? hrv : nil,
-            sleepHours: sleepHours > 0 ? sleepHours : nil,
-            carTier: tier,
-            userName: userName
-        )
+        // Use score description (e.g., "קח את זה בקלות") not car tier label
+        let scoreLevel = RangeLevel.from(score: Double(score))
+        let healthStatus = "score.description.\(scoreLevel.rawValue)".localized
 
-        // Save daily activity for InsightsTab to use
+        print("📊 updateWidgetData: score=\(score), status=\(healthStatus), steps=\(Int(data.steps ?? 0)), sleep=\(sleepHours), rhr=\(rhr), range=\(selectedRange)")
+
+        // שליחה לשעון רק כשנתונים הם יומיים (InsightsDashboard שולח את הציון הראשי)
+        // המסך הזה שולח רק את נתוני הפעילות
+        if selectedRange == .day {
+            WidgetDataManager.shared.updateFromDashboard(
+                score: score,
+                status: healthStatus,
+                steps: Int(data.steps ?? 0),
+                activeCalories: Int(data.activeEnergy ?? 0),
+                exerciseMinutes: Int(data.exerciseMinutes ?? 0),
+                standHours: Int(data.standHours ?? 0),
+                restingHR: rhr > 0 ? rhr : nil,
+                hrv: hrv > 0 ? hrv : nil,
+                sleepHours: sleepHours > 0 ? sleepHours : nil,
+                carTier: tier,
+                userName: userName
+            )
+        }
+
+        // Save daily activity for InsightsTab to use (רק כשזה יום)
+        guard selectedRange == .day else { return }
         AnalysisCache.saveDailyActivity(
             steps: Int(data.steps ?? 0),
             calories: Int(data.activeEnergy ?? 0),
@@ -1055,47 +954,6 @@ class HealthDashboardViewController: UIViewController {
         }
     }
 
-    // MARK: - Avatar loading
-
-    private func loadHeaderAvatar() {
-        ProfileFirestoreSync.fetchPhotoURL { [weak self] url in
-            self?.setHeaderAvatar(url: url)
-        }
-    }
-
-    private func setHeaderAvatar(url: String?) {
-        if let u = url, !u.isEmpty, let uu = URL(string: u) {
-            URLSession.shared.dataTask(with: uu) { [weak self] data, _, _ in
-                guard let self = self else { return }
-                if let d = data, let img = UIImage(data: d) {
-                    DispatchQueue.main.async {
-                        self.headerAvatarView.image = img
-                        self.headerAvatarView.tintColor = nil
-                    }
-                } else {
-                    DispatchQueue.main.async { self.setHeaderAvatarFromAuth() }
-                }
-            }.resume()
-        } else {
-            setHeaderAvatarFromAuth()
-        }
-    }
-
-    private func setHeaderAvatarFromAuth() {
-        guard let u = Auth.auth().currentUser?.photoURL?.absoluteString, let uu = URL(string: u) else {
-            headerAvatarView.image = UIImage(systemName: "person.circle.fill")
-            headerAvatarView.tintColor = AIONDesign.textTertiary
-            return
-        }
-        URLSession.shared.dataTask(with: uu) { [weak self] data, _, _ in
-            guard let self = self, let d = data, let img = UIImage(data: d) else { return }
-            DispatchQueue.main.async {
-                self.headerAvatarView.image = img
-                self.headerAvatarView.tintColor = nil
-            }
-        }.resume()
-    }
-
     // MARK: - HealthKit Authorization & Data Loading
 
     /// עדכון UI מנתונים שכבר נטענו ל-cache (ללא קריאה חדשה ל-HealthKit)
@@ -1113,6 +971,9 @@ class HealthDashboardViewController: UIViewController {
             self.insightsText = cachedInsights
             self.updateDirectivesCard()
         }
+
+        // Update Widget and Watch data
+        updateWidgetData()
     }
 
     private func checkHealthKitAuthorization() {
@@ -1130,6 +991,8 @@ class HealthDashboardViewController: UIViewController {
                 self.insightsText = cachedInsights
                 self.updateDirectivesCard()
             }
+            // Update Widget and Watch data
+            updateWidgetData()
             return
         }
 

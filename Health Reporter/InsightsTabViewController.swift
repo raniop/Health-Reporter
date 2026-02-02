@@ -246,6 +246,18 @@ final class InsightsTabViewController: UIViewController {
         }
     }
 
+    /// הדשבורד מוטמע כעת בטאב "ביצועים" (Unified), לא בטאב הראשון
+    private func unifiedPerformanceVC() -> UnifiedTrendsActivityViewController? {
+        guard let tabs = tabBarController?.viewControllers, tabs.count > 1,
+              let nav = tabs[1] as? UINavigationController,
+              let unified = nav.viewControllers.first as? UnifiedTrendsActivityViewController else { return nil }
+        return unified
+    }
+
+    private func embeddedHealthDashboard() -> HealthDashboardViewController? {
+        unifiedPerformanceVC()?.healthDashboardViewController
+    }
+
     // MARK: - Actions
 
     @objc private func insightsCardInfoTapped(_ sender: CardInfoButton) {
@@ -255,8 +267,8 @@ final class InsightsTabViewController: UIViewController {
     }
 
     @objc private func refreshTapped() {
-        // בדיקה אם יש שינוי משמעותי בנתונים
-        if let dashboard = (tabBarController?.viewControllers?.first as? UINavigationController)?.viewControllers.first as? HealthDashboardViewController,
+        // בדיקה אם יש שינוי משמעותי בנתונים (הדשבורד כעת בטאב ביצועים)
+        if let dashboard = embeddedHealthDashboard(),
            let bundle = dashboard.currentChartBundle {
 
             if !AnalysisCache.hasSignificantChange(currentBundle: bundle) {
@@ -268,10 +280,7 @@ final class InsightsTabViewController: UIViewController {
 
         // יש שינוי משמעותי או אין נתונים - קרא ל-Gemini
         showLoading()
-
-        if let dashboard = (tabBarController?.viewControllers?.first as? UINavigationController)?.viewControllers.first as? HealthDashboardViewController {
-            dashboard.runAnalysisForInsights(forceAnalysis: true)
-        }
+        unifiedPerformanceVC()?.runAnalysisForInsights(forceAnalysis: true)
     }
 
     private func showNoSignificantChangeAlert() {
@@ -289,9 +298,7 @@ final class InsightsTabViewController: UIViewController {
 
     private func forceRefresh() {
         showLoading()
-        if let dashboard = (tabBarController?.viewControllers?.first as? UINavigationController)?.viewControllers.first as? HealthDashboardViewController {
-            dashboard.runAnalysisForInsights(forceAnalysis: true)
-        }
+        unifiedPerformanceVC()?.runAnalysisForInsights(forceAnalysis: true)
     }
 
     // MARK: - Loading
@@ -484,15 +491,12 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         explanation = "insights.carSelectedAfter".localized
     }
 
-    // Determine status based on score
-    let status: String
-    switch score {
-    case 80...100: status = "insights.peakPerformance".localized
-    case 65..<80: status = "insights.excellent".localized
-    case 45..<65: status = "insights.goodCondition".localized
-    case 25..<45: status = "insights.okay".localized
-    default: status = "insights.needsAttention".localized
-    }
+    // Determine status based on score - use score.description for consistency with Watch
+    let scoreLevel = RangeLevel.from(score: Double(score))
+    let status = "score.description.\(scoreLevel.rawValue)".localized
+
+    // שמירת הציון והסטטוס לשימוש בשעון
+    AnalysisCache.saveMainScore(score, status: status)
 
     // Determine color based on score
     let tierColor: UIColor
@@ -2599,10 +2603,8 @@ private func showDiscoveryLoadingAnimation() {
         progressBar.animateProgress(to: 0.9, duration: 1.5)
     }
 
-    // קריאה ל-Gemini במקביל
-    if let dashboard = (tabBarController?.viewControllers?.first as? UINavigationController)?.viewControllers.first as? HealthDashboardViewController {
-        dashboard.runAnalysisForInsights()
-    }
+    // קריאה ל-Gemini במקביל (הדשבורד כעת בטאב ביצועים)
+    unifiedPerformanceVC()?.runAnalysisForInsights()
 
     // המתנה לתוצאה (מקסימום 7 שניות)
     DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) { [weak self] in
@@ -2705,25 +2707,20 @@ private func showDiscoveryLoadingAnimation() {
             explanation = "insights.carSelectedAfter".localized
         }
 
-        // Determine status and color based on score
-        let status: String
+        // Determine status and color based on score - use score.description for consistency with Watch
+        let scoreLevel = RangeLevel.from(score: Double(score))
+        let status = "score.description.\(scoreLevel.rawValue)".localized
+
+        // שמירת הציון והסטטוס לשימוש בשעון
+        AnalysisCache.saveMainScore(score, status: status)
+
         let tierColor: UIColor
         switch score {
-        case 80...100:
-            status = "insights.peakPerformance".localized
-            tierColor = AIONDesign.accentSuccess
-        case 65..<80:
-            status = "insights.excellent".localized
-            tierColor = AIONDesign.accentSecondary
-        case 45..<65:
-            status = "insights.goodCondition".localized
-            tierColor = AIONDesign.accentPrimary
-        case 25..<45:
-            status = "insights.okay".localized
-            tierColor = AIONDesign.accentWarning
-        default:
-            status = "insights.needsAttention".localized
-            tierColor = AIONDesign.accentDanger
+        case 80...100: tierColor = AIONDesign.accentSuccess
+        case 65..<80: tierColor = AIONDesign.accentSecondary
+        case 45..<65: tierColor = AIONDesign.accentPrimary
+        case 25..<45: tierColor = AIONDesign.accentWarning
+        default: tierColor = AIONDesign.accentDanger
         }
 
         // כרטיס רקע

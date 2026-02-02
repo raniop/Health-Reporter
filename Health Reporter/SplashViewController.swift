@@ -195,6 +195,34 @@ class SplashViewController: UIViewController {
             let cachedCarName = AnalysisCache.loadSelectedCar()?.name
             print("🚗 [Splash] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
             LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
+
+            // שליחה לשעון - נתוני היום האחרון
+            // עדיפות: mainScore (הציון היומי) > healthScoreInt (ציון 90 יום)
+            let todayEntry = dailyEntries.last
+            let displayScore = AnalysisCache.loadMainScore() ?? score
+            // עדיפות ל-status השמור (מ-InsightsDashboard), אחרת חשב מהציון
+            let healthStatus: String
+            if let savedStatus = AnalysisCache.loadMainScoreStatus() {
+                healthStatus = savedStatus
+            } else {
+                let scoreLevel = RangeLevel.from(score: Double(displayScore))
+                healthStatus = "score.description.\(scoreLevel.rawValue)".localized
+            }
+
+            WidgetDataManager.shared.updateFromDashboard(
+                score: displayScore,
+                status: healthStatus,
+                steps: Int(todayEntry?.steps ?? 0),
+                activeCalories: Int(todayEntry?.activeCalories ?? 0),
+                exerciseMinutes: 0,  // לא קיים ב-RawDailyHealthEntry
+                standHours: 0,       // לא קיים ב-RawDailyHealthEntry
+                restingHR: todayEntry?.restingHR.map { Int($0) },
+                hrv: todayEntry?.hrvMs.map { Int($0) },
+                sleepHours: todayEntry?.sleepHours,
+                carTier: tier,
+                userName: ""
+            )
+            print("📱 [Splash] Sent to Watch: score=\(displayScore), status=\(healthStatus), steps=\(Int(todayEntry?.steps ?? 0)), sleep=\(todayEntry?.sleepHours ?? 0)")
         }
     }
 

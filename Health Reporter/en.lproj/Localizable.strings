@@ -15,9 +15,15 @@
 "missingDetails" = "Missing Details";
 
 /* Tab Bar */
-"tab.dashboard" = "Dashboard";
+"tab.home" = "Home";
+"tab.activity" = "Performance";
+"tab.ai" = "AI Analysis";
+"tab.friends" = "Friends";
+"tab.settings" = "Settings";
+
+/* Legacy Tab Keys (for backwards compatibility) */
+"tab.dashboard" = "Home";
 "tab.trends" = "Trends";
-"tab.activity" = "Activity";
 "tab.insights" = "Insights";
 "tab.profile" = "Profile";
 
@@ -59,8 +65,11 @@
 "profile.name" = "Name";
 "profile.selectUserType" = "Select User Type";
 
-/* Dashboard */
-"dashboard.title" = "Dashboard";
+/* Home (main screen) */
+"home.title" = "Home";
+
+/* Dashboard / Health Summary (segment in Activity & Trends) */
+"dashboard.title" = "Health Summary";
 "dashboard.healthScore" = "Health Score";
 "dashboard.todaySummary" = "Today's Summary";
 "dashboard.lastUpdate" = "Last Update";
@@ -513,8 +522,8 @@
 "directives.watch" = "WATCH";
 
 /* Social & Leaderboard */
-"tab.social" = "Social";
-"social.title" = "Social";
+"tab.social" = "Friends";
+"social.title" = "Friends";
 "social.subtitle" = "Compete with friends";
 "social.friends" = "Friends";
 "social.requests" = "Requests";
@@ -564,9 +573,206 @@
 /* Unified Trends & Activity Tab */
 "tab.unified" = "Performance";
 "unified.title" = "Performance";
+"unified.summary" = "Overview";
 "unified.activity" = "Activity";
 "unified.trends" = "Trends";
 
 /* Leaderboard Extended */
 "social.points" = "points";
 "social.pointsToNextRank" = "%d points to next rank";
+
+/* ===== Insights Dashboard - Main Home Screen ===== */
+
+/* Period Selector */
+"period.day" = "Today";
+"period.week" = "Week";
+"period.month" = "Month";
+
+/* Greetings */
+"greeting.morning" = "Good Morning";
+"greeting.afternoon" = "Good Afternoon";
+"greeting.evening" = "Good Evening";
+"greeting.night" = "Good Night";
+
+/* Main Score */
+"score.description.excellent" = "Peak Performance";
+"score.description.good" = "Great Shape";
+"score.description.fair" = "Moderate";
+"score.description.needs_improvement" = "Rest Recommended";
+"score.no_data" = "No Data";
+
+/* Hero Section */
+"hero.why_this_score" = "Why this score?";
+
+/* Section Titles - Clear Names */
+"section.recovery" = "Recovery Status";
+"section.sleep" = "Sleep Quality";
+"section.training" = "Training Load";
+"section.activity" = "Daily Activity";
+
+/* Recovery Metrics */
+"metric.recovery_readiness.short" = "Readiness";
+"metric.stress_load_index.short" = "Stress";
+"metric.morning_freshness.short" = "Freshness";
+
+/* Sleep Metrics */
+"sleep.quality" = "Sleep Quality";
+"sleep.debt" = "Sleep Debt";
+"sleep.debt.description" = "You need more rest";
+"sleep.surplus.description" = "Well rested";
+
+/* Training Metrics */
+"metric.training_strain.short" = "Strain";
+"metric.load_balance.short" = "Balance";
+"metric.cardio_trend.short" = "Cardio";
+
+/* Activity Goals */
+"activity.move" = "Move";
+"activity.exercise" = "Exercise";
+"activity.stand" = "Stand";
+
+/* Why Score Section */
+"why.title" = "Score Breakdown";
+"why.recovery" = "Recovery";
+"why.sleep" = "Sleep";
+"why.nervous_system" = "Nervous System";
+"why.energy" = "Energy";
+"why.activity" = "Activity";
+"why.load" = "Training Load";
+
+/* Guidance Card */
+"guidance.title" = "Today's Focus";
+"guidance.default" = "Keep up the good work! Maintain balance between activity and rest.";
+
+/* Reliability */
+"reliability.label" = "Confidence";
+"reliability.high" = "High";
+"reliability.medium" = "Medium";
+"reliability.low" = "Low";
+"reliability.insufficient" = "Not enough data";
+
+/* ===== Star Metrics (5 Key Metrics) ===== */
+
+/* Metric Names */
+"metric.nervous_system_balance" = "Balance";
+"metric.recovery_readiness" = "Readiness";
+"metric.recovery_debt" = "Recovery";
+"metric.stress_load_index" = "Stress";
+"metric.morning_freshness" = "Freshness";
+"metric.sleep_quality" = "Sleep";
+"metric.sleep_consistency" = "Consistency";
+"metric.sleep_debt" = "Sleep Debt";
+"metric.training_strain" = "Strain";
+"metric.load_balance" = "Balance";
+"metric.energy_forecast" = "Energy";
+"metric.workout_readiness" = "Workout";
+"metric.activity_score" = "Activity";
+"metric.daily_goals" = "Goals";
+"metric.cardio_fitness_trend" = "Cardio";
+
+/* Score Levels (for main score) */
+"score.description.very_low" = "Need Rest";
+"score.description.low" = "Take it Easy";
+"score.description.medium" = "Ready for Activity";
+"score.description.high" = "Great Shape";
+"score.description.very_high" = "Peak Performance";
+
+/* Energy Levels */
+"level.very_low" = "Very Low";
+"level.low" = "Low";
+"level.medium" = "Moderate";
+"level.high" = "High";
+"level.very_high" = "Very High";
+
+/* Energy Forecast Explanations */
+"metric.energy_forecast.explanation.very_low" = "Low energy expected today. Take it easy.";
+"metric.energy_forecast.explanation.low" = "Below average energy. Light activity recommended.";
+"metric.energy_forecast.explanation.medium" = "Moderate energy. Normal activity is fine.";
+"metric.energy_forecast.explanation.high" = "Good energy levels. You can push harder.";
+"metric.energy_forecast.explanation.very_high" = "Great energy! Perfect for intense workouts.";
+
+/* Workout Readiness Levels */
+"workout.readiness.skip" = "Rest";
+"workout.readiness.light" = "Light";
+"workout.readiness.moderate" = "Moderate";
+"workout.readiness.full" = "Full";
+"workout.readiness.push" = "Push It";
+
+/* Load Balance Zones */
+"load.zone.detraining" = "Under Training";
+"load.zone.optimal" = "Optimal";
+"load.zone.overreaching" = "High Load";
+"load.zone.danger" = "Overtraining";
+
+/* Trend Labels */
+"trend.improving" = "Improving";
+"trend.stable" = "Stable";
+"trend.declining" = "Declining";
+
+/* Star Metric Explanations (Why It Matters) */
+"star.nervous_system.why" = "Shows how well your body is recovering from stress and activity.";
+"star.recovery_debt.why" = "Tracks whether you're resting enough to match your activity level.";
+"star.energy_forecast.why" = "Predicts your energy levels based on sleep and recovery.";
+"star.workout_readiness.why" = "Tells you how hard you can push in your next workout.";
+"star.consistency.why" = "Consistent habits lead to better long-term health.";
+
+/* Star Metric Action Advice */
+"star.nervous_system.action.high" = "Great balance! You can handle high intensity today.";
+"star.nervous_system.action.medium" = "Moderate activity is best today. Avoid overexertion.";
+"star.nervous_system.action.low" = "Your body needs recovery. Focus on rest and light movement.";
+
+"star.recovery_debt.action.surplus" = "You're well recovered! Good time for challenging workouts.";
+"star.recovery_debt.action.balanced" = "Your recovery is balanced. Continue as planned.";
+"star.recovery_debt.action.deficit" = "You need more rest. Prioritize sleep tonight.";
+
+"star.energy_forecast.action.high" = "High energy day! Take advantage of it.";
+"star.energy_forecast.action.medium" = "Normal energy expected. Stick to your routine.";
+"star.energy_forecast.action.low" = "Low energy expected. Save tough tasks for another day.";
+
+"star.workout_readiness.action.push" = "You're primed for a personal best!";
+"star.workout_readiness.action.full" = "Ready for a full workout. Go for it!";
+"star.workout_readiness.action.moderate" = "Keep intensity moderate today.";
+"star.workout_readiness.action.light" = "Light activity like walking or yoga is best.";
+"star.workout_readiness.action.skip" = "Skip training today. Focus on recovery.";
+
+/* Recovery Debt */
+"metric.recovery_debt.surplus" = "Recovery surplus - well rested";
+"metric.recovery_debt.deficit" = "Recovery deficit - need more rest";
+
+/* Nervous System Balance Explanations */
+"metric.nervous_system_balance.explanation.very_low" = "Your body is stressed. Prioritize rest.";
+"metric.nervous_system_balance.explanation.low" = "Below optimal. Take it easy today.";
+"metric.nervous_system_balance.explanation.medium" = "Moderate balance. Normal activity is fine.";
+"metric.nervous_system_balance.explanation.high" = "Good balance. You can be more active.";
+"metric.nervous_system_balance.explanation.very_high" = "Excellent balance! Peak performance possible.";
+
+/* ===== Metric Card Explanations (Tap to see) ===== */
+
+/* Recovery Section */
+"explanation.recovery_readiness" = "How ready your body is for activity. Based on your sleep, HRV and previous day's strain. Higher is better.";
+"explanation.stress_load" = "How much stress your body is handling. Based on HRV, heart rate and sleep quality. Lower is better.";
+"explanation.morning_freshness" = "How rested you feel after sleep. Based on sleep quality and heart rate. Higher means more energy.";
+
+/* Sleep Section */
+"explanation.sleep_quality" = "Overall sleep score combining duration, deep sleep and REM. 80+ is excellent.";
+"explanation.sleep_debt" = "Accumulated sleep deficit over the past week. Negative means you need more sleep.";
+
+/* Training Section */
+"explanation.training_strain" = "How hard your body worked today. 0-3 is light, 4-6 moderate, 7+ is high.";
+"explanation.load_balance" = "Balance between recent training and chronic training. Optimal keeps you improving without overtraining.";
+"explanation.cardio_trend" = "Your cardiovascular fitness trend based on VO2 Max changes.";
+
+/* Activity Section */
+"explanation.activity_move" = "Active calories burned compared to your daily goal.";
+"explanation.activity_exercise" = "Exercise minutes compared to recommended 30 minutes per day.";
+"explanation.activity_stand" = "Hours with at least 1 minute of standing. Goal: 12 hours.";
+
+/* Star Metrics */
+"explanation.nervous_system" = "Balance between stress and recovery in your nervous system. Based on HRV and resting heart rate.";
+"explanation.recovery_debt" = "Whether you're getting enough rest for your activity level. Positive is good, negative needs attention.";
+"explanation.energy_forecast" = "Predicted energy level based on sleep, recovery and recent activity.";
+"explanation.workout_readiness" = "How hard you can push in your next workout without risking overtraining.";
+
+/* Hero Cards Explanations */
+"explanation.energy.title" = "Energy Forecast";
+"explanation.energy.message" = "This card shows your predicted energy level for today based on your sleep quality, recovery status, and recent activity patterns. Use it to plan your day accordingly.";

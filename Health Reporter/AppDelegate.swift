@@ -10,6 +10,7 @@ import CoreData
 import FirebaseCore
 import FirebaseMessaging
 import UserNotifications
+import WatchConnectivity
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -19,6 +20,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Setup Push Notifications
         setupPushNotifications(application: application)
+
+        // Initialize Watch Connectivity
+        _ = WatchConnectivityManager.shared
+        print("WatchConnectivity: Initialized in AppDelegate")
 
         return true
     }

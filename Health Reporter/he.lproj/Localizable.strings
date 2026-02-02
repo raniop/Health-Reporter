@@ -15,9 +15,15 @@
 "missingDetails" = "חסרים פרטים";
 
 /* Tab Bar */
-"tab.dashboard" = "דשבורד";
+"tab.home" = "בית";
+"tab.activity" = "ביצועים";
+"tab.ai" = "ניתוח AI";
+"tab.friends" = "חברים";
+"tab.settings" = "הגדרות";
+
+/* Legacy Tab Keys (לתאימות אחורה) */
+"tab.dashboard" = "בית";
 "tab.trends" = "מגמות";
-"tab.activity" = "פעילות";
 "tab.insights" = "תובנות";
 "tab.profile" = "פרופיל";
 
@@ -59,8 +65,11 @@
 "profile.name" = "שם";
 "profile.selectUserType" = "בחר סוג משתמש";
 
-/* Dashboard */
-"dashboard.title" = "דשבורד";
+/* Home (מסך ראשי) */
+"home.title" = "בית";
+
+/* Dashboard / סיכום בריאות (קטע במסך פעילות ומגמות) */
+"dashboard.title" = "סיכום בריאות";
 "dashboard.healthScore" = "ציון בריאות";
 "dashboard.todaySummary" = "סיכום היום";
 "dashboard.lastUpdate" = "עדכון אחרון";
@@ -568,9 +577,206 @@
 /* Unified Trends & Activity Tab */
 "tab.unified" = "ביצועים";
 "unified.title" = "ביצועים";
+"unified.summary" = "סקירה";
 "unified.activity" = "פעילות";
 "unified.trends" = "מגמות";
 
 /* Leaderboard Extended */
 "social.points" = "נקודות";
 "social.pointsToNextRank" = "עוד %d נקודות לדירוג הבא";
+
+/* ===== Insights Dashboard - מסך בית ראשי ===== */
+
+/* בחירת תקופה */
+"period.day" = "היום";
+"period.week" = "שבוע";
+"period.month" = "חודש";
+
+/* ברכות */
+"greeting.morning" = "בוקר טוב";
+"greeting.afternoon" = "צהריים טובים";
+"greeting.evening" = "ערב טוב";
+"greeting.night" = "לילה טוב";
+
+/* ציון ראשי */
+"score.description.excellent" = "שיא ביצועים";
+"score.description.good" = "מצב מעולה";
+"score.description.fair" = "בינוני";
+"score.description.needs_improvement" = "מומלץ לנוח";
+"score.no_data" = "אין נתונים";
+
+/* כרטיס ראשי */
+"hero.why_this_score" = "למה הציון הזה?";
+
+/* כותרות סקשנים - שמות ברורים */
+"section.recovery" = "מצב התאוששות";
+"section.sleep" = "איכות שינה";
+"section.training" = "עומס אימון";
+"section.activity" = "פעילות יומית";
+
+/* מדדי התאוששות */
+"metric.recovery_readiness.short" = "מוכנות";
+"metric.stress_load_index.short" = "מתח";
+"metric.morning_freshness.short" = "רעננות";
+
+/* מדדי שינה */
+"sleep.quality" = "איכות שינה";
+"sleep.debt" = "חוב שינה";
+"sleep.debt.description" = "צריך עוד מנוחה";
+"sleep.surplus.description" = "נח היטב";
+
+/* מדדי אימון */
+"metric.training_strain.short" = "עומס";
+"metric.load_balance.short" = "איזון";
+"metric.cardio_trend.short" = "קרדיו";
+
+/* יעדי פעילות */
+"activity.move" = "תנועה";
+"activity.exercise" = "אימון";
+"activity.stand" = "עמידה";
+
+/* סקשן פירוט ציון */
+"why.title" = "פירוט הציון";
+"why.recovery" = "התאוששות";
+"why.sleep" = "שינה";
+"why.nervous_system" = "מערכת עצבים";
+"why.energy" = "אנרגיה";
+"why.activity" = "פעילות";
+"why.load" = "עומס אימון";
+
+/* כרטיס המלצה */
+"guidance.title" = "המיקוד להיום";
+"guidance.default" = "כל הכבוד! שמור על איזון בין פעילות למנוחה.";
+
+/* אמינות */
+"reliability.label" = "רמת ודאות";
+"reliability.high" = "גבוהה";
+"reliability.medium" = "בינונית";
+"reliability.low" = "נמוכה";
+"reliability.insufficient" = "אין מספיק נתונים";
+
+/* ===== מדדי כוכב (5 המדדים המרכזיים) ===== */
+
+/* שמות מדדים */
+"metric.nervous_system_balance" = "איזון";
+"metric.recovery_readiness" = "מוכנות";
+"metric.recovery_debt" = "התאוששות";
+"metric.stress_load_index" = "מתח";
+"metric.morning_freshness" = "רעננות";
+"metric.sleep_quality" = "שינה";
+"metric.sleep_consistency" = "עקביות";
+"metric.sleep_debt" = "חוב שינה";
+"metric.training_strain" = "עומס";
+"metric.load_balance" = "איזון";
+"metric.energy_forecast" = "אנרגיה";
+"metric.workout_readiness" = "אימון";
+"metric.activity_score" = "פעילות";
+"metric.daily_goals" = "יעדים";
+"metric.cardio_fitness_trend" = "קרדיו";
+
+/* רמות ציון (לציון הראשי) */
+"score.description.very_low" = "צריך מנוחה";
+"score.description.low" = "קח את זה בקלות";
+"score.description.medium" = "מוכן לפעילות";
+"score.description.high" = "מצב מצוין";
+"score.description.very_high" = "שיא ביצועים";
+
+/* רמות אנרגיה */
+"level.very_low" = "נמוכה מאוד";
+"level.low" = "נמוכה";
+"level.medium" = "בינונית";
+"level.high" = "גבוהה";
+"level.very_high" = "גבוהה מאוד";
+
+/* הסברי תחזית אנרגיה */
+"metric.energy_forecast.explanation.very_low" = "צפויה אנרגיה נמוכה היום. קח את זה בקלות.";
+"metric.energy_forecast.explanation.low" = "אנרגיה מתחת לממוצע. מומלצת פעילות קלה.";
+"metric.energy_forecast.explanation.medium" = "אנרגיה בינונית. פעילות רגילה בסדר.";
+"metric.energy_forecast.explanation.high" = "רמות אנרגיה טובות. אפשר לדחוף יותר.";
+"metric.energy_forecast.explanation.very_high" = "אנרגיה מעולה! מושלם לאימון אינטנסיבי.";
+
+/* רמות מוכנות לאימון */
+"workout.readiness.skip" = "מנוחה";
+"workout.readiness.light" = "קל";
+"workout.readiness.moderate" = "בינוני";
+"workout.readiness.full" = "מלא";
+"workout.readiness.push" = "לשבור שיאים";
+
+/* אזורי איזון עומסים */
+"load.zone.detraining" = "תת-אימון";
+"load.zone.optimal" = "אופטימלי";
+"load.zone.overreaching" = "עומס גבוה";
+"load.zone.danger" = "אימון יתר";
+
+/* תוויות מגמה */
+"trend.improving" = "משתפר";
+"trend.stable" = "יציב";
+"trend.declining" = "יורד";
+
+/* הסברי מדדי כוכב (למה זה חשוב) */
+"star.nervous_system.why" = "מראה כמה הגוף מתאושש מלחץ ופעילות.";
+"star.recovery_debt.why" = "עוקב האם אתה נח מספיק ביחס לרמת הפעילות.";
+"star.energy_forecast.why" = "חוזה את רמות האנרגיה לפי שינה והתאוששות.";
+"star.workout_readiness.why" = "מראה כמה חזק אפשר להתאמן באימון הבא.";
+"star.consistency.why" = "הרגלים עקביים מובילים לבריאות טובה יותר.";
+
+/* המלצות פעולה למדדי כוכב */
+"star.nervous_system.action.high" = "איזון מעולה! אפשר להתאמן באינטנסיביות גבוהה.";
+"star.nervous_system.action.medium" = "פעילות מתונה מומלצת היום. הימנע ממאמץ יתר.";
+"star.nervous_system.action.low" = "הגוף צריך התאוששות. התמקד במנוחה ותנועה קלה.";
+
+"star.recovery_debt.action.surplus" = "התאוששת היטב! זמן טוב לאימונים מאתגרים.";
+"star.recovery_debt.action.balanced" = "ההתאוששות מאוזנת. המשך כמתוכנן.";
+"star.recovery_debt.action.deficit" = "צריך יותר מנוחה. העדף שינה הלילה.";
+
+"star.energy_forecast.action.high" = "יום של אנרגיה גבוהה! נצל את זה.";
+"star.energy_forecast.action.medium" = "אנרגיה רגילה צפויה. המשך בשגרה.";
+"star.energy_forecast.action.low" = "אנרגיה נמוכה צפויה. שמור משימות קשות ליום אחר.";
+
+"star.workout_readiness.action.push" = "אתה מוכן לשבור שיא אישי!";
+"star.workout_readiness.action.full" = "מוכן לאימון מלא. לך על זה!";
+"star.workout_readiness.action.moderate" = "שמור על עצימות מתונה היום.";
+"star.workout_readiness.action.light" = "פעילות קלה כמו הליכה או יוגה מומלצת.";
+"star.workout_readiness.action.skip" = "דלג על האימון היום. התמקד בהתאוששות.";
+
+/* חוב התאוששות */
+"metric.recovery_debt.surplus" = "עודף התאוששות - נחת היטב";
+"metric.recovery_debt.deficit" = "גירעון התאוששות - צריך יותר מנוחה";
+
+/* הסברי איזון מערכת עצבים */
+"metric.nervous_system_balance.explanation.very_low" = "הגוף במתח. העדף מנוחה.";
+"metric.nervous_system_balance.explanation.low" = "מתחת לאופטימלי. קח את זה בקלות.";
+"metric.nervous_system_balance.explanation.medium" = "איזון בינוני. פעילות רגילה בסדר.";
+"metric.nervous_system_balance.explanation.high" = "איזון טוב. אפשר להיות יותר פעיל.";
+"metric.nervous_system_balance.explanation.very_high" = "איזון מצוין! ביצועי שיא אפשריים.";
+
+/* ===== הסברי כרטיסי מדדים (לחיצה להצגה) ===== */
+
+/* סקשן התאוששות */
+"explanation.recovery_readiness" = "כמה הגוף שלך מוכן לפעילות. מבוסס על שינה, HRV ועומס מיום קודם. גבוה יותר = טוב יותר.";
+"explanation.stress_load" = "כמה מתח הגוף מתמודד איתו. מבוסס על HRV, דופק ואיכות שינה. נמוך יותר = טוב יותר.";
+"explanation.morning_freshness" = "כמה נח אתה מרגיש אחרי השינה. מבוסס על איכות שינה ודופק. גבוה = יותר אנרגיה.";
+
+/* סקשן שינה */
+"explanation.sleep_quality" = "ציון שינה כולל המשלב משך, שינה עמוקה ו-REM. 80+ מצוין.";
+"explanation.sleep_debt" = "חוב שינה שנצבר בשבוע האחרון. שלילי = צריך יותר שינה.";
+
+/* סקשן אימון */
+"explanation.training_strain" = "כמה הגוף עבד היום. 0-3 קל, 4-6 בינוני, 7+ גבוה.";
+"explanation.load_balance" = "איזון בין אימונים אחרונים לאימון כרוני. אופטימלי שומר על התקדמות בלי אימון יתר.";
+"explanation.cardio_trend" = "מגמת הכושר הלב-ריאתי שלך לפי שינויים ב-VO2 Max.";
+
+/* סקשן פעילות */
+"explanation.activity_move" = "קלוריות פעילות ביחס ליעד היומי שלך.";
+"explanation.activity_exercise" = "דקות אימון ביחס ל-30 דקות מומלצות ביום.";
+"explanation.activity_stand" = "שעות עם לפחות דקה של עמידה. יעד: 12 שעות.";
+
+/* מדדי כוכב */
+"explanation.nervous_system" = "איזון בין מתח להתאוששות במערכת העצבים. מבוסס על HRV ודופק מנוחה.";
+"explanation.recovery_debt" = "האם אתה נח מספיק ביחס לפעילות. חיובי = טוב, שלילי = צריך תשומת לב.";
+"explanation.energy_forecast" = "רמת אנרגיה צפויה לפי שינה, התאוששות ופעילות אחרונה.";
+"explanation.workout_readiness" = "כמה חזק אפשר להתאמן באימון הבא בלי לסכן אימון יתר.";
+
+/* הסברי קוביות ראשיות */
+"explanation.energy.title" = "תחזית אנרגיה";
+"explanation.energy.message" = "כרטיס זה מציג את רמת האנרגיה הצפויה שלך להיום על בסיס איכות השינה, מצב ההתאוששות ודפוסי הפעילות האחרונים. השתמש בו לתכנון היום שלך.";

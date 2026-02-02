@@ -14,12 +14,44 @@
 		4F325CB82F25372500233F0A /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA662142F25020A00893900 /* FirebaseStorage */; };
 		4F43D3EF2F2F3D6F00DA00E3 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 4F43D3EE2F2F3D6F00DA00E3 /* FirebaseMessaging */; };
 		4F43D3F32F2FF29A00DA00E3 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 4F43D3F22F2FF29A00DA00E3 /* FirebaseAnalytics */; };
+		4F43D4F72F30BF9100DA00E3 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FFED07B2F2B5DFD0072D5F8 /* WidgetKit.framework */; };
+		4F43D4F82F30BF9100DA00E3 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FFED07D2F2B5DFD0072D5F8 /* SwiftUI.framework */; };
+		4F43D5052F30BF9200DA00E3 /* HealthWatch WidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4F43D4F62F30BF9100DA00E3 /* HealthWatch WidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4F43D52A2F30C63000DA00E3 /* Health Reporter Watch App Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 4F43D4C42F30BF6600DA00E3 /* Health Reporter Watch App Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4FFED07C2F2B5DFD0072D5F8 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FFED07B2F2B5DFD0072D5F8 /* WidgetKit.framework */; };
 		4FFED07E2F2B5DFD0072D5F8 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FFED07D2F2B5DFD0072D5F8 /* SwiftUI.framework */; };
 		4FFED1752F2B67A60072D5F8 /* HealthWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4FFED0792F2B5DFD0072D5F8 /* HealthWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		4F43D4D42F30BF6700DA00E3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FA660E52F25020800893900 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4F43D4C32F30BF6600DA00E3;
+			remoteInfo = "Health Reporter Watch App Watch App";
+		};
+		4F43D4DE2F30BF6700DA00E3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FA660E52F25020800893900 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4F43D4C32F30BF6600DA00E3;
+			remoteInfo = "Health Reporter Watch App Watch App";
+		};
+		4F43D5032F30BF9200DA00E3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FA660E52F25020800893900 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4F43D4F52F30BF9100DA00E3;
+			remoteInfo = "HealthWatch WidgetsExtension";
+		};
+		4F43D52B2F30C63000DA00E3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FA660E52F25020800893900 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4F43D4C32F30BF6600DA00E3;
+			remoteInfo = "Health Reporter Watch App Watch App";
+		};
 		4FA661072F25020A00893900 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4FA660E52F25020800893900 /* Project object */;
@@ -51,6 +83,28 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		4F43D50A2F30BF9200DA00E3 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4F43D5052F30BF9200DA00E3 /* HealthWatch WidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F43D52D2F30C63000DA00E3 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				4F43D52A2F30C63000DA00E3 /* Health Reporter Watch App Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4FFED1782F2B67A70072D5F8 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -65,6 +119,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4F43D4C42F30BF6600DA00E3 /* Health Reporter Watch App Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Health Reporter Watch App Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F43D4D32F30BF6700DA00E3 /* Health Reporter Watch App Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Health Reporter Watch App Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F43D4DD2F30BF6700DA00E3 /* Health Reporter Watch App Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Health Reporter Watch App Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F43D4F62F30BF9100DA00E3 /* HealthWatch WidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "HealthWatch WidgetsExtension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F43D5182F30BFA500DA00E3 /* HealthWatch WidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "HealthWatch WidgetsExtension.entitlements"; sourceTree = "<group>"; };
 		4FA660ED2F25020800893900 /* Health Reporter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Health Reporter.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FA661062F25020A00893900 /* Health ReporterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Health ReporterTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FA661102F25020A00893900 /* Health ReporterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Health ReporterUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,6 +134,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4F43D5062F30BF9200DA00E3 /* Exceptions for "HealthWatch Widgets" folder in "HealthWatch WidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4F43D4F52F30BF9100DA00E3 /* HealthWatch WidgetsExtension */;
+		};
 		4FA661182F25020A00893900 /* Exceptions for "Health Reporter" folder in "Health Reporter" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -92,6 +158,29 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		4F43D4C82F30BF6600DA00E3 /* Health Reporter Watch App Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Health Reporter Watch App Watch App";
+			sourceTree = "<group>";
+		};
+		4F43D4D62F30BF6700DA00E3 /* Health Reporter Watch App Watch AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Health Reporter Watch App Watch AppTests";
+			sourceTree = "<group>";
+		};
+		4F43D4E02F30BF6700DA00E3 /* Health Reporter Watch App Watch AppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Health Reporter Watch App Watch AppUITests";
+			sourceTree = "<group>";
+		};
+		4F43D4F92F30BF9100DA00E3 /* HealthWatch Widgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4F43D5062F30BF9200DA00E3 /* Exceptions for "HealthWatch Widgets" folder in "HealthWatch WidgetsExtension" target */,
+			);
+			path = "HealthWatch Widgets";
+			sourceTree = "<group>";
+		};
 		4FA660EF2F25020800893900 /* Health Reporter */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -121,6 +210,36 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		4F43D4C12F30BF6600DA00E3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F43D4D02F30BF6700DA00E3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F43D4DA2F30BF6700DA00E3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F43D4F32F30BF9100DA00E3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4F43D4F82F30BF9100DA00E3 /* SwiftUI.framework in Frameworks */,
+				4F43D4F72F30BF9100DA00E3 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4FA660EA2F25020800893900 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -164,11 +283,16 @@
 		4FA660E42F25020800893900 = {
 			isa = PBXGroup;
 			children = (
+				4F43D5182F30BFA500DA00E3 /* HealthWatch WidgetsExtension.entitlements */,
 				4FFED0962F2B5F6C0072D5F8 /* HealthWidgetsExtension.entitlements */,
 				4FA660EF2F25020800893900 /* Health Reporter */,
 				4FA661092F25020A00893900 /* Health ReporterTests */,
 				4FA661132F25020A00893900 /* Health ReporterUITests */,
 				4FFED07F2F2B5DFD0072D5F8 /* HealthWidgets */,
+				4F43D4C82F30BF6600DA00E3 /* Health Reporter Watch App Watch App */,
+				4F43D4D62F30BF6700DA00E3 /* Health Reporter Watch App Watch AppTests */,
+				4F43D4E02F30BF6700DA00E3 /* Health Reporter Watch App Watch AppUITests */,
+				4F43D4F92F30BF9100DA00E3 /* HealthWatch Widgets */,
 				4FFED07A2F2B5DFD0072D5F8 /* Frameworks */,
 				4FA660EE2F25020800893900 /* Products */,
 			);
@@ -181,6 +305,10 @@
 				4FA661062F25020A00893900 /* Health ReporterTests.xctest */,
 				4FA661102F25020A00893900 /* Health ReporterUITests.xctest */,
 				4FFED0792F2B5DFD0072D5F8 /* HealthWidgetsExtension.appex */,
+				4F43D4C42F30BF6600DA00E3 /* Health Reporter Watch App Watch App.app */,
+				4F43D4D32F30BF6700DA00E3 /* Health Reporter Watch App Watch AppTests.xctest */,
+				4F43D4DD2F30BF6700DA00E3 /* Health Reporter Watch App Watch AppUITests.xctest */,
+				4F43D4F62F30BF9100DA00E3 /* HealthWatch WidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -197,6 +325,98 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		4F43D4C32F30BF6600DA00E3 /* Health Reporter Watch App Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4F43D4E52F30BF6700DA00E3 /* Build configuration list for PBXNativeTarget "Health Reporter Watch App Watch App" */;
+			buildPhases = (
+				4F43D4C02F30BF6600DA00E3 /* Sources */,
+				4F43D4C12F30BF6600DA00E3 /* Frameworks */,
+				4F43D4C22F30BF6600DA00E3 /* Resources */,
+				4F43D50A2F30BF9200DA00E3 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4F43D5042F30BF9200DA00E3 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4F43D4C82F30BF6600DA00E3 /* Health Reporter Watch App Watch App */,
+			);
+			name = "Health Reporter Watch App Watch App";
+			packageProductDependencies = (
+			);
+			productName = "Health Reporter Watch App Watch App";
+			productReference = 4F43D4C42F30BF6600DA00E3 /* Health Reporter Watch App Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		4F43D4D22F30BF6700DA00E3 /* Health Reporter Watch App Watch AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4F43D4EC2F30BF6700DA00E3 /* Build configuration list for PBXNativeTarget "Health Reporter Watch App Watch AppTests" */;
+			buildPhases = (
+				4F43D4CF2F30BF6700DA00E3 /* Sources */,
+				4F43D4D02F30BF6700DA00E3 /* Frameworks */,
+				4F43D4D12F30BF6700DA00E3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4F43D4D52F30BF6700DA00E3 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4F43D4D62F30BF6700DA00E3 /* Health Reporter Watch App Watch AppTests */,
+			);
+			name = "Health Reporter Watch App Watch AppTests";
+			packageProductDependencies = (
+			);
+			productName = "Health Reporter Watch App Watch AppTests";
+			productReference = 4F43D4D32F30BF6700DA00E3 /* Health Reporter Watch App Watch AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		4F43D4DC2F30BF6700DA00E3 /* Health Reporter Watch App Watch AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4F43D4EF2F30BF6700DA00E3 /* Build configuration list for PBXNativeTarget "Health Reporter Watch App Watch AppUITests" */;
+			buildPhases = (
+				4F43D4D92F30BF6700DA00E3 /* Sources */,
+				4F43D4DA2F30BF6700DA00E3 /* Frameworks */,
+				4F43D4DB2F30BF6700DA00E3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4F43D4DF2F30BF6700DA00E3 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4F43D4E02F30BF6700DA00E3 /* Health Reporter Watch App Watch AppUITests */,
+			);
+			name = "Health Reporter Watch App Watch AppUITests";
+			packageProductDependencies = (
+			);
+			productName = "Health Reporter Watch App Watch AppUITests";
+			productReference = 4F43D4DD2F30BF6700DA00E3 /* Health Reporter Watch App Watch AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		4F43D4F52F30BF9100DA00E3 /* HealthWatch WidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4F43D5072F30BF9200DA00E3 /* Build configuration list for PBXNativeTarget "HealthWatch WidgetsExtension" */;
+			buildPhases = (
+				4F43D4F22F30BF9100DA00E3 /* Sources */,
+				4F43D4F32F30BF9100DA00E3 /* Frameworks */,
+				4F43D4F42F30BF9100DA00E3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4F43D4F92F30BF9100DA00E3 /* HealthWatch Widgets */,
+			);
+			name = "HealthWatch WidgetsExtension";
+			packageProductDependencies = (
+			);
+			productName = "HealthWatch WidgetsExtension";
+			productReference = 4F43D4F62F30BF9100DA00E3 /* HealthWatch WidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		4FA660EC2F25020800893900 /* Health Reporter */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4FA661192F25020A00893900 /* Build configuration list for PBXNativeTarget "Health Reporter" */;
@@ -205,12 +425,14 @@
 				4FA660EA2F25020800893900 /* Frameworks */,
 				4FA660EB2F25020800893900 /* Resources */,
 				4FFED1782F2B67A70072D5F8 /* Embed Foundation Extensions */,
+				4F43D52D2F30C63000DA00E3 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				4FFED1772F2B67A70072D5F8 /* PBXTargetDependency */,
 				4FFED17A2F2B67B70072D5F8 /* PBXTargetDependency */,
+				4F43D52C2F30C63000DA00E3 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				4FA660EF2F25020800893900 /* Health Reporter */,
@@ -307,6 +529,20 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					4F43D4C32F30BF6600DA00E3 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					4F43D4D22F30BF6700DA00E3 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 4F43D4C32F30BF6600DA00E3;
+					};
+					4F43D4DC2F30BF6700DA00E3 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 4F43D4C32F30BF6600DA00E3;
+					};
+					4F43D4F52F30BF9100DA00E3 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					4FA660EC2F25020800893900 = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -346,11 +582,43 @@
 				4FA661052F25020A00893900 /* Health ReporterTests */,
 				4FA6610F2F25020A00893900 /* Health ReporterUITests */,
 				4FFED0782F2B5DFD0072D5F8 /* HealthWidgetsExtension */,
+				4F43D4C32F30BF6600DA00E3 /* Health Reporter Watch App Watch App */,
+				4F43D4D22F30BF6700DA00E3 /* Health Reporter Watch App Watch AppTests */,
+				4F43D4DC2F30BF6700DA00E3 /* Health Reporter Watch App Watch AppUITests */,
+				4F43D4F52F30BF9100DA00E3 /* HealthWatch WidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		4F43D4C22F30BF6600DA00E3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F43D4D12F30BF6700DA00E3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F43D4DB2F30BF6700DA00E3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F43D4F42F30BF9100DA00E3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4FA660EB2F25020800893900 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -382,6 +650,34 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		4F43D4C02F30BF6600DA00E3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F43D4CF2F30BF6700DA00E3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F43D4D92F30BF6700DA00E3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F43D4F22F30BF9100DA00E3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4FA660E92F25020800893900 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -413,6 +709,26 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		4F43D4D52F30BF6700DA00E3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4F43D4C32F30BF6600DA00E3 /* Health Reporter Watch App Watch App */;
+			targetProxy = 4F43D4D42F30BF6700DA00E3 /* PBXContainerItemProxy */;
+		};
+		4F43D4DF2F30BF6700DA00E3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4F43D4C32F30BF6600DA00E3 /* Health Reporter Watch App Watch App */;
+			targetProxy = 4F43D4DE2F30BF6700DA00E3 /* PBXContainerItemProxy */;
+		};
+		4F43D5042F30BF9200DA00E3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4F43D4F52F30BF9100DA00E3 /* HealthWatch WidgetsExtension */;
+			targetProxy = 4F43D5032F30BF9200DA00E3 /* PBXContainerItemProxy */;
+		};
+		4F43D52C2F30C63000DA00E3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4F43D4C32F30BF6600DA00E3 /* Health Reporter Watch App Watch App */;
+			targetProxy = 4F43D52B2F30C63000DA00E3 /* PBXContainerItemProxy */;
+		};
 		4FA661082F25020A00893900 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 4FA660EC2F25020800893900 /* Health Reporter */;
@@ -436,6 +752,236 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		4F43D4E62F30BF6700DA00E3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Health Reporter Watch App Watch App/Health Reporter Watch App Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TFG2H9C76N;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = AION;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.rani.Health-Reporter";
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
+				INFOPLIST_KEY_WKWatchOnly = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Debug;
+		};
+		4F43D4E72F30BF6700DA00E3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Health Reporter Watch App Watch App/Health Reporter Watch App Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TFG2H9C76N;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = AION;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.rani.Health-Reporter";
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
+				INFOPLIST_KEY_WKWatchOnly = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Release;
+		};
+		4F43D4ED2F30BF6700DA00E3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TFG2H9C76N;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter-Watch-App-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Health Reporter Watch App Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Health Reporter Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Debug;
+		};
+		4F43D4EE2F30BF6700DA00E3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TFG2H9C76N;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter-Watch-App-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Health Reporter Watch App Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Health Reporter Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Release;
+		};
+		4F43D4F02F30BF6700DA00E3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TFG2H9C76N;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter-Watch-App-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "Health Reporter Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Debug;
+		};
+		4F43D4F12F30BF6700DA00E3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TFG2H9C76N;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter-Watch-App-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "Health Reporter Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Release;
+		};
+		4F43D5082F30BF9200DA00E3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = "HealthWatch WidgetsExtension.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TFG2H9C76N;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "HealthWatch Widgets/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "AION Widgets";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter.watchkitapp.widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Debug;
+		};
+		4F43D5092F30BF9200DA00E3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = "HealthWatch WidgetsExtension.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TFG2H9C76N;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "HealthWatch Widgets/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "AION Widgets";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter.watchkitapp.widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Release;
+		};
 		4FA6611A2F25020A00893900 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -457,7 +1003,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 13.2;
+				MARKETING_VERSION = 14.1;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -492,7 +1038,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 13.2;
+				MARKETING_VERSION = 14.1;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -788,6 +1334,42 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		4F43D4E52F30BF6700DA00E3 /* Build configuration list for PBXNativeTarget "Health Reporter Watch App Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4F43D4E62F30BF6700DA00E3 /* Debug */,
+				4F43D4E72F30BF6700DA00E3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4F43D4EC2F30BF6700DA00E3 /* Build configuration list for PBXNativeTarget "Health Reporter Watch App Watch AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4F43D4ED2F30BF6700DA00E3 /* Debug */,
+				4F43D4EE2F30BF6700DA00E3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4F43D4EF2F30BF6700DA00E3 /* Build configuration list for PBXNativeTarget "Health Reporter Watch App Watch AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4F43D4F02F30BF6700DA00E3 /* Debug */,
+				4F43D4F12F30BF6700DA00E3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4F43D5072F30BF9200DA00E3 /* Build configuration list for PBXNativeTarget "HealthWatch WidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4F43D5082F30BF9200DA00E3 /* Debug */,
+				4F43D5092F30BF9200DA00E3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		4FA660E82F25020800893900 /* Build configuration list for PBXProject "Health Reporter" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

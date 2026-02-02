@@ -2,7 +2,7 @@
 //  MainTabBarController.swift
 //  Health Reporter
 //
-//  טאב בר ראשי – Dashboard, פעילות+מגמות, Insights, Social, Profile. עיצוב Pro Lab.
+//  טאב בר ראשי – מסך ראשי חדש (InsightsDashboard), ביצועים (סיכום+פעילות+מגמות), Insights, Social, Profile.
 //
 
 import UIKit
@@ -18,14 +18,16 @@ final class MainTabBarController: UITabBarController {
         super.viewDidLoad()
         requestHealthKitAuthorizationUpfront()
         configureLiquidGlassTabBar()
+        configureSemanticContentAttribute()
         syncCurrentUserProfile()
         tabBar.tintColor = AIONDesign.accentPrimary
         tabBar.unselectedItemTintColor = AIONDesign.textTertiary
 
-        let dash = HealthDashboardViewController()
-        dash.tabBarItem = UITabBarItem(title: "tab.dashboard".localized, image: UIImage(systemName: "square.grid.2x2"), tag: 0)
+        // מסך ראשי חדש – משמעות ולא נתונים גולמיים
+        let home = InsightsDashboardViewController()
+        home.tabBarItem = UITabBarItem(title: "tab.dashboard".localized, image: UIImage(systemName: "square.grid.2x2"), tag: 0)
 
-        // מסך משולב פעילות + מגמות
+        // ביצועים: סיכום (דשבורד ישן) + פעילות + מגמות
         let unified = UnifiedTrendsActivityViewController()
         unified.tabBarItem = UITabBarItem(title: "tab.unified".localized, image: UIImage(systemName: "figure.run"), tag: 1)
 
@@ -42,7 +44,7 @@ final class MainTabBarController: UITabBarController {
         socialNavController = socialNav
 
         viewControllers = [
-            UINavigationController(rootViewController: dash),
+            UINavigationController(rootViewController: home),
             UINavigationController(rootViewController: unified),
             UINavigationController(rootViewController: insights),
             socialNav,
@@ -134,6 +136,22 @@ final class MainTabBarController: UITabBarController {
         tabBar.standardAppearance = appearance
         tabBar.scrollEdgeAppearance = appearance
         tabBar.isTranslucent = true
+    }
+
+    /// הגדרת כיוון סמנטי (RTL/LTR) לפי שפת המערכת
+    private func configureSemanticContentAttribute() {
+        let isRTL = UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft
+        let semanticAttribute: UISemanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
+
+        // הגדרת כיוון לטאב בר
+        tabBar.semanticContentAttribute = semanticAttribute
+        view.semanticContentAttribute = semanticAttribute
+
+        // הגדרת כיוון לכל ה-navigation controllers
+        for nav in viewControllers as? [UINavigationController] ?? [] {
+            nav.view.semanticContentAttribute = semanticAttribute
+            nav.navigationBar.semanticContentAttribute = semanticAttribute
+        }
     }
 
     /// מבקש הרשאות HealthKit להכל מראש – שינה, טמפרטורה, פעילות, תזונה, לב, נשימה וכו׳.

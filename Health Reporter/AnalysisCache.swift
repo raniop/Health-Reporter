@@ -42,6 +42,10 @@ enum AnalysisCache {
     static let keyDailyStandHours = "AION.DailyActivity.StandHours"
     static let keyDailyRestingHR = "AION.DailyActivity.RestingHR"
 
+    // Main Score (הציון הראשי היומי - מ-InsightsMetrics)
+    static let keyMainScore = "AION.MainScore"
+    static let keyMainScoreStatus = "AION.MainScoreStatus"
+
     // MARK: - Cache Duration
     /// מטמון תקף ל-24 שעות (לא נקרא ל-Gemini שוב גם אם יש שינוי)
     static let maxAgeSeconds: TimeInterval = 24 * 3600
@@ -133,6 +137,32 @@ enum AnalysisCache {
     /// שומר את ציון הבריאות (מחושב ע"י HealthScoreEngine)
     static func saveHealthScore(_ score: Int) {
         UserDefaults.standard.set(score, forKey: keyHealthScore)
+    }
+
+    // MARK: - Main Score (הציון הראשי היומי)
+
+    /// שומר את הציון הראשי היומי (מ-InsightsMetrics.mainScore) עם ה-status
+    static func saveMainScore(_ score: Int, status: String? = nil) {
+        UserDefaults.standard.set(score, forKey: keyMainScore)
+        if let status = status {
+            UserDefaults.standard.set(status, forKey: keyMainScoreStatus)
+        } else {
+            // חישוב אוטומטי של ה-status מהציון
+            let level = RangeLevel.from(score: Double(score))
+            let computedStatus = "score.description.\(level.rawValue)".localized
+            UserDefaults.standard.set(computedStatus, forKey: keyMainScoreStatus)
+        }
+    }
+
+    /// טוען את הציון הראשי היומי
+    static func loadMainScore() -> Int? {
+        let score = UserDefaults.standard.integer(forKey: keyMainScore)
+        return score > 0 ? score : nil
+    }
+
+    /// טוען את ה-status של הציון הראשי
+    static func loadMainScoreStatus() -> String? {
+        return UserDefaults.standard.string(forKey: keyMainScoreStatus)
     }
 
     // MARK: - Health Score Result (עם Breakdown)
