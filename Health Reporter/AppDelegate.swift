@@ -34,7 +34,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
 
-        // Request notification permissions
+        // Check if user has already completed onboarding (returning user)
+        // If so, request permissions now. Otherwise, onboarding will handle it.
+        if OnboardingManager.hasCompletedOnboarding() {
+            requestNotificationPermissions(application: application)
+        } else {
+            // For new users, just register without requesting permissions
+            // Onboarding will handle the permission request
+            print("🔔 [AppDelegate] Skipping notification permission request - onboarding will handle it")
+        }
+    }
+
+    /// Request notification permissions - can be called from onboarding or for returning users
+    func requestNotificationPermissions(application: UIApplication? = nil) {
+        let app = application ?? UIApplication.shared
         let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
         UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { granted, error in
             if let error = error {
@@ -42,10 +55,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 return
             }
             print("Push notification permission granted: \(granted)")
-        }
 
-        // Register for remote notifications
-        application.registerForRemoteNotifications()
+            DispatchQueue.main.async {
+                app.registerForRemoteNotifications()
+            }
+        }
     }
 
     // MARK: - Remote Notification Registration
@@ -190,4 +204,3 @@ extension AppDelegate: MessagingDelegate {
         }
     }
 }
-

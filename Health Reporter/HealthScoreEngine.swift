@@ -1044,7 +1044,7 @@ final class HealthScoreEngine {
 
         // Handle edge case: no domains available
         guard !availableDomains.isEmpty else {
-            return (50.0, [], HealthDomain.allCases.map { $0.displayName })
+            return (0.0, [], HealthDomain.allCases.map { $0.displayName }) // No data = score 0 (will show "--")
         }
 
         // Normalize weights to sum to 1.0
@@ -1132,7 +1132,7 @@ final class HealthScoreEngine {
 
     private func createEmptyResult() -> HealthScoringResult {
         return HealthScoringResult(
-            healthScore: 50.0,
+            healthScore: 0.0, // No data = score 0 (will show "--")
             reliabilityScore: 0.0,
             includedDomains: [],
             excludedDomains: HealthDomain.allCases.map { $0.displayName },

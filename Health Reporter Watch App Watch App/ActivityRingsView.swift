@@ -15,6 +15,7 @@ struct ActivityRingsView: View {
     }
 
     var body: some View {
+        let _ = print("⌚️ ActivityRingsView: move=\(data.moveCalories)/\(data.moveGoal), exercise=\(data.exerciseMinutes)/\(data.exerciseGoal), stand=\(data.standHours)/\(data.standGoal)")
         ScrollView {
             VStack(spacing: 16) {
                 // Activity Rings

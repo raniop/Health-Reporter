@@ -12,7 +12,8 @@ import UIKit
 // MARK: - Shared Data Model
 
 struct HealthWidgetData: Codable {
-    var healthScore: Int
+    var healthScore: Int          // Gemini score (90-day average) - main display
+    var dailyScore: Int?          // Daily health score - secondary display
     var healthStatus: String
     var steps: Int
     var stepsGoal: Int
@@ -39,6 +40,7 @@ struct HealthWidgetData: Codable {
     static var placeholder: HealthWidgetData {
         HealthWidgetData(
             healthScore: 72,
+            dailyScore: nil,
             healthStatus: "Good",
             steps: 6543,
             stepsGoal: 10000,

@@ -34,14 +34,17 @@ struct ActivityRingsComplicationView: View {
     let entry: WatchHealthEntry
 
     var body: some View {
-        switch family {
-        case .accessoryCircular:
-            CircularRingsView(data: entry.data)
-        case .accessoryRectangular:
-            RectangularRingsView(data: entry.data)
-        default:
-            CircularRingsView(data: entry.data)
+        Group {
+            switch family {
+            case .accessoryCircular:
+                CircularRingsView(data: entry.data)
+            case .accessoryRectangular:
+                RectangularRingsView(data: entry.data)
+            default:
+                CircularRingsView(data: entry.data)
+            }
         }
+        .containerBackground(.fill.tertiary, for: .widget)
     }
 }
 

@@ -354,9 +354,11 @@ class HealthKitManager {
             group.leave()
         }
         
-        // שינה
+        // שינה - שליפה מ-18:00 אתמול כדי לתפוס שינה שהתחילה לפני חצות (כמו אפל Health)
         group.enter()
-        fetchSleepData(startDate: start, endDate: end) { sleepHours, sleepData, _ in
+        let cal = Calendar.current
+        let sleepQueryStart = cal.date(byAdding: .hour, value: -6, to: cal.startOfDay(for: end)) ?? start
+        fetchSleepData(startDate: sleepQueryStart, endDate: end, matchByEndDate: false) { sleepHours, sleepData, _ in
             healthData.sleepHours = sleepHours
             healthData.sleepAnalysis = sleepData
             group.leave()
@@ -578,25 +580,27 @@ class HealthKitManager {
         healthStore.execute(q)
     }
 
-    private func fetchStandHours(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
-        guard let t = HKQuantityType.quantityType(forIdentifier: .appleStandTime) else { completion(nil); return }
-        let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
-        let unitCount = HKUnit.count()
-        let unitMin = HKUnit.minute()
-        let q = HKStatisticsQuery(quantityType: t, quantitySamplePredicate: p, options: .cumulativeSum) { _, res, _ in
-            guard let qty = res?.sumQuantity() else { completion(nil); return }
-            if qty.is(compatibleWith: unitCount) {
-                completion(qty.doubleValue(for: unitCount))
-                return
-            }
-            if qty.is(compatibleWith: unitMin) {
-                let mins = qty.doubleValue(for: unitMin)
-                completion(mins / 60.0)
-                return
-            }
+    func fetchStandHours(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
+        // Use HKCategoryType for appleStandHour - counts hours where user stood
+        guard let standType = HKCategoryType.categoryType(forIdentifier: .appleStandHour) else {
             completion(nil)
+            return
         }
-        healthStore.execute(q)
+
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+
+        let query = HKSampleQuery(sampleType: standType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+            guard let samples = samples as? [HKCategorySample], error == nil else {
+                completion(nil)
+                return
+            }
+
+            // Count only hours where user stood (value == 0 means stood)
+            let standHours = samples.filter { $0.value == HKCategoryValueAppleStandHour.stood.rawValue }.count
+            completion(Double(standHours))
+        }
+
+        self.healthStore.execute(query)
     }
 
     private func fetchDistanceCycling(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
@@ -813,6 +817,7 @@ class HealthKitManager {
             let intervals: [(start: Date, end: Date)] = samples.map { ($0.startDate, $0.endDate) }
             let merged = Self.mergeOverlappingSleepIntervals(intervals)
             let totalSecondsDouble = merged.map { iv in iv.end.timeIntervalSince(iv.start) }.reduce(0, +)
+
             let totalSeconds = Int64(ceil(totalSecondsDouble))
             let sleepHours = Double(totalSeconds) / 3600.0
             for sample in samples {
@@ -1348,10 +1353,13 @@ class HealthKitManager {
             fetchSteps(startDate: dayStart, endDate: dayEnd) { steps = $0; g.leave() }
             g.enter()
             fetchDistance(startDate: dayStart, endDate: dayEnd) { dist = $0; g.leave() }
+            // שינה ו-Time in Bed: שולפים מ-18:00 אתמול עד עכשיו (כמו אפל Health)
+            // זה תופס שינה שהתחילה לפני חצות ומסתיימת אחרי חצות
+            let sleepQueryStart = cal.date(byAdding: .hour, value: -6, to: dayStart) ?? dayStart  // 18:00 אתמול
             g.enter()
-            fetchTimeInBed(startDate: dayStart, endDate: dayEnd, matchByEndDate: true) { timeInBedHours = $0; g.leave() }
+            fetchTimeInBed(startDate: sleepQueryStart, endDate: dayEnd, matchByEndDate: false) { timeInBedHours = $0; g.leave() }
             g.enter()
-            fetchSleepData(startDate: dayStart, endDate: dayEnd, matchByEndDate: true) { [weak self] hours, sleepData, secs in
+            fetchSleepData(startDate: sleepQueryStart, endDate: dayEnd, matchByEndDate: false) { [weak self] hours, sleepData, secs in
                 sleepHours = hours
                 sleepTotalSeconds = secs
                 if let arr = sleepData {
@@ -2210,63 +2218,125 @@ class HealthKitManager {
         var remHours: Double?
     }
 
+    /// שליפת נתוני שינה יומיים - לוגיקה פשוטה ונכונה
+    /// השינה מיוחסת ליום ההתעוררות:
+    /// - ליל שני→שלישי (התעוררת בבוקר שלישי) = מיוחס ליום שלישי
+    /// - שינה שנגמרת בין 00:00-14:00 = שייכת לאותו יום קלנדרי
+    /// - שינה שנגמרת בין 14:00-24:00 = תנומה, מתעלמים
     private func fetchDailySleepData(startDate: Date, endDate: Date, completion: @escaping ([(Date, DailySleepData)]) -> Void) {
-        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
+        guard let sleepType = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else {
             completion([])
             return
         }
 
-        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
-        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+        let calendar = Calendar.current
 
-        let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, _ in
-            let calendar = Calendar.current
-            var dailyData: [Date: DailySleepData] = [:]
+        // שליפה אחת גדולה של כל נתוני השינה בטווח המבוקש
+        // מרחיבים את הטווח יום אחד אחורה כדי לתפוס שינה שהתחילה לפני startDate אבל נגמרה אחריו
+        let extendedStart = calendar.date(byAdding: .day, value: -1, to: startDate) ?? startDate
+        let datePredicate = HKQuery.predicateForSamples(withStart: extendedStart, end: endDate, options: [])
+        let asleepPredicate = HKCategoryValueSleepAnalysis.predicateForSamples(equalTo: HKCategoryValueSleepAnalysis.allAsleepValues)
+        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [datePredicate, asleepPredicate])
 
-            guard let sleepSamples = samples as? [HKCategorySample] else {
+        let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]) { _, samples, error in
+            guard let samples = samples as? [HKCategorySample] else {
                 DispatchQueue.main.async { completion([]) }
                 return
             }
 
-            for sample in sleepSamples {
-                // Use end date for the day (sleep typically ends in the morning)
-                let dayStart = calendar.startOfDay(for: sample.endDate)
-                let duration = sample.endDate.timeIntervalSince(sample.startDate) / 3600.0 // hours
+            // מיון לפי תאריך התחלה
+            let sortedSamples = samples.sorted { $0.startDate < $1.startDate }
 
-                if dailyData[dayStart] == nil {
-                    dailyData[dayStart] = DailySleepData(totalHours: 0, deepHours: nil, remHours: nil)
-                }
-
-                // Get current values to avoid overlapping accesses
-                var current = dailyData[dayStart] ?? DailySleepData(totalHours: 0, deepHours: nil, remHours: nil)
-
-                // iOS 16+ sleep stages
-                if #available(iOS 16.0, *) {
-                    switch sample.value {
-                    case HKCategoryValueSleepAnalysis.asleepCore.rawValue,
-                         HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue:
-                        current.totalHours += duration
-                    case HKCategoryValueSleepAnalysis.asleepDeep.rawValue:
-                        current.totalHours += duration
-                        current.deepHours = (current.deepHours ?? 0) + duration
-                    case HKCategoryValueSleepAnalysis.asleepREM.rawValue:
-                        current.totalHours += duration
-                        current.remHours = (current.remHours ?? 0) + duration
-                    default:
-                        break
-                    }
-                } else {
-                    // iOS 15 and earlier
-                    if sample.value == HKCategoryValueSleepAnalysis.asleep.rawValue {
-                        current.totalHours += duration
-                    }
-                }
-
-                dailyData[dayStart] = current
+            // לוג לדיבוג - 20 samples אחרונים
+            print("🛏️ [fetchDailySleepData] Total samples from HealthKit: \(sortedSamples.count)")
+            for (i, s) in sortedSamples.suffix(20).enumerated() {
+                let durMin = s.endDate.timeIntervalSince(s.startDate) / 60.0
+                let endHourLocal = calendar.component(.hour, from: s.endDate)
+                print("🛏️   \(i+1). \(s.startDate) → \(s.endDate) (\(String(format: "%.0f", durMin))m, endHour=\(endHourLocal))")
             }
 
-            let result = dailyData.map { ($0.key, $0.value) }.sorted { $0.0 < $1.0 }
-            DispatchQueue.main.async { completion(result) }
+            // יצירת entries ריקים לכל הימים
+            var dailyResults: [Date: DailySleepData] = [:]
+            var currentDate = calendar.startOfDay(for: startDate)
+            let finalDate = calendar.startOfDay(for: endDate)
+            while currentDate <= finalDate {
+                dailyResults[currentDate] = DailySleepData(totalHours: 0, deepHours: nil, remHours: nil)
+                currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate.addingTimeInterval(86400)
+            }
+
+            // חישוב שינה לכל יום
+            // לוגיקת אפל: יום X = כל השינה מ-19:00 של יום X-1 עד 19:00 של יום X
+            // זה כולל שינה לילית + תנומות צהריים
+            var finalResults: [(Date, DailySleepData)] = []
+
+            for day in dailyResults.keys.sorted() {
+                // טווח השינה ליום זה: מ-19:00 אתמול עד 19:00 היום (24 שעות מלאות)
+                let dayStart19 = calendar.date(byAdding: .hour, value: -5, to: day)! // 19:00 אתמול
+                let dayEnd19 = calendar.date(byAdding: .hour, value: 19, to: day)!   // 19:00 היום
+
+                // מציאת כל ה-samples שנמצאים בטווח הזה (כולל תנומות)
+                let daySamples = sortedSamples.filter { sample in
+                    return sample.startDate >= dayStart19 && sample.startDate < dayEnd19
+                }
+
+                guard !daySamples.isEmpty else {
+                    finalResults.append((day, DailySleepData(totalHours: 0, deepHours: nil, remHours: nil)))
+                    continue
+                }
+
+                // מיזוג intervals חופפים וסכימת הזמן בפועל (כמו אפל)
+                let intervals: [(start: Date, end: Date)] = daySamples.map { ($0.startDate, $0.endDate) }
+                let merged = Self.mergeOverlappingSleepIntervals(intervals)
+                let totalHours = merged.map { $0.end.timeIntervalSince($0.start) / 3600.0 }.reduce(0, +)
+
+                // לצורך הלוג
+                let sortedDaySamples = daySamples.sorted { $0.startDate < $1.startDate }
+                let sessionStart = sortedDaySamples.first!.startDate
+                let sessionEnd = sortedDaySamples.map { $0.endDate }.max()!
+
+                // חישוב deep/REM
+                var deepHours: Double = 0
+                var remHours: Double = 0
+                for sample in daySamples {
+                    let durationHours = sample.endDate.timeIntervalSince(sample.startDate) / 3600.0
+                    let sleepValue = HKCategoryValueSleepAnalysis(rawValue: sample.value) ?? .asleepUnspecified
+                    if sleepValue == .asleepDeep {
+                        deepHours += durationHours
+                    } else if sleepValue == .asleepREM {
+                        remHours += durationHours
+                    }
+                }
+
+                // לוג ל-7 ימים אחרונים
+                let daysAgo = calendar.dateComponents([.day], from: day, to: Date()).day ?? 0
+                if daysAgo <= 7 {
+                    let h = Int(totalHours)
+                    let m = Int(round((totalHours - Double(h)) * 60))
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "EEEE dd/MM"
+                    formatter.locale = Locale(identifier: "he_IL")
+                    print("🛏️ [fetchDailySleepData] \(formatter.string(from: day)) → \(h)h \(m)m (\(daySamples.count) samples)")
+
+                    // לוג מפורט ליום רביעי (היום)
+                    if daysAgo == 0 {
+                        let timeFormatter = DateFormatter()
+                        timeFormatter.dateFormat = "HH:mm dd/MM"
+                        timeFormatter.timeZone = TimeZone.current
+                        print("🛏️ [TODAY] Window: \(timeFormatter.string(from: dayStart19))→\(timeFormatter.string(from: dayEnd19))")
+                        print("🛏️ [TODAY] Session: \(timeFormatter.string(from: sessionStart))→\(timeFormatter.string(from: sessionEnd)) = \(h)h \(m)m")
+                    }
+                }
+
+                finalResults.append((day, DailySleepData(
+                    totalHours: totalHours,
+                    deepHours: deepHours > 0 ? deepHours : nil,
+                    remHours: remHours > 0 ? remHours : nil
+                )))
+            }
+
+            DispatchQueue.main.async {
+                completion(finalResults.sorted { $0.0 < $1.0 })
+            }
         }
 
         healthStore.execute(query)

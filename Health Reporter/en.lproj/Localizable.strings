@@ -237,6 +237,27 @@
 "dashboard.steps" = "steps";
 "dashboard.activeCalories" = "active calories";
 
+/* Score Cubes */
+"dashboard.carTier" = "Car Tier";
+"dashboard.sleepScore" = "Sleep Score";
+
+/* Energy Forecast */
+"dashboard.energyForecast" = "Energy Forecast";
+"dashboard.energyForecast.loading" = "Analyzing...";
+"dashboard.energyForecast.high" = "Your energy level is high today. Great day for intense training!";
+"dashboard.energyForecast.moderate" = "Your energy level is moderate. Light to moderate exercise recommended.";
+"dashboard.energyForecast.low" = "Your energy level is low. Rest day or light activity recommended.";
+"energy.level.high" = "High";
+"energy.level.medium" = "Medium";
+"energy.level.low" = "Low";
+
+/* Score Explanations */
+"explanation.healthScore" = "Health score is calculated from 5 domains: recovery, sleep, fitness, load balance, and activity. Based on the last 90 days of data.";
+"explanation.carTier" = "Car tier score reflects your overall condition based on readiness, sleep, HRV, and training load.";
+"explanation.sleepScore" = "Sleep score is calculated from sleep duration, deep sleep time, and REM time.";
+"explanation.energyForecast" = "Energy forecast is based on AI analysis of HRV, sleep quality, and recent activity patterns.";
+"explanation.energyForecastDetail" = "The energy forecast combines recent HRV, sleep, and activity data to predict your energy level today. Use it to plan your training day.";
+
 /* Splash - Extended */
 "splash.syncAppleHealth" = "Syncing with Apple Health...";
 "splash.processingData" = "Processing data...";
@@ -621,6 +642,11 @@
 "sleep.debt.description" = "You need more rest";
 "sleep.surplus.description" = "Well rested";
 
+/* Sleep Highlight (Apple Style) */
+"sleep.highlight.title" = "Sleep";
+"sleep.highlight.avg" = "Average Sleep Duration";
+"sleep.highlight.no_data" = "No sleep data to display";
+
 /* Training Metrics */
 "metric.training_strain.short" = "Strain";
 "metric.load_balance.short" = "Balance";
@@ -776,3 +802,68 @@
 /* Hero Cards Explanations */
 "explanation.energy.title" = "Energy Forecast";
 "explanation.energy.message" = "This card shows your predicted energy level for today based on your sleep quality, recovery status, and recent activity patterns. Use it to plan your day accordingly.";
+
+/* Score Detail Bottom Sheets */
+"healthScore.detail.title" = "Health Score";
+"healthScore.detail.explanation" = "Your score is based on analysis of HRV, sleep quality, and physical activity levels over the past weeks.";
+
+"carScore.detail.title" = "Car Score";
+"carScore.detail.explanation" = "Your car tier is determined by your average health metrics. Better scores unlock faster and more prestigious cars.";
+
+"sleepScore.detail.title" = "Sleep Score";
+"sleepScore.detail.explanation" = "Based on sleep duration, consistency of your sleep schedule, and disturbances during the night.";
+
+/* Onboarding */
+"onboarding.welcome.title" = "Welcome to AION";
+"onboarding.welcome.subtitle" = "Your personal AI health coach";
+"onboarding.welcome.bullet1" = "Track your health like a performance car";
+"onboarding.welcome.bullet2" = "Get AI-powered personalized insights";
+"onboarding.welcome.bullet3" = "Monitor sleep, activity, and recovery";
+"onboarding.welcome.getStarted" = "Get Started";
+
+"onboarding.notifications.title" = "Stay Informed";
+"onboarding.notifications.subtitle" = "Get timely health updates and reminders";
+"onboarding.notifications.bullet1" = "Daily health score notifications";
+"onboarding.notifications.bullet2" = "Workout and recovery reminders";
+"onboarding.notifications.bullet3" = "Friend activity updates";
+"onboarding.notifications.enable" = "Enable Notifications";
+"onboarding.notifications.skip" = "Maybe Later";
+
+"onboarding.healthkit.title" = "Connect Your Health";
+"onboarding.healthkit.subtitle" = "Unlock powerful insights from your data";
+"onboarding.healthkit.bullet1" = "Analyze sleep patterns and quality";
+"onboarding.healthkit.bullet2" = "Track activity and exercise";
+"onboarding.healthkit.bullet3" = "Monitor heart health metrics";
+"onboarding.healthkit.connect" = "Connect Apple Health";
+"onboarding.healthkit.skip" = "Skip for Now";
+
+"onboarding.car.title" = "Your Health as a Performance Car";
+"onboarding.car.description" = "AION analyzes your data and matches you with a car that represents your fitness level - from Mini Cooper to Ferrari";
+
+"onboarding.score.title" = "Your Health Score";
+"onboarding.score.description" = "A 0-100 score that combines sleep, activity, heart rate and more - so you know exactly where you stand";
+"onboarding.score.sleep" = "Sleep";
+"onboarding.score.activity" = "Activity";
+"onboarding.score.heart" = "Heart";
+
+"onboarding.ai.title" = "Smart Insights";
+"onboarding.ai.description" = "Advanced AI analyzes your data and provides personalized recommendations";
+"onboarding.ai.feature1" = "Personalized health insights";
+"onboarding.ai.feature2" = "Track trends over time";
+"onboarding.ai.feature3" = "Actionable recommendations";
+
+"onboarding.continue" = "Continue";
+
+"onboarding.loading.subtitle" = "This may take a moment...";
+"onboarding.progress.connecting" = "Connecting to Apple Health...";
+"onboarding.progress.syncing" = "Syncing health data...";
+"onboarding.progress.processing" = "Processing your metrics...";
+"onboarding.progress.analyzing" = "AI is analyzing patterns...";
+"onboarding.progress.findingCar" = "Finding your perfect car...";
+"onboarding.progress.ready" = "Your car is ready!";
+
+/* Onboarding - Car Reveal */
+"onboarding.reveal.title" = "Your Car Is...";
+"onboarding.reveal.healthScore" = "Health Score";
+"onboarding.reveal.description" = "Based on your health data, this car represents your current fitness level. Keep improving to upgrade!";
+"onboarding.reveal.start" = "Start Your Journey!";

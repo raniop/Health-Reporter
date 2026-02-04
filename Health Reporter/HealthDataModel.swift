@@ -10,6 +10,9 @@ import HealthKit
 
 /// מודל נתונים לנתוני בריאות
 struct HealthDataModel {
+    // תאריך (אופציונלי - לשימוש בהיסטוריה)
+    var date: Date?
+
     // נתונים פיזיים
     var steps: Double?
     var distance: Double?

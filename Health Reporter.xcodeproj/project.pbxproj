@@ -764,6 +764,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = AION;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "האפליקציה זקוקה לגישה לנתוני הבריאות שלך כדי לנתח ולהציג לך תובנות חשובות על מצב הבריאות שלך.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "האפליקציה זקוקה לגישה לעדכן נתוני בריאות כדי לשמור מידע נוסף.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.rani.Health-Reporter";
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
@@ -800,6 +802,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = AION;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "האפליקציה זקוקה לגישה לנתוני הבריאות שלך כדי לנתח ולהציג לך תובנות חשובות על מצב הבריאות שלך.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "האפליקציה זקוקה לגישה לעדכן נתוני בריאות כדי לשמור מידע נוסף.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.rani.Health-Reporter";
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
@@ -1003,7 +1007,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 14.1;
+				MARKETING_VERSION = 14.7;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1038,7 +1042,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 14.1;
+				MARKETING_VERSION = 14.7;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.rani.Health-Reporter";
 				PRODUCT_NAME = "$(TARGET_NAME)";

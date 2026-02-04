@@ -323,35 +323,58 @@ struct SleepConsistency: InsightMetric {
     }
 }
 
-/// 8. חוב שינה
-struct SleepDebt: InsightMetric {
-    let id = "sleep_debt"
-    let nameKey = "metric.sleep_debt"
-    let value: Double? // hours, positive = debt
+/// 8. דגש שינה (בסגנון אפל)
+struct SleepHighlight: InsightMetric {
+    let id = "sleep_highlight"
+    let nameKey = "metric.sleep_highlight"
+    let value: Double? // ממוצע שעות השינה
     let category: MetricCategory = .sleep
     let reliability: DataReliability
     let trend: MetricTrend?
 
+    /// נתוני שינה יומיים לגרף (7 ימים אחרונים)
+    let dailySleepData: [DailySleepEntry]
+
+    /// יעד שינה (ברירת מחדל 7.5 שעות)
+    let targetHours: Double
+
     var displayValue: String {
         guard let v = value else { return "--" }
-        let absValue = abs(v)
-        let hours = Int(absValue)
-        let minutes = Int((absValue - Double(hours)) * 60)
-
-        if v > 0 {
-            return "-\(hours)h \(minutes)m"
-        } else if v < 0 {
-            return "+\(hours)h \(minutes)m"
-        } else {
-            return "0h"
-        }
+        let hours = Int(v)
+        let minutes = Int((v - Double(hours)) * 60)
+        return "\(hours)h \(minutes)m"
     }
 
-    var isInDebt: Bool {
+    /// פורמט תצוגה עברי: "X שע׳ Y דק׳"
+    var displayValueHebrew: String {
+        guard let v = value else { return "--" }
+        let hours = Int(v)
+        let minutes = Int((v - Double(hours)) * 60)
+        return "\(hours) שע׳ \(minutes) דק׳"
+    }
+
+    /// האם הממוצע מתחת ליעד
+    var isBelowTarget: Bool {
         guard let v = value else { return false }
-        return v > 0
+        return v < targetHours
     }
 }
+
+/// נתון שינה יומי לגרף
+struct DailySleepEntry {
+    let date: Date
+    let hours: Double
+    let dayOfWeekShort: String // א׳, ב׳, ג׳... או Mon, Tue...
+
+    /// גובה יחסי לגרף (0-1)
+    func relativeHeight(maxHours: Double) -> CGFloat {
+        guard maxHours > 0 else { return 0 }
+        return CGFloat(min(hours / maxHours, 1.0))
+    }
+}
+
+// שמירה לתאימות לאחור
+typealias SleepDebt = SleepHighlight
 
 /// 9. עומס אימון
 struct InsightTrainingStrain: InsightMetric {

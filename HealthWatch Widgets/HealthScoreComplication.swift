@@ -36,18 +36,21 @@ struct HealthScoreComplicationView: View {
     let entry: WatchHealthEntry
 
     var body: some View {
-        switch family {
-        case .accessoryCircular:
-            CircularScoreView(data: entry.data)
-        case .accessoryRectangular:
-            RectangularScoreView(data: entry.data)
-        case .accessoryInline:
-            InlineScoreView(data: entry.data)
-        case .accessoryCorner:
-            CornerScoreView(data: entry.data)
-        default:
-            CircularScoreView(data: entry.data)
+        Group {
+            switch family {
+            case .accessoryCircular:
+                CircularScoreView(data: entry.data)
+            case .accessoryRectangular:
+                RectangularScoreView(data: entry.data)
+            case .accessoryInline:
+                InlineScoreView(data: entry.data)
+            case .accessoryCorner:
+                CornerScoreView(data: entry.data)
+            default:
+                CircularScoreView(data: entry.data)
+            }
         }
+        .containerBackground(.fill.tertiary, for: .widget)
     }
 }
 

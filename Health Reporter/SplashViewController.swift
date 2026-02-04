@@ -1,5 +1,6 @@
 import UIKit
 import HealthKit
+import FirebaseAuth
 
 /// Splash Screen דינמי שטוען נתונים ברקע
 /// מוצג במקום LaunchScreen.storyboard הסטטי ומבצע את טעינת הנתונים
@@ -209,20 +210,81 @@ class SplashViewController: UIViewController {
                 healthStatus = "score.description.\(scoreLevel.rawValue)".localized
             }
 
-            WidgetDataManager.shared.updateFromDashboard(
-                score: displayScore,
-                status: healthStatus,
-                steps: Int(todayEntry?.steps ?? 0),
-                activeCalories: Int(todayEntry?.activeCalories ?? 0),
-                exerciseMinutes: 0,  // לא קיים ב-RawDailyHealthEntry
-                standHours: 0,       // לא קיים ב-RawDailyHealthEntry
-                restingHR: todayEntry?.restingHR.map { Int($0) },
-                hrv: todayEntry?.hrvMs.map { Int($0) },
-                sleepHours: todayEntry?.sleepHours,
-                carTier: tier,
-                userName: ""
-            )
-            print("📱 [Splash] Sent to Watch: score=\(displayScore), status=\(healthStatus), steps=\(Int(todayEntry?.steps ?? 0)), sleep=\(todayEntry?.sleepHours ?? 0)")
+            // Fetch fresh exercise and stand data from HealthKit for today
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: Date())
+            let endOfDay = Date()
+
+            HealthKitManager.shared.fetchExerciseMinutes(startDate: startOfDay, endDate: endOfDay) { exerciseMinutes in
+                HealthKitManager.shared.fetchStandHours(startDate: startOfDay, endDate: endOfDay) { standHours in
+                    DispatchQueue.main.async {
+                        let exercise = Int(exerciseMinutes ?? 0)
+                        let stand = Int(standHours ?? 0)
+
+                        // בדיקה: אם יש נתוני Gemini ב-cache - להשתמש בהם לווידג'ט
+                        let geminiCar = AnalysisCache.loadSelectedCar()
+                        let geminiScore = AnalysisCache.loadHealthScore()
+                        let userName = Auth.auth().currentUser?.displayName ?? ""
+
+                        if let geminiCarName = geminiCar?.name, let geminiScoreValue = geminiScore {
+                            // יש נתוני Gemini - עדכון ווידג'ט עם שם הרכב והציון מ-Gemini
+                            let geminiTier = CarTierEngine.tierForScore(geminiScoreValue)
+                            WidgetDataManager.shared.updateFromInsights(
+                                score: geminiScoreValue,
+                                dailyScore: displayScore,  // הציון היומי לתצוגה משנית
+                                status: healthStatus,
+                                carName: geminiCarName,
+                                carEmoji: geminiTier.emoji,
+                                steps: Int(todayEntry?.steps ?? 0),
+                                activeCalories: Int(todayEntry?.activeCalories ?? 0),
+                                exerciseMinutes: exercise,
+                                standHours: stand,
+                                restingHR: todayEntry?.restingHR.map { Int($0) },
+                                hrv: todayEntry?.hrvMs.map { Int($0) },
+                                sleepHours: todayEntry?.sleepHours,
+                                userName: userName
+                            )
+                            print("📱 [Splash] Widget updated with Gemini data: car=\(geminiCarName), score=\(geminiScoreValue), user=\(userName)")
+
+                            // שליחה לשעון - עם הציון היומי (לא Gemini!) כדי לשמור על עקביות
+                            WatchConnectivityManager.shared.sendWidgetDataToWatch(
+                                healthScore: displayScore,
+                                healthStatus: healthStatus,
+                                steps: Int(todayEntry?.steps ?? 0),
+                                calories: Int(todayEntry?.activeCalories ?? 0),
+                                exerciseMinutes: exercise,
+                                standHours: stand,
+                                heartRate: todayEntry?.restingHR.map { Int($0) } ?? 0,
+                                hrv: todayEntry?.hrvMs.map { Int($0) } ?? 0,
+                                sleepHours: todayEntry?.sleepHours ?? 0,
+                                carName: tier.name,
+                                carEmoji: tier.emoji,
+                                carTierIndex: tier.tierIndex,
+                                carTierLabel: tier.tierLabel,
+                                geminiCarName: geminiCarName,
+                                geminiCarScore: geminiScoreValue
+                            )
+                        } else {
+                            // אין נתוני Gemini - להשתמש בציון רגיל (מחושב מ-HealthScore)
+                            WidgetDataManager.shared.updateFromDashboard(
+                                score: displayScore,
+                                status: healthStatus,
+                                steps: Int(todayEntry?.steps ?? 0),
+                                activeCalories: Int(todayEntry?.activeCalories ?? 0),
+                                exerciseMinutes: exercise,
+                                standHours: stand,
+                                restingHR: todayEntry?.restingHR.map { Int($0) },
+                                hrv: todayEntry?.hrvMs.map { Int($0) },
+                                sleepHours: todayEntry?.sleepHours,
+                                carTier: tier,
+                                userName: userName
+                            )
+                            print("📱 [Splash] Widget updated with calculated tier: car=\(tier.name), score=\(displayScore), user=\(userName)")
+                        }
+                        print("📱 [Splash] Sent to Watch: score=\(displayScore), steps=\(Int(todayEntry?.steps ?? 0)), exercise=\(exercise), stand=\(stand)")
+                    }
+                }
+            }
         }
     }
 

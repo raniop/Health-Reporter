@@ -15,6 +15,7 @@ struct MetricsDetailView: View {
     }
 
     var body: some View {
+        let _ = print("⌚️ MetricsDetailView: exercise=\(data.exerciseMinutes), stand=\(data.standHours), isFromPhone=\(data.isFromPhone)")
         List {
             // Heart Section
             Section {

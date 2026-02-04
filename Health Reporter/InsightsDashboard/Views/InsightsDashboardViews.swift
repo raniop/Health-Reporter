@@ -216,7 +216,7 @@ final class InsightsDashboardHeaderView: UIView {
             avatarImageView.heightAnchor.constraint(equalToConstant: 40)
         ])
 
-        // Greeting based on time
+        // Greeting based on time + user name
         let hour = Calendar.current.component(.hour, from: Date())
         let greetingKey: String
         switch hour {
@@ -225,7 +225,13 @@ final class InsightsDashboardHeaderView: UIView {
         case 17..<21: greetingKey = "greeting.evening"
         default: greetingKey = "greeting.night"
         }
-        greetingLabel.text = greetingKey.localized
+        let greeting = greetingKey.localized
+        if let displayName = Auth.auth().currentUser?.displayName, !displayName.isEmpty {
+            let firstName = displayName.components(separatedBy: " ").first ?? displayName
+            greetingLabel.text = "\(greeting), \(firstName)"
+        } else {
+            greetingLabel.text = greeting
+        }
 
         // Date
         let formatter = DateFormatter()
@@ -290,23 +296,58 @@ final class PeriodSelectorView: UIView {
     }
 }
 
-// MARK: - Hero Score Section
+// MARK: - Hero Score Section (3 Score Cubes + Energy Forecast)
 
 final class HeroScoreSection: UIView {
 
     var onWhyTapped: (() -> Void)?
+    var onCarTapped: (() -> Void)?
+    var onSleepTapped: (() -> Void)?
     private weak var parentVC: UIViewController?
     private var currentEnergyForecast: EnergyForecast?
 
-    private let mainScoreCard = UIView()
-    private let scoreLabel = UILabel()
-    private let scoreDescLabel = UILabel()
-    private let whyIndicator = UIImageView()
+    // שמירת הציונים הנוכחיים עבור ה-bottom sheets
+    private var currentHealthScore: Int?
+    private var currentCarScore: Int?
+    private var currentCarName: String?
+    private var currentSleepScore: Int?
 
+    // MARK: - Score Cubes
+    private let cubesStack = UIStackView()
+
+    // Cube 1: Health Score
+    private let healthCube = UIView()
+    private let healthIconView = UIImageView()
+    private let healthScoreLabel = UILabel()
+    private let healthTitleLabel = UILabel()
+
+    // Cube 2: Car Tier Score
+    private let carCube = UIView()
+    private let carIconView = UIImageView()
+    private let carScoreLabel = UILabel()
+    private let carTitleLabel = UILabel()
+    private let carNameLabel = UILabel()
+
+    // Cube 3: Sleep Score
+    private let sleepCube = UIView()
+    private let sleepIconView = UIImageView()
+    private let sleepScoreLabel = UILabel()
+    private let sleepTitleLabel = UILabel()
+
+    // MARK: - Energy Forecast Card
     private let energyCard = UIView()
-    private let energyIconView = UIImageView()
-    private let energyLabel = UILabel()
-    private let energyDescLabel = UILabel()
+    private let energyGradientLayer = CAGradientLayer()  // גרדיאנט רקע
+    private let energyIconView = UIImageView()  // אייקון ברק
+    private let energyScoreLabel = UILabel()    // ציון אנרגיה גדול
+    private let energyLevelLabel = UILabel()    // רמה (גבוה/בינוני/נמוך)
+    private let energyTitleLabel = UILabel()
+    private let energyTextLabel = UILabel()
+
+    // Loading indicators
+    private let healthLoadingIndicator = UIActivityIndicatorView(style: .medium)
+    private let carLoadingIndicator = UIActivityIndicatorView(style: .medium)
+    private let sleepLoadingIndicator = UIActivityIndicatorView(style: .medium)
+    private let energyLoadingIndicator = UIActivityIndicatorView(style: .medium)
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -318,123 +359,241 @@ final class HeroScoreSection: UIView {
     }
 
     private func setupUI() {
-        // RTL/LTR support
         semanticContentAttribute = semanticAttribute
 
-        let hStack = UIStackView()
-        hStack.axis = .horizontal
-        hStack.spacing = 12
-        hStack.distribution = .fillEqually
-        hStack.translatesAutoresizingMaskIntoConstraints = false
-        hStack.semanticContentAttribute = semanticAttribute
-        addSubview(hStack)
-
-        // Main score card - tappable
-        mainScoreCard.backgroundColor = AIONDesign.surface
-        mainScoreCard.layer.cornerRadius = 16
-        setupCardShadow(mainScoreCard)
-
-        let scoreTap = UITapGestureRecognizer(target: self, action: #selector(scoreCardTapped))
-        mainScoreCard.addGestureRecognizer(scoreTap)
-        mainScoreCard.isUserInteractionEnabled = true
-
-        // Small info indicator at bottom right
-        whyIndicator.image = UIImage(systemName: "info.circle")
-        whyIndicator.tintColor = AIONDesign.textTertiary
-        whyIndicator.contentMode = .scaleAspectFit
-        whyIndicator.translatesAutoresizingMaskIntoConstraints = false
-        mainScoreCard.addSubview(whyIndicator)
-
-        let mainStack = UIStackView(arrangedSubviews: [scoreLabel, scoreDescLabel])
+        let mainStack = UIStackView()
         mainStack.axis = .vertical
-        mainStack.alignment = .center
-        mainStack.spacing = 4
+        mainStack.spacing = 12
         mainStack.translatesAutoresizingMaskIntoConstraints = false
-        mainStack.isUserInteractionEnabled = false
-        mainScoreCard.addSubview(mainStack)
+        mainStack.semanticContentAttribute = semanticAttribute
+        addSubview(mainStack)
 
-        scoreLabel.font = UIFont.systemFont(ofSize: 52, weight: .bold)
-        scoreLabel.textColor = AIONDesign.accentPrimary
-        scoreLabel.textAlignment = .center
+        // === Score Cubes Row ===
+        cubesStack.axis = .horizontal
+        cubesStack.spacing = 10
+        cubesStack.distribution = .fillEqually
+        cubesStack.semanticContentAttribute = semanticAttribute
+        mainStack.addArrangedSubview(cubesStack)
 
-        scoreDescLabel.font = AIONDesign.fontCaption
-        scoreDescLabel.textColor = AIONDesign.textSecondary
-        scoreDescLabel.textAlignment = .center
+        setupCube(healthCube, icon: healthIconView, scoreLabel: healthScoreLabel, titleLabel: healthTitleLabel,
+                  iconName: "battery.100.bolt", iconColor: AIONDesign.accentSuccess,
+                  title: "dashboard.healthScore".localized, loading: healthLoadingIndicator,
+                  action: #selector(healthCubeTapped))
+
+        setupCube(carCube, icon: carIconView, scoreLabel: carScoreLabel, titleLabel: carTitleLabel,
+                  iconName: "car.fill", iconColor: AIONDesign.accentPrimary,
+                  title: "dashboard.carTier".localized, loading: carLoadingIndicator,
+                  action: #selector(carCubeTapped), subtitle: carNameLabel)
+
+        setupCube(sleepCube, icon: sleepIconView, scoreLabel: sleepScoreLabel, titleLabel: sleepTitleLabel,
+                  iconName: "moon.zzz.fill", iconColor: AIONDesign.accentSecondary,
+                  title: "dashboard.sleepScore".localized, loading: sleepLoadingIndicator,
+                  action: #selector(sleepCubeTapped))
+
+        cubesStack.addArrangedSubview(healthCube)
+        cubesStack.addArrangedSubview(carCube)
+        cubesStack.addArrangedSubview(sleepCube)
+
+        // === Energy Forecast Card ===
+        setupEnergyForecastCard()
+        mainStack.addArrangedSubview(energyCard)
 
         NSLayoutConstraint.activate([
-            mainStack.centerXAnchor.constraint(equalTo: mainScoreCard.centerXAnchor),
-            mainStack.centerYAnchor.constraint(equalTo: mainScoreCard.centerYAnchor),
-            mainStack.leadingAnchor.constraint(greaterThanOrEqualTo: mainScoreCard.leadingAnchor, constant: 8),
-            mainStack.trailingAnchor.constraint(lessThanOrEqualTo: mainScoreCard.trailingAnchor, constant: -8),
+            mainStack.topAnchor.constraint(equalTo: topAnchor),
+            mainStack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            mainStack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            mainStack.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            whyIndicator.trailingAnchor.constraint(equalTo: mainScoreCard.trailingAnchor, constant: -10),
-            whyIndicator.bottomAnchor.constraint(equalTo: mainScoreCard.bottomAnchor, constant: -10),
-            whyIndicator.widthAnchor.constraint(equalToConstant: 16),
-            whyIndicator.heightAnchor.constraint(equalToConstant: 16)
+            cubesStack.heightAnchor.constraint(equalToConstant: 110),
+            energyCard.heightAnchor.constraint(equalToConstant: 150)
+        ])
+    }
+
+    private func setupCube(_ cube: UIView, icon: UIImageView, scoreLabel: UILabel, titleLabel: UILabel,
+                           iconName: String, iconColor: UIColor, title: String,
+                           loading: UIActivityIndicatorView, action: Selector, subtitle: UILabel? = nil) {
+        cube.backgroundColor = AIONDesign.surface
+        cube.layer.cornerRadius = AIONDesign.cornerRadius
+        setupCardShadow(cube)
+
+        let tap = UITapGestureRecognizer(target: self, action: action)
+        cube.addGestureRecognizer(tap)
+        cube.isUserInteractionEnabled = true
+
+        // Icon
+        let cfg = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
+        icon.image = UIImage(systemName: iconName, withConfiguration: cfg)
+        icon.tintColor = iconColor
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        cube.addSubview(icon)
+
+        // Score
+        scoreLabel.font = .systemFont(ofSize: 32, weight: .bold)
+        scoreLabel.textColor = AIONDesign.textPrimary
+        scoreLabel.textAlignment = .center
+        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        cube.addSubview(scoreLabel)
+
+        // Title
+        titleLabel.text = title
+        titleLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        titleLabel.textColor = AIONDesign.textSecondary
+        titleLabel.textAlignment = .center
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        cube.addSubview(titleLabel)
+
+        // Loading indicator
+        loading.color = AIONDesign.accentPrimary
+        loading.hidesWhenStopped = true
+        loading.translatesAutoresizingMaskIntoConstraints = false
+        cube.addSubview(loading)
+
+        NSLayoutConstraint.activate([
+            icon.topAnchor.constraint(equalTo: cube.topAnchor, constant: 8),
+            icon.centerXAnchor.constraint(equalTo: cube.centerXAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 24),
+            icon.heightAnchor.constraint(equalToConstant: 24),
+
+            scoreLabel.centerXAnchor.constraint(equalTo: cube.centerXAnchor),
+            scoreLabel.centerYAnchor.constraint(equalTo: cube.centerYAnchor),
+
+            titleLabel.bottomAnchor.constraint(equalTo: cube.bottomAnchor, constant: -8),
+            titleLabel.centerXAnchor.constraint(equalTo: cube.centerXAnchor),
+            titleLabel.leadingAnchor.constraint(equalTo: cube.leadingAnchor, constant: 4),
+            titleLabel.trailingAnchor.constraint(equalTo: cube.trailingAnchor, constant: -4),
+
+            loading.centerXAnchor.constraint(equalTo: cube.centerXAnchor),
+            loading.centerYAnchor.constraint(equalTo: cube.centerYAnchor)
         ])
 
-        // Energy card - tappable
+        // Optional subtitle (for car name)
+        if let subtitle = subtitle {
+            subtitle.font = .systemFont(ofSize: 9, weight: .regular)
+            subtitle.textColor = AIONDesign.textTertiary
+            subtitle.textAlignment = .center
+            subtitle.numberOfLines = 1
+            subtitle.lineBreakMode = .byTruncatingTail
+            subtitle.translatesAutoresizingMaskIntoConstraints = false
+            cube.addSubview(subtitle)
+
+            NSLayoutConstraint.activate([
+                subtitle.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: 1),
+                subtitle.centerXAnchor.constraint(equalTo: cube.centerXAnchor),
+                subtitle.leadingAnchor.constraint(equalTo: cube.leadingAnchor, constant: 4),
+                subtitle.trailingAnchor.constraint(equalTo: cube.trailingAnchor, constant: -4)
+            ])
+
+            // Adjust title position when subtitle exists
+            titleLabel.removeFromSuperview()
+            cube.addSubview(titleLabel)
+            NSLayoutConstraint.activate([
+                titleLabel.bottomAnchor.constraint(equalTo: cube.bottomAnchor, constant: -6),
+                titleLabel.centerXAnchor.constraint(equalTo: cube.centerXAnchor),
+                titleLabel.leadingAnchor.constraint(equalTo: cube.leadingAnchor, constant: 4),
+                titleLabel.trailingAnchor.constraint(equalTo: cube.trailingAnchor, constant: -4)
+            ])
+        }
+    }
+
+    private func setupEnergyForecastCard() {
         energyCard.backgroundColor = AIONDesign.surface
-        energyCard.layer.cornerRadius = 16
+        energyCard.layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        energyCard.clipsToBounds = true
         setupCardShadow(energyCard)
 
-        let energyTap = UITapGestureRecognizer(target: self, action: #selector(energyCardTapped))
-        energyCard.addGestureRecognizer(energyTap)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(energyCardTapped))
+        energyCard.addGestureRecognizer(tap)
         energyCard.isUserInteractionEnabled = true
 
-        // Small info indicator for energy card
-        let energyInfoIndicator = UIImageView(image: UIImage(systemName: "info.circle"))
-        energyInfoIndicator.tintColor = AIONDesign.textTertiary
-        energyInfoIndicator.contentMode = .scaleAspectFit
-        energyInfoIndicator.translatesAutoresizingMaskIntoConstraints = false
-        energyCard.addSubview(energyInfoIndicator)
+        // === גרדיאנט רקע עדין ===
+        energyGradientLayer.colors = [
+            UIColor.systemOrange.withAlphaComponent(0.15).cgColor,
+            UIColor.systemYellow.withAlphaComponent(0.05).cgColor
+        ]
+        energyGradientLayer.startPoint = CGPoint(x: 0, y: 0)
+        energyGradientLayer.endPoint = CGPoint(x: 1, y: 1)
+        energyCard.layer.insertSublayer(energyGradientLayer, at: 0)
 
-        let energyStack = UIStackView(arrangedSubviews: [energyIconView, energyLabel, energyDescLabel])
-        energyStack.axis = .vertical
-        energyStack.alignment = .center
-        energyStack.spacing = 6
-        energyStack.translatesAutoresizingMaskIntoConstraints = false
-        energyStack.isUserInteractionEnabled = false
-        energyCard.addSubview(energyStack)
+        // === שורה עליונה: ציון + רמה (ממורכז) ===
+        // ציון אנרגיה גדול ובולט
+        energyScoreLabel.font = .systemFont(ofSize: 48, weight: .heavy)
+        energyScoreLabel.textColor = AIONDesign.textPrimary
+        energyScoreLabel.textAlignment = .center
+        energyScoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        energyCard.addSubview(energyScoreLabel)
 
-        energyIconView.image = UIImage(systemName: "bolt.fill")
-        energyIconView.tintColor = AIONDesign.statusPositive
+        // רמת אנרגיה (גבוה/בינוני/נמוך) - בולטת יותר
+        energyLevelLabel.font = .systemFont(ofSize: 20, weight: .bold)
+        energyLevelLabel.textColor = AIONDesign.accentWarning
+        energyLevelLabel.textAlignment = .center
+        energyLevelLabel.translatesAutoresizingMaskIntoConstraints = false
+        energyCard.addSubview(energyLevelLabel)
+
+        // אייקון ברק קטן ליד הרמה
+        let iconCfg = UIImage.SymbolConfiguration(pointSize: 18, weight: .bold)
+        energyIconView.image = UIImage(systemName: "bolt.fill", withConfiguration: iconCfg)
+        energyIconView.tintColor = AIONDesign.accentWarning
         energyIconView.contentMode = .scaleAspectFit
+        energyIconView.translatesAutoresizingMaskIntoConstraints = false
+        energyCard.addSubview(energyIconView)
 
-        energyLabel.font = AIONDesign.fontTitle2
-        energyLabel.textColor = AIONDesign.textPrimary
-        energyLabel.textAlignment = .center
+        // === שורה תחתונה: הסבר (ממורכז) ===
+        energyTextLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        energyTextLabel.textColor = AIONDesign.textSecondary
+        energyTextLabel.textAlignment = .center
+        energyTextLabel.numberOfLines = 2
+        energyTextLabel.translatesAutoresizingMaskIntoConstraints = false
+        energyCard.addSubview(energyTextLabel)
 
-        energyDescLabel.font = AIONDesign.fontCaption
-        energyDescLabel.textColor = AIONDesign.textSecondary
-        energyDescLabel.textAlignment = .center
-        energyDescLabel.numberOfLines = 2
+        // כותרת קטנה למעלה
+        energyTitleLabel.text = "dashboard.energyForecast".localized
+        energyTitleLabel.font = .systemFont(ofSize: 10, weight: .medium)
+        energyTitleLabel.textColor = AIONDesign.textTertiary
+        energyTitleLabel.textAlignment = .center
+        energyTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        energyCard.addSubview(energyTitleLabel)
 
-        NSLayoutConstraint.activate([
-            energyStack.centerXAnchor.constraint(equalTo: energyCard.centerXAnchor),
-            energyStack.centerYAnchor.constraint(equalTo: energyCard.centerYAnchor),
-            energyStack.leadingAnchor.constraint(greaterThanOrEqualTo: energyCard.leadingAnchor, constant: 8),
-            energyStack.trailingAnchor.constraint(lessThanOrEqualTo: energyCard.trailingAnchor, constant: -8),
-
-            energyIconView.widthAnchor.constraint(equalToConstant: 28),
-            energyIconView.heightAnchor.constraint(equalToConstant: 28),
-
-            energyInfoIndicator.trailingAnchor.constraint(equalTo: energyCard.trailingAnchor, constant: -10),
-            energyInfoIndicator.bottomAnchor.constraint(equalTo: energyCard.bottomAnchor, constant: -10),
-            energyInfoIndicator.widthAnchor.constraint(equalToConstant: 16),
-            energyInfoIndicator.heightAnchor.constraint(equalToConstant: 16)
-        ])
-
-        hStack.addArrangedSubview(mainScoreCard)
-        hStack.addArrangedSubview(energyCard)
+        // Loading indicator
+        energyLoadingIndicator.color = AIONDesign.accentPrimary
+        energyLoadingIndicator.hidesWhenStopped = true
+        energyLoadingIndicator.translatesAutoresizingMaskIntoConstraints = false
+        energyCard.addSubview(energyLoadingIndicator)
 
         NSLayoutConstraint.activate([
-            hStack.topAnchor.constraint(equalTo: topAnchor),
-            hStack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            hStack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            hStack.bottomAnchor.constraint(equalTo: bottomAnchor),
-            hStack.heightAnchor.constraint(equalToConstant: 140)
+            // כותרת קטנה למעלה
+            energyTitleLabel.topAnchor.constraint(equalTo: energyCard.topAnchor, constant: 10),
+            energyTitleLabel.centerXAnchor.constraint(equalTo: energyCard.centerXAnchor),
+
+            // ציון במרכז
+            energyScoreLabel.topAnchor.constraint(equalTo: energyTitleLabel.bottomAnchor, constant: 2),
+            energyScoreLabel.centerXAnchor.constraint(equalTo: energyCard.centerXAnchor),
+
+            // אייקון ברק ליד הרמה
+            energyIconView.centerYAnchor.constraint(equalTo: energyLevelLabel.centerYAnchor),
+            energyIconView.trailingAnchor.constraint(equalTo: energyLevelLabel.leadingAnchor, constant: -4),
+            energyIconView.widthAnchor.constraint(equalToConstant: 18),
+            energyIconView.heightAnchor.constraint(equalToConstant: 18),
+
+            // רמה מתחת לציון
+            energyLevelLabel.topAnchor.constraint(equalTo: energyScoreLabel.bottomAnchor, constant: -2),
+            energyLevelLabel.centerXAnchor.constraint(equalTo: energyCard.centerXAnchor, constant: 10),
+
+            // הסבר בתחתית
+            energyTextLabel.topAnchor.constraint(equalTo: energyLevelLabel.bottomAnchor, constant: 8),
+            energyTextLabel.leadingAnchor.constraint(equalTo: energyCard.leadingAnchor, constant: 16),
+            energyTextLabel.trailingAnchor.constraint(equalTo: energyCard.trailingAnchor, constant: -16),
+            energyTextLabel.bottomAnchor.constraint(lessThanOrEqualTo: energyCard.bottomAnchor, constant: -12),
+
+            energyLoadingIndicator.centerXAnchor.constraint(equalTo: energyCard.centerXAnchor),
+            energyLoadingIndicator.centerYAnchor.constraint(equalTo: energyCard.centerYAnchor)
         ])
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // עדכון גודל הגרדיאנט
+        energyGradientLayer.frame = energyCard.bounds
     }
 
     private func setupCardShadow(_ view: UIView) {
@@ -444,8 +603,33 @@ final class HeroScoreSection: UIView {
         view.layer.shadowRadius = 8
     }
 
-    @objc private func scoreCardTapped() {
-        onWhyTapped?()
+    // MARK: - Actions
+
+    @objc private func healthCubeTapped() {
+        guard let vc = parentVC, let score = currentHealthScore else {
+            onWhyTapped?()
+            return
+        }
+        let detailVC = HealthScoreDetailViewController(score: score)
+        vc.present(detailVC, animated: true)
+    }
+
+    @objc private func carCubeTapped() {
+        guard let vc = parentVC, let score = currentCarScore else {
+            onCarTapped?()
+            return
+        }
+        let detailVC = CarScoreDetailViewController(score: score, carName: currentCarName)
+        vc.present(detailVC, animated: true)
+    }
+
+    @objc private func sleepCubeTapped() {
+        guard let vc = parentVC, let score = currentSleepScore else {
+            onSleepTapped?()
+            return
+        }
+        let detailVC = SleepScoreDetailViewController(score: score)
+        vc.present(detailVC, animated: true)
     }
 
     @objc private func energyCardTapped() {
@@ -454,32 +638,163 @@ final class HeroScoreSection: UIView {
         vc.present(detailVC, animated: true)
     }
 
-    func configure(mainScore: Double?, energyForecast: EnergyForecast, parentVC: UIViewController? = nil) {
+    // MARK: - Configuration
+
+    func configure(healthScore: Int?, carScore: Int?, carName: String?, sleepScore: Int?,
+                   energyForecast: EnergyForecast, parentVC: UIViewController? = nil, isLoading: Bool = false) {
         self.parentVC = parentVC
         self.currentEnergyForecast = energyForecast
 
-        if let score = mainScore {
-            scoreLabel.text = "\(Int(score))"
+        // שמירת הציונים עבור ה-bottom sheets
+        self.currentHealthScore = healthScore
+        self.currentCarScore = carScore
+        self.currentCarName = carName
+        self.currentSleepScore = sleepScore
 
-            let level = RangeLevel.from(score: score)
-            scoreDescLabel.text = "score.description.\(level.rawValue)".localized
-
-            // Color based on score
-            scoreLabel.textColor = colorForScore(score)
+        // Health Score Cube
+        if let score = healthScore, score > 0 {
+            healthLoadingIndicator.stopAnimating()
+            healthScoreLabel.isHidden = false
+            healthScoreLabel.text = "\(score)"
+            healthScoreLabel.textColor = colorForScore(Double(score))
+        } else if isLoading {
+            healthScoreLabel.isHidden = true
+            healthLoadingIndicator.startAnimating()
         } else {
-            scoreLabel.text = "--"
-            scoreDescLabel.text = "score.no_data".localized
-            scoreLabel.textColor = AIONDesign.textTertiary
+            // No data - show placeholder
+            healthLoadingIndicator.stopAnimating()
+            healthScoreLabel.isHidden = false
+            healthScoreLabel.text = "—"
+            healthScoreLabel.textColor = AIONDesign.textTertiary
         }
 
-        // Energy forecast
-        if let energy = energyForecast.value {
-            energyLabel.text = energyForecast.level.localizationKey.localized
-            energyDescLabel.text = energyForecast.explanationKey.localized
-            energyIconView.tintColor = colorForScore(energy)
+        // Car Score Cube
+        if let score = carScore, score > 0 {
+            carLoadingIndicator.stopAnimating()
+            carScoreLabel.isHidden = false
+            carScoreLabel.text = "\(score)"
+            carScoreLabel.textColor = colorForScore(Double(score))
+            carNameLabel.text = carName
+            carNameLabel.isHidden = carName == nil || carName?.isEmpty == true
+        } else if isLoading {
+            carScoreLabel.isHidden = true
+            carNameLabel.isHidden = true
+            carLoadingIndicator.startAnimating()
         } else {
-            energyLabel.text = "--"
-            energyDescLabel.text = ""
+            // No data - show placeholder
+            carLoadingIndicator.stopAnimating()
+            carScoreLabel.isHidden = false
+            carScoreLabel.text = "—"
+            carScoreLabel.textColor = AIONDesign.textTertiary
+            carNameLabel.isHidden = true
+        }
+
+        // Sleep Score Cube
+        if let score = sleepScore, score > 0 {
+            sleepLoadingIndicator.stopAnimating()
+            sleepScoreLabel.isHidden = false
+            sleepScoreLabel.text = "\(score)"
+            sleepScoreLabel.textColor = colorForScore(Double(score))
+        } else if isLoading {
+            sleepScoreLabel.isHidden = true
+            sleepLoadingIndicator.startAnimating()
+        } else {
+            // No data - show placeholder
+            sleepLoadingIndicator.stopAnimating()
+            sleepScoreLabel.isHidden = false
+            sleepScoreLabel.text = "—"
+            sleepScoreLabel.textColor = AIONDesign.textTertiary
+        }
+
+        // Energy Forecast
+        configureEnergyForecast(energyForecast, isLoading: isLoading)
+    }
+
+    // Legacy configure method for backward compatibility
+    func configure(mainScore: Double?, energyForecast: EnergyForecast, parentVC: UIViewController? = nil) {
+        // Calculate car score from weekly stats
+        let stats = AnalysisCache.loadWeeklyStats()
+        let carScore = CarTierEngine.computeHealthScore(
+            readinessAvg: stats?.readiness,
+            sleepHoursAvg: stats?.sleepHours,
+            hrvAvg: stats?.hrv,
+            strainAvg: stats?.strain
+        )
+        let carTier = CarTierEngine.tierForScore(carScore)
+        let savedCar = AnalysisCache.loadSelectedCar()
+        let carName = savedCar?.name ?? carTier.name
+
+        // Get sleep score from energy forecast or calculate
+        let sleepScore: Int? = energyForecast.value != nil ? Int(energyForecast.value! * 0.8) : nil
+
+        configure(
+            healthScore: mainScore != nil ? Int(mainScore!) : nil,
+            carScore: carScore > 0 ? carScore : nil,
+            carName: carName,
+            sleepScore: sleepScore,
+            energyForecast: energyForecast,
+            parentVC: parentVC
+        )
+    }
+
+    private func configureEnergyForecast(_ forecast: EnergyForecast, isLoading: Bool = false) {
+        if let energy = forecast.value {
+            energyLoadingIndicator.stopAnimating()
+            energyScoreLabel.isHidden = false
+            energyIconView.isHidden = false
+            energyLevelLabel.isHidden = false
+            energyTextLabel.isHidden = false
+            energyTitleLabel.isHidden = false
+
+            // הצגת ציון האנרגיה
+            energyScoreLabel.text = "\(Int(energy))"
+
+            // צבע ורמה לפי האנרגיה
+            let color: UIColor
+            let levelText: String
+            if energy >= 70 {
+                color = AIONDesign.accentSuccess  // ירוק - אנרגיה גבוהה
+                levelText = "energy.level.high".localized
+            } else if energy >= 40 {
+                color = AIONDesign.accentWarning  // כתום - אנרגיה בינונית
+                levelText = "energy.level.medium".localized
+            } else {
+                color = AIONDesign.accentDanger   // אדום - אנרגיה נמוכה
+                levelText = "energy.level.low".localized
+            }
+
+            energyLevelLabel.text = levelText
+            energyLevelLabel.textColor = color
+            energyIconView.tintColor = color  // צבע האייקון
+            energyScoreLabel.textColor = color  // גם הציון בצבע
+
+            // עדכון גרדיאנט לפי הצבע - יותר בולט
+            energyGradientLayer.colors = [
+                color.withAlphaComponent(0.20).cgColor,
+                color.withAlphaComponent(0.05).cgColor
+            ]
+
+            // טקסט הסבר
+            energyTextLabel.text = forecast.explanationKey.localized
+        } else if isLoading {
+            energyScoreLabel.isHidden = true
+            energyIconView.isHidden = true
+            energyLevelLabel.isHidden = true
+            energyTextLabel.text = "dashboard.energyForecast.loading".localized
+            energyTextLabel.isHidden = false
+            energyTitleLabel.isHidden = false
+            energyLoadingIndicator.startAnimating()
+        } else {
+            // No data - show placeholder
+            energyLoadingIndicator.stopAnimating()
+            energyScoreLabel.isHidden = false
+            energyScoreLabel.text = "—"
+            energyScoreLabel.textColor = AIONDesign.textTertiary
+            energyIconView.isHidden = true
+            energyLevelLabel.isHidden = true
+            energyTextLabel.text = "dashboard.noData".localized
+            energyTextLabel.isHidden = false
+            energyTitleLabel.isHidden = false
         }
     }
 
@@ -490,6 +805,97 @@ final class HeroScoreSection: UIView {
         case 60..<80: return AIONDesign.statusPositive
         default: return AIONDesign.accentPrimary
         }
+    }
+}
+
+// MARK: - Trend Direction
+
+private enum TrendDirection {
+    case rising, falling, stable
+
+    var iconName: String {
+        switch self {
+        case .rising: return "arrow.up.right"
+        case .falling: return "arrow.down.right"
+        case .stable: return "arrow.right"
+        }
+    }
+
+    var color: UIColor {
+        switch self {
+        case .rising: return AIONDesign.accentSuccess
+        case .falling: return AIONDesign.accentDanger
+        case .stable: return AIONDesign.accentWarning
+        }
+    }
+}
+
+// MARK: - Mini Trend Graph View
+
+private final class MiniTrendGraphView: UIView {
+
+    private var trend: TrendDirection = .stable
+    private let lineLayer = CAShapeLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+
+    private func setup() {
+        backgroundColor = .clear
+        lineLayer.fillColor = UIColor.clear.cgColor
+        lineLayer.lineWidth = 2
+        lineLayer.lineCap = .round
+        lineLayer.lineJoin = .round
+        layer.addSublayer(lineLayer)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        drawTrendLine()
+    }
+
+    func configure(trend: TrendDirection) {
+        self.trend = trend
+        lineLayer.strokeColor = trend.color.cgColor
+        setNeedsLayout()
+    }
+
+    private func drawTrendLine() {
+        let path = UIBezierPath()
+        let w = bounds.width
+        let h = bounds.height
+        let padding: CGFloat = 4
+
+        switch trend {
+        case .rising:
+            path.move(to: CGPoint(x: padding, y: h - padding))
+            path.addQuadCurve(
+                to: CGPoint(x: w - padding, y: padding),
+                controlPoint: CGPoint(x: w * 0.5, y: h * 0.3)
+            )
+        case .falling:
+            path.move(to: CGPoint(x: padding, y: padding))
+            path.addQuadCurve(
+                to: CGPoint(x: w - padding, y: h - padding),
+                controlPoint: CGPoint(x: w * 0.5, y: h * 0.7)
+            )
+        case .stable:
+            path.move(to: CGPoint(x: padding, y: h * 0.5))
+            path.addCurve(
+                to: CGPoint(x: w - padding, y: h * 0.5),
+                controlPoint1: CGPoint(x: w * 0.33, y: h * 0.3),
+                controlPoint2: CGPoint(x: w * 0.66, y: h * 0.7)
+            )
+        }
+
+        lineLayer.path = path.cgPath
     }
 }
 
@@ -579,6 +985,272 @@ final class EnergyDetailViewController: UIViewController {
     private func colorForEnergy(_ value: Double?) -> UIColor {
         guard let v = value else { return AIONDesign.textTertiary }
         switch v {
+        case 0..<30: return AIONDesign.statusNegative
+        case 30..<60: return AIONDesign.statusNeutral
+        case 60..<80: return AIONDesign.statusPositive
+        default: return AIONDesign.accentPrimary
+        }
+    }
+}
+
+// MARK: - Health Score Detail (Bottom Sheet)
+
+final class HealthScoreDetailViewController: UIViewController {
+
+    private let score: Int
+
+    init(score: Int) {
+        self.score = score
+        super.init(nibName: nil, bundle: nil)
+        modalPresentationStyle = .pageSheet
+        if let sheet = sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = AIONDesign.background
+        setupUI()
+    }
+
+    private func setupUI() {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 16
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+
+        // Icon
+        let iconView = UIImageView(image: UIImage(systemName: "battery.100.bolt"))
+        iconView.tintColor = AIONDesign.accentSuccess
+        iconView.contentMode = .scaleAspectFit
+
+        // Title
+        let titleLabel = UILabel()
+        titleLabel.text = "healthScore.detail.title".localized
+        titleLabel.font = AIONDesign.fontTitle2
+        titleLabel.textColor = AIONDesign.textPrimary
+
+        // Score
+        let scoreLabel = UILabel()
+        scoreLabel.text = "\(score)"
+        scoreLabel.font = UIFont.systemFont(ofSize: 56, weight: .bold)
+        scoreLabel.textColor = colorForScore(Double(score))
+
+        // Explanation
+        let explanationLabel = UILabel()
+        explanationLabel.text = "healthScore.detail.explanation".localized
+        explanationLabel.font = AIONDesign.fontBody
+        explanationLabel.textColor = AIONDesign.textSecondary
+        explanationLabel.textAlignment = .center
+        explanationLabel.numberOfLines = 0
+
+        stack.addArrangedSubview(iconView)
+        stack.addArrangedSubview(titleLabel)
+        stack.addArrangedSubview(scoreLabel)
+        stack.addArrangedSubview(explanationLabel)
+
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 48),
+            iconView.heightAnchor.constraint(equalToConstant: 48),
+
+            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
+        ])
+    }
+
+    private func colorForScore(_ score: Double) -> UIColor {
+        switch score {
+        case 0..<30: return AIONDesign.statusNegative
+        case 30..<60: return AIONDesign.statusNeutral
+        case 60..<80: return AIONDesign.statusPositive
+        default: return AIONDesign.accentPrimary
+        }
+    }
+}
+
+// MARK: - Car Score Detail (Bottom Sheet)
+
+final class CarScoreDetailViewController: UIViewController {
+
+    private let score: Int
+    private let carName: String?
+
+    init(score: Int, carName: String?) {
+        self.score = score
+        self.carName = carName
+        super.init(nibName: nil, bundle: nil)
+        modalPresentationStyle = .pageSheet
+        if let sheet = sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = AIONDesign.background
+        setupUI()
+    }
+
+    private func setupUI() {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 16
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+
+        // Icon
+        let iconView = UIImageView(image: UIImage(systemName: "car.fill"))
+        iconView.tintColor = AIONDesign.accentPrimary
+        iconView.contentMode = .scaleAspectFit
+
+        // Title
+        let titleLabel = UILabel()
+        titleLabel.text = "carScore.detail.title".localized
+        titleLabel.font = AIONDesign.fontTitle2
+        titleLabel.textColor = AIONDesign.textPrimary
+
+        // Score
+        let scoreLabel = UILabel()
+        scoreLabel.text = "\(score)"
+        scoreLabel.font = UIFont.systemFont(ofSize: 56, weight: .bold)
+        scoreLabel.textColor = colorForScore(Double(score))
+
+        // Car Name (if available)
+        if let name = carName, !name.isEmpty {
+            let carNameLabel = UILabel()
+            carNameLabel.text = name
+            carNameLabel.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
+            carNameLabel.textColor = AIONDesign.textSecondary
+            stack.addArrangedSubview(iconView)
+            stack.addArrangedSubview(titleLabel)
+            stack.addArrangedSubview(scoreLabel)
+            stack.addArrangedSubview(carNameLabel)
+        } else {
+            stack.addArrangedSubview(iconView)
+            stack.addArrangedSubview(titleLabel)
+            stack.addArrangedSubview(scoreLabel)
+        }
+
+        // Explanation
+        let explanationLabel = UILabel()
+        explanationLabel.text = "carScore.detail.explanation".localized
+        explanationLabel.font = AIONDesign.fontBody
+        explanationLabel.textColor = AIONDesign.textSecondary
+        explanationLabel.textAlignment = .center
+        explanationLabel.numberOfLines = 0
+        stack.addArrangedSubview(explanationLabel)
+
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 48),
+            iconView.heightAnchor.constraint(equalToConstant: 48),
+
+            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
+        ])
+    }
+
+    private func colorForScore(_ score: Double) -> UIColor {
+        switch score {
+        case 0..<30: return AIONDesign.statusNegative
+        case 30..<60: return AIONDesign.statusNeutral
+        case 60..<80: return AIONDesign.statusPositive
+        default: return AIONDesign.accentPrimary
+        }
+    }
+}
+
+// MARK: - Sleep Score Detail (Bottom Sheet)
+
+final class SleepScoreDetailViewController: UIViewController {
+
+    private let score: Int
+
+    init(score: Int) {
+        self.score = score
+        super.init(nibName: nil, bundle: nil)
+        modalPresentationStyle = .pageSheet
+        if let sheet = sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = AIONDesign.background
+        setupUI()
+    }
+
+    private func setupUI() {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 16
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+
+        // Icon
+        let iconView = UIImageView(image: UIImage(systemName: "moon.zzz.fill"))
+        iconView.tintColor = AIONDesign.accentSecondary
+        iconView.contentMode = .scaleAspectFit
+
+        // Title
+        let titleLabel = UILabel()
+        titleLabel.text = "sleepScore.detail.title".localized
+        titleLabel.font = AIONDesign.fontTitle2
+        titleLabel.textColor = AIONDesign.textPrimary
+
+        // Score
+        let scoreLabel = UILabel()
+        scoreLabel.text = "\(score)"
+        scoreLabel.font = UIFont.systemFont(ofSize: 56, weight: .bold)
+        scoreLabel.textColor = colorForScore(Double(score))
+
+        // Explanation
+        let explanationLabel = UILabel()
+        explanationLabel.text = "sleepScore.detail.explanation".localized
+        explanationLabel.font = AIONDesign.fontBody
+        explanationLabel.textColor = AIONDesign.textSecondary
+        explanationLabel.textAlignment = .center
+        explanationLabel.numberOfLines = 0
+
+        stack.addArrangedSubview(iconView)
+        stack.addArrangedSubview(titleLabel)
+        stack.addArrangedSubview(scoreLabel)
+        stack.addArrangedSubview(explanationLabel)
+
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 48),
+            iconView.heightAnchor.constraint(equalToConstant: 48),
+
+            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
+        ])
+    }
+
+    private func colorForScore(_ score: Double) -> UIColor {
+        switch score {
         case 0..<30: return AIONDesign.statusNegative
         case 30..<60: return AIONDesign.statusNeutral
         case 60..<80: return AIONDesign.statusPositive
@@ -985,13 +1657,159 @@ final class RecoverySectionView: UIView {
     }
 }
 
-// MARK: - Sleep Section
+// MARK: - Tappable Sleep Bar (לחיצה על יום בגרף)
+
+final class TappableSleepBar: UIView {
+
+    private let entry: DailySleepEntry
+    private let isRTL: Bool
+    private weak var parentVC: UIViewController?
+
+    init(entry: DailySleepEntry, isRTL: Bool, parentVC: UIViewController?) {
+        self.entry = entry
+        self.isRTL = isRTL
+        self.parentVC = parentVC
+        super.init(frame: .zero)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        addGestureRecognizer(tap)
+        isUserInteractionEnabled = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func handleTap() {
+        guard entry.hours > 0 else { return }
+
+        // פורמט התאריך
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: isRTL ? "he_IL" : "en_US")
+        dateFormatter.dateFormat = isRTL ? "EEEE, d בMMMM" : "EEEE, MMMM d"
+        let dateStr = dateFormatter.string(from: entry.date)
+
+        // פורמט שעות - עם עיגול נכון
+        let hours = Int(entry.hours)
+        let minutes = Int(round((entry.hours - Double(hours)) * 60))
+        let timeStr = isRTL ? "\(hours) שע׳ \(minutes) דק׳" : "\(hours)h \(minutes)m"
+
+        // יצירת tooltip צף (כמו באפל)
+        showTooltip(dateStr: dateStr, timeStr: timeStr)
+    }
+
+    private func showTooltip(dateStr: String, timeStr: String) {
+        guard let window = window else { return }
+
+        // הסרת tooltip קודם אם קיים
+        window.subviews.filter { $0.tag == 9999 }.forEach { $0.removeFromSuperview() }
+
+        // יצירת tooltip view
+        let tooltip = UIView()
+        tooltip.tag = 9999
+        tooltip.backgroundColor = UIColor.black.withAlphaComponent(0.85)
+        tooltip.layer.cornerRadius = 10
+        tooltip.translatesAutoresizingMaskIntoConstraints = false
+
+        // תוכן ה-tooltip
+        let contentStack = UIStackView()
+        contentStack.axis = .vertical
+        contentStack.spacing = 4
+        contentStack.alignment = .center
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        tooltip.addSubview(contentStack)
+
+        let dateLabel = UILabel()
+        dateLabel.text = dateStr
+        dateLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        dateLabel.textColor = .white.withAlphaComponent(0.7)
+        dateLabel.textAlignment = .center
+
+        let timeLabel = UILabel()
+        timeLabel.text = timeStr
+        timeLabel.font = .systemFont(ofSize: 16, weight: .bold)
+        timeLabel.textColor = .white
+        timeLabel.textAlignment = .center
+
+        contentStack.addArrangedSubview(dateLabel)
+        contentStack.addArrangedSubview(timeLabel)
+
+        // חץ קטן למטה
+        let arrow = UIView()
+        arrow.backgroundColor = UIColor.black.withAlphaComponent(0.85)
+        arrow.translatesAutoresizingMaskIntoConstraints = false
+        arrow.transform = CGAffineTransform(rotationAngle: .pi / 4)
+        tooltip.addSubview(arrow)
+
+        window.addSubview(tooltip)
+
+        // מיקום ה-tooltip מעל הבר - עם תיקון לגבולות המסך
+        let barFrame = convert(bounds, to: window)
+        let tooltipWidth: CGFloat = 150 // רוחב משוער של ה-tooltip
+        let screenWidth = window.bounds.width
+        let padding: CGFloat = 12
+
+        // חישוב מיקום X - וידוא שלא יוצא מהמסך
+        var tooltipCenterX = barFrame.midX
+
+        // אם יוצא מימין - הזז שמאלה
+        if tooltipCenterX + tooltipWidth / 2 > screenWidth - padding {
+            tooltipCenterX = screenWidth - padding - tooltipWidth / 2
+        }
+        // אם יוצא משמאל - הזז ימינה
+        if tooltipCenterX - tooltipWidth / 2 < padding {
+            tooltipCenterX = padding + tooltipWidth / 2
+        }
+
+        // חישוב offset של החץ ביחס למרכז ה-tooltip
+        let arrowOffsetX = barFrame.midX - tooltipCenterX
+
+        NSLayoutConstraint.activate([
+            contentStack.topAnchor.constraint(equalTo: tooltip.topAnchor, constant: 8),
+            contentStack.leadingAnchor.constraint(equalTo: tooltip.leadingAnchor, constant: 12),
+            contentStack.trailingAnchor.constraint(equalTo: tooltip.trailingAnchor, constant: -12),
+            contentStack.bottomAnchor.constraint(equalTo: tooltip.bottomAnchor, constant: -12),
+
+            arrow.widthAnchor.constraint(equalToConstant: 12),
+            arrow.heightAnchor.constraint(equalToConstant: 12),
+            arrow.centerXAnchor.constraint(equalTo: tooltip.centerXAnchor, constant: arrowOffsetX),
+            arrow.bottomAnchor.constraint(equalTo: tooltip.bottomAnchor, constant: 4),
+
+            tooltip.centerXAnchor.constraint(equalTo: window.leadingAnchor, constant: tooltipCenterX),
+            tooltip.bottomAnchor.constraint(equalTo: window.topAnchor, constant: barFrame.minY - 8)
+        ])
+
+        // אנימציה
+        tooltip.alpha = 0
+        tooltip.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+        UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
+            tooltip.alpha = 1
+            tooltip.transform = .identity
+        }
+
+        // הסתרה אוטומטית אחרי 2 שניות
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            UIView.animate(withDuration: 0.2, animations: {
+                tooltip.alpha = 0
+                tooltip.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+            }) { _ in
+                tooltip.removeFromSuperview()
+            }
+        }
+    }
+}
+
+// MARK: - Sleep Section (Apple Health Style)
 
 final class SleepSectionView: UIView {
 
-    private let titleLabel = UILabel()
     private let mainStack = UIStackView()
     private weak var parentVC: UIViewController?
+
+    // צבעים בסגנון אפל
+    private let sleepPurple = UIColor(red: 0.55, green: 0.45, blue: 0.95, alpha: 1.0) // סגול בהיר כמו באפל
+    private let sleepPurpleLight = UIColor(red: 0.55, green: 0.45, blue: 0.95, alpha: 0.3)
+    private let targetLineColor = UIColor(red: 0.4, green: 0.75, blue: 0.95, alpha: 1.0) // כחול בהיר לקו הממוצע
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -1004,75 +1822,409 @@ final class SleepSectionView: UIView {
 
     private func setupUI() {
         backgroundColor = AIONDesign.surface
-        layer.cornerRadius = 12
-
-        // RTL/LTR support
-        semanticContentAttribute = semanticAttribute
-
-        let containerStack = UIStackView(arrangedSubviews: [titleLabel, mainStack])
-        containerStack.axis = .vertical
-        containerStack.spacing = 12
-        containerStack.translatesAutoresizingMaskIntoConstraints = false
-        containerStack.semanticContentAttribute = semanticAttribute
-        addSubview(containerStack)
-
-        titleLabel.text = "section.sleep".localized
-        titleLabel.font = AIONDesign.fontHeadline
-        titleLabel.textColor = AIONDesign.textPrimary
-        titleLabel.textAlignment = isRTL ? .right : .left
+        layer.cornerRadius = 16
 
         mainStack.axis = .vertical
-        mainStack.spacing = 8
-        mainStack.semanticContentAttribute = semanticAttribute
+        mainStack.spacing = 16
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(mainStack)
 
         NSLayoutConstraint.activate([
-            containerStack.topAnchor.constraint(equalTo: topAnchor, constant: 12),
-            containerStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            containerStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            containerStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12)
+            mainStack.topAnchor.constraint(equalTo: topAnchor, constant: 16),
+            mainStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            mainStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            mainStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16)
         ])
     }
 
-    func configure(quality: SleepQuality, debt: SleepDebt, consistency: SleepConsistency, parentVC: UIViewController? = nil) {
+    func configure(quality: SleepQuality, debt: SleepHighlight, consistency: SleepConsistency, parentVC: UIViewController? = nil) {
         self.parentVC = parentVC
-
-        // עדכון יישור לפי שפה נוכחית
-        titleLabel.textAlignment = textAlignment
-
         mainStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
-        // Quality row
-        let qualityRow = createRow(
-            icon: "moon.zzz.fill",
-            label: "sleep.quality".localized,
-            value: quality.displayValue,
-            detail: formatSleepDetails(quality),
-            explanation: "explanation.sleep_quality".localized
-        )
-        mainStack.addArrangedSubview(qualityRow)
+        let currentIsRTL = LocalizationManager.shared.currentLanguage == .hebrew
 
-        // Debt row
-        let debtRow = createRow(
-            icon: debt.isInDebt ? "arrow.down.circle" : "arrow.up.circle",
-            label: "sleep.debt".localized,
-            value: debt.displayValue,
-            detail: debt.isInDebt ? "sleep.debt.description".localized : "sleep.surplus.description".localized,
-            explanation: "explanation.sleep_debt".localized
-        )
-        mainStack.addArrangedSubview(debtRow)
+        // === כרטיס איכות שינה ===
+        let qualityCard = createQualityCard(quality: quality, isRTL: currentIsRTL)
+        mainStack.addArrangedSubview(qualityCard)
+
+        // === קו מפריד דק ===
+        let separator = UIView()
+        separator.backgroundColor = AIONDesign.textTertiary.withAlphaComponent(0.2)
+        separator.translatesAutoresizingMaskIntoConstraints = false
+        separator.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        mainStack.addArrangedSubview(separator)
+
+        // === כרטיס דגש שינה (בסגנון אפל) ===
+        let highlightCard = createSleepHighlightCard(highlight: debt, isRTL: currentIsRTL)
+        mainStack.addArrangedSubview(highlightCard)
     }
 
+    // MARK: - Quality Card
+
+    private func createQualityCard(quality: SleepQuality, isRTL: Bool) -> UIView {
+        let container = UIView()
+
+        // כותרת עם אייקון
+        let headerStack = UIStackView()
+        headerStack.axis = .horizontal
+        headerStack.spacing = 8
+        headerStack.alignment = .center
+        headerStack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(headerStack)
+
+        let iconView = UIImageView(image: UIImage(systemName: "bed.double.fill"))
+        iconView.tintColor = sleepPurple
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.widthAnchor.constraint(equalToConstant: 20).isActive = true
+        iconView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+
+        let titleLabel = UILabel()
+        titleLabel.text = "sleep.quality".localized
+        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        titleLabel.textColor = sleepPurple
+
+        if isRTL {
+            headerStack.addArrangedSubview(titleLabel)
+            headerStack.addArrangedSubview(iconView)
+        } else {
+            headerStack.addArrangedSubview(iconView)
+            headerStack.addArrangedSubview(titleLabel)
+        }
+
+        // ציון ופרטים
+        let scoreLabel = UILabel()
+        scoreLabel.text = quality.displayValue
+        scoreLabel.font = .systemFont(ofSize: 34, weight: .bold)
+        scoreLabel.textColor = AIONDesign.textPrimary
+        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(scoreLabel)
+
+        let detailLabel = UILabel()
+        detailLabel.text = formatSleepDetails(quality)
+        detailLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        detailLabel.textColor = AIONDesign.textSecondary
+        detailLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(detailLabel)
+
+        if isRTL {
+            NSLayoutConstraint.activate([
+                headerStack.topAnchor.constraint(equalTo: container.topAnchor),
+                headerStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+
+                scoreLabel.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 8),
+                scoreLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+
+                detailLabel.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: 4),
+                detailLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                detailLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                headerStack.topAnchor.constraint(equalTo: container.topAnchor),
+                headerStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+
+                scoreLabel.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 8),
+                scoreLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+
+                detailLabel.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: 4),
+                detailLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                detailLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            ])
+        }
+
+        return container
+    }
+
+    // MARK: - Sleep Highlight Card (Apple Style)
+
+    private func createSleepHighlightCard(highlight: SleepHighlight, isRTL: Bool) -> UIView {
+        let container = UIView()
+
+        // כותרת עם אייקון
+        let headerStack = UIStackView()
+        headerStack.axis = .horizontal
+        headerStack.spacing = 8
+        headerStack.alignment = .center
+        headerStack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(headerStack)
+
+        let iconView = UIImageView(image: UIImage(systemName: "moon.zzz.fill"))
+        iconView.tintColor = sleepPurple
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.widthAnchor.constraint(equalToConstant: 20).isActive = true
+        iconView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+
+        let titleLabel = UILabel()
+        titleLabel.text = "sleep.highlight.title".localized
+        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        titleLabel.textColor = sleepPurple
+
+        if isRTL {
+            headerStack.addArrangedSubview(titleLabel)
+            headerStack.addArrangedSubview(iconView)
+        } else {
+            headerStack.addArrangedSubview(iconView)
+            headerStack.addArrangedSubview(titleLabel)
+        }
+
+        // טקסט תיאור (בסגנון אפל)
+        let descLabel = UILabel()
+        descLabel.numberOfLines = 0
+        descLabel.textAlignment = isRTL ? .right : .left
+
+        if let avgHours = highlight.value {
+            let hours = Int(avgHours)
+            let minutes = Int(round((avgHours - Double(hours)) * 60))
+            let timeStr = isRTL ? "\(hours) שע׳ \(minutes) דק׳" : "\(hours)h \(minutes)m"
+            let daysCount = highlight.dailySleepData.filter { $0.hours > 0 }.count
+
+            if isRTL {
+                descLabel.text = "ב-\(daysCount) הימים האחרונים, ממוצע שעות השינה שלך היה \(timeStr)."
+            } else {
+                descLabel.text = "In the last \(daysCount) days, your average sleep was \(timeStr)."
+            }
+        } else {
+            descLabel.text = "sleep.highlight.no_data".localized
+        }
+        descLabel.font = .systemFont(ofSize: 15, weight: .regular)
+        descLabel.textColor = AIONDesign.textPrimary
+        descLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(descLabel)
+
+        // גרף בר-צ'ארט בסגנון אפל
+        let chartContainer = createBarChart(highlight: highlight, isRTL: isRTL)
+        chartContainer.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(chartContainer)
+
+        // ממוצע וציון מספרי בצד
+        let avgStack = createAverageDisplay(highlight: highlight, isRTL: isRTL)
+        avgStack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(avgStack)
+
+        // מיקום - גרף בצד ימין, ממוצע בצד שמאל (תמיד - כי ככה נראה טוב יותר בעברית)
+        print("📊 [SleepHighlightCard] isRTL=\(isRTL)")
+
+        NSLayoutConstraint.activate([
+            // כותרת - תמיד בצד ימין
+            headerStack.topAnchor.constraint(equalTo: container.topAnchor),
+            headerStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+
+            // תיאור - מלא רוחב
+            descLabel.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 12),
+            descLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            descLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+
+            // גרף - על כל הרוחב כדי שהקו יגיע מקצה לקצה
+            chartContainer.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 16),
+            chartContainer.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            chartContainer.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            chartContainer.heightAnchor.constraint(equalToConstant: 120),
+            chartContainer.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+
+            // ממוצע - בצד שמאל, מעל הגרף
+            avgStack.topAnchor.constraint(equalTo: chartContainer.topAnchor),
+            avgStack.leadingAnchor.constraint(equalTo: container.leadingAnchor)
+        ])
+
+        return container
+    }
+
+    // MARK: - Bar Chart (Apple Style)
+
+    private func createBarChart(highlight: SleepHighlight, isRTL: Bool) -> UIView {
+        let container = UIView()
+
+        // Apple Style: גובה גרף וממדים
+        let chartHeight: CGFloat = 100
+        let barWidth: CGFloat = 28
+        let barSpacing: CGFloat = 6
+
+        // חישוב טווח הנתונים לזום אין
+        let entries = highlight.dailySleepData
+        let validHours = entries.map { $0.hours }.filter { $0 > 0 }
+        let actualAvg = highlight.value ?? highlight.targetHours
+
+        // מציאת מינימום ומקסימום עם padding
+        let minDataHours = validHours.min() ?? 0
+        let maxDataHours = validHours.max() ?? 8
+
+        // הגדרת טווח התצוגה - הממוצע יהיה בערך באמצע הגרף
+        let range = max(maxDataHours - minDataHours, 2.0) // לפחות 2 שעות טווח
+        let displayMin = max(0, minDataHours - range * 0.3)
+        let displayMax = maxDataHours + range * 0.3
+
+        // לוג לדיבוג
+        print("📊 [BarChart Apple] actualAvg=\(actualAvg), range=[\(displayMin)-\(displayMax)]")
+
+        // Stack לעמודות
+        let barsStack = UIStackView()
+        barsStack.axis = .horizontal
+        barsStack.spacing = barSpacing
+        barsStack.alignment = .bottom
+        barsStack.distribution = .equalSpacing
+        barsStack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(barsStack)
+
+        // Stack לימים
+        let daysStack = UIStackView()
+        daysStack.axis = .horizontal
+        daysStack.spacing = barSpacing
+        daysStack.alignment = .center
+        daysStack.distribution = .equalSpacing
+        daysStack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(daysStack)
+
+        for entry in entries {
+            // עמודה לחיצה
+            let barContainer = TappableSleepBar(entry: entry, isRTL: isRTL, parentVC: parentVC)
+            barContainer.translatesAutoresizingMaskIntoConstraints = false
+
+            let bar = UIView()
+            bar.backgroundColor = entry.hours > 0 ? sleepPurpleLight : AIONDesign.textTertiary.withAlphaComponent(0.2)
+            bar.layer.cornerRadius = 4
+            bar.translatesAutoresizingMaskIntoConstraints = false
+            bar.isUserInteractionEnabled = false
+            barContainer.addSubview(bar)
+
+            // חישוב גובה יחסי עם זום אין
+            var barHeight: CGFloat = 4
+            if entry.hours > 0 {
+                let normalizedValue = (entry.hours - displayMin) / (displayMax - displayMin)
+                barHeight = max(chartHeight * CGFloat(normalizedValue), 8)
+            }
+            print("📊 [BarChart Apple] \(entry.dayOfWeekShort): \(entry.hours)h → barHeight=\(barHeight)px")
+
+            NSLayoutConstraint.activate([
+                barContainer.widthAnchor.constraint(equalToConstant: barWidth),
+                barContainer.heightAnchor.constraint(equalToConstant: chartHeight),
+
+                bar.bottomAnchor.constraint(equalTo: barContainer.bottomAnchor),
+                bar.leadingAnchor.constraint(equalTo: barContainer.leadingAnchor),
+                bar.trailingAnchor.constraint(equalTo: barContainer.trailingAnchor),
+                bar.heightAnchor.constraint(equalToConstant: barHeight)
+            ])
+
+            barsStack.addArrangedSubview(barContainer)
+
+            // תווית יום
+            let dayLabel = UILabel()
+            dayLabel.text = entry.dayOfWeekShort
+            dayLabel.font = .systemFont(ofSize: 11, weight: .medium)
+            dayLabel.textColor = AIONDesign.textSecondary
+            dayLabel.textAlignment = .center
+            dayLabel.translatesAutoresizingMaskIntoConstraints = false
+            dayLabel.widthAnchor.constraint(equalToConstant: barWidth).isActive = true
+            daysStack.addArrangedSubview(dayLabel)
+        }
+
+        // קו הממוצע האופקי - Apple Style (עובר על כל הרוחב)
+        let avgNormalized = (actualAvg - displayMin) / (displayMax - displayMin)
+        let avgLineY = CGFloat(avgNormalized) * chartHeight
+        print("📊 [BarChart Apple] avgLineY=\(avgLineY)px")
+
+        let avgLine = UIView()
+        avgLine.backgroundColor = targetLineColor
+        avgLine.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(avgLine)
+
+        // יישור - הגרף בצד ימין, הקו עובר מקצה לקצה
+        NSLayoutConstraint.activate([
+            barsStack.topAnchor.constraint(equalTo: container.topAnchor),
+            barsStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            barsStack.heightAnchor.constraint(equalToConstant: chartHeight),
+
+            daysStack.topAnchor.constraint(equalTo: barsStack.bottomAnchor, constant: 4),
+            daysStack.leadingAnchor.constraint(equalTo: barsStack.leadingAnchor),
+            daysStack.trailingAnchor.constraint(equalTo: barsStack.trailingAnchor),
+
+            // הקו עובר על כל רוחב הקונטיינר - כמו באפל
+            avgLine.bottomAnchor.constraint(equalTo: barsStack.bottomAnchor, constant: -avgLineY),
+            avgLine.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            avgLine.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            avgLine.heightAnchor.constraint(equalToConstant: 2)
+        ])
+
+        return container
+    }
+
+    // MARK: - Average Display
+
+    private func createAverageDisplay(highlight: SleepHighlight, isRTL: Bool) -> UIView {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.alignment = .leading  // תמיד שמאל כי הממוצע בצד שמאל
+        stack.spacing = 2
+
+        let titleLabel = UILabel()
+        titleLabel.text = "sleep.highlight.avg".localized
+        titleLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        titleLabel.textColor = AIONDesign.textSecondary
+        stack.addArrangedSubview(titleLabel)
+
+        if let avgHours = highlight.value {
+            let hours = Int(avgHours)
+            let minutes = Int(round((avgHours - Double(hours)) * 60))
+
+            let hoursLabel = UILabel()
+            hoursLabel.font = .systemFont(ofSize: 28, weight: .bold)
+            hoursLabel.textColor = AIONDesign.textPrimary
+
+            let attrString = NSMutableAttributedString()
+            attrString.append(NSAttributedString(string: "\(hours)", attributes: [
+                .font: UIFont.systemFont(ofSize: 28, weight: .bold),
+                .foregroundColor: AIONDesign.textPrimary
+            ]))
+            attrString.append(NSAttributedString(string: isRTL ? "שע׳ " : "h ", attributes: [
+                .font: UIFont.systemFont(ofSize: 14, weight: .medium),
+                .foregroundColor: AIONDesign.textSecondary
+            ]))
+            attrString.append(NSAttributedString(string: "\(minutes)", attributes: [
+                .font: UIFont.systemFont(ofSize: 28, weight: .bold),
+                .foregroundColor: AIONDesign.textPrimary
+            ]))
+            attrString.append(NSAttributedString(string: isRTL ? "דק׳" : "m", attributes: [
+                .font: UIFont.systemFont(ofSize: 14, weight: .medium),
+                .foregroundColor: AIONDesign.textSecondary
+            ]))
+
+            hoursLabel.attributedText = attrString
+            stack.addArrangedSubview(hoursLabel)
+        } else {
+            let noDataLabel = UILabel()
+            noDataLabel.text = "--"
+            noDataLabel.font = .systemFont(ofSize: 28, weight: .bold)
+            noDataLabel.textColor = AIONDesign.textTertiary
+            stack.addArrangedSubview(noDataLabel)
+        }
+
+        return stack
+    }
+
+    // MARK: - Helpers
+
     private func formatSleepDetails(_ quality: SleepQuality) -> String {
+        let currentIsRTL = LocalizationManager.shared.currentLanguage == .hebrew
         var parts: [String] = []
 
         if let hours = quality.durationHours {
-            let h = Int(hours)
-            let m = Int((hours - Double(h)) * 60)
-            parts.append("\(h)h \(m)m")
+            let totalMins = Int(round(hours * 60))
+            let h = totalMins / 60
+            let m = totalMins % 60
+            if currentIsRTL {
+                parts.append("\(h) שע׳ \(m) דק׳")
+            } else {
+                parts.append("\(h)h \(m)m")
+            }
         }
 
         if let deep = quality.deepPercent {
-            parts.append("Deep \(Int(deep))%")
+            if currentIsRTL {
+                parts.append("עמוקה \(Int(deep))%")
+            } else {
+                parts.append("Deep \(Int(deep))%")
+            }
         }
 
         if let rem = quality.remPercent {
@@ -1080,86 +2232,6 @@ final class SleepSectionView: UIView {
         }
 
         return parts.joined(separator: " | ")
-    }
-
-    private func createRow(icon: String, label: String, value: String, detail: String, explanation: String) -> UIView {
-        let currentIsRTL = LocalizationManager.shared.currentLanguage == .hebrew
-
-        let container = TappableMetricCard(title: label, explanation: explanation, parentVC: parentVC)
-
-        let iconView = UIImageView(image: UIImage(systemName: icon))
-        iconView.tintColor = MetricCategory.sleep.colorHex.hexColor
-        iconView.contentMode = .scaleAspectFit
-        iconView.translatesAutoresizingMaskIntoConstraints = false
-        iconView.isUserInteractionEnabled = false
-        container.addSubview(iconView)
-
-        let labelStack = UIStackView()
-        labelStack.axis = .vertical
-        labelStack.spacing = 2
-        labelStack.alignment = currentIsRTL ? .trailing : .leading
-        labelStack.translatesAutoresizingMaskIntoConstraints = false
-        labelStack.isUserInteractionEnabled = false
-        container.addSubview(labelStack)
-
-        let nameLabel = UILabel()
-        nameLabel.text = label
-        nameLabel.font = AIONDesign.fontBody
-        nameLabel.textColor = AIONDesign.textPrimary
-        nameLabel.textAlignment = currentIsRTL ? .right : .left
-        labelStack.addArrangedSubview(nameLabel)
-
-        let detailLabel = UILabel()
-        detailLabel.text = detail
-        detailLabel.font = AIONDesign.fontCaption
-        detailLabel.textColor = AIONDesign.textSecondary
-        detailLabel.textAlignment = currentIsRTL ? .right : .left
-        labelStack.addArrangedSubview(detailLabel)
-
-        let valueLabel = UILabel()
-        valueLabel.text = value
-        valueLabel.font = AIONDesign.fontTitle2
-        valueLabel.textColor = AIONDesign.textPrimary
-        valueLabel.textAlignment = currentIsRTL ? .left : .right
-        valueLabel.translatesAutoresizingMaskIntoConstraints = false
-        valueLabel.isUserInteractionEnabled = false
-        container.addSubview(valueLabel)
-
-        // RTL: value on left, labels in middle, icon on right
-        // LTR: icon on left, labels in middle, value on right
-        if currentIsRTL {
-            NSLayoutConstraint.activate([
-                valueLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                valueLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-
-                iconView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                iconView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-                iconView.widthAnchor.constraint(equalToConstant: 24),
-                iconView.heightAnchor.constraint(equalToConstant: 24),
-
-                labelStack.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -12),
-                labelStack.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-
-                container.heightAnchor.constraint(equalToConstant: 50)
-            ])
-        } else {
-            NSLayoutConstraint.activate([
-                iconView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                iconView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-                iconView.widthAnchor.constraint(equalToConstant: 24),
-                iconView.heightAnchor.constraint(equalToConstant: 24),
-
-                labelStack.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
-                labelStack.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-
-                valueLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                valueLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-
-                container.heightAnchor.constraint(equalToConstant: 50)
-            ])
-        }
-
-        return container
     }
 }
 

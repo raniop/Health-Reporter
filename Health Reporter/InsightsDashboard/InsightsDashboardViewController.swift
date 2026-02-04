@@ -111,6 +111,15 @@ final class InsightsDashboardViewController: UIViewController {
             self?.toggleWhySection()
         }
 
+        heroSection.onCarTapped = { [weak self] in
+            // Navigate to Insights tab when car cube is tapped
+            self?.tabBarController?.selectedIndex = 2
+        }
+
+        heroSection.onSleepTapped = { [weak self] in
+            self?.showSleepDetail()
+        }
+
         starMetricsBar.onMetricTapped = { [weak self] metric in
             self?.showMetricDetail(metric)
         }
@@ -147,6 +156,7 @@ final class InsightsDashboardViewController: UIViewController {
                 // Convert RawDailyHealthEntry to HealthDataModel
                 let historicalData = historicalEntries.map { entry -> HealthDataModel in
                     var model = HealthDataModel()
+                    model.date = entry.date  // חשוב! צריך את התאריך לגרף השינה
                     model.steps = entry.steps
                     model.heartRateVariability = entry.hrvMs
                     model.restingHeartRate = entry.restingHR
@@ -187,23 +197,35 @@ final class InsightsDashboardViewController: UIViewController {
         // Update header
         headerView.configure()
 
-        // Update hero section
+        // Update hero section with correct scores
         heroSection.configure(
-            mainScore: metrics.mainScore,
+            healthScore: metrics.mainScore != nil ? Int(metrics.mainScore!) : nil,
+            carScore: getCarScore(),
+            carName: getCarName(),
+            sleepScore: metrics.sleepQuality.value != nil ? Int(metrics.sleepQuality.value!) : nil,
             energyForecast: metrics.energyForecast,
             parentVC: self
         )
 
-        // שמירת הציון הראשי היומי ושליחה לשעון
+        // שמירת הציון הראשי היומי
         if let mainScore = metrics.mainScore {
             let scoreInt = Int(mainScore)
             let scoreLevel = RangeLevel.from(score: mainScore)
             let healthStatus = "score.description.\(scoreLevel.rawValue)".localized
 
             AnalysisCache.saveMainScore(scoreInt, status: healthStatus)
+        }
 
-            // NOTE: לא שולחים לשעון ממסך תובנות - רק מהדשבורד הראשי
-            // כדי למנוע שיבוש נתונים בשעון עקב ציונים שונים בין המסכים
+        // שמירת פירוט הציונים לשליחה לשעון (רק כשזה יום)
+        if selectedPeriod == .day {
+            AnalysisCache.saveScoreBreakdown(
+                recovery: metrics.recoveryReadiness.value.map { Int($0) },
+                sleep: metrics.sleepQuality.value.map { Int($0) },
+                nervousSystem: metrics.nervousSystemBalance.value.map { Int($0) },
+                energy: metrics.energyForecast.value.map { Int($0) },
+                activity: metrics.activityScore.value.map { Int($0) },
+                loadBalance: metrics.loadBalance.value.map { Int($0) }
+            )
         }
 
         // Update star metrics bar
@@ -265,6 +287,46 @@ final class InsightsDashboardViewController: UIViewController {
     private func showMetricDetail(_ metric: any InsightMetric) {
         let detailVC = MetricDetailViewController(metric: metric)
         present(detailVC, animated: true)
+    }
+
+    private func showSleepDetail() {
+        let alert = UIAlertController(
+            title: "dashboard.sleepScore".localized,
+            message: "explanation.sleepScore".localized,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "general.ok".localized, style: .default))
+        present(alert, animated: true)
+    }
+
+    // MARK: - Score Helpers
+
+    /// מחזיר את ציון הרכב - אותה לוגיקה כמו ב-InsightsTabViewController
+    private func getCarScore() -> Int? {
+        // עדיפות לציון השמור מ-HealthScoreEngine
+        if let savedScore = AnalysisCache.loadHealthScore() {
+            return savedScore
+        }
+        // fallback: חישוב מ-CarTierEngine
+        let stats = AnalysisCache.loadWeeklyStats()
+        let score = CarTierEngine.computeHealthScore(
+            readinessAvg: stats?.readiness,
+            sleepHoursAvg: stats?.sleepHours,
+            hrvAvg: stats?.hrv,
+            strainAvg: stats?.strain
+        )
+        return score > 0 ? score : nil
+    }
+
+    /// מחזיר את שם הרכב - מ-Gemini או ברירת מחדל לפי ה-tier
+    private func getCarName() -> String? {
+        if let savedCar = AnalysisCache.loadSelectedCar() {
+            return savedCar.name
+        }
+        if let score = getCarScore() {
+            return CarTierEngine.tierForScore(score).name
+        }
+        return nil
     }
 
     // MARK: - RTL/LTR Support

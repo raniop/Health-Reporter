@@ -161,51 +161,61 @@ struct WatchDataStorage {
     static let watchDataKey = "watchHealthData"
     static let lastSyncKey = "lastWatchSync"
 
-    /// Loads Watch health data from App Group UserDefaults
+    /// Serial queue to prevent concurrent read/write access
+    private static let storageQueue = DispatchQueue(label: "com.rani.Health-Reporter.watchStorage", qos: .userInitiated)
+
+    /// Loads Watch health data from App Group UserDefaults (thread-safe)
     static func loadData() -> WatchHealthData {
-        guard let userDefaults = UserDefaults(suiteName: appGroupID) else {
-            print("WatchDataStorage: Failed to access App Group")
-            return .placeholder
-        }
+        return storageQueue.sync {
+            guard let userDefaults = UserDefaults(suiteName: appGroupID) else {
+                print("WatchDataStorage: Failed to access App Group")
+                return .placeholder
+            }
 
-        guard let data = userDefaults.data(forKey: watchDataKey) else {
-            print("WatchDataStorage: No data found, using placeholder")
-            return .placeholder
-        }
+            guard let data = userDefaults.data(forKey: watchDataKey) else {
+                print("WatchDataStorage: No data found, using placeholder")
+                return .placeholder
+            }
 
-        do {
-            let watchData = try JSONDecoder().decode(WatchHealthData.self, from: data)
-            print("WatchDataStorage: Loaded data - Score: \(watchData.healthScore)")
-            return watchData
-        } catch {
-            print("WatchDataStorage: Decode error: \(error)")
-            return .placeholder
+            do {
+                let watchData = try JSONDecoder().decode(WatchHealthData.self, from: data)
+                print("WatchDataStorage: Loaded data - Score: \(watchData.healthScore)")
+                return watchData
+            } catch {
+                print("WatchDataStorage: Decode error: \(error)")
+                return .placeholder
+            }
         }
     }
 
-    /// Saves Watch health data to App Group UserDefaults
+    /// Saves Watch health data to App Group UserDefaults (thread-safe)
     static func saveData(_ data: WatchHealthData) {
-        guard let userDefaults = UserDefaults(suiteName: appGroupID) else {
-            print("WatchDataStorage: Failed to access App Group")
-            return
-        }
+        storageQueue.sync {
+            guard let userDefaults = UserDefaults(suiteName: appGroupID) else {
+                print("WatchDataStorage: Failed to access App Group")
+                return
+            }
 
-        do {
-            let encoded = try JSONEncoder().encode(data)
-            userDefaults.set(encoded, forKey: watchDataKey)
-            userDefaults.set(Date(), forKey: lastSyncKey)
-            userDefaults.synchronize()
-            print("WatchDataStorage: Data saved - Score: \(data.healthScore)")
-        } catch {
-            print("WatchDataStorage: Failed to encode data: \(error)")
+            do {
+                let encoded = try JSONEncoder().encode(data)
+                userDefaults.set(encoded, forKey: watchDataKey)
+                userDefaults.set(Date(), forKey: lastSyncKey)
+                // Note: synchronize() is deprecated but kept for widget compatibility
+                userDefaults.synchronize()
+                print("⌚️ WatchStorage: Saved - score=\(data.healthScore), move=\(data.moveCalories), exercise=\(data.exerciseMinutes), stand=\(data.standHours)")
+            } catch {
+                print("WatchDataStorage: Failed to encode data: \(error)")
+            }
         }
     }
 
-    /// Gets the last sync date
+    /// Gets the last sync date (thread-safe)
     static func getLastSyncDate() -> Date? {
-        guard let userDefaults = UserDefaults(suiteName: appGroupID) else {
-            return nil
+        return storageQueue.sync {
+            guard let userDefaults = UserDefaults(suiteName: appGroupID) else {
+                return nil
+            }
+            return userDefaults.object(forKey: lastSyncKey) as? Date
         }
-        return userDefaults.object(forKey: lastSyncKey) as? Date
     }
 }

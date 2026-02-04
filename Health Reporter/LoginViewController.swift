@@ -285,7 +285,7 @@ final class LoginViewController: UIViewController {
                 return
             }
             let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: user.accessToken.tokenString)
-            Auth.auth().signIn(with: credential) { [weak self] _, err in
+            Auth.auth().signIn(with: credential) { [weak self] authResult, err in
                 if let e = err {
                     self?.showAlert(title: "error".localized, message: (e as NSError).localizedDescription)
                     return
@@ -295,12 +295,12 @@ final class LoginViewController: UIViewController {
                     AnalyticsService.shared.setUserId(userId)
                     AnalyticsService.shared.logLogin(method: "google")
                 }
-                self?.proceedToApp()
+                self?.proceedToApp(authResult: authResult)
             }
         }
     }
 
-    private func proceedToApp() {
+    private func proceedToApp(authResult: AuthDataResult? = nil) {
         showLoading()
         // סנכרון שם המשתמש ל-Firestore (לצורך חיפוש)
         syncUserDisplayNameToFirestore()
@@ -316,9 +316,20 @@ final class LoginViewController: UIViewController {
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let scene = self?.view.window?.windowScene,
+            guard let self = self,
+                  let scene = self.view.window?.windowScene,
                   let sd = scene.delegate as? SceneDelegate else { return }
-            sd.window?.rootViewController = MainTabBarController()
+
+            // בדיקה אם להציג Onboarding
+            let additionalUserInfo = authResult?.additionalUserInfo
+            if OnboardingManager.shouldShowOnboarding(isSignUp: self.isSignUp, additionalUserInfo: additionalUserInfo) {
+                // משתמש חדש - הצג Onboarding
+                let onboardingVC = OnboardingPageViewController()
+                sd.window?.rootViewController = onboardingVC
+            } else {
+                // משתמש קיים - ישר לאפליקציה
+                sd.window?.rootViewController = MainTabBarController()
+            }
             UIView.transition(with: sd.window!, duration: 0.3, options: .transitionCrossDissolve, animations: nil)
         }
     }
@@ -430,7 +441,7 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
             rawNonce: nonce,
             fullName: appleIDCredential.fullName
         )
-        Auth.auth().signIn(with: credential) { [weak self] _, error in
+        Auth.auth().signIn(with: credential) { [weak self] authResult, error in
             if let e = error {
                 self?.showAlert(title: "error".localized, message: (e as NSError).localizedDescription)
                 return
@@ -440,7 +451,7 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
                 AnalyticsService.shared.setUserId(userId)
                 AnalyticsService.shared.logLogin(method: "apple")
             }
-            self?.proceedToApp()
+            self?.proceedToApp(authResult: authResult)
         }
     }
 

@@ -18,6 +18,13 @@ class WatchDataManager: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var lastError: String?
 
+    /// Serial queue to ensure updates are processed one at a time
+    private let updateQueue = DispatchQueue(label: "com.rani.Health-Reporter.watchDataManager", qos: .userInitiated)
+
+    /// Flag to prevent duplicate updates within short time window
+    private var lastUpdateTimestamp: Date = .distantPast
+    private let minUpdateInterval: TimeInterval = 0.5 // 500ms minimum between updates
+
     private init() {
         loadData()
     }
@@ -36,22 +43,41 @@ class WatchDataManager: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// Updates ALL data from WatchConnectivity context (from iPhone)
+    /// Updates ALL data from WatchConnectivity context (from iPhone) - serialized
     func updateFromContext(_ context: [String: Any]) {
-        guard let data = context["watchHealthData"] as? Data else {
-            print("WatchDataManager: No watchHealthData in context")
-            return
-        }
+        // Serialize updates to prevent race conditions
+        updateQueue.async { [weak self] in
+            guard let self = self else { return }
 
-        do {
-            var phoneData = try JSONDecoder().decode(WatchHealthData.self, from: data)
-            phoneData.isFromPhone = true
-            phoneData.lastUpdated = Date()
-            updateData(phoneData)
-            print("⌚️ WatchDataManager: Received ALL data - score=\(phoneData.healthScore), geminiCar=\(phoneData.geminiCarName ?? "nil"), geminiScore=\(phoneData.geminiCarScore ?? 0), steps=\(phoneData.steps)")
-        } catch {
-            print("⌚️ WatchDataManager: Failed to decode context data: \(error)")
-            lastError = "Failed to decode data from iPhone"
+            // Debounce rapid updates
+            let now = Date()
+            if now.timeIntervalSince(self.lastUpdateTimestamp) < self.minUpdateInterval {
+                print("⌚️ WatchDataManager: Skipping rapid update (debounced)")
+                return
+            }
+            self.lastUpdateTimestamp = now
+
+            guard let data = context["watchHealthData"] as? Data else {
+                print("WatchDataManager: No watchHealthData in context")
+                return
+            }
+
+            do {
+                var phoneData = try JSONDecoder().decode(WatchHealthData.self, from: data)
+                phoneData.isFromPhone = true
+                phoneData.lastUpdated = Date()
+
+                // Update on main actor
+                DispatchQueue.main.async {
+                    self.updateData(phoneData)
+                    print("⌚️ WatchDataManager: Received data - score=\(phoneData.healthScore), move=\(phoneData.moveCalories), exercise=\(phoneData.exerciseMinutes), stand=\(phoneData.standHours)")
+                }
+            } catch {
+                print("⌚️ WatchDataManager: Failed to decode context data: \(error)")
+                DispatchQueue.main.async {
+                    self.lastError = "Failed to decode data from iPhone"
+                }
+            }
         }
     }
 
@@ -109,13 +135,43 @@ class WatchDataManager: ObservableObject {
             restingHeartRate: heartRate,
             hrv: hrv,
             sleepHours: sleepHours,
+            recoveryScore: nil,
+            sleepScore: nil,
+            nervousSystemScore: nil,
+            energyScore: nil,
+            activityScore: nil,
+            loadBalanceScore: nil,
             lastUpdated: Date(),
             isFromPhone: true
         )
     }
 
-    /// Requests data refresh from iPhone
+    /// Requests data refresh from iPhone, with fallback to local HealthKit
     func requestRefresh() {
-        WatchConnectivityManager.shared.requestDataFromPhone()
+        // בדיקה אם ה-iPhone זמין
+        if WatchConnectivityManager.shared.isReachable {
+            // iPhone זמין - מבקשים נתונים ממנו
+            WatchConnectivityManager.shared.requestDataFromPhone()
+        } else {
+            // iPhone לא זמין - שולפים נתונים מקומיים מ-HealthKit בשעון
+            print("⌚️ WatchDataManager: iPhone not reachable, fetching local HealthKit data")
+            fetchLocalHealthKitData()
+        }
+    }
+
+    /// Fetches health data from local HealthKit on Watch (fallback when iPhone not reachable)
+    private func fetchLocalHealthKitData() {
+        Task {
+            do {
+                let localData = try await WatchHealthKitManager.shared.fetchTodayData()
+                self.healthData = localData
+                WatchDataStorage.saveData(localData)
+                WidgetCenter.shared.reloadAllTimelines()
+                print("⌚️ WatchDataManager: Using local HealthKit data - score=\(localData.healthScore), steps=\(localData.steps), exercise=\(localData.exerciseMinutes)")
+            } catch {
+                print("⌚️ WatchDataManager: Failed to fetch local HealthKit data: \(error)")
+                self.lastError = "Failed to fetch local data"
+            }
+        }
     }
 }

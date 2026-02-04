@@ -28,6 +28,14 @@ struct HomeView: View {
         }
     }
 
+    private var displaySleepHours: Double {
+        switch selectedPeriod {
+        case .today: return data.sleepHours
+        case .week: return data.sleepHours * 7
+        case .month: return data.sleepHours * 30
+        }
+    }
+
     var body: some View {
         VStack(spacing: 4) {
             Spacer()
@@ -67,7 +75,7 @@ struct HomeView: View {
 
                 QuickStat(
                     icon: "bed.double.fill",
-                    value: formatSleep(data.sleepHours),
+                    value: formatSleep(displaySleepHours),
                     color: .purple
                 )
 

@@ -774,12 +774,19 @@ class HealthDashboardViewController: UIViewController {
         guard let data = healthData else { return }
 
         // Get current score, status and car tier from chartBundle
-        var score = 50
-        var tier: CarTier = CarTierEngine.tierForScore(50)
+        // אם אין נתוני Gemini - להשתמש ב-0 (שיציג "--" במקום ציון פיקטיבי)
+        var score = 0
+        var tier: CarTier = CarTierEngine.tierForScore(1) // Minimum tier for no data
         if let bundle = chartBundle {
             if let eval = CarTierEngine.evaluate(bundle: bundle) {
                 score = eval.score
                 tier = eval.tier
+            }
+        } else {
+            // Fallback: check AnalysisCache for saved score
+            if let cachedScore = AnalysisCache.loadHealthScore(), cachedScore > 0 {
+                score = cachedScore
+                tier = CarTierEngine.tierForScore(score)
             }
         }
 
@@ -807,9 +814,11 @@ class HealthDashboardViewController: UIViewController {
 
         print("📊 updateWidgetData: score=\(score), status=\(healthStatus), steps=\(Int(data.steps ?? 0)), sleep=\(sleepHours), rhr=\(rhr), range=\(selectedRange)")
 
-        // שליחה לשעון רק כשנתונים הם יומיים (InsightsDashboard שולח את הציון הראשי)
-        // המסך הזה שולח רק את נתוני הפעילות
+        // שליחה לשעון רק כשנתונים הם יומיים
         if selectedRange == .day {
+            // קריאת פירוט הציונים מ-AnalysisCache (נשמר ע"י InsightsDashboard)
+            let breakdown = AnalysisCache.loadScoreBreakdown()
+
             WidgetDataManager.shared.updateFromDashboard(
                 score: score,
                 status: healthStatus,
@@ -821,7 +830,14 @@ class HealthDashboardViewController: UIViewController {
                 hrv: hrv > 0 ? hrv : nil,
                 sleepHours: sleepHours > 0 ? sleepHours : nil,
                 carTier: tier,
-                userName: userName
+                userName: userName,
+                // Score breakdown לשעון
+                recoveryScore: breakdown.recovery,
+                sleepScore: breakdown.sleep,
+                nervousSystemScore: breakdown.nervousSystem,
+                energyScore: breakdown.energy,
+                activityScore: breakdown.activity,
+                loadBalanceScore: breakdown.loadBalance
             )
         }
 

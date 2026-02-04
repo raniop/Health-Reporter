@@ -28,7 +28,16 @@ struct CarAnalysisJSONResponse: Codable {
     let forecast_en: String
     let forecast: String?  // Legacy
 
+    // Energy Forecast (optional - new field)
+    let energyForecast: EnergyForecastJSON?
+
     let supplements: [SupplementJSON]
+}
+
+struct EnergyForecastJSON: Codable {
+    let text_he: String
+    let text_en: String
+    let trend: String  // "rising", "falling", "stable"
 }
 
 struct CarIdentityJSON: Codable {
@@ -248,6 +257,11 @@ struct CarAnalysisResponse {
     // 8. תוספי תזונה מומלצים
     var supplements: [SupplementRecommendation]
 
+    // 9. תחזית אנרגיה
+    var energyForecastTextHe: String
+    var energyForecastTextEn: String
+    var energyForecastTrend: String  // "rising", "falling", "stable"
+
     // התשובה המקורית (לצורך fallback)
     var rawResponse: String
 
@@ -289,6 +303,9 @@ struct CarAnalysisResponse {
 
     // 7. Summary
     var summary: String { isHebrew ? summaryHe : summaryEn }
+
+    // 9. Energy Forecast
+    var energyForecastText: String { isHebrew ? energyForecastTextHe : energyForecastTextEn }
 }
 
 /// Parser שמחלץ את הנתונים מתשובת Gemini
@@ -436,6 +453,27 @@ enum CarAnalysisParser {
             summaryEn: str(json as [String: Any], "forecast_en").isEmpty ? str(json as [String: Any], "forecast") : str(json as [String: Any], "forecast_en"),
 
             supplements: supplements,
+
+            // Energy Forecast
+            energyForecastTextHe: {
+                if let ef = json["energyForecast"] as? [String: Any] {
+                    return str(ef, "text_he")
+                }
+                return ""
+            }(),
+            energyForecastTextEn: {
+                if let ef = json["energyForecast"] as? [String: Any] {
+                    return str(ef, "text_en")
+                }
+                return ""
+            }(),
+            energyForecastTrend: {
+                if let ef = json["energyForecast"] as? [String: Any] {
+                    return str(ef, "trend")
+                }
+                return "stable"
+            }(),
+
             rawResponse: rawResponse
         )
     }
@@ -535,6 +573,12 @@ enum CarAnalysisParser {
             summaryEn: json.forecast_en.isEmpty ? (json.forecast ?? json.forecast_en) : json.forecast_en,
 
             supplements: supplements,
+
+            // Energy Forecast
+            energyForecastTextHe: json.energyForecast?.text_he ?? "",
+            energyForecastTextEn: json.energyForecast?.text_en ?? "",
+            energyForecastTrend: json.energyForecast?.trend ?? "stable",
+
             rawResponse: rawResponse
         )
     }
@@ -633,6 +677,12 @@ enum CarAnalysisParser {
             summaryEn: summary,
 
             supplements: supplements,
+
+            // Energy Forecast (not available in legacy format)
+            energyForecastTextHe: "",
+            energyForecastTextEn: "",
+            energyForecastTrend: "stable",
+
             rawResponse: response
         )
     }

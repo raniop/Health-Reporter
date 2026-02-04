@@ -79,7 +79,7 @@ struct DailyMetricsComplicationView: View {
                 MetricItem(
                     icon: "figure.walk",
                     value: formatSteps(data.steps),
-                    unit: "",
+                    unit: "steps",
                     color: .green
                 )
 
@@ -92,6 +92,7 @@ struct DailyMetricsComplicationView: View {
             }
         }
         .padding(.horizontal, 4)
+        .containerBackground(.fill.tertiary, for: .widget)
     }
 
     private var scoreColor: Color {
@@ -125,17 +126,18 @@ struct MetricItem: View {
             Image(systemName: icon)
                 .font(.system(size: 10))
                 .foregroundColor(color)
+                .frame(height: 12)
 
             Text(value)
                 .font(.system(.caption2, design: .rounded))
                 .fontWeight(.medium)
                 .foregroundColor(.white)
+                .frame(height: 14)
 
-            if !unit.isEmpty {
-                Text(unit)
-                    .font(.system(size: 8))
-                    .foregroundColor(.gray)
-            }
+            Text(unit.isEmpty ? " " : unit)
+                .font(.system(size: 8))
+                .foregroundColor(.gray)
+                .frame(height: 10)
         }
     }
 }

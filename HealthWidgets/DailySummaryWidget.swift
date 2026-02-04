@@ -63,6 +63,16 @@ struct LargeDailySummaryView: View {
         }
     }
 
+    var dailyScoreColor: Color {
+        guard let daily = data.dailyScore else { return .gray }
+        switch daily {
+        case 80...100: return .green
+        case 60..<80: return .cyan
+        case 40..<60: return .orange
+        default: return .red
+        }
+    }
+
     var body: some View {
         ZStack {
             // Pure black background
@@ -82,19 +92,39 @@ struct LargeDailySummaryView: View {
 
                     Spacer()
 
-                    // Score badge
-                    ZStack {
-                        Circle()
-                            .fill(scoreColor.opacity(0.2))
-                        Circle()
-                            .trim(from: 0, to: CGFloat(data.healthScore) / 100)
-                            .stroke(scoreColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                        Text("\(data.healthScore)")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white)
+                    // Score badges - Gemini score (main) + Daily score (secondary)
+                    HStack(spacing: 8) {
+                        // Daily score (smaller, secondary) - if available
+                        if let dailyScore = data.dailyScore {
+                            ZStack {
+                                Circle()
+                                    .fill(dailyScoreColor.opacity(0.15))
+                                Circle()
+                                    .trim(from: 0, to: CGFloat(dailyScore) / 100)
+                                    .stroke(dailyScoreColor.opacity(0.7), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                                    .rotationEffect(.degrees(-90))
+                                Text("\(dailyScore)")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.gray)
+                            }
+                            .frame(width: 36, height: 36)
+                        }
+
+                        // Main Gemini score (larger)
+                        ZStack {
+                            Circle()
+                                .fill(scoreColor.opacity(0.2))
+                            Circle()
+                                .trim(from: 0, to: CGFloat(data.healthScore) / 100)
+                                .stroke(scoreColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                            Text("\(data.healthScore)")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        .frame(width: 50, height: 50)
                     }
-                    .frame(width: 50, height: 50)
+                    .padding(.top, 4)  // הורדת הציון קצת למטה
                 }
 
                 Divider()

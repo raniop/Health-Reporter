@@ -305,6 +305,11 @@ class GeminiService {
               },
               "forecast_he": "3-month forecast if current trends continue (Hebrew)",
               "forecast_en": "3-month forecast if current trends continue (English)",
+              "energyForecast": {
+                "text_he": "Today's energy prediction based on HRV, sleep, and recent activity (1-2 sentences, Hebrew)",
+                "text_en": "Today's energy prediction based on HRV, sleep, and recent activity (1-2 sentences, English)",
+                "trend": "rising|falling|stable (based on recent recovery and sleep trends)"
+              },
               "supplements": [
                 {
                   "name_he": "Supplement name (Hebrew)",

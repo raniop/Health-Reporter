@@ -103,21 +103,20 @@ extension WatchConnectivityManager: WCSessionDelegate {
         print("WatchConnectivity: Received application context")
         DispatchQueue.main.async {
             self.lastSyncDate = Date()
-            Task { @MainActor in
-                WatchDataManager.shared.updateFromContext(applicationContext)
-            }
+        }
+        // WatchDataManager handles serialization internally
+        Task { @MainActor in
+            WatchDataManager.shared.updateFromContext(applicationContext)
         }
     }
 
     /// Receives direct messages from iPhone
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         print("WatchConnectivity: Received message")
-        DispatchQueue.main.async {
-            if message["type"] as? String == "healthDataUpdate" {
-                Task { @MainActor in
-                    WatchDataManager.shared.updateFromContext(message)
-                }
-            }
+        guard message["type"] as? String == "healthDataUpdate" else { return }
+        // WatchDataManager handles serialization internally
+        Task { @MainActor in
+            WatchDataManager.shared.updateFromContext(message)
         }
     }
 
@@ -133,10 +132,9 @@ extension WatchConnectivityManager: WCSessionDelegate {
 
         // Handle full data updates
         if message["type"] as? String == "healthDataUpdate" {
-            DispatchQueue.main.async {
-                Task { @MainActor in
-                    WatchDataManager.shared.updateFromContext(message)
-                }
+            // WatchDataManager handles serialization internally
+            Task { @MainActor in
+                WatchDataManager.shared.updateFromContext(message)
             }
             replyHandler(["status": "received"])
         }
@@ -145,10 +143,9 @@ extension WatchConnectivityManager: WCSessionDelegate {
     /// Receives user info transfers
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
         print("WatchConnectivity: Received user info")
-        DispatchQueue.main.async {
-            Task { @MainActor in
-                WatchDataManager.shared.updateFromContext(userInfo)
-            }
+        // WatchDataManager handles serialization internally
+        Task { @MainActor in
+            WatchDataManager.shared.updateFromContext(userInfo)
         }
     }
 }

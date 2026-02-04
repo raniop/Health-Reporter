@@ -35,16 +35,19 @@ struct CarTierComplicationView: View {
     let entry: WatchHealthEntry
 
     var body: some View {
-        switch family {
-        case .accessoryCircular:
-            CircularCarView(data: entry.data)
-        case .accessoryRectangular:
-            RectangularCarView(data: entry.data)
-        case .accessoryInline:
-            InlineCarView(data: entry.data)
-        default:
-            CircularCarView(data: entry.data)
+        Group {
+            switch family {
+            case .accessoryCircular:
+                CircularCarView(data: entry.data)
+            case .accessoryRectangular:
+                RectangularCarView(data: entry.data)
+            case .accessoryInline:
+                InlineCarView(data: entry.data)
+            default:
+                CircularCarView(data: entry.data)
+            }
         }
+        .containerBackground(.fill.tertiary, for: .widget)
     }
 }
 
@@ -53,8 +56,13 @@ struct CarTierComplicationView: View {
 struct CircularCarView: View {
     let data: WatchComplicationData
 
+    /// Car score - uses gemini score if available, otherwise health score
+    private var carScore: Int {
+        return data.geminiCarScore ?? data.healthScore
+    }
+
     private var tierColor: Color {
-        switch data.carTierIndex {
+        switch data.displayTierIndex {
         case 0: return .red
         case 1: return .orange
         case 2: return .yellow
@@ -63,30 +71,21 @@ struct CircularCarView: View {
         }
     }
 
+    private var scoreGradient: Gradient {
+        Gradient(colors: [.red, .orange, .yellow, .green, .mint])
+    }
+
     var body: some View {
-        ZStack {
-            // Background circle with tier color
-            Circle()
-                .fill(tierColor.opacity(0.2))
-
-            // Car emoji
-            Text(data.carEmoji)
-                .font(.system(size: 28))
-
-            // Tier indicator dots at bottom
-            VStack {
-                Spacer()
-
-                HStack(spacing: 3) {
-                    ForEach(0..<5, id: \.self) { index in
-                        Circle()
-                            .fill(index <= data.carTierIndex ? tierColor : Color.gray.opacity(0.3))
-                            .frame(width: 4, height: 4)
-                    }
-                }
-                .padding(.bottom, 4)
-            }
+        Gauge(value: Double(carScore), in: 0...100) {
+            Text(data.displayCarEmoji)
+                .font(.system(size: 14))
+        } currentValueLabel: {
+            Text("\(carScore)")
+                .font(.system(.title3, design: .rounded))
+                .fontWeight(.bold)
         }
+        .gaugeStyle(.accessoryCircular)
+        .tint(scoreGradient)
     }
 }
 
@@ -96,7 +95,7 @@ struct RectangularCarView: View {
     let data: WatchComplicationData
 
     private var tierColor: Color {
-        switch data.carTierIndex {
+        switch data.displayTierIndex {
         case 0: return .red
         case 1: return .orange
         case 2: return .yellow
@@ -108,13 +107,13 @@ struct RectangularCarView: View {
     var body: some View {
         HStack(spacing: 8) {
             // Car emoji with glow
-            Text(data.carEmoji)
+            Text(data.displayCarEmoji)
                 .font(.system(size: 32))
                 .shadow(color: tierColor.opacity(0.5), radius: 8)
 
             VStack(alignment: .leading, spacing: 2) {
                 // Car name
-                Text(data.carName)
+                Text(data.displayCarName)
                     .font(.system(.caption, design: .rounded))
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
@@ -124,7 +123,7 @@ struct RectangularCarView: View {
                 HStack(spacing: 4) {
                     ForEach(0..<5, id: \.self) { index in
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(index <= data.carTierIndex ? tierColor : Color.gray.opacity(0.3))
+                            .fill(index <= data.displayTierIndex ? tierColor : Color.gray.opacity(0.3))
                             .frame(width: 12, height: 4)
                     }
                 }
@@ -146,7 +145,7 @@ struct InlineCarView: View {
     let data: WatchComplicationData
 
     var body: some View {
-        Text("\(data.carEmoji) \(data.carName)")
+        Text("\(data.displayCarEmoji) \(data.displayCarName)")
     }
 }
 

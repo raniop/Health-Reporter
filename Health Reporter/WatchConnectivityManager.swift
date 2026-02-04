@@ -349,7 +349,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
 
                     if let encoded = try? JSONEncoder().encode(watchData) {
                         replyHandler(["watchHealthData": encoded])
-                        print("WatchConnectivity: Sent ALL data to Watch - score=\(widgetData.healthScore), geminiCar=\(geminiCar?.name ?? "nil"), geminiScore=\(geminiScore ?? 0)")
+                        print("📱 WatchConnectivity: Sent to Watch - score=\(widgetData.healthScore), exercise=\(widgetData.exerciseMinutes), stand=\(widgetData.standHours)")
                     } else {
                         replyHandler(["error": "Failed to encode data"])
                     }

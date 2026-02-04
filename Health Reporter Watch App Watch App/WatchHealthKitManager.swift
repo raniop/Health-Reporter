@@ -34,7 +34,7 @@ class WatchHealthKitManager {
             HKQuantityType.quantityType(forIdentifier: .stepCount)!,
             HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!,
             HKQuantityType.quantityType(forIdentifier: .appleExerciseTime)!,
-            HKQuantityType.quantityType(forIdentifier: .appleStandTime)!,
+            HKCategoryType.categoryType(forIdentifier: .appleStandHour)!,
 
             // Heart
             HKQuantityType.quantityType(forIdentifier: .heartRate)!,
@@ -67,7 +67,7 @@ class WatchHealthKitManager {
         async let steps = fetchSumQuantity(.stepCount, start: startOfDay, end: now)
         async let calories = fetchSumQuantity(.activeEnergyBurned, start: startOfDay, end: now)
         async let exercise = fetchSumQuantity(.appleExerciseTime, start: startOfDay, end: now)
-        async let standTime = fetchSumQuantity(.appleStandTime, start: startOfDay, end: now)
+        async let standHoursCount = fetchStandHours(start: startOfDay, end: now)
         async let heartRate = fetchLatestQuantity(.heartRate)
         async let restingHR = fetchLatestQuantity(.restingHeartRate)
         async let hrv = fetchLatestQuantity(.heartRateVariabilitySDNN)
@@ -76,14 +76,11 @@ class WatchHealthKitManager {
         let stepsValue = try await steps ?? 0
         let caloriesValue = try await calories ?? 0
         let exerciseValue = try await exercise ?? 0
-        let standValue = try await standTime ?? 0
+        let standHours = try await standHoursCount ?? 0
         let heartRateValue = try await heartRate ?? 0
         let restingHRValue = try await restingHR ?? 0
         let hrvValue = try await hrv ?? 0
         let sleepValue = try await sleepHours ?? 0
-
-        // Calculate stand hours (standTime is in minutes on Watch)
-        let standHours = Int(standValue / 60)
 
         // Calculate a simple health score for standalone mode
         let healthScore = calculateSimpleScore(
@@ -104,17 +101,26 @@ class WatchHealthKitManager {
             carName: tier.name,
             carEmoji: tier.emoji,
             carTierLabel: tier.label,
+            geminiCarName: nil,
+            geminiCarScore: nil,
+            geminiCarTierIndex: nil,
             moveCalories: Int(caloriesValue),
             moveGoal: 500,
             exerciseMinutes: Int(exerciseValue),
             exerciseGoal: 30,
-            standHours: standHours,
+            standHours: Int(standHours),
             standGoal: 12,
             steps: Int(stepsValue),
             heartRate: Int(heartRateValue),
             restingHeartRate: Int(restingHRValue),
             hrv: Int(hrvValue),
             sleepHours: sleepValue,
+            recoveryScore: nil,
+            sleepScore: nil,
+            nervousSystemScore: nil,
+            energyScore: nil,
+            activityScore: nil,
+            loadBalanceScore: nil,
             lastUpdated: Date(),
             isFromPhone: false
         )
@@ -221,6 +227,38 @@ class WatchHealthKitManager {
 
                 let hours = totalSeconds / 3600.0
                 continuation.resume(returning: hours)
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    private func fetchStandHours(start: Date, end: Date) async throws -> Double? {
+        guard let standType = HKCategoryType.categoryType(forIdentifier: .appleStandHour) else {
+            return nil
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: standType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let samples = samples as? [HKCategorySample] else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                // Count only hours where user stood (value == 0 means stood)
+                let standHours = samples.filter { $0.value == HKCategoryValueAppleStandHour.stood.rawValue }.count
+                continuation.resume(returning: Double(standHours))
             }
             healthStore.execute(query)
         }

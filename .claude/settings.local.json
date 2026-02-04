@@ -15,7 +15,11 @@
       "Bash(firebase deploy:*)",
       "Bash(gcloud iam service-accounts create:*)",
       "Bash(firebase functions:delete:*)",
-      "Bash(ruby -e '\nrequire \"\"xcodeproj\"\"\n\nproject_path = \"\"Health Reporter.xcodeproj\"\"\nproject = Xcodeproj::Project.open\\(project_path\\)\n\n# Find Watch App target\nwatch_target = project.targets.find { |t| t.name == \"\"Health Reporter Watch App Watch App\"\" }\nif watch_target.nil?\n  puts \"\"Watch target not found!\"\"\n  exit 1\nend\n\n# Find the Watch App group\nwatch_group = project.main_group.find_subpath\\(\"\"Health Reporter Watch App Watch App\"\", true\\)\n\n# Add the new file\nfile_path = \"\"Health Reporter Watch App Watch App/ScoreBreakdownView.swift\"\"\nfile_ref = watch_group.new_reference\\(file_path\\)\nwatch_target.source_build_phase.add_file_reference\\(file_ref\\)\n\nproject.save\nputs \"\"Added ScoreBreakdownView.swift to Watch App target\"\"\n')"
+      "Bash(ruby -e '\nrequire \"\"xcodeproj\"\"\n\nproject_path = \"\"Health Reporter.xcodeproj\"\"\nproject = Xcodeproj::Project.open\\(project_path\\)\n\n# Find Watch App target\nwatch_target = project.targets.find { |t| t.name == \"\"Health Reporter Watch App Watch App\"\" }\nif watch_target.nil?\n  puts \"\"Watch target not found!\"\"\n  exit 1\nend\n\n# Find the Watch App group\nwatch_group = project.main_group.find_subpath\\(\"\"Health Reporter Watch App Watch App\"\", true\\)\n\n# Add the new file\nfile_path = \"\"Health Reporter Watch App Watch App/ScoreBreakdownView.swift\"\"\nfile_ref = watch_group.new_reference\\(file_path\\)\nwatch_target.source_build_phase.add_file_reference\\(file_ref\\)\n\nproject.save\nputs \"\"Added ScoreBreakdownView.swift to Watch App target\"\"\n')",
+      "Bash(git checkout:*)",
+      "Bash(xargs cat:*)",
+      "Bash(swift build:*)",
+      "Bash(xcrun simctl:*)"
     ]
   }
 }

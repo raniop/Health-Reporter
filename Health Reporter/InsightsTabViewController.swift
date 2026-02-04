@@ -887,7 +887,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         if factors > 0 {
             score = score / factors
         } else {
-            score = 50
+            score = 0 // No data = score 0 (will show "--")
         }
 
         return max(0, min(100, Int(score)))

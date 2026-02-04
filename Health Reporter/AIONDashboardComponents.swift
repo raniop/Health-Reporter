@@ -823,6 +823,11 @@ final class DirectivesCardView: UIView {
         setRow(stopRow, value: b(stop), color: AIONDesign.textPrimary)
         setRow(startRow, value: b(start), color: AIONDesign.textPrimary)
         setRow(watchRow, value: b(watch), color: AIONDesign.textPrimary)
+
+        // Force layout update and gradient border refresh
+        setNeedsLayout()
+        layoutIfNeeded()
+        updateGradientBorderFrame()
     }
 
     func showPlaceholder() {
@@ -841,15 +846,15 @@ final class DirectivesCardView: UIView {
             label.numberOfLines = 0
             label.translatesAutoresizingMaskIntoConstraints = false
 
-            // Create a container with extra top padding to avoid info button
+            // Create a container with minimal padding
             let container = UIView()
             container.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(label)
             NSLayoutConstraint.activate([
-                label.topAnchor.constraint(equalTo: container.topAnchor, constant: 20),
+                label.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
                 label.leadingAnchor.constraint(equalTo: container.leadingAnchor),
                 label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -10),
+                label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8),
             ])
 
             stack.addArrangedSubview(container)
@@ -858,6 +863,11 @@ final class DirectivesCardView: UIView {
         }
         placeholderLabel?.text = msg
         placeholderContainer?.isHidden = false
+
+        // Force layout update and gradient border refresh
+        setNeedsLayout()
+        layoutIfNeeded()
+        updateGradientBorderFrame()
     }
 
     private var placeholderLabel: UILabel?
@@ -868,6 +878,11 @@ final class DirectivesCardView: UIView {
         stopRow?.wrap.isHidden = false
         startRow?.wrap.isHidden = false
         watchRow?.wrap.isHidden = false
+
+        // Force layout update and gradient border refresh
+        setNeedsLayout()
+        layoutIfNeeded()
+        updateGradientBorderFrame()
     }
 }
 
@@ -1256,5 +1271,595 @@ enum AIONDirectivesParser {
         if t.hasPrefix("- ") { t = String(t.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
         else if t.hasPrefix("-") { t = String(t.dropFirst()).trimmingCharacters(in: .whitespaces) }
         return t.isEmpty ? t : "• " + t
+    }
+}
+
+// MARK: - Score Cube View (קובייה בודדת לציון)
+
+final class ScoreCubeView: UIView {
+
+    // MARK: - UI Elements
+    private let iconView = UIImageView()
+    private let scoreLabel = UILabel()
+    private let titleLabel = UILabel()
+    private let subtitleLabel = UILabel()
+    private let loadingIndicator = UIActivityIndicatorView(style: .medium)
+    private let infoButton = UIButton(type: .system)
+
+    // MARK: - Callbacks
+    var onTapped: (() -> Void)?
+    var onInfoTapped: (() -> Void)?
+
+    // MARK: - State
+    private var isLoading = false
+
+    // MARK: - Init
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupUI()
+    }
+
+    // MARK: - Setup
+    private func setupUI() {
+        backgroundColor = AIONDesign.surface
+        layer.cornerRadius = AIONDesign.cornerRadius
+        clipsToBounds = true
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+
+        // Icon
+        iconView.contentMode = .scaleAspectFit
+        iconView.tintColor = AIONDesign.accentPrimary
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(iconView)
+
+        // Score
+        scoreLabel.font = .systemFont(ofSize: 32, weight: .bold)
+        scoreLabel.textColor = AIONDesign.textPrimary
+        scoreLabel.textAlignment = .center
+        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(scoreLabel)
+
+        // Title
+        titleLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        titleLabel.textColor = AIONDesign.textSecondary
+        titleLabel.textAlignment = .center
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(titleLabel)
+
+        // Subtitle (for car name)
+        subtitleLabel.font = .systemFont(ofSize: 9, weight: .regular)
+        subtitleLabel.textColor = AIONDesign.textTertiary
+        subtitleLabel.textAlignment = .center
+        subtitleLabel.numberOfLines = 1
+        subtitleLabel.lineBreakMode = .byTruncatingTail
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        subtitleLabel.isHidden = true
+        addSubview(subtitleLabel)
+
+        // Loading indicator
+        loadingIndicator.color = AIONDesign.accentPrimary
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(loadingIndicator)
+
+        // Info button
+        let cfg = UIImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+        infoButton.setImage(UIImage(systemName: "info.circle", withConfiguration: cfg), for: .normal)
+        infoButton.tintColor = AIONDesign.textTertiary
+        infoButton.translatesAutoresizingMaskIntoConstraints = false
+        infoButton.addTarget(self, action: #selector(infoTapped), for: .touchUpInside)
+        addSubview(infoButton)
+
+        // Tap gesture
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        addGestureRecognizer(tap)
+
+        setupConstraints()
+    }
+
+    private func setupConstraints() {
+        NSLayoutConstraint.activate([
+            // Icon at top
+            iconView.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            iconView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 20),
+            iconView.heightAnchor.constraint(equalToConstant: 20),
+
+            // Score in center
+            scoreLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            scoreLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+
+            // Loading indicator (same position as score)
+            loadingIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
+
+            // Title below score
+            titleLabel.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: 2),
+            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            titleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+
+            // Subtitle below title
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 1),
+            subtitleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            subtitleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+
+            // Info button in corner
+            infoButton.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+            infoButton.widthAnchor.constraint(equalToConstant: 24),
+            infoButton.heightAnchor.constraint(equalToConstant: 24),
+        ])
+
+        // Info button position based on language direction
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        if isRTL {
+            infoButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4).isActive = true
+        } else {
+            infoButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4).isActive = true
+        }
+    }
+
+    // MARK: - Actions
+    @objc private func handleTap() {
+        onTapped?()
+    }
+
+    @objc private func infoTapped() {
+        onInfoTapped?()
+    }
+
+    // MARK: - Configuration
+    func configure(
+        icon: String,
+        iconColor: UIColor,
+        score: Int?,
+        title: String,
+        subtitle: String? = nil,
+        isLoading: Bool = false
+    ) {
+        let cfg = UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
+        iconView.image = UIImage(systemName: icon, withConfiguration: cfg)
+        iconView.tintColor = iconColor
+
+        titleLabel.text = title
+
+        if let subtitle = subtitle, !subtitle.isEmpty {
+            subtitleLabel.text = subtitle
+            subtitleLabel.isHidden = false
+        } else {
+            subtitleLabel.isHidden = true
+        }
+
+        if let score = score, score > 0 {
+            hideLoading()
+            scoreLabel.text = "\(score)"
+            scoreLabel.textColor = colorForScore(score)
+        } else if isLoading {
+            showLoading()
+        } else {
+            // No data - show placeholder
+            hideLoading()
+            scoreLabel.text = "—"
+            scoreLabel.textColor = AIONDesign.textTertiary
+        }
+    }
+
+    func showLoading() {
+        self.isLoading = true
+        scoreLabel.isHidden = true
+        loadingIndicator.startAnimating()
+    }
+
+    func hideLoading() {
+        self.isLoading = false
+        scoreLabel.isHidden = false
+        loadingIndicator.stopAnimating()
+    }
+
+    private func colorForScore(_ score: Int) -> UIColor {
+        switch score {
+        case 80...100: return AIONDesign.accentSuccess
+        case 65..<80: return AIONDesign.accentSecondary
+        case 45..<65: return AIONDesign.accentPrimary
+        case 25..<45: return AIONDesign.accentWarning
+        default: return AIONDesign.accentDanger
+        }
+    }
+}
+
+// MARK: - Score Cubes Row View (שורת 3 קוביות)
+
+final class ScoreCubesRowView: UIView {
+
+    // MARK: - Cubes
+    private let healthCube = ScoreCubeView()
+    private let carCube = ScoreCubeView()
+    private let sleepCube = ScoreCubeView()
+
+    // MARK: - Callbacks
+    var onHealthTapped: (() -> Void)?
+    var onHealthInfoTapped: (() -> Void)?
+    var onCarTapped: (() -> Void)?
+    var onCarInfoTapped: (() -> Void)?
+    var onSleepTapped: (() -> Void)?
+    var onSleepInfoTapped: (() -> Void)?
+
+    // MARK: - Init
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupUI()
+    }
+
+    // MARK: - Setup
+    private func setupUI() {
+        let stack = UIStackView(arrangedSubviews: [healthCube, carCube, sleepCube])
+        stack.axis = .horizontal
+        stack.distribution = .fillEqually
+        stack.spacing = AIONDesign.spacing
+        stack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+
+        // Wire up callbacks
+        healthCube.onTapped = { [weak self] in self?.onHealthTapped?() }
+        healthCube.onInfoTapped = { [weak self] in self?.onHealthInfoTapped?() }
+        carCube.onTapped = { [weak self] in self?.onCarTapped?() }
+        carCube.onInfoTapped = { [weak self] in self?.onCarInfoTapped?() }
+        sleepCube.onTapped = { [weak self] in self?.onSleepTapped?() }
+        sleepCube.onInfoTapped = { [weak self] in self?.onSleepInfoTapped?() }
+
+        // Initial loading state
+        showAllLoading()
+    }
+
+    // MARK: - Configuration
+    func configure(
+        healthScore: Int?,
+        carScore: Int?,
+        carName: String?,
+        sleepScore: Int?
+    ) {
+        healthCube.configure(
+            icon: "battery.100.bolt",
+            iconColor: AIONDesign.accentSuccess,
+            score: healthScore,
+            title: "dashboard.healthScore".localized,
+            subtitle: nil
+        )
+
+        carCube.configure(
+            icon: "car.fill",
+            iconColor: AIONDesign.accentPrimary,
+            score: carScore,
+            title: "dashboard.carTier".localized,
+            subtitle: carName
+        )
+
+        sleepCube.configure(
+            icon: "moon.zzz.fill",
+            iconColor: AIONDesign.accentSecondary,
+            score: sleepScore,
+            title: "dashboard.sleepScore".localized,
+            subtitle: nil
+        )
+    }
+
+    func showAllLoading() {
+        healthCube.configure(icon: "battery.100.bolt", iconColor: AIONDesign.accentSuccess, score: nil, title: "dashboard.healthScore".localized, isLoading: true)
+        carCube.configure(icon: "car.fill", iconColor: AIONDesign.accentPrimary, score: nil, title: "dashboard.carTier".localized, isLoading: true)
+        sleepCube.configure(icon: "moon.zzz.fill", iconColor: AIONDesign.accentSecondary, score: nil, title: "dashboard.sleepScore".localized, isLoading: true)
+    }
+
+    func updateHealthScore(_ score: Int?) {
+        healthCube.configure(
+            icon: "battery.100.bolt",
+            iconColor: AIONDesign.accentSuccess,
+            score: score,
+            title: "dashboard.healthScore".localized
+        )
+    }
+
+    func updateCarScore(_ score: Int?, carName: String?) {
+        carCube.configure(
+            icon: "car.fill",
+            iconColor: AIONDesign.accentPrimary,
+            score: score,
+            title: "dashboard.carTier".localized,
+            subtitle: carName
+        )
+    }
+
+    func updateSleepScore(_ score: Int?) {
+        sleepCube.configure(
+            icon: "moon.zzz.fill",
+            iconColor: AIONDesign.accentSecondary,
+            score: score,
+            title: "dashboard.sleepScore".localized
+        )
+    }
+}
+
+// MARK: - Energy Forecast Card View (כרטיס תחזית אנרגיה)
+
+final class EnergyForecastCardView: UIView {
+
+    // MARK: - Trend Direction
+    enum TrendDirection {
+        case rising
+        case falling
+        case stable
+
+        var icon: String {
+            switch self {
+            case .rising: return "arrow.up.right"
+            case .falling: return "arrow.down.right"
+            case .stable: return "arrow.right"
+            }
+        }
+
+        var color: UIColor {
+            switch self {
+            case .rising: return AIONDesign.accentSuccess
+            case .falling: return AIONDesign.accentDanger
+            case .stable: return AIONDesign.accentWarning
+            }
+        }
+
+        static func from(_ string: String?) -> TrendDirection {
+            switch string?.lowercased() {
+            case "rising": return .rising
+            case "falling": return .falling
+            default: return .stable
+            }
+        }
+    }
+
+    // MARK: - UI Elements
+    private let titleLabel = UILabel()
+    private let forecastLabel = UILabel()
+    private let trendIcon = UIImageView()
+    private let trendGraphView = MiniEnergyTrendGraphView()
+    private let loadingIndicator = UIActivityIndicatorView(style: .medium)
+    private let infoButton = UIButton(type: .system)
+
+    // MARK: - Callbacks
+    var onTapped: (() -> Void)?
+    var onInfoTapped: (() -> Void)?
+
+    // MARK: - Init
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupUI()
+    }
+
+    // MARK: - Setup
+    private func setupUI() {
+        backgroundColor = AIONDesign.surface
+        layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        clipsToBounds = true
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+
+        // Title
+        titleLabel.text = "dashboard.energyForecast".localized
+        titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.textColor = AIONDesign.textSecondary
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(titleLabel)
+
+        // Forecast text
+        forecastLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        forecastLabel.textColor = AIONDesign.textPrimary
+        forecastLabel.textAlignment = LocalizationManager.shared.textAlignment
+        forecastLabel.numberOfLines = 2
+        forecastLabel.lineBreakMode = .byTruncatingTail
+        forecastLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(forecastLabel)
+
+        // Trend icon
+        trendIcon.contentMode = .scaleAspectFit
+        trendIcon.tintColor = AIONDesign.accentWarning
+        trendIcon.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(trendIcon)
+
+        // Trend graph
+        trendGraphView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(trendGraphView)
+
+        // Loading indicator
+        loadingIndicator.color = AIONDesign.accentPrimary
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(loadingIndicator)
+
+        // Info button
+        let cfg = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        infoButton.setImage(UIImage(systemName: "info.circle", withConfiguration: cfg), for: .normal)
+        infoButton.tintColor = AIONDesign.textTertiary
+        infoButton.translatesAutoresizingMaskIntoConstraints = false
+        infoButton.addTarget(self, action: #selector(infoTapped), for: .touchUpInside)
+        addSubview(infoButton)
+
+        // Tap gesture
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        addGestureRecognizer(tap)
+
+        setupConstraints()
+        showLoading()
+    }
+
+    private func setupConstraints() {
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        NSLayoutConstraint.activate([
+            // Title at top-left/right
+            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: trendGraphView.leadingAnchor, constant: -12),
+
+            // Forecast text below title
+            forecastLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+            forecastLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            forecastLabel.trailingAnchor.constraint(equalTo: trendGraphView.leadingAnchor, constant: -12),
+            forecastLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -12),
+
+            // Trend graph on right side
+            trendGraphView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            trendGraphView.trailingAnchor.constraint(equalTo: trendIcon.leadingAnchor, constant: -8),
+            trendGraphView.widthAnchor.constraint(equalToConstant: 50),
+            trendGraphView.heightAnchor.constraint(equalToConstant: 30),
+
+            // Trend icon
+            trendIcon.centerYAnchor.constraint(equalTo: centerYAnchor),
+            trendIcon.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            trendIcon.widthAnchor.constraint(equalToConstant: 24),
+            trendIcon.heightAnchor.constraint(equalToConstant: 24),
+
+            // Loading indicator (center)
+            loadingIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
+
+            // Info button in corner
+            infoButton.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+            infoButton.widthAnchor.constraint(equalToConstant: 30),
+            infoButton.heightAnchor.constraint(equalToConstant: 30),
+        ])
+
+        // Info button position based on language direction
+        if isRTL {
+            infoButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8).isActive = true
+        } else {
+            infoButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8).isActive = true
+        }
+    }
+
+    // MARK: - Actions
+    @objc private func handleTap() {
+        onTapped?()
+    }
+
+    @objc private func infoTapped() {
+        onInfoTapped?()
+    }
+
+    // MARK: - Configuration
+    func configure(text: String?, trend: TrendDirection) {
+        hideLoading()
+
+        forecastLabel.text = text ?? "dashboard.energyForecast.loading".localized
+
+        let cfg = UIImage.SymbolConfiguration(pointSize: 24, weight: .medium)
+        trendIcon.image = UIImage(systemName: trend.icon, withConfiguration: cfg)
+        trendIcon.tintColor = trend.color
+
+        trendGraphView.configure(trend: trend)
+    }
+
+    func showLoading() {
+        forecastLabel.text = "dashboard.energyForecast.loading".localized
+        forecastLabel.isHidden = true
+        trendIcon.isHidden = true
+        trendGraphView.isHidden = true
+        loadingIndicator.startAnimating()
+    }
+
+    func hideLoading() {
+        forecastLabel.isHidden = false
+        trendIcon.isHidden = false
+        trendGraphView.isHidden = false
+        loadingIndicator.stopAnimating()
+    }
+}
+
+// MARK: - Mini Energy Trend Graph View (גרף מגמה מיני)
+
+final class MiniEnergyTrendGraphView: UIView {
+
+    private var trend: EnergyForecastCardView.TrendDirection = .stable
+    private let lineLayer = CAShapeLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+
+    private func setup() {
+        backgroundColor = .clear
+        lineLayer.fillColor = UIColor.clear.cgColor
+        lineLayer.lineWidth = 2
+        lineLayer.lineCap = .round
+        lineLayer.lineJoin = .round
+        layer.addSublayer(lineLayer)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        drawTrendLine()
+    }
+
+    func configure(trend: EnergyForecastCardView.TrendDirection) {
+        self.trend = trend
+        lineLayer.strokeColor = trend.color.cgColor
+        setNeedsLayout()
+    }
+
+    private func drawTrendLine() {
+        let path = UIBezierPath()
+        let w = bounds.width
+        let h = bounds.height
+        let padding: CGFloat = 4
+
+        switch trend {
+        case .rising:
+            // Line going up
+            path.move(to: CGPoint(x: padding, y: h - padding))
+            path.addQuadCurve(
+                to: CGPoint(x: w - padding, y: padding),
+                controlPoint: CGPoint(x: w * 0.5, y: h * 0.3)
+            )
+        case .falling:
+            // Line going down
+            path.move(to: CGPoint(x: padding, y: padding))
+            path.addQuadCurve(
+                to: CGPoint(x: w - padding, y: h - padding),
+                controlPoint: CGPoint(x: w * 0.5, y: h * 0.7)
+            )
+        case .stable:
+            // Horizontal wavy line
+            path.move(to: CGPoint(x: padding, y: h * 0.5))
+            path.addCurve(
+                to: CGPoint(x: w - padding, y: h * 0.5),
+                controlPoint1: CGPoint(x: w * 0.33, y: h * 0.3),
+                controlPoint2: CGPoint(x: w * 0.66, y: h * 0.7)
+            )
+        }
+
+        lineLayer.path = path.cgPath
     }
 }

@@ -266,7 +266,7 @@ final class CalculatedMetricsEngine {
         if totalWeight > 0 {
             finalScore = Int(round(totalScore / totalWeight))
         } else {
-            finalScore = 50 // ברירת מחדל אם אין נתונים
+            finalScore = 0 // No data = score 0 (will show "--")
         }
 
         return ReadinessScore(

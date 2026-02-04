@@ -228,6 +228,27 @@
 "dashboard.steps" = "צעדים";
 "dashboard.activeCalories" = "קלוריות פעילות";
 
+/* Score Cubes */
+"dashboard.carTier" = "ציון רכב";
+"dashboard.sleepScore" = "ציון שינה";
+
+/* Energy Forecast */
+"dashboard.energyForecast" = "תחזית אנרגיה";
+"dashboard.energyForecast.loading" = "מנתח...";
+"dashboard.energyForecast.high" = "רמת האנרגיה שלך גבוהה היום. יום מצוין לאימון אינטנסיבי!";
+"dashboard.energyForecast.moderate" = "רמת האנרגיה שלך בינונית. מתאים לאימון קל עד בינוני.";
+"dashboard.energyForecast.low" = "רמת האנרגיה שלך נמוכה. מומלץ יום מנוחה או פעילות קלה.";
+"energy.level.high" = "גבוה";
+"energy.level.medium" = "בינוני";
+"energy.level.low" = "נמוך";
+
+/* Score Explanations */
+"explanation.healthScore" = "ציון הבריאות מחושב מ-5 דומיינים: התאוששות, שינה, כושר, איזון עומס ופעילות. הנתונים מבוססים על 90 הימים האחרונים.";
+"explanation.carTier" = "ציון הרכב משקף את מצבך הכללי בהתבסס על מוכנות, שינה, HRV ועומס אימון.";
+"explanation.sleepScore" = "ציון השינה מחושב לפי משך השינה, זמן שינה עמוקה וזמן REM.";
+"explanation.energyForecast" = "תחזית האנרגיה מבוססת על ניתוח AI של HRV, איכות שינה ודפוסי פעילות אחרונים.";
+"explanation.energyForecastDetail" = "תחזית האנרגיה משלבת נתוני HRV, שינה ופעילות אחרונים כדי לחזות את רמת האנרגיה שלך היום. השתמש בתחזית כדי לתכנן את יום האימון שלך.";
+
 /* Splash - Extended */
 "splash.syncAppleHealth" = "מסנכרן עם Apple Health...";
 "splash.processingData" = "מעבד נתונים...";
@@ -625,6 +646,11 @@
 "sleep.debt.description" = "צריך עוד מנוחה";
 "sleep.surplus.description" = "נח היטב";
 
+/* דגש שינה בסגנון אפל */
+"sleep.highlight.title" = "שינה";
+"sleep.highlight.avg" = "ממוצע משך השינה";
+"sleep.highlight.no_data" = "אין נתוני שינה להצגה";
+
 /* מדדי אימון */
 "metric.training_strain.short" = "עומס";
 "metric.load_balance.short" = "איזון";
@@ -780,3 +806,68 @@
 /* הסברי קוביות ראשיות */
 "explanation.energy.title" = "תחזית אנרגיה";
 "explanation.energy.message" = "כרטיס זה מציג את רמת האנרגיה הצפויה שלך להיום על בסיס איכות השינה, מצב ההתאוששות ודפוסי הפעילות האחרונים. השתמש בו לתכנון היום שלך.";
+
+/* הסברי ציונים - Bottom Sheets */
+"healthScore.detail.title" = "ציון בריאות";
+"healthScore.detail.explanation" = "הציון שלך מבוסס על ניתוח של HRV, איכות שינה ורמת הפעילות הגופנית שלך בשבועות האחרונים.";
+
+"carScore.detail.title" = "ציון רכב";
+"carScore.detail.explanation" = "דרגת הרכב שלך נקבעת לפי ממוצע מדדי הבריאות שלך. ציונים טובים יותר פותחים רכבים מהירים ויוקרתיים יותר.";
+
+"sleepScore.detail.title" = "ציון שינה";
+"sleepScore.detail.explanation" = "מבוסס על משך השינה, עקביות זמני השינה והפרעות במהלך הלילה.";
+
+/* Onboarding */
+"onboarding.welcome.title" = "ברוכים הבאים ל-AION";
+"onboarding.welcome.subtitle" = "המאמן הבריאותי האישי שלך";
+"onboarding.welcome.bullet1" = "עקוב אחר הבריאות שלך כמו מכונית ביצועים";
+"onboarding.welcome.bullet2" = "קבל תובנות מותאמות אישית מבוססות AI";
+"onboarding.welcome.bullet3" = "נטר שינה, פעילות והתאוששות";
+"onboarding.welcome.getStarted" = "בואו נתחיל";
+
+"onboarding.notifications.title" = "הישאר מעודכן";
+"onboarding.notifications.subtitle" = "קבל עדכוני בריאות ותזכורות בזמן";
+"onboarding.notifications.bullet1" = "התראות יומיות על ציון הבריאות";
+"onboarding.notifications.bullet2" = "תזכורות לאימון והתאוששות";
+"onboarding.notifications.bullet3" = "עדכונים על פעילות חברים";
+"onboarding.notifications.enable" = "אפשר התראות";
+"onboarding.notifications.skip" = "אולי אחר כך";
+
+"onboarding.healthkit.title" = "חבר את הבריאות שלך";
+"onboarding.healthkit.subtitle" = "פתח תובנות עוצמתיות מהנתונים שלך";
+"onboarding.healthkit.bullet1" = "נתח דפוסי שינה ואיכות";
+"onboarding.healthkit.bullet2" = "עקוב אחר פעילות ואימונים";
+"onboarding.healthkit.bullet3" = "נטר מדדי בריאות הלב";
+"onboarding.healthkit.connect" = "חבר ל-Apple Health";
+"onboarding.healthkit.skip" = "דלג לעכשיו";
+
+"onboarding.car.title" = "הבריאות שלך כמכונית ביצועים";
+"onboarding.car.description" = "AION מנתח את הנתונים שלך ומתאים לך מכונית שמייצגת את רמת הכושר שלך - ממיני קופר ועד פרארי";
+
+"onboarding.score.title" = "הציון הבריאותי שלך";
+"onboarding.score.description" = "ציון 0-100 שמשלב שינה, פעילות, דופק ועוד - כדי שתדע בדיוק איפה אתה עומד";
+"onboarding.score.sleep" = "שינה";
+"onboarding.score.activity" = "פעילות";
+"onboarding.score.heart" = "לב";
+
+"onboarding.ai.title" = "תובנות חכמות";
+"onboarding.ai.description" = "AI מתקדם מנתח את הנתונים שלך ונותן המלצות מותאמות אישית";
+"onboarding.ai.feature1" = "תובנות בריאות מותאמות אישית";
+"onboarding.ai.feature2" = "עקוב אחר מגמות לאורך זמן";
+"onboarding.ai.feature3" = "המלצות מעשיות";
+
+"onboarding.continue" = "המשך";
+
+"onboarding.loading.subtitle" = "זה עשוי לקחת רגע...";
+"onboarding.progress.connecting" = "מתחבר ל-Apple Health...";
+"onboarding.progress.syncing" = "מסנכרן נתוני בריאות...";
+"onboarding.progress.processing" = "מעבד את המדדים שלך...";
+"onboarding.progress.analyzing" = "AI מנתח דפוסים...";
+"onboarding.progress.findingCar" = "מחפש את המכונית המושלמת...";
+"onboarding.progress.ready" = "המכונית שלך מוכנה!";
+
+/* Onboarding - Car Reveal */
+"onboarding.reveal.title" = "המכונית שלך היא...";
+"onboarding.reveal.healthScore" = "ציון בריאות";
+"onboarding.reveal.description" = "על בסיס נתוני הבריאות שלך, המכונית הזו מייצגת את רמת הכושר הנוכחית שלך. המשך להשתפר כדי לשדרג!";
+"onboarding.reveal.start" = "בואו נצא לדרך!";

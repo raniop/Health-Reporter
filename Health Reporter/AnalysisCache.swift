@@ -46,6 +46,14 @@ enum AnalysisCache {
     static let keyMainScore = "AION.MainScore"
     static let keyMainScoreStatus = "AION.MainScoreStatus"
 
+    // Score Breakdown Keys (לשליחה לשעון)
+    static let keyRecoveryScore = "AION.ScoreBreakdown.Recovery"
+    static let keySleepScore = "AION.ScoreBreakdown.Sleep"
+    static let keyNervousSystemScore = "AION.ScoreBreakdown.NervousSystem"
+    static let keyEnergyScore = "AION.ScoreBreakdown.Energy"
+    static let keyActivityScore = "AION.ScoreBreakdown.Activity"
+    static let keyLoadBalanceScore = "AION.ScoreBreakdown.LoadBalance"
+
     // MARK: - Cache Duration
     /// מטמון תקף ל-24 שעות (לא נקרא ל-Gemini שוב גם אם יש שינוי)
     static let maxAgeSeconds: TimeInterval = 24 * 3600
@@ -163,6 +171,44 @@ enum AnalysisCache {
     /// טוען את ה-status של הציון הראשי
     static func loadMainScoreStatus() -> String? {
         return UserDefaults.standard.string(forKey: keyMainScoreStatus)
+    }
+
+    // MARK: - Score Breakdown (לשליחה לשעון)
+
+    /// שומר את פירוט הציונים מ-DailyMetrics
+    static func saveScoreBreakdown(
+        recovery: Int?,
+        sleep: Int?,
+        nervousSystem: Int?,
+        energy: Int?,
+        activity: Int?,
+        loadBalance: Int?
+    ) {
+        if let v = recovery { UserDefaults.standard.set(v, forKey: keyRecoveryScore) }
+        if let v = sleep { UserDefaults.standard.set(v, forKey: keySleepScore) }
+        if let v = nervousSystem { UserDefaults.standard.set(v, forKey: keyNervousSystemScore) }
+        if let v = energy { UserDefaults.standard.set(v, forKey: keyEnergyScore) }
+        if let v = activity { UserDefaults.standard.set(v, forKey: keyActivityScore) }
+        if let v = loadBalance { UserDefaults.standard.set(v, forKey: keyLoadBalanceScore) }
+    }
+
+    /// טוען את פירוט הציונים
+    static func loadScoreBreakdown() -> (recovery: Int?, sleep: Int?, nervousSystem: Int?, energy: Int?, activity: Int?, loadBalance: Int?) {
+        let recovery = UserDefaults.standard.integer(forKey: keyRecoveryScore)
+        let sleep = UserDefaults.standard.integer(forKey: keySleepScore)
+        let nervousSystem = UserDefaults.standard.integer(forKey: keyNervousSystemScore)
+        let energy = UserDefaults.standard.integer(forKey: keyEnergyScore)
+        let activity = UserDefaults.standard.integer(forKey: keyActivityScore)
+        let loadBalance = UserDefaults.standard.integer(forKey: keyLoadBalanceScore)
+
+        return (
+            recovery: recovery > 0 ? recovery : nil,
+            sleep: sleep > 0 ? sleep : nil,
+            nervousSystem: nervousSystem > 0 ? nervousSystem : nil,
+            energy: energy > 0 ? energy : nil,
+            activity: activity > 0 ? activity : nil,
+            loadBalance: loadBalance > 0 ? loadBalance : nil
+        )
     }
 
     // MARK: - Health Score Result (עם Breakdown)

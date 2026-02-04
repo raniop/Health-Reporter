@@ -11,7 +11,8 @@ import UIKit
 
 /// Data structure shared with widgets (must match HealthWidgetData in widget extension)
 struct SharedWidgetData: Codable {
-    var healthScore: Int
+    var healthScore: Int          // Gemini score (90-day average) - main display
+    var dailyScore: Int?          // Daily health score - secondary display
     var healthStatus: String
     var steps: Int
     var stepsGoal: Int
@@ -49,6 +50,7 @@ final class WidgetDataManager {
     /// - Parameter syncToWatch: Whether to also send data to Apple Watch (default true)
     func updateWidgetData(
         healthScore: Int,
+        dailyScore: Int? = nil,
         healthStatus: String,
         steps: Int,
         calories: Int,
@@ -66,6 +68,7 @@ final class WidgetDataManager {
     ) {
         let data = SharedWidgetData(
             healthScore: healthScore,
+            dailyScore: dailyScore,
             healthStatus: healthStatus,
             steps: steps,
             stepsGoal: 10000,
@@ -150,6 +153,7 @@ final class WidgetDataManager {
     /// Note: Does NOT sync to Watch - only Home screen syncs to Watch
     func updateFromInsights(
         score: Int,
+        dailyScore: Int? = nil,
         status: String,
         carName: String,
         carEmoji: String,
@@ -169,6 +173,7 @@ final class WidgetDataManager {
         // Only Home screen (InsightsDashboard) should sync to Watch with daily mainScore
         updateWidgetData(
             healthScore: score,
+            dailyScore: dailyScore,
             healthStatus: status,
             steps: steps,
             calories: activeCalories,
@@ -249,7 +254,7 @@ extension WidgetDataManager {
         let geminiCar = AnalysisCache.loadSelectedCar()
         let geminiScore = AnalysisCache.loadHealthScore()
 
-        print("📱➡️⌚️ Sending to Watch: score=\(data.healthScore), geminiCar=\(geminiCar?.name ?? "nil"), geminiScore=\(geminiScore ?? 0), steps=\(data.steps)")
+        print("📱➡️⌚️ Sending to Watch: score=\(data.healthScore), steps=\(data.steps)")
         WatchConnectivityManager.shared.sendWidgetDataToWatch(
             healthScore: data.healthScore,
             healthStatus: data.healthStatus,
