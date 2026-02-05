@@ -1,0 +1,23 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "morningNotification.enabled",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "morningNotification.hour",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "morningNotification.minute",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

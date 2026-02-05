@@ -60,10 +60,10 @@ struct ReadinessChartView: View {
         Group {
             if hasData {
                 Chart(data.points) { p in
-                    LineMark(x: .value("תאריך", p.date), y: .value("התאוששות", p.recovery))
+                    LineMark(x: .value("chart.date".localized, p.date), y: .value("chart.recovery".localized, p.recovery))
                         .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
-                    LineMark(x: .value("תאריך", p.date), y: .value("עומס", p.strain * 10))
+                    LineMark(x: .value("chart.date".localized, p.date), y: .value("chart.strain".localized, p.strain * 10))
                         .foregroundStyle(ChartColors.secondary)
                         .interpolationMethod(.catmullRom)
                 }
@@ -89,11 +89,11 @@ struct EfficiencyChartView: View {
             if hasData {
                 Chart(data.points) { p in
                     if let hr = p.avgHeartRate {
-                        BarMark(x: .value("תאריך", p.date), y: .value("דופק", hr), width: .ratio(0.5))
+                        BarMark(x: .value("chart.date".localized, p.date), y: .value("chart.heartRate".localized, hr), width: .ratio(0.5))
                             .foregroundStyle(ChartColors.primary)
                     }
                     if let km = p.distanceKm, km > 0 {
-                        LineMark(x: .value("תאריך", p.date), y: .value("ק\"מ", km * 10))
+                        LineMark(x: .value("chart.date".localized, p.date), y: .value("chart.km".localized, km * 10))
                             .foregroundStyle(ChartColors.lineGradient)
                             .interpolationMethod(.catmullRom)
                     }
@@ -118,7 +118,7 @@ struct SleepArchitectureChartView: View {
         Group {
             if hasData {
                 Chart(visiblePoints) { p in
-                    LineMark(x: .value("תאריך", p.date), y: .value("שינה", p.totalHours!))
+                    LineMark(x: .value("chart.date".localized, p.date), y: .value("chart.sleep".localized, p.totalHours!))
                         .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
@@ -144,12 +144,12 @@ struct GlucoseEnergyChartView: View {
             if hasData {
                 Chart(data.points) { p in
                     if let g = p.glucose {
-                        LineMark(x: .value("תאריך", p.date), y: .value("סוכר", g))
+                        LineMark(x: .value("chart.date".localized, p.date), y: .value("chart.glucose".localized, g))
                             .foregroundStyle(ChartColors.lineGradient)
                             .interpolationMethod(.catmullRom)
                     }
                     if let e = p.activeEnergy, e > 0 {
-                        BarMark(x: .value("תאריך", p.date), y: .value("אנרגיה", e / 50), width: .ratio(0.5))
+                        BarMark(x: .value("chart.date".localized, p.date), y: .value("chart.energy".localized, e / 50), width: .ratio(0.5))
                             .foregroundStyle(ChartColors.secondary)
                     }
                 }
@@ -175,14 +175,14 @@ struct AutonomicRadarChartView: View {
                 let hrv = data.hrv ?? 0
                 let resp = data.respiratory ?? 0
                 Chart {
-                    BarMark(x: .value("מדד", "RHR"), y: .value("ערך", rhr), width: .ratio(0.5))
+                    BarMark(x: .value("chart.metric".localized, "RHR"), y: .value("chart.value".localized, rhr), width: .ratio(0.5))
                         .foregroundStyle(ChartColors.primary)
-                    BarMark(x: .value("מדד", "HRV"), y: .value("ערך", hrv), width: .ratio(0.5))
+                    BarMark(x: .value("chart.metric".localized, "HRV"), y: .value("chart.value".localized, hrv), width: .ratio(0.5))
                         .foregroundStyle(ChartColors.secondary)
-                    BarMark(x: .value("מדד", "נשימה"), y: .value("ערך", resp), width: .ratio(0.5))
+                    BarMark(x: .value("chart.metric".localized, "chart.breathing".localized), y: .value("chart.value".localized, resp), width: .ratio(0.5))
                         .foregroundStyle(ChartColors.success)
                 }
-                .chartXScale(domain: ["RHR", "HRV", "נשימה"])
+                .chartXScale(domain: ["RHR", "HRV", "chart.breathing".localized])
                 .chartYScale(domain: 0 ... 100)
             } else {
                 ChartPlaceholderView(message: "chart.noAutonomicData".localized, icon: "waveform.path.ecg")
@@ -206,15 +206,15 @@ struct NutritionChartView: View {
             if hasData {
                 Chart(data.points.prefix(7)) { p in
                     if let pr = p.protein, pr > 0 {
-                        BarMark(x: .value("תאריך", p.date), y: .value("חלבון", pr), width: .ratio(0.5))
+                        BarMark(x: .value("chart.date".localized, p.date), y: .value("chart.protein".localized, pr), width: .ratio(0.5))
                             .foregroundStyle(ChartColors.primary)
                     }
                     if let c = p.carbs, c > 0 {
-                        BarMark(x: .value("תאריך", p.date), y: .value("פחמימות", c), width: .ratio(0.5))
+                        BarMark(x: .value("chart.date".localized, p.date), y: .value("chart.carbs".localized, c), width: .ratio(0.5))
                             .foregroundStyle(ChartColors.secondary)
                     }
                     if let f = p.fat, f > 0 {
-                        BarMark(x: .value("תאריך", p.date), y: .value("שומן", f), width: .ratio(0.5))
+                        BarMark(x: .value("chart.date".localized, p.date), y: .value("chart.fat".localized, f), width: .ratio(0.5))
                             .foregroundStyle(ChartColors.success)
                     }
                 }
@@ -269,7 +269,7 @@ struct DistanceChartView: View {
         Group {
             if hasData {
                 Chart(points) { p in
-                    BarMark(x: .value("יום", p.day), y: .value("ק\"מ", p.value), width: .ratio(0.55))
+                    BarMark(x: .value("chart.day".localized, p.day), y: .value("chart.km".localized, p.value), width: .ratio(0.55))
                         .foregroundStyle(LinearGradient(colors: [ChartColors.primary, ChartColors.success], startPoint: .bottom, endPoint: .top))
                 }
                 .chartXScale(domain: .automatic)
@@ -309,7 +309,7 @@ struct ActiveEnergyChartView: View {
         Group {
             if hasData {
                 Chart(points) { p in
-                    LineMark(x: .value("יום", p.day), y: .value("קלוריות", p.value))
+                    LineMark(x: .value("chart.day".localized, p.day), y: .value("chart.calories".localized, p.value))
                         .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
@@ -340,7 +340,7 @@ struct AvgHeartRateTrendChartView: View {
         Group {
             if hasData {
                 Chart(visiblePoints) { p in
-                    LineMark(x: .value("תאריך", p.date), y: .value("דופק", p.avgHeartRate!))
+                    LineMark(x: .value("chart.date".localized, p.date), y: .value("chart.heartRate".localized, p.avgHeartRate!))
                         .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
@@ -373,7 +373,7 @@ struct DashboardEfficiencyBarChartView: View {
         Group {
             if hasData {
                 Chart(points, id: \.day) { p in
-                    BarMark(x: .value("יום", p.day), y: .value("התאוששות", p.value), width: .ratio(0.55))
+                    BarMark(x: .value("chart.day".localized, p.day), y: .value("chart.recovery".localized, p.value), width: .ratio(0.55))
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [ChartColors.primary, ChartColors.success],
@@ -410,7 +410,7 @@ struct RecoveryTrendChartView: View {
         Group {
             if hasData {
                 Chart(data.points) { p in
-                    LineMark(x: .value("תאריך", p.date), y: .value("התאוששות", p.recovery))
+                    LineMark(x: .value("chart.date".localized, p.date), y: .value("chart.recovery".localized, p.recovery))
                         .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
@@ -442,7 +442,7 @@ struct StrainTrendChartView: View {
         Group {
             if hasData {
                 Chart(data.points) { p in
-                    LineMark(x: .value("תאריך", p.date), y: .value("עומס", p.strain * 10))
+                    LineMark(x: .value("chart.date".localized, p.date), y: .value("chart.strain".localized, p.strain * 10))
                         .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
@@ -487,7 +487,7 @@ struct StepsChartView: View {
         Group {
             if hasData {
                 Chart(points) { p in
-                    BarMark(x: .value("יום", p.day), y: .value("צעדים", p.value), width: .ratio(0.55))
+                    BarMark(x: .value("chart.day".localized, p.day), y: .value("chart.steps".localized, p.value), width: .ratio(0.55))
                         .foregroundStyle(LinearGradient(colors: [ChartColors.primary, ChartColors.success], startPoint: .bottom, endPoint: .top))
                 }
                 .chartXScale(domain: .automatic)
@@ -516,7 +516,7 @@ struct RHRTrendChartView: View {
         Group {
             if hasData {
                 Chart(data.points) { p in
-                    LineMark(x: .value("תאריך", p.date), y: .value("דופק מנוחה", p.value))
+                    LineMark(x: .value("chart.date".localized, p.date), y: .value("chart.restingHR".localized, p.value))
                         .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }
@@ -538,7 +538,7 @@ struct HRVTrendChartView: View {
         Group {
             if hasData {
                 Chart(data.points) { p in
-                    LineMark(x: .value("תאריך", p.date), y: .value("HRV", p.value))
+                    LineMark(x: .value("chart.date".localized, p.date), y: .value("HRV", p.value))
                         .foregroundStyle(ChartColors.lineGradient)
                         .interpolationMethod(.catmullRom)
                 }

@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>NSHealthShareUsageDescription</key>
-	<string>האפליקציה זקוקה לגישה לנתוני הבריאות שלך כדי לנתח ולהציג לך תובנות חשובות על מצב הבריאות שלך.</string>
+	<string>The app needs access to your health data to analyze and show you important insights about your health status.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>האפליקציה זקוקה לגישה לעדכן נתוני בריאות כדי לשמור מידע נוסף.</string>
+	<string>The app needs access to update health data to save additional information.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>בחירת תמונת פרופיל מהגלריה.</string>
+	<string>Select a profile picture from your gallery.</string>
 	<key>App Uses Non-Exempt Encryption</key>
 	<false/>
 	<key>CFBundleURLTypes</key>
@@ -23,6 +23,16 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.rani.Health-Reporter.morningRefresh</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -95,17 +95,42 @@ enum HealthDataSource: String, CaseIterable, Codable {
     var strengths: [String] {
         switch self {
         case .appleWatch:
-            return ["ECG מדויק", "זיהוי נפילות", "אינטגרציה מלאה עם iOS"]
+            return [
+                "dataSources.strength.appleWatch.ecg".localized,
+                "dataSources.strength.appleWatch.fallDetection".localized,
+                "dataSources.strength.appleWatch.iosIntegration".localized
+            ]
         case .garmin:
-            return ["Body Battery", "Training Load", "GPS מדויק", "חיי סוללה ארוכים"]
+            return [
+                "dataSources.strength.garmin.bodyBattery".localized,
+                "dataSources.strength.garmin.trainingLoad".localized,
+                "dataSources.strength.garmin.gps".localized,
+                "dataSources.strength.garmin.battery".localized
+            ]
         case .oura:
-            return ["HRV בשינה (מדויק מאוד)", "מעקב טמפרטורת גוף", "Readiness Score"]
+            return [
+                "dataSources.strength.oura.sleepHrv".localized,
+                "dataSources.strength.oura.bodyTemp".localized,
+                "dataSources.strength.oura.readiness".localized
+            ]
         case .whoop:
-            return ["מעקב Strain", "ניתוח התאוששות", "מעקב 24/7"]
+            return [
+                "dataSources.strength.whoop.strain".localized,
+                "dataSources.strength.whoop.recovery".localized,
+                "dataSources.strength.whoop.tracking".localized
+            ]
         case .fitbit:
-            return ["מעקב שינה", "מעקב פעילות", "קהילה"]
+            return [
+                "dataSources.strength.fitbit.sleep".localized,
+                "dataSources.strength.fitbit.activity".localized,
+                "dataSources.strength.fitbit.community".localized
+            ]
         case .samsung:
-            return ["מעקב לחץ דם", "ECG", "הרכב גוף"]
+            return [
+                "dataSources.strength.samsung.bloodPressure".localized,
+                "dataSources.strength.samsung.ecg".localized,
+                "dataSources.strength.samsung.bodyComposition".localized
+            ]
         case .other, .autoDetect:
             return []
         }

@@ -530,4 +530,38 @@ enum FriendsFirestoreSync {
             DispatchQueue.main.async { completion?(error) }
         }
     }
+
+    // MARK: - Morning Notification Settings
+
+    /// Saves morning notification settings to Firestore for Cloud Function scheduling
+    static func saveMorningNotificationSettings(
+        enabled: Bool,
+        hour: Int,
+        minute: Int,
+        completion: ((Error?) -> Void)? = nil
+    ) {
+        guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
+            completion?(NSError(domain: "FriendsFirestoreSync", code: -1,
+                                userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
+            return
+        }
+
+        let settings: [String: Any] = [
+            "morningNotification": [
+                "enabled": enabled,
+                "hour": hour,
+                "minute": minute,
+                "updatedAt": FieldValue.serverTimestamp()
+            ]
+        ]
+
+        db.collection(usersCollection).document(currentUid).setData(settings, merge: true) { error in
+            if let error = error {
+                print("🔔 [Firestore] Failed to save morning notification settings: \(error)")
+            } else {
+                print("🔔 [Firestore] Morning notification settings saved - enabled: \(enabled), time: \(hour):\(minute)")
+            }
+            DispatchQueue.main.async { completion?(error) }
+        }
+    }
 }

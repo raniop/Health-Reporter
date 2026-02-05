@@ -172,9 +172,9 @@ enum TimePeriod: String, CaseIterable {
 
     var localizedName: String {
         switch self {
-        case .today: return "היום"
-        case .week: return "שבוע"
-        case .month: return "חודש"
+        case .today: return "period.day".localized
+        case .week: return "period.week".localized
+        case .month: return "period.month".localized
         }
     }
 }

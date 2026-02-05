@@ -7,6 +7,14 @@
 
 import UIKit
 
+private struct AssociatedKeys {
+    static var animationStartValue = "animationStartValue"
+    static var animationEndValue = "animationEndValue"
+    static var animationStartTime = "animationStartTime"
+    static var animationDuration = "animationDuration"
+    static var displayLink = "displayLink"
+}
+
 final class AnalysisLoadingPage: UIViewController {
 
     private weak var delegate: OnboardingPageDelegate?
@@ -62,6 +70,8 @@ final class AnalysisLoadingPage: UIViewController {
 
     private var progressLayer: CAShapeLayer?
     private var currentProgress: Double = 0
+    private var simulatedProgressTimer: Timer?
+    private var simulatedProgress: Double = 0
 
     // MARK: - Init
 
@@ -85,6 +95,7 @@ final class AnalysisLoadingPage: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         startAnimations()
+        startSimulatedProgress()
         checkIfAlreadyComplete()
     }
 
@@ -95,6 +106,7 @@ final class AnalysisLoadingPage: UIViewController {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        simulatedProgressTimer?.invalidate()
     }
 
     // MARK: - Setup
@@ -202,24 +214,76 @@ final class AnalysisLoadingPage: UIViewController {
         }, completion: nil)
     }
 
+    /// Simulated progress that moves slowly to show activity while waiting for real progress
+    private func startSimulatedProgress() {
+        simulatedProgress = 0
+        simulatedProgressTimer?.invalidate()
+
+        // Update every 0.3 seconds with small increments
+        simulatedProgressTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+
+            // Stop if real progress has taken over
+            guard self.currentProgress == 0 else {
+                self.simulatedProgressTimer?.invalidate()
+                return
+            }
+
+            // Asymptotic progress that slows down but never fully stops
+            // Goes faster to 30%, then slower to 90% (never reaches 100%)
+            let maxSimulated = 0.90
+            let remaining = maxSimulated - self.simulatedProgress
+
+            // Speed depends on current progress - faster at start, slower as we go
+            let speedFactor: Double
+            if self.simulatedProgress < 0.30 {
+                speedFactor = 0.08  // Fast phase: ~8% of remaining
+            } else if self.simulatedProgress < 0.60 {
+                speedFactor = 0.03  // Medium phase: ~3% of remaining
+            } else {
+                speedFactor = 0.015 // Slow phase: ~1.5% of remaining
+            }
+
+            let increment = remaining * speedFactor
+            self.simulatedProgress = min(maxSimulated, self.simulatedProgress + max(0.002, increment))
+
+            // Update UI
+            let percentage = Int(self.simulatedProgress * 100)
+            self.progressLabel.text = "\(percentage)%"
+
+            // Animate progress ring
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            self.progressLayer?.strokeEnd = CGFloat(self.simulatedProgress)
+            CATransaction.commit()
+        }
+    }
+
     private func updateProgress(to value: Double, step: String) {
+        // Stop simulated progress when real progress arrives
+        simulatedProgressTimer?.invalidate()
+        simulatedProgressTimer = nil
+
+        // Ensure we animate from current visual position (including simulated)
+        let fromValue = max(simulatedProgress, currentProgress)
         currentProgress = value
+
+        // Calculate animation duration based on distance (longer for bigger jumps)
+        let distance = abs(value - fromValue)
+        let duration = max(0.5, min(1.5, distance * 2.0)) // 0.5-1.5 seconds based on distance
 
         // Animate progress ring
         let animation = CABasicAnimation(keyPath: "strokeEnd")
-        animation.fromValue = progressLayer?.strokeEnd ?? 0
+        animation.fromValue = fromValue
         animation.toValue = value
-        animation.duration = 0.5
-        animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        animation.duration = duration
+        animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
         animation.fillMode = .forwards
         animation.isRemovedOnCompletion = false
         progressLayer?.add(animation, forKey: "progress")
 
-        // Update percentage label
-        let percentage = Int(value * 100)
-        UIView.transition(with: progressLabel, duration: 0.3, options: .transitionCrossDissolve) {
-            self.progressLabel.text = "\(percentage)%"
-        }
+        // Animate percentage label smoothly
+        animatePercentageLabel(from: Int(fromValue * 100), to: Int(value * 100), duration: duration)
 
         // Update status label
         UIView.transition(with: statusLabel, duration: 0.3, options: .transitionCrossDissolve) {
@@ -227,11 +291,55 @@ final class AnalysisLoadingPage: UIViewController {
         }
     }
 
+    private func animatePercentageLabel(from startValue: Int, to endValue: Int, duration: Double) {
+        let startTime = CACurrentMediaTime()
+        let displayLink = CADisplayLink(target: self, selector: #selector(updatePercentageAnimation))
+        displayLink.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60)
+
+        // Store animation parameters
+        objc_setAssociatedObject(self, &AssociatedKeys.animationStartValue, startValue, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(self, &AssociatedKeys.animationEndValue, endValue, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(self, &AssociatedKeys.animationStartTime, startTime, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(self, &AssociatedKeys.animationDuration, duration, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(self, &AssociatedKeys.displayLink, displayLink, .OBJC_ASSOCIATION_RETAIN)
+
+        displayLink.add(to: .main, forMode: .common)
+    }
+
+    @objc private func updatePercentageAnimation() {
+        guard let startValue = objc_getAssociatedObject(self, &AssociatedKeys.animationStartValue) as? Int,
+              let endValue = objc_getAssociatedObject(self, &AssociatedKeys.animationEndValue) as? Int,
+              let startTime = objc_getAssociatedObject(self, &AssociatedKeys.animationStartTime) as? Double,
+              let duration = objc_getAssociatedObject(self, &AssociatedKeys.animationDuration) as? Double,
+              let displayLink = objc_getAssociatedObject(self, &AssociatedKeys.displayLink) as? CADisplayLink else {
+            return
+        }
+
+        let elapsed = CACurrentMediaTime() - startTime
+        let progress = min(1.0, elapsed / duration)
+
+        // Ease in-out curve
+        let easedProgress = progress < 0.5
+            ? 2 * progress * progress
+            : 1 - pow(-2 * progress + 2, 2) / 2
+
+        let currentValue = startValue + Int(Double(endValue - startValue) * easedProgress)
+        progressLabel.text = "\(currentValue)%"
+
+        if progress >= 1.0 {
+            displayLink.invalidate()
+            progressLabel.text = "\(endValue)%"
+        }
+    }
+
     private func checkIfAlreadyComplete() {
+        print("🎬 [AnalysisLoadingPage] checkIfAlreadyComplete - state=\(OnboardingCoordinator.shared.analysisState), isComplete=\(OnboardingCoordinator.shared.isAnalysisComplete)")
         // אם הניתוח כבר הסתיים (המשתמש עבר מהר על המסכים)
         if OnboardingCoordinator.shared.isAnalysisComplete {
+            print("🎬 [AnalysisLoadingPage] Analysis already complete - calling handleAnalysisComplete")
             handleAnalysisComplete()
         } else if OnboardingCoordinator.shared.analysisState == .idle {
+            print("🎬 [AnalysisLoadingPage] Analysis idle - completing quickly")
             // אם לא התחיל (למשל דילג על HealthKit) - סיים מיד
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
                 self?.updateProgress(to: 1.0, step: "onboarding.progress.ready".localized)
@@ -239,6 +347,8 @@ final class AnalysisLoadingPage: UIViewController {
                     self?.completeOnboarding()
                 }
             }
+        } else {
+            print("🎬 [AnalysisLoadingPage] Analysis in progress - waiting for completion notification")
         }
     }
 
@@ -273,6 +383,15 @@ final class AnalysisLoadingPage: UIViewController {
         // Check if we have Gemini data for car reveal
         let healthScore = AnalysisCache.loadHealthScore() ?? 0
         let hasGeminiData = healthScore > 0
+        let geminiCar = AnalysisCache.loadSelectedCar()
+
+        // Debug: check raw UserDefaults value
+        let rawScore = UserDefaults.standard.integer(forKey: "AION.WeeklyStats.HealthScore")
+        let healthScoreResult = AnalysisCache.loadHealthScoreResult()
+        print("🎬 [AnalysisLoadingPage] completeOnboarding called")
+        print("🎬 [AnalysisLoadingPage] healthScore=\(healthScore), rawScore=\(rawScore), hasGeminiData=\(hasGeminiData)")
+        print("🎬 [AnalysisLoadingPage] healthScoreResult?.healthScoreInt=\(healthScoreResult?.healthScoreInt ?? -1)")
+        print("🎬 [AnalysisLoadingPage] geminiCar=\(geminiCar?.name ?? "nil")")
 
         // Celebration animation
         UIView.animate(withDuration: 0.3, animations: {
@@ -282,12 +401,27 @@ final class AnalysisLoadingPage: UIViewController {
                 self.carImageView.transform = .identity
             }, completion: { _ in
                 if hasGeminiData {
-                    // Get car tier data for reveal
+                    // Get actual Gemini car name - NEVER use generic tier names!
+                    let geminiCar = AnalysisCache.loadSelectedCar()
                     let tier = CarTierEngine.tierForScore(healthScore)
+
+                    // Only proceed with car reveal if we have actual Gemini car name
+                    guard let carName = geminiCar?.name, !carName.isEmpty else {
+                        // No Gemini car name - go directly to main screen
+                        self.delegate?.onboardingDidComplete()
+                        return
+                    }
+
+                    let wikiName = geminiCar?.wikiName ?? ""
+
+                    // Clear any pending reveal since we're showing it now in onboarding
+                    AnalysisCache.clearPendingCarReveal()
+
                     self.delegate?.onboardingDidRequestCarReveal(
-                        carName: tier.name,
+                        carName: carName,
                         carEmoji: tier.emoji,
-                        healthScore: healthScore
+                        healthScore: healthScore,
+                        wikiName: wikiName
                     )
                 } else {
                     // No data - go directly to main screen

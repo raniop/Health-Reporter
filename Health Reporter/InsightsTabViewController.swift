@@ -11,7 +11,8 @@ import FirebaseAuth
 // MARK: - Padded Label for badges
 
 private final class PaddedLabel: UILabel {
-    var padding = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+    var padding = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
+    var useFullyRoundedCorners = true  // Makes corners fully rounded (pill shape)
 
     override func drawText(in rect: CGRect) {
         super.drawText(in: rect.inset(by: padding))
@@ -21,6 +22,49 @@ private final class PaddedLabel: UILabel {
         let size = super.intrinsicContentSize
         return CGSize(width: size.width + padding.left + padding.right,
                       height: size.height + padding.top + padding.bottom)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if useFullyRoundedCorners {
+            layer.cornerRadius = bounds.height / 2
+        }
+    }
+}
+
+// MARK: - Gradient Overlay for Car Image Text Readability
+
+private final class GradientOverlayView: UIView {
+    private let gradientLayer = CAGradientLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupGradient()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func setupGradient() {
+        // Gradient from transparent at top to semi-dark at bottom
+        // This ensures white text is readable even on white car images
+        gradientLayer.colors = [
+            UIColor.clear.cgColor,
+            UIColor.clear.cgColor,
+            UIColor.black.withAlphaComponent(0.3).cgColor,
+            UIColor.black.withAlphaComponent(0.7).cgColor
+        ]
+        gradientLayer.locations = [0.0, 0.3, 0.7, 1.0]
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
+        layer.insertSublayer(gradientLayer, at: 0)
+        isUserInteractionEnabled = false  // Allow touches to pass through
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        gradientLayer.frame = bounds
     }
 }
 
@@ -552,9 +596,20 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
     card.addSubview(bgImageView)
 
+    // Add gradient overlay for better text readability on light car images
+    let gradientOverlay = GradientOverlayView()
+    gradientOverlay.translatesAutoresizingMaskIntoConstraints = false
+    card.addSubview(gradientOverlay)
+
     // Load car image
+    print("🚗 [CarImage] wikiName = '\(wikiName)', carName = '\(carName)'")
     if !wikiName.isEmpty {
         fetchCarImageFromWikipedia(carName: wikiName, into: bgImageView, fallbackEmoji: "")
+    } else {
+        print("🚗 [CarImage] ⚠️ wikiName is empty! Using carName as fallback")
+        if !carName.isEmpty && carName != "insights.waitingForAnalysis".localized {
+            fetchCarImageFromWikipedia(carName: carName, into: bgImageView, fallbackEmoji: "")
+        }
     }
 
     // Car name
@@ -572,13 +627,12 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     carNameLabel.layer.shadowRadius = 4
     carNameLabel.translatesAutoresizingMaskIntoConstraints = false
 
-    // Status badge
+    // Status badge (pill shape with dynamic corner radius)
     let statusBadge = PaddedLabel()
     statusBadge.text = status
     statusBadge.font = .systemFont(ofSize: 14, weight: .bold)
     statusBadge.textColor = .white
     statusBadge.backgroundColor = tierColor
-    statusBadge.layer.cornerRadius = 16
     statusBadge.clipsToBounds = true
     statusBadge.translatesAutoresizingMaskIntoConstraints = false
 
@@ -626,33 +680,38 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     let refreshButton = createActionButton(title: "🔄 " + "insights.checkAgain".localized, action: #selector(rediscoverTapped))
     buttonsStack.addArrangedSubview(refreshButton)
 
-    // Header row: score + badge
+    // Header row: score + badge (centered)
     let headerRow = UIStackView()
     headerRow.axis = .horizontal
     headerRow.alignment = .center
     headerRow.distribution = .fill
     headerRow.spacing = 8
-    // Don't use semanticContentAttribute here - we manually control order
     headerRow.translatesAutoresizingMaskIntoConstraints = false
 
-    let spacer = UIView()
-    spacer.translatesAutoresizingMaskIntoConstraints = false
-    spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-    spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    let leftSpacer = UIView()
+    leftSpacer.translatesAutoresizingMaskIntoConstraints = false
+    leftSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+    leftSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-    // Order based on language direction
-    // RTL: score-badge on RIGHT (spacer on left)
-    // LTR: badge-score on LEFT (spacer on right)
+    let rightSpacer = UIView()
+    rightSpacer.translatesAutoresizingMaskIntoConstraints = false
+    rightSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+    rightSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+    // Centered layout: spacer - score - badge - spacer
     let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+    headerRow.addArrangedSubview(leftSpacer)
     if isRTL {
-        headerRow.addArrangedSubview(spacer)
-        headerRow.addArrangedSubview(scoreLabel)
         headerRow.addArrangedSubview(statusBadge)
+        headerRow.addArrangedSubview(scoreLabel)
     } else {
-        headerRow.addArrangedSubview(statusBadge)
         headerRow.addArrangedSubview(scoreLabel)
-        headerRow.addArrangedSubview(spacer)
+        headerRow.addArrangedSubview(statusBadge)
     }
+    headerRow.addArrangedSubview(rightSpacer)
+
+    // Make spacers equal width for centering
+    leftSpacer.widthAnchor.constraint(equalTo: rightSpacer.widthAnchor).isActive = true
 
     // Main content stack (packed)
     let contentStack = UIStackView()
@@ -683,6 +742,12 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         bgImageView.leadingAnchor.constraint(equalTo: card.leadingAnchor),
         bgImageView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
         bgImageView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+
+        // Gradient overlay for text readability
+        gradientOverlay.topAnchor.constraint(equalTo: card.topAnchor),
+        gradientOverlay.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+        gradientOverlay.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+        gradientOverlay.bottomAnchor.constraint(equalTo: card.bottomAnchor),
 
         progressBar.heightAnchor.constraint(equalToConstant: 6),
         buttonsStack.heightAnchor.constraint(equalToConstant: 44),
@@ -911,6 +976,20 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     // MARK: - Car Image Loading via Wikipedia API
 
     private func fetchCarImageFromWikipedia(carName: String, into imageView: UIImageView, fallbackEmoji: String) {
+        print("🚗 [CarImage] Starting fetch for: '\(carName)'")
+
+        // First, check if we have a cached image for this car
+        if let cachedImage = WidgetDataManager.shared.loadCachedCarImage(forWikiName: carName) {
+            print("🚗 [CarImage] ⚡ Using cached image for '\(carName)'")
+            DispatchQueue.main.async {
+                imageView.image = cachedImage
+                imageView.contentMode = .scaleAspectFill
+                imageView.backgroundColor = .clear
+            }
+            return
+        }
+
+        // No cache - fetch from Wikipedia
         // Generate candidate names: full name, then progressively shorter
         // e.g. "Tesla Model 3 Standard Range" -> ["Tesla Model 3 Standard Range", "Tesla Model 3 Standard", "Tesla Model 3"]
         let words = carName.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: " ").map(String.init)
@@ -925,11 +1004,13 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         var seen = Set<String>()
         candidates = candidates.filter { seen.insert($0).inserted }
 
-        tryWikipediaCandidates(candidates: candidates, index: 0, into: imageView, fallbackEmoji: fallbackEmoji)
+        print("🚗 [CarImage] Candidates: \(candidates)")
+        tryWikipediaCandidates(candidates: candidates, index: 0, into: imageView, fallbackEmoji: fallbackEmoji, originalWikiName: carName)
     }
 
-    private func tryWikipediaCandidates(candidates: [String], index: Int, into imageView: UIImageView, fallbackEmoji: String) {
+    private func tryWikipediaCandidates(candidates: [String], index: Int, into imageView: UIImageView, fallbackEmoji: String, originalWikiName: String) {
         guard index < candidates.count else {
+            print("🚗 [CarImage] ❌ All candidates exhausted, showing fallback")
             DispatchQueue.main.async { [weak self] in
                 self?.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
             }
@@ -940,22 +1021,27 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         let wikiTitle = carName.replacingOccurrences(of: " ", with: "_")
         let apiURL = "https://en.wikipedia.org/api/rest_v1/page/summary/\(wikiTitle)"
 
+        print("🚗 [CarImage] Trying candidate \(index + 1)/\(candidates.count): '\(carName)' -> \(apiURL)")
+
         guard let url = URL(string: apiURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? apiURL) else {
-            tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji)
+            print("🚗 [CarImage] ❌ Invalid URL for '\(carName)'")
+            tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji, originalWikiName: originalWikiName)
             return
         }
 
         URLSession.shared.dataTask(with: url) { [weak self, weak imageView] data, response, error in
             guard let self = self, let imageView = imageView else { return }
 
-            if error != nil {
-                self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji)
+            if let error = error {
+                print("🚗 [CarImage] ❌ Network error for '\(carName)': \(error.localizedDescription)")
+                self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji, originalWikiName: originalWikiName)
                 return
             }
 
             guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji)
+                print("🚗 [CarImage] ❌ Invalid JSON for '\(carName)'")
+                self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji, originalWikiName: originalWikiName)
                 return
             }
 
@@ -966,30 +1052,81 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                 let thumbURL = source.replacingOccurrences(of: "/320px-", with: "/640px-")
                     .replacingOccurrences(of: "/330px-", with: "/640px-")
 
+                print("🚗 [CarImage] ✅ Found thumbnail for '\(carName)': \(thumbURL)")
+
                 guard let imageURL = URL(string: thumbURL) else {
-                    self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji)
+                    print("🚗 [CarImage] ❌ Invalid image URL")
+                    self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji, originalWikiName: originalWikiName)
                     return
                 }
 
-                // Download the actual image
-                URLSession.shared.dataTask(with: imageURL) { [weak self, weak imageView] imgData, _, _ in
+                // Download the actual image with proper request configuration
+                var imageRequest = URLRequest(url: imageURL)
+                imageRequest.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
+                imageRequest.setValue("image/webp,image/apng,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+                imageRequest.setValue("en-US,en;q=0.9,he;q=0.8", forHTTPHeaderField: "Accept-Language")
+                imageRequest.cachePolicy = .reloadIgnoringLocalCacheData
+
+                URLSession.shared.dataTask(with: imageRequest) { [weak self, weak imageView] imgData, response, imgError in
                     DispatchQueue.main.async {
                         guard let self = self, let imageView = imageView else { return }
 
-                        if let imgData = imgData, let image = UIImage(data: imgData) {
+                        // Log response details for debugging
+                        if let httpResponse = response as? HTTPURLResponse {
+                            print("🚗 [CarImage] HTTP Status: \(httpResponse.statusCode), Content-Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "none")")
+                            if httpResponse.statusCode != 200 {
+                                print("🚗 [CarImage] ⚠️ Non-200 status code, headers: \(httpResponse.allHeaderFields)")
+                            }
+                        }
+
+                        if let imgError = imgError {
+                            print("🚗 [CarImage] ⚠️ Image download error: \(imgError.localizedDescription), code: \((imgError as NSError).code)")
+                        }
+
+                        if let imgData = imgData, !imgData.isEmpty, let image = UIImage(data: imgData) {
+                            print("🚗 [CarImage] ✅ Image loaded successfully for '\(carName)' (size: \(imgData.count) bytes)")
                             imageView.image = image
                             imageView.contentMode = .scaleAspectFill
                             imageView.backgroundColor = .clear
 
-                            // Save car image for widget
+                            // Save car image for widget and cache
                             WidgetDataManager.shared.saveCarImage(image)
+                            WidgetDataManager.shared.cacheCarImage(image, forWikiName: originalWikiName)
                         } else {
-                            self.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
+                            print("🚗 [CarImage] ❌ Failed to load image data: \(imgError?.localizedDescription ?? "no error"), data size: \(imgData?.count ?? 0)")
+                            // Try original thumbnail URL as fallback (without size modification)
+                            if let originalURL = URL(string: source) {
+                                print("🚗 [CarImage] 🔄 Retrying with original URL: \(source)")
+                                var retryRequest = URLRequest(url: originalURL)
+                                retryRequest.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
+                                retryRequest.setValue("image/webp,image/apng,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+                                retryRequest.cachePolicy = .reloadIgnoringLocalCacheData
+
+                                URLSession.shared.dataTask(with: retryRequest) { [weak self, weak imageView] retryData, _, _ in
+                                    DispatchQueue.main.async {
+                                        guard let self = self, let imageView = imageView else { return }
+                                        if let retryData = retryData, !retryData.isEmpty, let image = UIImage(data: retryData) {
+                                            print("🚗 [CarImage] ✅ Image loaded with original URL for '\(carName)'")
+                                            imageView.image = image
+                                            imageView.contentMode = .scaleAspectFill
+                                            imageView.backgroundColor = .clear
+                                            WidgetDataManager.shared.saveCarImage(image)
+                                            WidgetDataManager.shared.cacheCarImage(image, forWikiName: originalWikiName)
+                                        } else {
+                                            print("🚗 [CarImage] ❌ Retry also failed")
+                                            self.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
+                                        }
+                                    }
+                                }.resume()
+                            } else {
+                                self.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
+                            }
                         }
                     }
                 }.resume()
             } else {
-                self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji)
+                print("🚗 [CarImage] ❌ No thumbnail in response for '\(carName)'")
+                self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji, originalWikiName: originalWikiName)
             }
         }.resume()
     }
@@ -2745,6 +2882,11 @@ private func showDiscoveryLoadingAnimation() {
         bgImageView.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(bgImageView)
 
+        // Add gradient overlay for better text readability on light car images
+        let gradientOverlay = GradientOverlayView()
+        gradientOverlay.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(gradientOverlay)
+
         // שם הרכב - בכותרת למעלה בגדול
         let carNameLabel = UILabel()
         carNameLabel.text = carName  // מציג מיד את השם!
@@ -2762,13 +2904,12 @@ private func showDiscoveryLoadingAnimation() {
         carNameLabel.alpha = 0  // יופיע עם אנימציה
         card.addSubview(carNameLabel)
 
-        // Badge סטטוס
+        // Badge סטטוס (pill shape with dynamic corner radius)
         let statusBadge = PaddedLabel()
         statusBadge.text = status
         statusBadge.font = .systemFont(ofSize: 14, weight: .bold)
         statusBadge.textColor = .white
         statusBadge.backgroundColor = tierColor
-        statusBadge.layer.cornerRadius = 16
         statusBadge.clipsToBounds = true
         statusBadge.alpha = 0
         statusBadge.translatesAutoresizingMaskIntoConstraints = false
@@ -2834,13 +2975,21 @@ private func showDiscoveryLoadingAnimation() {
             bgImageView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
             bgImageView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
 
+            // Gradient overlay for text readability
+            gradientOverlay.topAnchor.constraint(equalTo: card.topAnchor),
+            gradientOverlay.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            gradientOverlay.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            gradientOverlay.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+
             carNameLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),
             carNameLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
             carNameLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
 
-            statusBadge.topAnchor.constraint(equalTo: carNameLabel.bottomAnchor, constant: 12),
-
-            scoreLabel.centerYAnchor.constraint(equalTo: statusBadge.centerYAnchor),
+            // Score and badge centered together
+            scoreLabel.topAnchor.constraint(equalTo: carNameLabel.bottomAnchor, constant: 12),
+            scoreLabel.centerXAnchor.constraint(equalTo: card.centerXAnchor, constant: -40),
+            statusBadge.centerYAnchor.constraint(equalTo: scoreLabel.centerYAnchor),
+            statusBadge.leadingAnchor.constraint(equalTo: scoreLabel.trailingAnchor, constant: 8),
 
             progressBar.topAnchor.constraint(equalTo: statusBadge.bottomAnchor, constant: 8),
             progressBar.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
@@ -2857,16 +3006,6 @@ private func showDiscoveryLoadingAnimation() {
             buttonsStack.heightAnchor.constraint(equalToConstant: 44),
             buttonsStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
         ])
-
-        // Position score and badge based on language direction
-        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
-        if isRTL {
-            statusBadge.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16).isActive = true
-            scoreLabel.trailingAnchor.constraint(equalTo: statusBadge.leadingAnchor, constant: -8).isActive = true
-        } else {
-            statusBadge.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16).isActive = true
-            scoreLabel.leadingAnchor.constraint(equalTo: statusBadge.trailingAnchor, constant: 8).isActive = true
-        }
 
         // טעינת תמונה
         if !wikiName.isEmpty {

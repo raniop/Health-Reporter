@@ -126,6 +126,11 @@ final class WidgetDataManager {
         // Store score breakdown for Watch BEFORE sending
         scoreBreakdown = (recoveryScore, sleepScore, nervousSystemScore, energyScore, activityScore, loadBalanceScore)
 
+        // ALWAYS use Gemini car name if available, NEVER use generic tier name
+        let geminiCar = AnalysisCache.loadSelectedCar()
+        let carName = geminiCar?.name ?? ""  // Empty if no Gemini data - don't show generic names
+        let carEmoji = carName.isEmpty ? "" : tier.emoji
+
         // Save to widgets AND sync to Watch with all data
         updateWidgetData(
             healthScore: score,
@@ -137,8 +142,8 @@ final class WidgetDataManager {
             heartRate: restingHR ?? 0,
             hrv: hrv ?? 0,
             sleepHours: sleepHours ?? 0,
-            carName: tier.name,
-            carEmoji: tier.emoji,
+            carName: carName,
+            carEmoji: carEmoji,
             carImageName: tier.imageName,
             carTierIndex: tier.tierIndex,
             userName: userName,
@@ -238,11 +243,16 @@ extension WidgetDataManager {
 
 extension WidgetDataManager {
     /// Sends only car tier data to Apple Watch (score/status calculated locally on Watch)
+    /// ALWAYS uses Gemini car name - never generic tier names
     func sendCarDataToWatch(tier: CarTier) {
-        print("📱➡️⌚️ Sending car data to Watch: car=\(tier.name), tier=\(tier.tierIndex)")
+        // ALWAYS use Gemini car name if available
+        let geminiCar = AnalysisCache.loadSelectedCar()
+        let carName = geminiCar?.name ?? ""  // Empty if no Gemini data
+
+        print("📱➡️⌚️ Sending car data to Watch: car=\(carName), tier=\(tier.tierIndex)")
         WatchConnectivityManager.shared.sendCarDataToWatch(
-            carName: tier.name,
-            carEmoji: tier.emoji,
+            carName: carName,
+            carEmoji: carName.isEmpty ? "" : tier.emoji,
             carTierIndex: tier.tierIndex,
             carTierLabel: tier.tierLabel
         )
@@ -287,6 +297,8 @@ extension WidgetDataManager {
 
 extension WidgetDataManager {
     private var carImageFileName: String { "widget_car_image.jpg" }
+    private var carImageCacheFileName: String { "cached_car_image.jpg" }
+    private var carImageCacheKeyName: String { "cached_car_wiki_name" }
 
     /// Saves car image to App Group for widget access
     func saveCarImage(_ image: UIImage) {
@@ -326,5 +338,190 @@ extension WidgetDataManager {
             return imageURL
         }
         return nil
+    }
+
+    // MARK: - Car Image Cache (for fast loading)
+
+    /// Saves car image to local cache with wiki name key
+    func cacheCarImage(_ image: UIImage, forWikiName wikiName: String) {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else {
+            print("WidgetDataManager: Failed to get App Group container for cache")
+            return
+        }
+
+        let imageURL = containerURL.appendingPathComponent(carImageCacheFileName)
+        let keyURL = containerURL.appendingPathComponent(carImageCacheKeyName)
+
+        // Compress and save as JPEG
+        guard let imageData = image.jpegData(compressionQuality: 0.85) else {
+            print("WidgetDataManager: Failed to convert cached image to JPEG")
+            return
+        }
+
+        do {
+            try imageData.write(to: imageURL)
+            try wikiName.write(to: keyURL, atomically: true, encoding: .utf8)
+            print("🚗 [CarCache] ✅ Cached image for '\(wikiName)'")
+        } catch {
+            print("🚗 [CarCache] ❌ Failed to cache image: \(error)")
+        }
+    }
+
+    /// Loads cached car image if the wiki name matches
+    /// Returns nil if no cache exists or if the car changed
+    func loadCachedCarImage(forWikiName wikiName: String) -> UIImage? {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else {
+            return nil
+        }
+
+        let imageURL = containerURL.appendingPathComponent(carImageCacheFileName)
+        let keyURL = containerURL.appendingPathComponent(carImageCacheKeyName)
+
+        // Check if cache exists
+        guard FileManager.default.fileExists(atPath: imageURL.path),
+              FileManager.default.fileExists(atPath: keyURL.path) else {
+            print("🚗 [CarCache] No cache found")
+            return nil
+        }
+
+        // Check if wiki name matches
+        do {
+            let cachedWikiName = try String(contentsOf: keyURL, encoding: .utf8)
+            if cachedWikiName == wikiName {
+                if let imageData = try? Data(contentsOf: imageURL),
+                   let image = UIImage(data: imageData) {
+                    print("🚗 [CarCache] ✅ Loaded cached image for '\(wikiName)'")
+                    return image
+                }
+            } else {
+                print("🚗 [CarCache] Cache miss - different car (cached: '\(cachedWikiName)', requested: '\(wikiName)')")
+            }
+        } catch {
+            print("🚗 [CarCache] Failed to read cache key: \(error)")
+        }
+
+        return nil
+    }
+
+    /// Clears the car image cache
+    func clearCarImageCache() {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else {
+            return
+        }
+
+        let imageURL = containerURL.appendingPathComponent(carImageCacheFileName)
+        let keyURL = containerURL.appendingPathComponent(carImageCacheKeyName)
+
+        try? FileManager.default.removeItem(at: imageURL)
+        try? FileManager.default.removeItem(at: keyURL)
+        print("🚗 [CarCache] Cache cleared")
+    }
+
+    /// Prefetch car image from Wikipedia and cache it
+    /// Call this during onboarding/splash to have the image ready when user opens Insights tab
+    func prefetchCarImage(wikiName: String, completion: ((Bool) -> Void)? = nil) {
+        guard !wikiName.isEmpty else {
+            print("🚗 [Prefetch] wikiName is empty, skipping")
+            completion?(false)
+            return
+        }
+
+        // Check if already cached
+        if loadCachedCarImage(forWikiName: wikiName) != nil {
+            print("🚗 [Prefetch] Image already cached for '\(wikiName)'")
+            completion?(true)
+            return
+        }
+
+        print("🚗 [Prefetch] Starting prefetch for '\(wikiName)'")
+
+        // Generate candidate names
+        let words = wikiName.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: " ").map(String.init)
+        var candidates: [String] = []
+        for count in stride(from: words.count, through: max(2, words.count > 3 ? 2 : words.count), by: -1) {
+            candidates.append(words.prefix(count).joined(separator: " "))
+        }
+        var seen = Set<String>()
+        candidates = candidates.filter { seen.insert($0).inserted }
+
+        prefetchWithCandidates(candidates: candidates, index: 0, originalWikiName: wikiName, completion: completion)
+    }
+
+    private func prefetchWithCandidates(candidates: [String], index: Int, originalWikiName: String, completion: ((Bool) -> Void)?) {
+        guard index < candidates.count else {
+            print("🚗 [Prefetch] ❌ All candidates exhausted")
+            completion?(false)
+            return
+        }
+
+        let carName = candidates[index]
+        let wikiTitle = carName.replacingOccurrences(of: " ", with: "_")
+        let apiURL = "https://en.wikipedia.org/api/rest_v1/page/summary/\(wikiTitle)"
+
+        guard let url = URL(string: apiURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? apiURL) else {
+            prefetchWithCandidates(candidates: candidates, index: index + 1, originalWikiName: originalWikiName, completion: completion)
+            return
+        }
+
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            guard let self = self else { return }
+
+            if error != nil {
+                self.prefetchWithCandidates(candidates: candidates, index: index + 1, originalWikiName: originalWikiName, completion: completion)
+                return
+            }
+
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let thumbnail = json["thumbnail"] as? [String: Any],
+                  let source = thumbnail["source"] as? String else {
+                self.prefetchWithCandidates(candidates: candidates, index: index + 1, originalWikiName: originalWikiName, completion: completion)
+                return
+            }
+
+            // Get higher resolution
+            let thumbURL = source.replacingOccurrences(of: "/320px-", with: "/640px-")
+                .replacingOccurrences(of: "/330px-", with: "/640px-")
+
+            guard let imageURL = URL(string: thumbURL) else {
+                self.prefetchWithCandidates(candidates: candidates, index: index + 1, originalWikiName: originalWikiName, completion: completion)
+                return
+            }
+
+            var imageRequest = URLRequest(url: imageURL)
+            imageRequest.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
+            imageRequest.setValue("image/webp,image/apng,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+
+            URLSession.shared.dataTask(with: imageRequest) { [weak self] imgData, _, _ in
+                guard let self = self else { return }
+
+                if let imgData = imgData, !imgData.isEmpty, let image = UIImage(data: imgData) {
+                    print("🚗 [Prefetch] ✅ Image prefetched for '\(carName)'")
+                    self.saveCarImage(image)
+                    self.cacheCarImage(image, forWikiName: originalWikiName)
+                    completion?(true)
+                } else {
+                    // Try original URL
+                    if let originalURL = URL(string: source) {
+                        var retryRequest = URLRequest(url: originalURL)
+                        retryRequest.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
+
+                        URLSession.shared.dataTask(with: retryRequest) { [weak self] retryData, _, _ in
+                            guard let self = self else { return }
+                            if let retryData = retryData, !retryData.isEmpty, let image = UIImage(data: retryData) {
+                                print("🚗 [Prefetch] ✅ Image prefetched with original URL for '\(carName)'")
+                                self.saveCarImage(image)
+                                self.cacheCarImage(image, forWikiName: originalWikiName)
+                                completion?(true)
+                            } else {
+                                self.prefetchWithCandidates(candidates: candidates, index: index + 1, originalWikiName: originalWikiName, completion: completion)
+                            }
+                        }.resume()
+                    } else {
+                        self.prefetchWithCandidates(candidates: candidates, index: index + 1, originalWikiName: originalWikiName, completion: completion)
+                    }
+                }
+            }.resume()
+        }.resume()
     }
 }

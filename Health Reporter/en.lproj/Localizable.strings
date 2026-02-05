@@ -238,7 +238,7 @@
 "dashboard.activeCalories" = "active calories";
 
 /* Score Cubes */
-"dashboard.carTier" = "Car Tier";
+"dashboard.carTier" = "Body Condition";
 "dashboard.sleepScore" = "Sleep Score";
 
 /* Energy Forecast */
@@ -397,6 +397,58 @@
 "profile.beginner" = "Beginner";
 "profile.amateur" = "Amateur";
 "profile.professional" = "Professional";
+"profile.morningNotification" = "Morning Notification";
+"profile.notificationTime" = "Daily at %@";
+"profile.notificationOff" = "Off";
+
+/* Morning Notification Settings */
+"settings.morningNotification.title" = "Morning Notification";
+"settings.morningNotification.enable" = "Enable Notification";
+"settings.morningNotification.enableDescription" = "Receive a personalized health summary every morning";
+"settings.morningNotification.time" = "Notification Time";
+"settings.morningNotification.content" = "Include in Notification";
+"settings.morningNotification.includeRecovery" = "Recovery Status";
+"settings.morningNotification.includeSleep" = "Sleep Summary";
+"settings.morningNotification.includeScore" = "Health Score";
+"settings.morningNotification.includeMotivation" = "Motivational Message";
+"settings.morningNotification.includeAchievements" = "Achievements & Streaks";
+"settings.morningNotification.test" = "Send Test Notification";
+"settings.morningNotification.testSent" = "Test Sent";
+"settings.morningNotification.testSentMessage" = "A test notification will appear in 5 seconds";
+
+/* Morning Notification Content */
+"morning.notification.title" = "🌅 Good morning, %@!";
+"morning.notification.title.noname" = "🌅 Good morning!";
+"morning.notification.generic" = "Check your health insights for today";
+"morning.notification.checkin" = "Start your day with a health check-in!";
+"morning.notification.test" = "This is a test notification. Your morning summary will appear here.";
+
+/* Morning Notification Body Lines */
+"morning.sleep.line" = "😴 You slept %dh %dm (%@)";
+"morning.sleep.line.short" = "😴 You slept %dh %dm";
+"morning.sleep.line.average" = "😴 Weekly average sleep: %dh %dm";
+"morning.readiness.line" = "💪 Readiness: %d%% - %@";
+"morning.score.line.up" = "❤️ Health score: %d ↑ improving";
+"morning.score.line.down" = "❤️ Health score: %d ↓";
+"morning.score.line.stable" = "❤️ Health score: %d → stable";
+"morning.score.line.value" = "❤️ Health score: %d";
+"morning.steps.line" = "👟 Yesterday: %@ steps | Today's goal: %@";
+"morning.streak.line" = "🔥 Step streak: %d days!";
+
+/* Morning Readiness Messages */
+"morning.readiness.high" = "perfect for a workout!";
+"morning.readiness.moderate" = "good day for activity";
+"morning.readiness.low" = "focus on recovery";
+
+/* Morning Sleep Quality */
+"morning.quality.high" = "excellent quality";
+"morning.quality.good" = "good quality";
+"morning.quality.low" = "needs improvement";
+
+/* Morning Closing Messages (dynamic by score) */
+"morning.closing.excellent" = "Have an amazing day! 🚀";
+"morning.closing.good" = "Good day ahead! 💪";
+"morning.closing.rest" = "Take it easy today 🌿";
 
 /* Nutrition */
 "nutrition.supplementRecommendations" = "Supplement Recommendations";
@@ -805,10 +857,10 @@
 
 /* Score Detail Bottom Sheets */
 "healthScore.detail.title" = "Health Score";
-"healthScore.detail.explanation" = "Your score is based on analysis of HRV, sleep quality, and physical activity levels over the past weeks.";
+"healthScore.detail.explanation" = "Your main daily score.\n\nCalculated from 6 metrics:\n• Recovery Readiness - 25%\n• Sleep Quality - 20%\n• Nervous System Balance - 20%\n• Energy Forecast - 15%\n• Activity Score - 10%\n• Load Balance - 10%\n\nUpdates daily based on that day's data.";
 
-"carScore.detail.title" = "Car Score";
-"carScore.detail.explanation" = "Your car tier is determined by your average health metrics. Better scores unlock faster and more prestigious cars.";
+"carScore.detail.title" = "Body Condition Score";
+"carScore.detail.explanation" = "The score that determines your car.\n\nCalculated from 4 metrics over 7-90 days:\n• Readiness - 40%\n• Sleep - 25%\n• HRV - 20%\n• Strain - 15%\n\nUpdates slowly as it's based on long-term averages.\n\n🚗 0-24 → Fiat Panda\n🚗 25-44 → Toyota Corolla\n🚗 45-64 → BMW M3\n🚗 65-81 → Porsche 911 Turbo\n🚗 82-100 → Ferrari SF90";
 
 "sleepScore.detail.title" = "Sleep Score";
 "sleepScore.detail.explanation" = "Based on sleep duration, consistency of your sleep schedule, and disturbances during the night.";
@@ -867,3 +919,29 @@
 "onboarding.reveal.healthScore" = "Health Score";
 "onboarding.reveal.description" = "Based on your health data, this car represents your current fitness level. Keep improving to upgrade!";
 "onboarding.reveal.start" = "Start Your Journey!";
+
+/* Device Strengths - Data Sources */
+"dataSources.strength.appleWatch.ecg" = "Accurate ECG";
+"dataSources.strength.appleWatch.fallDetection" = "Fall Detection";
+"dataSources.strength.appleWatch.iosIntegration" = "Full iOS Integration";
+
+"dataSources.strength.garmin.bodyBattery" = "Body Battery";
+"dataSources.strength.garmin.trainingLoad" = "Training Load";
+"dataSources.strength.garmin.gps" = "Accurate GPS";
+"dataSources.strength.garmin.battery" = "Long Battery Life";
+
+"dataSources.strength.oura.sleepHrv" = "Sleep HRV (Very Accurate)";
+"dataSources.strength.oura.bodyTemp" = "Body Temperature Tracking";
+"dataSources.strength.oura.readiness" = "Readiness Score";
+
+"dataSources.strength.whoop.strain" = "Strain Tracking";
+"dataSources.strength.whoop.recovery" = "Recovery Analysis";
+"dataSources.strength.whoop.tracking" = "24/7 Tracking";
+
+"dataSources.strength.fitbit.sleep" = "Sleep Tracking";
+"dataSources.strength.fitbit.activity" = "Activity Tracking";
+"dataSources.strength.fitbit.community" = "Community";
+
+"dataSources.strength.samsung.bloodPressure" = "Blood Pressure Monitoring";
+"dataSources.strength.samsung.ecg" = "ECG";
+"dataSources.strength.samsung.bodyComposition" = "Body Composition";

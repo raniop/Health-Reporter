@@ -124,6 +124,20 @@ class SplashViewController: UIViewController {
             self.statusLabel.alpha = 1
         }
 
+        #if DEBUG
+        // אם זה יוזר טסט - מכניסים נתונים מדומים ועוברים ל-Onboarding
+        // ה-Onboarding יבקש הרשאות HealthKit ויקרא ל-Gemini עם הנתונים המדומים
+        if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email) {
+            print("🧪 [Splash] Test user detected - setting up mock data and going to Onboarding")
+            // חשוב! מכניסים את הנתונים המדומים כאן כי אולי לא עברנו דרך Login
+            DebugTestHelper.shared.setupTestUserData()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                self.transitionToMain()
+            }
+            return
+        }
+        #endif
+
         // בדוק אם HealthKit זמין
         guard HealthKitManager.shared.isHealthDataAvailable() else {
             transitionToMain()
@@ -197,6 +211,17 @@ class SplashViewController: UIViewController {
             print("🚗 [Splash] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
             LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
 
+            // Save yesterday's steps for morning notification (separate from daily activity)
+            let calendar = Calendar.current
+            let yesterday = calendar.date(byAdding: .day, value: -1, to: Date())!
+            let yesterdayStart = calendar.startOfDay(for: yesterday)
+            if let yesterdayEntry = dailyEntries.first(where: { calendar.isDate($0.date, inSameDayAs: yesterdayStart) }) {
+                let steps = Int(yesterdayEntry.steps ?? 0)
+                let calories = Int(yesterdayEntry.activeCalories ?? 0)
+                AnalysisCache.saveYesterdayActivity(steps: steps, calories: calories)
+                print("📊 [Splash] Saved YESTERDAY's activity: steps=\(steps), calories=\(calories)")
+            }
+
             // שליחה לשעון - נתוני היום האחרון
             // עדיפות: mainScore (הציון היומי) > healthScoreInt (ציון 90 יום)
             let todayEntry = dailyEntries.last
@@ -211,7 +236,6 @@ class SplashViewController: UIViewController {
             }
 
             // Fetch fresh exercise and stand data from HealthKit for today
-            let calendar = Calendar.current
             let startOfDay = calendar.startOfDay(for: Date())
             let endOfDay = Date()
 
@@ -229,6 +253,11 @@ class SplashViewController: UIViewController {
                         if let geminiCarName = geminiCar?.name, let geminiScoreValue = geminiScore {
                             // יש נתוני Gemini - עדכון ווידג'ט עם שם הרכב והציון מ-Gemini
                             let geminiTier = CarTierEngine.tierForScore(geminiScoreValue)
+
+                            // Prefetch car image for faster loading in Insights tab
+                            if let wikiName = geminiCar?.wikiName, !wikiName.isEmpty {
+                                WidgetDataManager.shared.prefetchCarImage(wikiName: wikiName)
+                            }
                             WidgetDataManager.shared.updateFromInsights(
                                 score: geminiScoreValue,
                                 dailyScore: displayScore,  // הציון היומי לתצוגה משנית
@@ -247,6 +276,7 @@ class SplashViewController: UIViewController {
                             print("📱 [Splash] Widget updated with Gemini data: car=\(geminiCarName), score=\(geminiScoreValue), user=\(userName)")
 
                             // שליחה לשעון - עם הציון היומי (לא Gemini!) כדי לשמור על עקביות
+                            // ALWAYS use Gemini car name - never generic tier names
                             WatchConnectivityManager.shared.sendWidgetDataToWatch(
                                 healthScore: displayScore,
                                 healthStatus: healthStatus,
@@ -257,15 +287,16 @@ class SplashViewController: UIViewController {
                                 heartRate: todayEntry?.restingHR.map { Int($0) } ?? 0,
                                 hrv: todayEntry?.hrvMs.map { Int($0) } ?? 0,
                                 sleepHours: todayEntry?.sleepHours ?? 0,
-                                carName: tier.name,
-                                carEmoji: tier.emoji,
-                                carTierIndex: tier.tierIndex,
-                                carTierLabel: tier.tierLabel,
+                                carName: geminiCarName,  // Use Gemini car name, not tier.name
+                                carEmoji: geminiTier.emoji,
+                                carTierIndex: geminiTier.tierIndex,
+                                carTierLabel: geminiTier.tierLabel,
                                 geminiCarName: geminiCarName,
                                 geminiCarScore: geminiScoreValue
                             )
                         } else {
                             // אין נתוני Gemini - להשתמש בציון רגיל (מחושב מ-HealthScore)
+                            // Note: updateFromDashboard will use empty car name since no Gemini data
                             WidgetDataManager.shared.updateFromDashboard(
                                 score: displayScore,
                                 status: healthStatus,
@@ -279,7 +310,7 @@ class SplashViewController: UIViewController {
                                 carTier: tier,
                                 userName: userName
                             )
-                            print("📱 [Splash] Widget updated with calculated tier: car=\(tier.name), score=\(displayScore), user=\(userName)")
+                            print("📱 [Splash] Widget updated - no Gemini data yet, score=\(displayScore), user=\(userName)")
                         }
                         print("📱 [Splash] Sent to Watch: score=\(displayScore), steps=\(Int(todayEntry?.steps ?? 0)), exercise=\(exercise), stand=\(stand)")
                     }
@@ -295,20 +326,41 @@ class SplashViewController: UIViewController {
 
         guard let window = view.window else {
             // Fallback אם אין window
-            let main = MainTabBarController()
+            let nextVC = getNextViewController()
             if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
-                sceneDelegate.window?.rootViewController = main
+                sceneDelegate.window?.rootViewController = nextVC
                 sceneDelegate.window?.makeKeyAndVisible()
             }
             return
         }
 
-        let main = MainTabBarController()
+        let nextVC = getNextViewController()
 
         // אנימציית מעבר חלקה
         UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve, animations: {
-            window.rootViewController = main
+            window.rootViewController = nextVC
         }, completion: nil)
+    }
+
+    /// מחזיר את ה-ViewController הבא - Onboarding ליוזר חדש, Main ליוזר קיים
+    private func getNextViewController() -> UIViewController {
+        #if DEBUG
+        // יוזר טסט תמיד עובר ל-Onboarding (כולל בקשת הרשאות HealthKit ו-Gemini)
+        if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email) {
+            print("🧪 [Splash] Test user - forcing OnboardingPageViewController")
+            return OnboardingPageViewController()
+        }
+        #endif
+
+        // בדיקה אם צריך להציג Onboarding (יוזר חדש או יוזר טסט)
+        if OnboardingManager.shouldShowOnboarding(isSignUp: false, additionalUserInfo: nil) {
+            print("🧪 [Splash] User needs onboarding - showing OnboardingPageViewController")
+            return OnboardingPageViewController()
+        }
+
+        // יוזר קיים - עובר ישר למסך הראשי
+        print("🧪 [Splash] Existing user - showing MainTabBarController")
+        return MainTabBarController()
     }
 
     // MARK: - Background Gemini Analysis

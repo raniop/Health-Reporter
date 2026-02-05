@@ -24,7 +24,7 @@ struct ScoreBreakdownView: View {
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
 
-                    Text("ממה מורכב הציון?")
+                    Text("watch.scoreBreakdown.title".localized)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.gray)
                 }
@@ -34,7 +34,7 @@ struct ScoreBreakdownView: View {
                 VStack(spacing: 8) {
                     ScoreRow(
                         icon: "heart.fill",
-                        name: "התאוששות",
+                        name: "watch.scoreBreakdown.recovery".localized,
                         value: data.recoveryScore,
                         weight: 25,
                         color: .red
@@ -42,7 +42,7 @@ struct ScoreBreakdownView: View {
 
                     ScoreRow(
                         icon: "bed.double.fill",
-                        name: "איכות שינה",
+                        name: "watch.scoreBreakdown.sleepQuality".localized,
                         value: data.sleepScore,
                         weight: 20,
                         color: .purple
@@ -50,7 +50,7 @@ struct ScoreBreakdownView: View {
 
                     ScoreRow(
                         icon: "waveform.path.ecg",
-                        name: "מאזן עצבי",
+                        name: "watch.scoreBreakdown.nervousSystem".localized,
                         value: data.nervousSystemScore,
                         weight: 20,
                         color: .cyan
@@ -58,7 +58,7 @@ struct ScoreBreakdownView: View {
 
                     ScoreRow(
                         icon: "bolt.fill",
-                        name: "תחזית אנרגיה",
+                        name: "watch.scoreBreakdown.energyForecast".localized,
                         value: data.energyScore,
                         weight: 15,
                         color: .yellow
@@ -66,7 +66,7 @@ struct ScoreBreakdownView: View {
 
                     ScoreRow(
                         icon: "figure.walk",
-                        name: "פעילות",
+                        name: "watch.scoreBreakdown.activity".localized,
                         value: data.activityScore,
                         weight: 10,
                         color: .green
@@ -74,7 +74,7 @@ struct ScoreBreakdownView: View {
 
                     ScoreRow(
                         icon: "chart.bar.fill",
-                        name: "מאזן עומס",
+                        name: "watch.scoreBreakdown.loadBalance".localized,
                         value: data.loadBalanceScore,
                         weight: 10,
                         color: .orange

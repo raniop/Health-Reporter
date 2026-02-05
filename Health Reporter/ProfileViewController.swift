@@ -10,16 +10,6 @@ import FirebaseAuth
 import HealthKit
 import PhotosUI
 
-private let kProfileBadge = "ProfileBadge"
-private var profileBadgeOptions: [(title: String, value: String)] {
-    [
-        ("profile.athlete".localized, "athlete"),
-        ("profile.beginner".localized, "beginner"),
-        ("profile.amateur".localized, "amateur"),
-        ("profile.professional".localized, "professional"),
-    ]
-}
-
 final class ProfileViewController: UIViewController {
 
     private let scrollView = UIScrollView()
@@ -27,8 +17,6 @@ final class ProfileViewController: UIViewController {
     private let avatarView = UIView()
     private let avatarImageView = UIImageView()
     private let nameLabel = UILabel()
-    private let badgeContainer = UIView()
-    private let badgeLabel = UILabel()
     private let tierLabel = UILabel()
     private let metricsStack = UIStackView()
     private let logoutButton = UIButton(type: .system)
@@ -64,6 +52,21 @@ final class ProfileViewController: UIViewController {
         super.viewWillAppear(animated)
         loadProfileMetrics()
         loadProfilePhoto()
+        updateNotificationCardSubtitle()
+    }
+
+    private func updateNotificationCardSubtitle() {
+        if let card = stack.viewWithTag(994) {
+            for subview in card.subviews {
+                if let label = subview as? UILabel,
+                   label.font == .systemFont(ofSize: 13, weight: .regular) {
+                    label.text = MorningNotificationManager.shared.isEnabled
+                        ? String(format: "profile.notificationTime".localized, MorningNotificationManager.shared.formattedTime)
+                        : "profile.notificationOff".localized
+                    break
+                }
+            }
+        }
     }
 
     private func setupUI() {
@@ -123,29 +126,6 @@ final class ProfileViewController: UIViewController {
         nameRowContainer.addSubview(nameLabel)
         nameRowContainer.addSubview(pencilBtn)
 
-        badgeContainer.backgroundColor = AIONDesign.surface
-        badgeContainer.layer.cornerRadius = 14
-        badgeContainer.layer.borderWidth = 2
-        badgeContainer.layer.borderColor = AIONDesign.accentPrimary.cgColor
-        badgeContainer.translatesAutoresizingMaskIntoConstraints = false
-        badgeContainer.isUserInteractionEnabled = true
-        let badgeTap = UITapGestureRecognizer(target: self, action: #selector(badgeTapped))
-        badgeContainer.addGestureRecognizer(badgeTap)
-        badgeLabel.font = .systemFont(ofSize: 14, weight: .bold)
-        badgeLabel.textColor = AIONDesign.accentPrimary
-        badgeLabel.textAlignment = .center
-        badgeLabel.adjustsFontSizeToFitWidth = true
-        badgeLabel.minimumScaleFactor = 0.7
-        badgeLabel.translatesAutoresizingMaskIntoConstraints = false
-        badgeContainer.addSubview(badgeLabel)
-        NSLayoutConstraint.activate([
-            badgeLabel.topAnchor.constraint(equalTo: badgeContainer.topAnchor, constant: 10),
-            badgeLabel.bottomAnchor.constraint(equalTo: badgeContainer.bottomAnchor, constant: -10),
-            badgeLabel.leadingAnchor.constraint(equalTo: badgeContainer.leadingAnchor, constant: 20),
-            badgeLabel.trailingAnchor.constraint(equalTo: badgeContainer.trailingAnchor, constant: -20),
-        ])
-        applySavedBadge()
-
         tierLabel.text = "Performance Tier: Pro Lab"
         tierLabel.font = .systemFont(ofSize: 12, weight: .medium)
         tierLabel.textColor = AIONDesign.textTertiary
@@ -177,7 +157,6 @@ final class ProfileViewController: UIViewController {
 
         stack.addArrangedSubview(avatarView)
         stack.addArrangedSubview(nameRowContainer)
-        stack.addArrangedSubview(badgeContainer)
         stack.addArrangedSubview(tierLabel)
         stack.addArrangedSubview(metricsStack)
 
@@ -193,7 +172,6 @@ final class ProfileViewController: UIViewController {
             pencilBtn.heightAnchor.constraint(equalToConstant: 28),
             nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: pencilBtn.leadingAnchor, constant: -8),
             nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: nameRowContainer.leadingAnchor, constant: 16),
-            badgeContainer.widthAnchor.constraint(equalTo: nameLabel.widthAnchor, constant: 8 + 28),
         ])
 
         // Data Source Settings Card
@@ -233,12 +211,31 @@ final class ProfileViewController: UIViewController {
 
         stack.setCustomSpacing(6, after: avatarView)
         stack.setCustomSpacing(12, after: nameRowContainer)
-        stack.setCustomSpacing(6, after: badgeContainer)
         stack.setCustomSpacing(AIONDesign.spacingLarge * 2, after: tierLabel)
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: metricsStack)
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: dataSourceCard)
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: bgColorCard)
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: languageCard)
+
+        // Morning Notification Settings Card
+        let notificationCard = makeSettingsCard(
+            icon: "bell.badge.fill",
+            title: "profile.morningNotification".localized,
+            subtitle: MorningNotificationManager.shared.isEnabled
+                ? String(format: "profile.notificationTime".localized, MorningNotificationManager.shared.formattedTime)
+                : "profile.notificationOff".localized
+        )
+        notificationCard.tag = 994
+        let notificationTap = UITapGestureRecognizer(target: self, action: #selector(notificationSettingsTapped))
+        notificationCard.addGestureRecognizer(notificationTap)
+        stack.addArrangedSubview(notificationCard)
+
+        NSLayoutConstraint.activate([
+            notificationCard.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            notificationCard.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+        ])
+
+        stack.setCustomSpacing(AIONDesign.spacingLarge, after: notificationCard)
 
         let logoutContainer = UIView()
         logoutContainer.translatesAutoresizingMaskIntoConstraints = false
@@ -408,6 +405,11 @@ final class ProfileViewController: UIViewController {
 
     @objc private func dataSourceTapped() {
         let vc = DataSourceSettingsViewController()
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    @objc private func notificationSettingsTapped() {
+        let vc = MorningNotificationSettingsViewController()
         navigationController?.pushViewController(vc, animated: true)
     }
 
@@ -708,20 +710,6 @@ final class ProfileViewController: UIViewController {
         present(alert, animated: true)
     }
 
-    private func applySavedBadge() {
-        let savedValue = UserDefaults.standard.string(forKey: kProfileBadge) ?? "athlete"
-        // Map saved key to localized display text
-        let displayText: String
-        switch savedValue {
-        case "athlete", "אתלט", "ATHLETE": displayText = "profile.athlete".localized
-        case "beginner", "מתחיל": displayText = "profile.beginner".localized
-        case "amateur", "חובב": displayText = "profile.amateur".localized
-        case "professional", "מקצוען": displayText = "profile.professional".localized
-        default: displayText = "profile.athlete".localized
-        }
-        badgeLabel.text = displayText
-    }
-
     @objc private func nameTapped() {
         let alert = UIAlertController(title: "profile.editName".localized, message: "profile.enterName".localized, preferredStyle: .alert)
         alert.addTextField { [weak self] tf in
@@ -752,23 +740,6 @@ final class ProfileViewController: UIViewController {
                 ProfileFirestoreSync.saveDisplayName(name)
             }
         }
-    }
-
-    @objc private func badgeTapped() {
-        let sheet = UIAlertController(title: "profile.selectUserType".localized, message: nil, preferredStyle: .actionSheet)
-        for opt in profileBadgeOptions {
-            sheet.addAction(UIAlertAction(title: opt.title, style: .default) { [weak self] _ in
-                UserDefaults.standard.set(opt.value, forKey: kProfileBadge)
-                self?.badgeLabel.text = opt.value
-            })
-        }
-        sheet.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
-        if let pop = sheet.popoverPresentationController {
-            pop.sourceView = view
-            pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
-            pop.permittedArrowDirections = []
-        }
-        present(sheet, animated: true)
     }
 
     private func updateUserInfo() {

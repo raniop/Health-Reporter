@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import FirebaseAuth
 
 class GeminiService {
     static let shared = GeminiService()
@@ -185,11 +186,23 @@ class GeminiService {
         HealthKitManager.shared.fetchDailyHealthData(days: 90) { [weak self] dailyEntries in
             guard let self = self else { return }
 
+            #if DEBUG
+            // יוזר טסט - לא דורסים את הציון שכבר חושב מנתונים מדומים
+            let isTestUser = DebugTestHelper.isTestUser(email: Auth.auth().currentUser?.email)
+            if !isTestUser {
+                // === חישוב HealthScore מקומי עם HealthScoreEngine ===
+                let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
+                // שמירת הציון והפירוט ב-Cache לשימוש ב-UI
+                AnalysisCache.saveHealthScoreResult(healthResult)
+            } else {
+                print("🧪 [GeminiService] Test user - preserving mock health score")
+            }
+            #else
             // === חישוב HealthScore מקומי עם HealthScoreEngine ===
             let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
-
             // שמירת הציון והפירוט ב-Cache לשימוש ב-UI
             AnalysisCache.saveHealthScoreResult(healthResult)
+            #endif
 
             // בניית ה-Payload החדש עם סינון ערכים חסרים ו-outliers
             let builder = GeminiHealthPayloadBuilder()

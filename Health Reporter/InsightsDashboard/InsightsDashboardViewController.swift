@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import FirebaseAuth
 
 final class InsightsDashboardViewController: UIViewController {
 
@@ -40,6 +41,23 @@ final class InsightsDashboardViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        loadData()
+
+        // Listen for app returning from background - refresh data
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func appWillEnterForeground() {
+        // Refresh data when app returns from background (new data may be available)
         loadData()
     }
 
@@ -140,6 +158,17 @@ final class InsightsDashboardViewController: UIViewController {
         case .month: dataRange = .month
         }
 
+        #if DEBUG
+        // יוזר טסט - משתמשים בנתונים מדומים מה-cache
+        if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email),
+           let mockData = HealthDataCache.shared.healthData,
+           let mockBundle = HealthDataCache.shared.chartBundle {
+            print("🧪 [InsightsDashboard] Test user - using mock health data")
+            loadDataWithMockData(mockData: mockData, mockBundle: mockBundle)
+            return
+        }
+        #endif
+
         // Load data for selected period
         HealthKitManager.shared.fetchAllHealthData(for: dataRange) { [weak self] periodData, error in
             guard let self = self, let periodModel = periodData else {
@@ -190,6 +219,54 @@ final class InsightsDashboardViewController: UIViewController {
             }
         }
     }
+
+    #if DEBUG
+    /// טעינת נתונים מדומים ליוזר טסט
+    private func loadDataWithMockData(mockData: HealthDataModel, mockBundle: AIONChartDataBundle) {
+        print("🧪 [InsightsDashboard] Loading with mock data: steps=\(mockData.steps ?? 0), hrv=\(mockData.heartRateVariability ?? 0)")
+
+        // יצירת היסטוריה מדומה מה-chartBundle (7 ימים)
+        var historicalData: [HealthDataModel] = []
+        for i in 0..<mockBundle.steps.points.count {
+            var dayModel = HealthDataModel()
+            dayModel.date = mockBundle.steps.points[i].date
+            dayModel.steps = mockBundle.steps.points[i].steps
+            if i < mockBundle.hrvTrend.points.count {
+                dayModel.heartRateVariability = mockBundle.hrvTrend.points[i].value
+            }
+            if i < mockBundle.rhrTrend.points.count {
+                dayModel.restingHeartRate = mockBundle.rhrTrend.points[i].value
+            }
+            if i < mockBundle.sleep.points.count {
+                dayModel.sleepHours = mockBundle.sleep.points[i].totalHours
+                dayModel.sleepDeepHours = mockBundle.sleep.points[i].deepHours
+                dayModel.sleepRemHours = mockBundle.sleep.points[i].remHours
+            }
+            if i < mockBundle.glucoseEnergy.points.count {
+                dayModel.activeEnergy = mockBundle.glucoseEnergy.points[i].activeEnergy
+            }
+            historicalData.append(dayModel)
+        }
+
+        print("🧪 [InsightsDashboard] Mock data: steps=\(mockData.steps ?? 0), calories=\(mockData.activeEnergy ?? 0)")
+
+        DailyMetricsEngine.shared.calculateDailyMetrics(
+            todayData: mockData,
+            historicalData: historicalData,
+            period: self.selectedPeriod
+        ) { dailyMetrics in
+            DispatchQueue.main.async {
+                self.currentPeriodData = mockData
+                self.dailyMetrics = dailyMetrics
+                self.starMetrics = StarMetricsCalculator.shared.calculateStarMetrics(from: dailyMetrics)
+                self.updateUI()
+                self.isLoading = false
+                self.loadingIndicator.stopAnimating()
+                self.contentStack.isHidden = false
+            }
+        }
+    }
+    #endif
 
     private func updateUI() {
         guard let metrics = dailyMetrics, let stars = starMetrics else { return }
@@ -318,14 +395,13 @@ final class InsightsDashboardViewController: UIViewController {
         return score > 0 ? score : nil
     }
 
-    /// מחזיר את שם הרכב - מ-Gemini או ברירת מחדל לפי ה-tier
+    /// מחזיר את שם הרכב - רק מ-Gemini! אסור להציג שמות גנריים
     private func getCarName() -> String? {
+        // ONLY return Gemini car name - NEVER use generic tier names
         if let savedCar = AnalysisCache.loadSelectedCar() {
             return savedCar.name
         }
-        if let score = getCarScore() {
-            return CarTierEngine.tierForScore(score).name
-        }
+        // No Gemini data = no car name (don't show generic tier names like Porsche/BMW)
         return nil
     }
 

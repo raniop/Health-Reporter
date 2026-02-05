@@ -10,6 +10,7 @@
     ]
   },
   "firestore": {
-    "rules": "firestore.rules.example"
+    "rules": "firestore.rules.example",
+    "indexes": "firestore.indexes.json"
   }
 }

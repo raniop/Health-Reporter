@@ -4,7 +4,8 @@
  * Using 2nd Generation Functions
  */
 
-const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/v2/firestore");
+const {onDocumentCreated, onDocumentUpdated, onDocumentWritten} = require("firebase-functions/v2/firestore");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
 const {getMessaging} = require("firebase-admin/messaging");
@@ -86,6 +87,135 @@ exports.onFriendRequestCreated = onDocumentCreated(
       }
     },
 );
+
+// ============================================================================
+// MORNING NOTIFICATION FUNCTIONS
+// ============================================================================
+
+/**
+ * Scheduled job: Runs every minute to check for users who need morning notifications
+ * Sends silent push notifications to wake up their apps for fresh health data
+ */
+exports.sendMorningNotifications = onSchedule(
+    {
+      schedule: "* * * * *", // Every minute
+      timeZone: "Asia/Jerusalem", // Israel timezone
+      retryCount: 0, // Don't retry failed runs
+    },
+    async () => {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+
+      console.log(`🔔 Morning notification check: ${currentHour}:${currentMinute}`);
+
+      // Query users who have morning notifications enabled for this exact time
+      const usersSnapshot = await db.collection("users")
+          .where("morningNotification.enabled", "==", true)
+          .where("morningNotification.hour", "==", currentHour)
+          .where("morningNotification.minute", "==", currentMinute)
+          .get();
+
+      if (usersSnapshot.empty) {
+        console.log("No users scheduled for this time");
+        return;
+      }
+
+      console.log(`Found ${usersSnapshot.docs.length} users for morning notification`);
+
+      const sendPromises = usersSnapshot.docs.map(async (userDoc) => {
+        const userData = userDoc.data();
+        const fcmToken = userData.fcmToken;
+        const userId = userDoc.id;
+
+        if (!fcmToken) {
+          console.log(`No FCM token for user ${userId}`);
+          return;
+        }
+
+        // Send silent push to wake the app
+        const message = {
+          token: fcmToken,
+          data: {
+            type: "morning_health_trigger",
+            userId: userId,
+            timestamp: now.toISOString(),
+          },
+          apns: {
+            payload: {
+              aps: {
+                "content-available": 1, // Silent push for iOS
+              },
+            },
+            headers: {
+              "apns-priority": "5", // Low priority for silent push
+              "apns-push-type": "background",
+            },
+          },
+        };
+
+        try {
+          await getMessaging().send(message);
+          console.log(`✅ Silent push sent to user ${userId}`);
+
+          // Update last notification time
+          await db.collection("users").doc(userId).update({
+            "morningNotification.lastSent": now,
+          });
+
+          return {userId, success: true};
+        } catch (error) {
+          console.error(`❌ Failed to send to user ${userId}: ${error}`);
+
+          // Handle invalid tokens
+          if (error.code === "messaging/invalid-registration-token" ||
+              error.code === "messaging/registration-token-not-registered") {
+            const {FieldValue} = require("firebase-admin/firestore");
+            await db.collection("users").doc(userId).update({
+              fcmToken: FieldValue.delete(),
+            });
+            console.log(`Removed invalid FCM token for user ${userId}`);
+          }
+
+          return {userId, success: false, error: error.message};
+        }
+      });
+
+      const results = await Promise.allSettled(sendPromises);
+      const successful = results.filter((r) => r.status === "fulfilled" && r.value?.success).length;
+      console.log(`Morning notifications sent: ${successful}/${usersSnapshot.docs.length}`);
+    },
+);
+
+/**
+ * Trigger: When user updates their morning notification settings
+ * Action: Log the change for debugging
+ */
+exports.onMorningNotificationSettingsChanged = onDocumentWritten(
+    "users/{userId}",
+    async (event) => {
+      const beforeData = event.data?.before?.data();
+      const afterData = event.data?.after?.data();
+
+      if (!afterData) return; // Document deleted
+
+      const beforeSettings = beforeData?.morningNotification;
+      const afterSettings = afterData?.morningNotification;
+
+      // Check if morning notification settings changed
+      if (JSON.stringify(beforeSettings) !== JSON.stringify(afterSettings)) {
+        console.log(`🔔 User ${event.params.userId} updated morning notification settings:`, {
+          enabled: afterSettings?.enabled,
+          hour: afterSettings?.hour,
+          minute: afterSettings?.minute,
+        });
+      }
+    },
+);
+
+// ============================================================================
+// FRIEND REQUEST NOTIFICATIONS (existing)
+// ============================================================================
 
 /**
  * Trigger: When a friend request status changes to "accepted"

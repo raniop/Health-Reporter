@@ -88,12 +88,12 @@ struct WatchHealthData: Codable {
     static var placeholder: WatchHealthData {
         WatchHealthData(
             healthScore: 0,
-            healthStatus: "ממתין לנתונים...",
+            healthStatus: "watch.status.waitingForData".localizedWatch,
             reliabilityScore: 0,
             carTierIndex: 0,
             carName: "--",
             carEmoji: "⏳",
-            carTierLabel: "ממתין...",
+            carTierLabel: "watch.status.waiting".localizedWatch,
             geminiCarName: nil,
             geminiCarScore: nil,
             geminiCarTierIndex: nil,

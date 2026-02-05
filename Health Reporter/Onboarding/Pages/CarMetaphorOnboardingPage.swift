@@ -107,7 +107,7 @@ final class CarMetaphorOnboardingPage: UIViewController {
         // Car examples
         let carExamples = [
             ("🚗", "Mini Cooper"),
-            ("🏎️", "BMW M3"),
+            ("🏎️", "Tesla Model S"),
             ("🚀", "Ferrari")
         ]
 

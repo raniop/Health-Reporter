@@ -229,7 +229,7 @@
 "dashboard.activeCalories" = "קלוריות פעילות";
 
 /* Score Cubes */
-"dashboard.carTier" = "ציון רכב";
+"dashboard.carTier" = "מצב גופני";
 "dashboard.sleepScore" = "ציון שינה";
 
 /* Energy Forecast */
@@ -388,6 +388,58 @@
 "profile.beginner" = "מתחיל";
 "profile.amateur" = "חובב";
 "profile.professional" = "מקצוען";
+"profile.morningNotification" = "התראת בוקר";
+"profile.notificationTime" = "יומית ב-%@";
+"profile.notificationOff" = "כבוי";
+
+/* Morning Notification Settings */
+"settings.morningNotification.title" = "התראת בוקר";
+"settings.morningNotification.enable" = "הפעל התראה";
+"settings.morningNotification.enableDescription" = "קבל סיכום בריאות מותאם אישית בכל בוקר";
+"settings.morningNotification.time" = "שעת התראה";
+"settings.morningNotification.content" = "מה לכלול בהתראה";
+"settings.morningNotification.includeRecovery" = "מצב התאוששות";
+"settings.morningNotification.includeSleep" = "סיכום שינה";
+"settings.morningNotification.includeScore" = "ציון בריאות";
+"settings.morningNotification.includeMotivation" = "הודעה מעודדת";
+"settings.morningNotification.includeAchievements" = "הישגים ורצפים";
+"settings.morningNotification.test" = "שלח התראת בדיקה";
+"settings.morningNotification.testSent" = "נשלחה בדיקה";
+"settings.morningNotification.testSentMessage" = "התראת בדיקה תופיע בעוד 5 שניות";
+
+/* Morning Notification Content */
+"morning.notification.title" = "🌅 בוקר טוב, %@!";
+"morning.notification.title.noname" = "🌅 בוקר טוב!";
+"morning.notification.generic" = "בדוק את תובנות הבריאות שלך להיום";
+"morning.notification.checkin" = "התחל את היום עם בדיקת בריאות!";
+"morning.notification.test" = "זוהי התראת בדיקה. סיכום הבוקר שלך יופיע כאן.";
+
+/* Morning Notification Body Lines */
+"morning.sleep.line" = "😴 ישנת %d שעות ו-%d דקות (%@)";
+"morning.sleep.line.short" = "😴 ישנת %d שעות ו-%d דקות";
+"morning.sleep.line.average" = "😴 ממוצע שינה שבועי: %d שעות ו-%d דקות";
+"morning.readiness.line" = "💪 מוכנות: %d%% - %@";
+"morning.score.line.up" = "❤️ ציון בריאות: %d ↑ בשיפור";
+"morning.score.line.down" = "❤️ ציון בריאות: %d ↓";
+"morning.score.line.stable" = "❤️ ציון בריאות: %d → יציב";
+"morning.score.line.value" = "❤️ ציון בריאות: %d";
+"morning.steps.line" = "👟 אתמול: %@ צעדים | יעד היום: %@";
+"morning.streak.line" = "🔥 רצף צעדים: %d ימים!";
+
+/* Morning Readiness Messages */
+"morning.readiness.high" = "יום מושלם לאימון!";
+"morning.readiness.moderate" = "יום טוב לפעילות";
+"morning.readiness.low" = "יום להתאוששות";
+
+/* Morning Sleep Quality */
+"morning.quality.high" = "איכות מצוינת";
+"morning.quality.good" = "איכות טובה";
+"morning.quality.low" = "איכות לשיפור";
+
+/* Morning Closing Messages (dynamic by score) */
+"morning.closing.excellent" = "יום מעולה מחכה לך! 🚀";
+"morning.closing.good" = "יום טוב לפניך! 💪";
+"morning.closing.rest" = "קח את זה בנוחות היום 🌿";
 
 /* Nutrition */
 "nutrition.supplementRecommendations" = "המלצות תוספי תזונה";
@@ -809,10 +861,10 @@
 
 /* הסברי ציונים - Bottom Sheets */
 "healthScore.detail.title" = "ציון בריאות";
-"healthScore.detail.explanation" = "הציון שלך מבוסס על ניתוח של HRV, איכות שינה ורמת הפעילות הגופנית שלך בשבועות האחרונים.";
+"healthScore.detail.explanation" = "הציון הראשי היומי שלך.\n\nמחושב משילוב של 6 מדדים:\n• מוכנות להתאוששות - 25%\n• איכות שינה - 20%\n• איזון מערכת העצבים - 20%\n• תחזית אנרגיה - 15%\n• ציון פעילות - 10%\n• איזון עומס - 10%\n\nהציון מתעדכן כל יום לפי הנתונים של אותו היום.";
 
-"carScore.detail.title" = "ציון רכב";
-"carScore.detail.explanation" = "דרגת הרכב שלך נקבעת לפי ממוצע מדדי הבריאות שלך. ציונים טובים יותר פותחים רכבים מהירים ויוקרתיים יותר.";
+"carScore.detail.title" = "ציון מצב גופני";
+"carScore.detail.explanation" = "הציון שקובע את הרכב שלך.\n\nמחושב מממוצע של 4 מדדים על פני 7-90 יום:\n• מוכנות (Readiness) - 40%\n• שינה - 25%\n• HRV - 20%\n• עומס (Strain) - 15%\n\nהציון מתעדכן לאט יותר כי הוא מבוסס על ממוצעים ארוכי טווח.\n\n🚗 0-24 → Fiat Panda\n🚗 25-44 → Toyota Corolla\n🚗 45-64 → BMW M3\n🚗 65-81 → Porsche 911 Turbo\n🚗 82-100 → Ferrari SF90";
 
 "sleepScore.detail.title" = "ציון שינה";
 "sleepScore.detail.explanation" = "מבוסס על משך השינה, עקביות זמני השינה והפרעות במהלך הלילה.";
@@ -871,3 +923,29 @@
 "onboarding.reveal.healthScore" = "ציון בריאות";
 "onboarding.reveal.description" = "על בסיס נתוני הבריאות שלך, המכונית הזו מייצגת את רמת הכושר הנוכחית שלך. המשך להשתפר כדי לשדרג!";
 "onboarding.reveal.start" = "בואו נצא לדרך!";
+
+/* Device Strengths - Data Sources */
+"dataSources.strength.appleWatch.ecg" = "ECG מדויק";
+"dataSources.strength.appleWatch.fallDetection" = "זיהוי נפילות";
+"dataSources.strength.appleWatch.iosIntegration" = "אינטגרציה מלאה עם iOS";
+
+"dataSources.strength.garmin.bodyBattery" = "Body Battery";
+"dataSources.strength.garmin.trainingLoad" = "Training Load";
+"dataSources.strength.garmin.gps" = "GPS מדויק";
+"dataSources.strength.garmin.battery" = "חיי סוללה ארוכים";
+
+"dataSources.strength.oura.sleepHrv" = "HRV בשינה (מדויק מאוד)";
+"dataSources.strength.oura.bodyTemp" = "מעקב טמפרטורת גוף";
+"dataSources.strength.oura.readiness" = "Readiness Score";
+
+"dataSources.strength.whoop.strain" = "מעקב Strain";
+"dataSources.strength.whoop.recovery" = "ניתוח התאוששות";
+"dataSources.strength.whoop.tracking" = "מעקב 24/7";
+
+"dataSources.strength.fitbit.sleep" = "מעקב שינה";
+"dataSources.strength.fitbit.activity" = "מעקב פעילות";
+"dataSources.strength.fitbit.community" = "קהילה";
+
+"dataSources.strength.samsung.bloodPressure" = "מעקב לחץ דם";
+"dataSources.strength.samsung.ecg" = "ECG";
+"dataSources.strength.samsung.bodyComposition" = "הרכב גוף";

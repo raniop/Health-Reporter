@@ -768,6 +768,32 @@ class HealthDashboardViewController: UIViewController {
         updateWidgetData()
     }
 
+    // MARK: - Test User Support
+
+    #if DEBUG
+    /// עדכון UI עם נתוני בריאות מדומים ליוזר טסט
+    private func updateUIWithMockData(_ mockData: HealthDataModel) {
+        print("🧪 [Dashboard] Updating UI with mock data")
+        print("🧪 [Dashboard] Mock data: steps=\(mockData.steps ?? 0), hrv=\(mockData.heartRateVariability ?? 0), sleep=\(mockData.sleepHours ?? 0)")
+
+        // עדכון ישיר מה-cache - לא הולכים ל-HealthKit!
+        self.healthData = mockData
+        self.chartBundle = HealthDataCache.shared.chartBundle
+
+        // עדכון UI מ-chartBundle אם קיים
+        if let bundle = self.chartBundle {
+            print("🧪 [Dashboard] Using mock chartBundle for UI update")
+            let score = self.updateReadinessAndMetrics(from: bundle)
+            AnalysisCache.saveWeeklyStats(from: bundle, score: score)
+        } else {
+            print("🧪 [Dashboard] No chartBundle - using healthData only")
+        }
+
+        // עדכון Widget ו-Watch
+        updateWidgetData()
+    }
+    #endif
+
     // MARK: - Widget Data Update
 
     private func updateWidgetData() {
@@ -993,6 +1019,27 @@ class HealthDashboardViewController: UIViewController {
     }
 
     private func checkHealthKitAuthorization() {
+        #if DEBUG
+        // יוזר טסט - משתמשים בנתונים מדומים מה-cache
+        if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email),
+           let mockData = HealthDataCache.shared.healthData {
+            print("🧪 [Dashboard] Test user - using mock health data")
+            self.healthData = mockData
+            self.chartBundle = HealthDataCache.shared.chartBundle // might be nil, that's ok
+
+            // עדכון UI עם הנתונים המדומים
+            updateUIWithMockData(mockData)
+
+            // טעינת תובנות מה-cache אם יש
+            if let cachedInsights = AnalysisCache.loadLatest() {
+                self.insightsText = cachedInsights
+                self.updateDirectivesCard()
+            }
+            updateWidgetData()
+            return
+        }
+        #endif
+
         // בדוק אם יש נתונים ב-cache מה-Splash Screen
         if HealthDataCache.shared.isLoaded {
             self.healthData = HealthDataCache.shared.healthData
@@ -1048,6 +1095,24 @@ class HealthDashboardViewController: UIViewController {
         HealthKitManager.shared.fetchDailyHealthData(days: 90) { [weak self] dailyEntries in
             guard let self = self else { return }
 
+            #if DEBUG
+            // Test user - לא לדרוס את הציון שכבר חושב ב-Onboarding
+            if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email) {
+                print("🧪 [Dashboard.loadData] Test user - skipping score calculation to preserve mock score")
+                // לא קוראים ל-saveHealthScoreResult - משאירים את הציון שחושב ב-Onboarding
+            } else {
+                let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
+                AnalysisCache.saveHealthScoreResult(healthResult)
+
+                // סנכרון הציון ללידרבורד
+                let score = healthResult.healthScoreInt
+                let tier = CarTierEngine.tierForScore(score)
+                // שימוש בשם הרכב מ-Gemini אם קיים במטמון
+                let cachedCarName = AnalysisCache.loadSelectedCar()?.name
+                print("🚗 [Dashboard.loadData] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
+                LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
+            }
+            #else
             let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
             AnalysisCache.saveHealthScoreResult(healthResult)
 
@@ -1058,6 +1123,7 @@ class HealthDashboardViewController: UIViewController {
             let cachedCarName = AnalysisCache.loadSelectedCar()?.name
             print("🚗 [Dashboard.loadData] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
             LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
+            #endif
 
             // ממשיכים לטעון את שאר הנתונים רק אחרי שהציון חושב
             HealthKitManager.shared.fetchAllHealthData(for: self.selectedRange) { [weak self] data, err in

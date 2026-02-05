@@ -1,0 +1,8 @@
+/* English Info.plist Strings */
+
+/* HealthKit Usage Descriptions */
+"NSHealthShareUsageDescription" = "The app needs access to your health data to analyze and show you important insights about your health status.";
+"NSHealthUpdateUsageDescription" = "The app needs access to update health data to save additional information.";
+
+/* Photo Library */
+"NSPhotoLibraryUsageDescription" = "Select a profile picture from your gallery.";

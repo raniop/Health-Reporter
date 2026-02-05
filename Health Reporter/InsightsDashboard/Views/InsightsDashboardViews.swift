@@ -720,9 +720,9 @@ final class HeroScoreSection: UIView {
             hrvAvg: stats?.hrv,
             strainAvg: stats?.strain
         )
-        let carTier = CarTierEngine.tierForScore(carScore)
+        // ONLY use Gemini car name - NEVER use generic tier names!
         let savedCar = AnalysisCache.loadSelectedCar()
-        let carName = savedCar?.name ?? carTier.name
+        let carName = savedCar?.name  // nil if no Gemini data - don't show generic names
 
         // Get sleep score from energy forecast or calculate
         let sleepScore: Int? = energyForecast.value != nil ? Int(energyForecast.value! * 0.8) : nil

@@ -21,6 +21,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Setup Push Notifications
         setupPushNotifications(application: application)
 
+        // Register Background Tasks
+        MorningNotificationManager.shared.registerBackgroundTask()
+
+        // Schedule morning notification if enabled
+        if MorningNotificationManager.shared.isEnabled {
+            MorningNotificationManager.shared.scheduleMorningNotification()
+        }
+
+        // Sync morning notification settings to Firestore (for Cloud Function)
+        MorningNotificationManager.shared.syncSettingsOnLaunch()
+
         // Initialize Watch Connectivity
         _ = WatchConnectivityManager.shared
         print("WatchConnectivity: Initialized in AppDelegate")

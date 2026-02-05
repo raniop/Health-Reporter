@@ -42,6 +42,10 @@ enum AnalysisCache {
     static let keyDailyStandHours = "AION.DailyActivity.StandHours"
     static let keyDailyRestingHR = "AION.DailyActivity.RestingHR"
 
+    // Yesterday Activity Keys (להתראת בוקר)
+    static let keyYesterdaySteps = "AION.YesterdayActivity.Steps"
+    static let keyYesterdayCalories = "AION.YesterdayActivity.Calories"
+
     // Main Score (הציון הראשי היומי - מ-InsightsMetrics)
     static let keyMainScore = "AION.MainScore"
     static let keyMainScoreStatus = "AION.MainScoreStatus"
@@ -145,6 +149,7 @@ enum AnalysisCache {
     /// שומר את ציון הבריאות (מחושב ע"י HealthScoreEngine)
     static func saveHealthScore(_ score: Int) {
         UserDefaults.standard.set(score, forKey: keyHealthScore)
+        UserDefaults.standard.synchronize()
     }
 
     // MARK: - Main Score (הציון הראשי היומי)
@@ -223,6 +228,9 @@ enum AnalysisCache {
         if let data = try? JSONEncoder().encode(result) {
             UserDefaults.standard.set(data, forKey: keyHealthScoreResult)
         }
+
+        // Force sync to disk (important for cross-thread access)
+        UserDefaults.standard.synchronize()
     }
 
     /// טוען את תוצאת HealthScoreEngine המלאה
@@ -307,7 +315,25 @@ enum AnalysisCache {
         let exerciseMinutes = UserDefaults.standard.integer(forKey: keyDailyExercise)
         let standHours = UserDefaults.standard.integer(forKey: keyDailyStandHours)
         let restingHR = UserDefaults.standard.integer(forKey: keyDailyRestingHR)
+
+        // Return nil if no meaningful data was saved
+        if steps == 0 && calories == 0 && exerciseMinutes == 0 {
+            return nil
+        }
+
         return (steps, calories, exerciseMinutes, standHours, restingHR)
+    }
+
+    /// שומר נתוני פעילות של אתמול (להתראת בוקר)
+    static func saveYesterdayActivity(steps: Int, calories: Int) {
+        UserDefaults.standard.set(steps, forKey: keyYesterdaySteps)
+        UserDefaults.standard.set(calories, forKey: keyYesterdayCalories)
+    }
+
+    /// טוען נתוני פעילות של אתמול
+    static func loadYesterdaySteps() -> Int? {
+        let steps = UserDefaults.standard.integer(forKey: keyYesterdaySteps)
+        return steps > 0 ? steps : nil
     }
 
     // MARK: - Selected Car (שמירת הרכב מ-Gemini)

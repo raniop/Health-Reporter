@@ -1,0 +1,22 @@
+/* Hebrew Localization - Health Reporter Watch App */
+
+/* Watch Score Breakdown */
+"watch.scoreBreakdown.title" = "ממה מורכב הציון?";
+"watch.scoreBreakdown.recovery" = "התאוששות";
+"watch.scoreBreakdown.sleepQuality" = "איכות שינה";
+"watch.scoreBreakdown.nervousSystem" = "מאזן עצבי";
+"watch.scoreBreakdown.energyForecast" = "תחזית אנרגיה";
+"watch.scoreBreakdown.activity" = "פעילות";
+"watch.scoreBreakdown.loadBalance" = "מאזן עומס";
+
+/* Watch Car Tier */
+"watch.carTier.90DayScore" = "ציון 90 יום:";
+
+/* Watch Status */
+"watch.status.waitingForData" = "ממתין לנתונים...";
+"watch.status.waiting" = "ממתין...";
+
+/* Period Selector */
+"period.day" = "היום";
+"period.week" = "שבוע";
+"period.month" = "חודש";

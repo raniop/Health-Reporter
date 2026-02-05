@@ -73,7 +73,7 @@ struct CarTierView: View {
 
                 // Health Score (90-day average)
                 HStack(spacing: 4) {
-                    Text("ציון 90 יום:")
+                    Text("watch.carTier.90DayScore".localized)
                         .font(.system(.caption2, design: .rounded))
                         .foregroundColor(.gray)
 

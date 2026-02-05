@@ -6,13 +6,14 @@
 //
 
 import UIKit
+import FirebaseAuth
 
 protocol OnboardingPageDelegate: AnyObject {
     func onboardingDidComplete()
     func onboardingDidRequestNext()
     func onboardingDidRequestNotifications()
     func onboardingDidRequestHealthKit()
-    func onboardingDidRequestCarReveal(carName: String, carEmoji: String, healthScore: Int)
+    func onboardingDidRequestCarReveal(carName: String, carEmoji: String, healthScore: Int, wikiName: String)
 }
 
 final class OnboardingPageViewController: UIViewController {
@@ -186,23 +187,35 @@ extension OnboardingPageViewController: OnboardingPageDelegate {
                 print("❤️ [Onboarding] HealthKit permission: \(success)")
                 OnboardingCoordinator.shared.setHealthKitGranted(success)
 
+                #if DEBUG
+                // עבור Test User - מתחילים ניתוח גם אם HealthKit נכשל (יש נתונים מדומים)
+                if DebugTestHelper.isTestUser(email: Auth.auth().currentUser?.email) {
+                    print("🧪 [Onboarding] Test user - starting analysis regardless of HealthKit permission")
+                    OnboardingCoordinator.shared.startBackgroundAnalysis()
+                } else if success {
+                    // התחל ניתוח ברקע
+                    OnboardingCoordinator.shared.startBackgroundAnalysis()
+                }
+                #else
                 if success {
                     // התחל ניתוח ברקע
                     OnboardingCoordinator.shared.startBackgroundAnalysis()
                 }
+                #endif
 
                 self?.goToNextPage()
             }
         }
     }
 
-    func onboardingDidRequestCarReveal(carName: String, carEmoji: String, healthScore: Int) {
+    func onboardingDidRequestCarReveal(carName: String, carEmoji: String, healthScore: Int, wikiName: String) {
         // Create and show the car reveal page dynamically
         let carRevealPage = CarRevealOnboardingPage(
             delegate: self,
             carName: carName,
             carEmoji: carEmoji,
-            healthScore: healthScore
+            healthScore: healthScore,
+            wikiName: wikiName
         )
 
         // Add to pages array and show

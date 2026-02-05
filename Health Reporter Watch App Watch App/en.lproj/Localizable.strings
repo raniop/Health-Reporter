@@ -1,0 +1,22 @@
+/* English Localization - Health Reporter Watch App */
+
+/* Watch Score Breakdown */
+"watch.scoreBreakdown.title" = "What makes up the score?";
+"watch.scoreBreakdown.recovery" = "Recovery";
+"watch.scoreBreakdown.sleepQuality" = "Sleep Quality";
+"watch.scoreBreakdown.nervousSystem" = "Nervous System";
+"watch.scoreBreakdown.energyForecast" = "Energy Forecast";
+"watch.scoreBreakdown.activity" = "Activity";
+"watch.scoreBreakdown.loadBalance" = "Load Balance";
+
+/* Watch Car Tier */
+"watch.carTier.90DayScore" = "90-Day Score:";
+
+/* Watch Status */
+"watch.status.waitingForData" = "Waiting for data...";
+"watch.status.waiting" = "Waiting...";
+
+/* Period Selector */
+"period.day" = "Today";
+"period.week" = "Week";
+"period.month" = "Month";

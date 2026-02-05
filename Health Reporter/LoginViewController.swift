@@ -315,10 +315,29 @@ final class LoginViewController: UIViewController {
             }
         }
 
+        #if DEBUG
+        // בדיקה אם זה יוזר הטסט - אם כן, מאפסים ומכניסים נתונים מדומים
+        let userEmail = Auth.auth().currentUser?.email
+        if DebugTestHelper.isTestUser(email: userEmail) {
+            DebugTestHelper.shared.setupTestUserData()
+        }
+        #endif
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self = self,
                   let scene = self.view.window?.windowScene,
                   let sd = scene.delegate as? SceneDelegate else { return }
+
+            #if DEBUG
+            // יוזר טסט תמיד מתחיל מ-Splash כדי לראות את כל ה-flow המלא
+            // Splash → Onboarding → HealthKit → Gemini API (אמיתי!) → Car Reveal
+            if DebugTestHelper.isTestUser(email: Auth.auth().currentUser?.email) {
+                let splashVC = SplashViewController()
+                sd.window?.rootViewController = splashVC
+                UIView.transition(with: sd.window!, duration: 0.3, options: .transitionCrossDissolve, animations: nil)
+                return
+            }
+            #endif
 
             // בדיקה אם להציג Onboarding
             let additionalUserInfo = authResult?.additionalUserInfo
