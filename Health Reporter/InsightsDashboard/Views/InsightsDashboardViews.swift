@@ -38,16 +38,28 @@ private var textAlignment: NSTextAlignment {
 
 // MARK: - Tappable Metric Card
 
-/// כרטיס מדד לחיץ שמציג הסבר ב-bottom sheet
+/// כרטיס מדד לחיץ שמציג הסבר ב-bottom sheet (עם גרף אופציונלי)
 final class TappableMetricCard: UIView {
 
     private let metricTitle: String
     private let explanation: String
+    private let metricId: String?
+    private let scoreHistory: [DailyScoreEntry]?
+    private let iconName: String?
+    private let iconColor: UIColor?
+    private let barColor: UIColor?
     private weak var parentVC: UIViewController?
 
-    init(title: String, explanation: String, parentVC: UIViewController?) {
+    init(title: String, explanation: String, parentVC: UIViewController?,
+         metricId: String? = nil, scoreHistory: [DailyScoreEntry]? = nil,
+         iconName: String? = nil, iconColor: UIColor? = nil, barColor: UIColor? = nil) {
         self.metricTitle = title
         self.explanation = explanation
+        self.metricId = metricId
+        self.scoreHistory = scoreHistory
+        self.iconName = iconName
+        self.iconColor = iconColor
+        self.barColor = barColor
         self.parentVC = parentVC
         super.init(frame: .zero)
 
@@ -63,8 +75,45 @@ final class TappableMetricCard: UIView {
     @objc private func handleTap() {
         guard let vc = parentVC ?? findViewController() else { return }
 
-        let detailVC = SimpleMetricDetailViewController(title: metricTitle, explanation: explanation)
-        vc.present(detailVC, animated: true)
+        // If we have score history and a metric ID, show the graph detail
+        if let id = metricId, let history = scoreHistory, !history.isEmpty {
+            let chartData = history.map { entry in
+                BarChartDataPoint(
+                    date: entry.date,
+                    dayLabel: entry.dayOfWeekShort,
+                    value: entry.value(for: id) ?? 0,
+                    isToday: Calendar.current.isDateInToday(entry.date)
+                )
+            }
+            let validValues = chartData.map(\.value).filter { $0 > 0 }
+            let avg = validValues.isEmpty ? nil : validValues.reduce(0, +) / Double(validValues.count)
+            let todayValue = chartData.last(where: { $0.isToday })?.value
+            let todayDisplay = todayValue.map { "\(Int($0))" } ?? "--"
+            let resolvedColor = iconColor ?? barColor ?? AIONDesign.accentPrimary
+            let resolvedIcon = iconName ?? StarMetricsCalculator.icon(for: id)
+
+            let config = ScoreDetailConfig(
+                title: metricTitle,
+                iconName: resolvedIcon,
+                iconColor: resolvedColor,
+                todayValue: todayDisplay,
+                todayValueColor: resolvedColor,
+                explanationText: explanation,
+                unit: nil, subtitle: nil,
+                history: chartData,
+                barColor: barColor ?? resolvedColor,
+                averageValue: avg,
+                averageLabel: "chart.average".localized,
+                valueFormatter: { "\(Int($0))" },
+                scaleRange: 0...100
+            )
+            let detailVC = ScoreDetailWithGraphViewController(config: config)
+            vc.present(detailVC, animated: true)
+        } else {
+            // Fallback: text-only detail
+            let detailVC = SimpleMetricDetailViewController(title: metricTitle, explanation: explanation)
+            vc.present(detailVC, animated: true)
+        }
     }
 
     private func findViewController() -> UIViewController? {
@@ -312,6 +361,9 @@ final class HeroScoreSection: UIView {
     private var currentCarName: String?
     private var currentSleepScore: Int?
 
+    // 7-day history for charts in detail sheets
+    private var scoreHistory: [DailyScoreEntry] = []
+
     // MARK: - Score Cubes
     private let cubesStack = UIStackView()
 
@@ -405,7 +457,7 @@ final class HeroScoreSection: UIView {
             mainStack.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             cubesStack.heightAnchor.constraint(equalToConstant: 110),
-            energyCard.heightAnchor.constraint(equalToConstant: 150)
+            energyCard.heightAnchor.constraint(equalToConstant: 165)
         ])
     }
 
@@ -548,8 +600,8 @@ final class HeroScoreSection: UIView {
 
         // כותרת קטנה למעלה
         energyTitleLabel.text = "dashboard.energyForecast".localized
-        energyTitleLabel.font = .systemFont(ofSize: 10, weight: .medium)
-        energyTitleLabel.textColor = AIONDesign.textTertiary
+        energyTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        energyTitleLabel.textColor = AIONDesign.textSecondary
         energyTitleLabel.textAlignment = .center
         energyTitleLabel.translatesAutoresizingMaskIntoConstraints = false
         energyCard.addSubview(energyTitleLabel)
@@ -562,11 +614,11 @@ final class HeroScoreSection: UIView {
 
         NSLayoutConstraint.activate([
             // כותרת קטנה למעלה
-            energyTitleLabel.topAnchor.constraint(equalTo: energyCard.topAnchor, constant: 10),
+            energyTitleLabel.topAnchor.constraint(equalTo: energyCard.topAnchor, constant: 12),
             energyTitleLabel.centerXAnchor.constraint(equalTo: energyCard.centerXAnchor),
 
             // ציון במרכז
-            energyScoreLabel.topAnchor.constraint(equalTo: energyTitleLabel.bottomAnchor, constant: 2),
+            energyScoreLabel.topAnchor.constraint(equalTo: energyTitleLabel.bottomAnchor, constant: 4),
             energyScoreLabel.centerXAnchor.constraint(equalTo: energyCard.centerXAnchor),
 
             // אייקון ברק ליד הרמה
@@ -610,7 +662,30 @@ final class HeroScoreSection: UIView {
             onWhyTapped?()
             return
         }
-        let detailVC = HealthScoreDetailViewController(score: score)
+        let history = scoreHistory.map { entry in
+            BarChartDataPoint(date: entry.date, dayLabel: entry.dayOfWeekShort,
+                              value: entry.mainScore ?? 0,
+                              isToday: Calendar.current.isDateInToday(entry.date))
+        }
+        let validValues = history.map(\.value).filter { $0 > 0 }
+        let avg = validValues.isEmpty ? nil : validValues.reduce(0, +) / Double(validValues.count)
+
+        let config = ScoreDetailConfig(
+            title: "healthScore.detail.title".localized,
+            iconName: "battery.100.bolt",
+            iconColor: AIONDesign.accentSuccess,
+            todayValue: "\(score)",
+            todayValueColor: colorForScore(Double(score)),
+            explanationText: "healthScore.detail.explanation".localized,
+            unit: nil, subtitle: nil,
+            history: history,
+            barColor: AIONDesign.accentSuccess,
+            averageValue: avg,
+            averageLabel: "chart.average".localized,
+            valueFormatter: { "\(Int($0))" },
+            scaleRange: 0...100
+        )
+        let detailVC = ScoreDetailWithGraphViewController(config: config)
         vc.present(detailVC, animated: true)
     }
 
@@ -619,7 +694,31 @@ final class HeroScoreSection: UIView {
             onCarTapped?()
             return
         }
-        let detailVC = CarScoreDetailViewController(score: score, carName: currentCarName)
+        // Use mainScore as proxy for car score history (car score depends on weekly aggregation)
+        let history = scoreHistory.map { entry in
+            BarChartDataPoint(date: entry.date, dayLabel: entry.dayOfWeekShort,
+                              value: entry.mainScore ?? 0,
+                              isToday: Calendar.current.isDateInToday(entry.date))
+        }
+        let validValues = history.map(\.value).filter { $0 > 0 }
+        let avg = validValues.isEmpty ? nil : validValues.reduce(0, +) / Double(validValues.count)
+
+        let config = ScoreDetailConfig(
+            title: "carScore.detail.title".localized,
+            iconName: "car.fill",
+            iconColor: AIONDesign.accentPrimary,
+            todayValue: "\(score)",
+            todayValueColor: colorForScore(Double(score)),
+            explanationText: "carScore.detail.explanation".localized,
+            unit: nil, subtitle: currentCarName,
+            history: history,
+            barColor: AIONDesign.accentPrimary,
+            averageValue: avg,
+            averageLabel: "chart.average".localized,
+            valueFormatter: { "\(Int($0))" },
+            scaleRange: 0...100
+        )
+        let detailVC = ScoreDetailWithGraphViewController(config: config)
         vc.present(detailVC, animated: true)
     }
 
@@ -628,22 +727,85 @@ final class HeroScoreSection: UIView {
             onSleepTapped?()
             return
         }
-        let detailVC = SleepScoreDetailViewController(score: score)
+        let history = scoreHistory.map { entry in
+            BarChartDataPoint(date: entry.date, dayLabel: entry.dayOfWeekShort,
+                              value: entry.sleepScore ?? 0,
+                              isToday: Calendar.current.isDateInToday(entry.date))
+        }
+        let validValues = history.map(\.value).filter { $0 > 0 }
+        let avg = validValues.isEmpty ? nil : validValues.reduce(0, +) / Double(validValues.count)
+
+        let config = ScoreDetailConfig(
+            title: "sleepScore.detail.title".localized,
+            iconName: "moon.zzz.fill",
+            iconColor: AIONDesign.accentSecondary,
+            todayValue: "\(score)",
+            todayValueColor: colorForScore(Double(score)),
+            explanationText: "sleepScore.detail.explanation".localized,
+            unit: nil, subtitle: nil,
+            history: history,
+            barColor: AIONDesign.accentSecondary,
+            averageValue: avg,
+            averageLabel: "chart.average".localized,
+            valueFormatter: { "\(Int($0))" },
+            scaleRange: 0...100
+        )
+        let detailVC = ScoreDetailWithGraphViewController(config: config)
         vc.present(detailVC, animated: true)
     }
 
     @objc private func energyCardTapped() {
         guard let vc = parentVC, let energy = currentEnergyForecast else { return }
-        let detailVC = EnergyDetailViewController(energyForecast: energy)
+        let history = scoreHistory.map { entry in
+            BarChartDataPoint(date: entry.date, dayLabel: entry.dayOfWeekShort,
+                              value: entry.energyForecast ?? 0,
+                              isToday: Calendar.current.isDateInToday(entry.date))
+        }
+        let validValues = history.map(\.value).filter { $0 > 0 }
+        let avg = validValues.isEmpty ? nil : validValues.reduce(0, +) / Double(validValues.count)
+
+        let levelStr: String
+        if let v = energy.value {
+            if v >= 70 { levelStr = "energy.level.high".localized }
+            else if v >= 40 { levelStr = "energy.level.medium".localized }
+            else { levelStr = "energy.level.low".localized }
+        } else {
+            levelStr = "--"
+        }
+
+        let config = ScoreDetailConfig(
+            title: "explanation.energy.title".localized,
+            iconName: "bolt.fill",
+            iconColor: energy.value.map { v in
+                v >= 70 ? AIONDesign.accentSuccess : v >= 40 ? AIONDesign.accentWarning : AIONDesign.accentDanger
+            } ?? AIONDesign.textTertiary,
+            todayValue: energy.displayValue,
+            todayValueColor: energy.value.map { v in
+                v >= 70 ? AIONDesign.accentSuccess : v >= 40 ? AIONDesign.accentWarning : AIONDesign.accentDanger
+            } ?? AIONDesign.textTertiary,
+            explanationText: "explanation.energy.message".localized,
+            unit: nil, subtitle: levelStr,
+            history: history,
+            barColor: energy.value.map { v in
+                v >= 70 ? AIONDesign.accentSuccess : v >= 40 ? AIONDesign.accentWarning : AIONDesign.accentDanger
+            } ?? AIONDesign.textTertiary,
+            averageValue: avg,
+            averageLabel: "chart.average".localized,
+            valueFormatter: { "\(Int($0))" },
+            scaleRange: 0...100
+        )
+        let detailVC = ScoreDetailWithGraphViewController(config: config)
         vc.present(detailVC, animated: true)
     }
 
     // MARK: - Configuration
 
     func configure(healthScore: Int?, carScore: Int?, carName: String?, sleepScore: Int?,
-                   energyForecast: EnergyForecast, parentVC: UIViewController? = nil, isLoading: Bool = false) {
+                   energyForecast: EnergyForecast, parentVC: UIViewController? = nil, isLoading: Bool = false,
+                   scoreHistory: [DailyScoreEntry] = []) {
         self.parentVC = parentVC
         self.currentEnergyForecast = energyForecast
+        self.scoreHistory = scoreHistory
 
         // שמירת הציונים עבור ה-bottom sheets
         self.currentHealthScore = healthScore
@@ -899,365 +1061,7 @@ private final class MiniTrendGraphView: UIView {
     }
 }
 
-// MARK: - Energy Detail ViewController (Bottom Sheet)
-
-final class EnergyDetailViewController: UIViewController {
-
-    private let energyForecast: EnergyForecast
-
-    init(energyForecast: EnergyForecast) {
-        self.energyForecast = energyForecast
-        super.init(nibName: nil, bundle: nil)
-        modalPresentationStyle = .pageSheet
-        if let sheet = sheetPresentationController {
-            sheet.detents = [.medium()]
-            sheet.prefersGrabberVisible = true
-        }
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
-        setupUI()
-    }
-
-    private func setupUI() {
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 16
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-
-        // Icon
-        let iconView = UIImageView(image: UIImage(systemName: "bolt.fill"))
-        iconView.tintColor = colorForEnergy(energyForecast.value)
-        iconView.contentMode = .scaleAspectFit
-
-        // Title
-        let titleLabel = UILabel()
-        titleLabel.text = "explanation.energy.title".localized
-        titleLabel.font = AIONDesign.fontTitle2
-        titleLabel.textColor = AIONDesign.textPrimary
-
-        // Value
-        let valueLabel = UILabel()
-        valueLabel.text = energyForecast.level.localizationKey.localized
-        valueLabel.font = UIFont.systemFont(ofSize: 36, weight: .bold)
-        valueLabel.textColor = colorForEnergy(energyForecast.value)
-
-        // Description
-        let descLabel = UILabel()
-        descLabel.text = energyForecast.explanationKey.localized
-        descLabel.font = AIONDesign.fontBody
-        descLabel.textColor = AIONDesign.textSecondary
-        descLabel.textAlignment = .center
-        descLabel.numberOfLines = 0
-
-        // Detailed explanation
-        let explanationLabel = UILabel()
-        explanationLabel.text = "explanation.energy.message".localized
-        explanationLabel.font = AIONDesign.fontBody
-        explanationLabel.textColor = AIONDesign.textSecondary
-        explanationLabel.textAlignment = .center
-        explanationLabel.numberOfLines = 0
-
-        stack.addArrangedSubview(iconView)
-        stack.addArrangedSubview(titleLabel)
-        stack.addArrangedSubview(valueLabel)
-        stack.addArrangedSubview(descLabel)
-        stack.addArrangedSubview(explanationLabel)
-
-        NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 48),
-            iconView.heightAnchor.constraint(equalToConstant: 48),
-
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
-        ])
-    }
-
-    private func colorForEnergy(_ value: Double?) -> UIColor {
-        guard let v = value else { return AIONDesign.textTertiary }
-        switch v {
-        case 0..<30: return AIONDesign.statusNegative
-        case 30..<60: return AIONDesign.statusNeutral
-        case 60..<80: return AIONDesign.statusPositive
-        default: return AIONDesign.accentPrimary
-        }
-    }
-}
-
-// MARK: - Health Score Detail (Bottom Sheet)
-
-final class HealthScoreDetailViewController: UIViewController {
-
-    private let score: Int
-
-    init(score: Int) {
-        self.score = score
-        super.init(nibName: nil, bundle: nil)
-        modalPresentationStyle = .pageSheet
-        if let sheet = sheetPresentationController {
-            sheet.detents = [.medium()]
-            sheet.prefersGrabberVisible = true
-        }
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
-        setupUI()
-    }
-
-    private func setupUI() {
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 16
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-
-        // Icon
-        let iconView = UIImageView(image: UIImage(systemName: "battery.100.bolt"))
-        iconView.tintColor = AIONDesign.accentSuccess
-        iconView.contentMode = .scaleAspectFit
-
-        // Title
-        let titleLabel = UILabel()
-        titleLabel.text = "healthScore.detail.title".localized
-        titleLabel.font = AIONDesign.fontTitle2
-        titleLabel.textColor = AIONDesign.textPrimary
-
-        // Score
-        let scoreLabel = UILabel()
-        scoreLabel.text = "\(score)"
-        scoreLabel.font = UIFont.systemFont(ofSize: 56, weight: .bold)
-        scoreLabel.textColor = colorForScore(Double(score))
-
-        // Explanation
-        let explanationLabel = UILabel()
-        explanationLabel.text = "healthScore.detail.explanation".localized
-        explanationLabel.font = AIONDesign.fontBody
-        explanationLabel.textColor = AIONDesign.textSecondary
-        explanationLabel.textAlignment = .center
-        explanationLabel.numberOfLines = 0
-
-        stack.addArrangedSubview(iconView)
-        stack.addArrangedSubview(titleLabel)
-        stack.addArrangedSubview(scoreLabel)
-        stack.addArrangedSubview(explanationLabel)
-
-        NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 48),
-            iconView.heightAnchor.constraint(equalToConstant: 48),
-
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
-        ])
-    }
-
-    private func colorForScore(_ score: Double) -> UIColor {
-        switch score {
-        case 0..<30: return AIONDesign.statusNegative
-        case 30..<60: return AIONDesign.statusNeutral
-        case 60..<80: return AIONDesign.statusPositive
-        default: return AIONDesign.accentPrimary
-        }
-    }
-}
-
-// MARK: - Car Score Detail (Bottom Sheet)
-
-final class CarScoreDetailViewController: UIViewController {
-
-    private let score: Int
-    private let carName: String?
-
-    init(score: Int, carName: String?) {
-        self.score = score
-        self.carName = carName
-        super.init(nibName: nil, bundle: nil)
-        modalPresentationStyle = .pageSheet
-        if let sheet = sheetPresentationController {
-            sheet.detents = [.medium()]
-            sheet.prefersGrabberVisible = true
-        }
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
-        setupUI()
-    }
-
-    private func setupUI() {
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 16
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-
-        // Icon
-        let iconView = UIImageView(image: UIImage(systemName: "car.fill"))
-        iconView.tintColor = AIONDesign.accentPrimary
-        iconView.contentMode = .scaleAspectFit
-
-        // Title
-        let titleLabel = UILabel()
-        titleLabel.text = "carScore.detail.title".localized
-        titleLabel.font = AIONDesign.fontTitle2
-        titleLabel.textColor = AIONDesign.textPrimary
-
-        // Score
-        let scoreLabel = UILabel()
-        scoreLabel.text = "\(score)"
-        scoreLabel.font = UIFont.systemFont(ofSize: 56, weight: .bold)
-        scoreLabel.textColor = colorForScore(Double(score))
-
-        // Car Name (if available)
-        if let name = carName, !name.isEmpty {
-            let carNameLabel = UILabel()
-            carNameLabel.text = name
-            carNameLabel.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
-            carNameLabel.textColor = AIONDesign.textSecondary
-            stack.addArrangedSubview(iconView)
-            stack.addArrangedSubview(titleLabel)
-            stack.addArrangedSubview(scoreLabel)
-            stack.addArrangedSubview(carNameLabel)
-        } else {
-            stack.addArrangedSubview(iconView)
-            stack.addArrangedSubview(titleLabel)
-            stack.addArrangedSubview(scoreLabel)
-        }
-
-        // Explanation
-        let explanationLabel = UILabel()
-        explanationLabel.text = "carScore.detail.explanation".localized
-        explanationLabel.font = AIONDesign.fontBody
-        explanationLabel.textColor = AIONDesign.textSecondary
-        explanationLabel.textAlignment = .center
-        explanationLabel.numberOfLines = 0
-        stack.addArrangedSubview(explanationLabel)
-
-        NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 48),
-            iconView.heightAnchor.constraint(equalToConstant: 48),
-
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
-        ])
-    }
-
-    private func colorForScore(_ score: Double) -> UIColor {
-        switch score {
-        case 0..<30: return AIONDesign.statusNegative
-        case 30..<60: return AIONDesign.statusNeutral
-        case 60..<80: return AIONDesign.statusPositive
-        default: return AIONDesign.accentPrimary
-        }
-    }
-}
-
-// MARK: - Sleep Score Detail (Bottom Sheet)
-
-final class SleepScoreDetailViewController: UIViewController {
-
-    private let score: Int
-
-    init(score: Int) {
-        self.score = score
-        super.init(nibName: nil, bundle: nil)
-        modalPresentationStyle = .pageSheet
-        if let sheet = sheetPresentationController {
-            sheet.detents = [.medium()]
-            sheet.prefersGrabberVisible = true
-        }
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
-        setupUI()
-    }
-
-    private func setupUI() {
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 16
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-
-        // Icon
-        let iconView = UIImageView(image: UIImage(systemName: "moon.zzz.fill"))
-        iconView.tintColor = AIONDesign.accentSecondary
-        iconView.contentMode = .scaleAspectFit
-
-        // Title
-        let titleLabel = UILabel()
-        titleLabel.text = "sleepScore.detail.title".localized
-        titleLabel.font = AIONDesign.fontTitle2
-        titleLabel.textColor = AIONDesign.textPrimary
-
-        // Score
-        let scoreLabel = UILabel()
-        scoreLabel.text = "\(score)"
-        scoreLabel.font = UIFont.systemFont(ofSize: 56, weight: .bold)
-        scoreLabel.textColor = colorForScore(Double(score))
-
-        // Explanation
-        let explanationLabel = UILabel()
-        explanationLabel.text = "sleepScore.detail.explanation".localized
-        explanationLabel.font = AIONDesign.fontBody
-        explanationLabel.textColor = AIONDesign.textSecondary
-        explanationLabel.textAlignment = .center
-        explanationLabel.numberOfLines = 0
-
-        stack.addArrangedSubview(iconView)
-        stack.addArrangedSubview(titleLabel)
-        stack.addArrangedSubview(scoreLabel)
-        stack.addArrangedSubview(explanationLabel)
-
-        NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 48),
-            iconView.heightAnchor.constraint(equalToConstant: 48),
-
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
-        ])
-    }
-
-    private func colorForScore(_ score: Double) -> UIColor {
-        switch score {
-        case 0..<30: return AIONDesign.statusNegative
-        case 30..<60: return AIONDesign.statusNeutral
-        case 60..<80: return AIONDesign.statusPositive
-        default: return AIONDesign.accentPrimary
-        }
-    }
-}
+// Old detail VCs (Energy, Health, Car, Sleep) replaced by ScoreDetailWithGraphViewController
 
 // MARK: - Star Metrics Bar
 
@@ -1265,7 +1069,6 @@ final class StarMetricsBarView: UIView {
 
     var onMetricTapped: ((any InsightMetric) -> Void)?
 
-    private let scrollView = UIScrollView()
     private let stackView = UIStackView()
 
     override init(frame: CGRect) {
@@ -1281,37 +1084,25 @@ final class StarMetricsBarView: UIView {
         // RTL/LTR support
         semanticContentAttribute = semanticAttribute
 
-        scrollView.showsHorizontalScrollIndicator = false
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.semanticContentAttribute = semanticAttribute
-        addSubview(scrollView)
-
         stackView.axis = .horizontal
-        stackView.spacing = 12
+        stackView.spacing = 10
+        stackView.distribution = .fillEqually
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.semanticContentAttribute = semanticAttribute
-        scrollView.addSubview(stackView)
+        addSubview(stackView)
 
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            scrollView.heightAnchor.constraint(equalToConstant: 80),
-
-            stackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            stackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            stackView.heightAnchor.constraint(equalTo: scrollView.heightAnchor)
+            stackView.topAnchor.constraint(equalTo: topAnchor),
+            stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            heightAnchor.constraint(equalToConstant: 80)
         ])
     }
 
     func configure(with stars: StarMetrics) {
         let currentIsRTL = LocalizationManager.shared.currentLanguage == .hebrew
 
-        // עדכון כיוון הגלילה
-        scrollView.semanticContentAttribute = currentIsRTL ? .forceRightToLeft : .forceLeftToRight
         stackView.semanticContentAttribute = currentIsRTL ? .forceRightToLeft : .forceLeftToRight
 
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -1323,16 +1114,6 @@ final class StarMetricsBarView: UIView {
                 self?.onMetricTapped?(metric)
             }
             stackView.addArrangedSubview(cell)
-        }
-
-        // גלול לתחילה (ימין בעברית, שמאל באנגלית)
-        DispatchQueue.main.async {
-            if currentIsRTL {
-                let rightOffset = CGPoint(x: max(0, self.scrollView.contentSize.width - self.scrollView.bounds.width), y: 0)
-                self.scrollView.setContentOffset(rightOffset, animated: false)
-            } else {
-                self.scrollView.setContentOffset(.zero, animated: false)
-            }
         }
     }
 }
@@ -1379,11 +1160,9 @@ final class StarMetricCell: UIView {
         nameLabel.numberOfLines = 2
 
         NSLayoutConstraint.activate([
-            widthAnchor.constraint(equalToConstant: 90),
-
             stack.topAnchor.constraint(equalTo: topAnchor, constant: 8),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
 
             iconView.widthAnchor.constraint(equalToConstant: 20),
@@ -1569,8 +1348,11 @@ final class RecoverySectionView: UIView {
         ])
     }
 
-    func configure(readiness: RecoveryReadiness, stressLoad: StressLoadIndex, morningFreshness: MorningFreshness, parentVC: UIViewController? = nil) {
+    private var scoreHistory: [DailyScoreEntry] = []
+
+    func configure(readiness: RecoveryReadiness, stressLoad: StressLoadIndex, morningFreshness: MorningFreshness, parentVC: UIViewController? = nil, scoreHistory: [DailyScoreEntry] = []) {
         self.parentVC = parentVC
+        self.scoreHistory = scoreHistory
 
         // עדכון יישור לפי שפה נוכחית
         titleLabel.textAlignment = textAlignment
@@ -1581,26 +1363,32 @@ final class RecoverySectionView: UIView {
             title: "metric.recovery_readiness.short".localized,
             value: readiness.displayValue,
             color: colorForScore(readiness.value),
-            explanation: "explanation.recovery_readiness".localized
+            explanation: "explanation.recovery_readiness".localized,
+            metricId: "recovery_readiness"
         ))
 
         metricsStack.addArrangedSubview(createMiniCard(
             title: "metric.stress_load_index.short".localized,
             value: stressLoad.displayValue,
             color: colorForStress(stressLoad.value),
-            explanation: "explanation.stress_load".localized
+            explanation: "explanation.stress_load".localized,
+            metricId: "stress_load_index"
         ))
 
         metricsStack.addArrangedSubview(createMiniCard(
             title: "metric.morning_freshness.short".localized,
             value: morningFreshness.displayValue,
             color: colorForScore(morningFreshness.value),
-            explanation: "explanation.morning_freshness".localized
+            explanation: "explanation.morning_freshness".localized,
+            metricId: "morning_freshness"
         ))
     }
 
-    private func createMiniCard(title: String, value: String, color: UIColor, explanation: String) -> UIView {
-        let card = TappableMetricCard(title: title, explanation: explanation, parentVC: parentVC)
+    private func createMiniCard(title: String, value: String, color: UIColor, explanation: String, metricId: String? = nil) -> UIView {
+        let card = TappableMetricCard(title: title, explanation: explanation, parentVC: parentVC,
+                                       metricId: metricId, scoreHistory: scoreHistory.isEmpty ? nil : scoreHistory,
+                                       iconName: metricId.map { StarMetricsCalculator.icon(for: $0) },
+                                       iconColor: color, barColor: color)
         card.backgroundColor = AIONDesign.background
         card.layer.cornerRadius = 8
 
@@ -1837,7 +1625,7 @@ final class SleepSectionView: UIView {
         ])
     }
 
-    func configure(quality: SleepQuality, debt: SleepHighlight, consistency: SleepConsistency, parentVC: UIViewController? = nil) {
+    func configure(quality: SleepQuality, debt: SleepHighlight, consistency: SleepConsistency, parentVC: UIViewController? = nil, scoreHistory: [DailyScoreEntry] = []) {
         self.parentVC = parentVC
         mainStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
@@ -2284,8 +2072,11 @@ final class TrainingSectionView: UIView {
         ])
     }
 
-    func configure(strain: InsightTrainingStrain, loadBalance: LoadBalance, cardioTrend: CardioFitnessTrend, parentVC: UIViewController? = nil) {
+    private var scoreHistory: [DailyScoreEntry] = []
+
+    func configure(strain: InsightTrainingStrain, loadBalance: LoadBalance, cardioTrend: CardioFitnessTrend, parentVC: UIViewController? = nil, scoreHistory: [DailyScoreEntry] = []) {
         self.parentVC = parentVC
+        self.scoreHistory = scoreHistory
 
         // עדכון יישור לפי שפה נוכחית
         titleLabel.textAlignment = textAlignment
@@ -2296,26 +2087,31 @@ final class TrainingSectionView: UIView {
             title: "metric.training_strain.short".localized,
             value: strain.displayValue,
             icon: "flame.fill",
-            explanation: "explanation.training_strain".localized
+            explanation: "explanation.training_strain".localized,
+            metricId: "training_strain"
         ))
 
         metricsStack.addArrangedSubview(createMiniCard(
             title: "metric.load_balance.short".localized,
             value: loadBalance.zone.localizationKey.localized,
             icon: "scale.3d",
-            explanation: "explanation.load_balance".localized
+            explanation: "explanation.load_balance".localized,
+            metricId: "load_balance"
         ))
 
         metricsStack.addArrangedSubview(createMiniCard(
             title: "metric.cardio_trend.short".localized,
             value: cardioTrend.displayValue,
             icon: cardioTrend.trend?.iconName ?? "arrow.right",
-            explanation: "explanation.cardio_trend".localized
+            explanation: "explanation.cardio_trend".localized,
+            metricId: "cardio_fitness_trend"
         ))
     }
 
-    private func createMiniCard(title: String, value: String, icon: String, explanation: String) -> UIView {
-        let card = TappableMetricCard(title: title, explanation: explanation, parentVC: parentVC)
+    private func createMiniCard(title: String, value: String, icon: String, explanation: String, metricId: String? = nil) -> UIView {
+        let card = TappableMetricCard(title: title, explanation: explanation, parentVC: parentVC,
+                                       metricId: metricId, scoreHistory: scoreHistory.isEmpty ? nil : scoreHistory,
+                                       iconName: icon, iconColor: AIONDesign.accentPrimary, barColor: AIONDesign.accentPrimary)
         card.backgroundColor = AIONDesign.background
         card.layer.cornerRadius = 8
 
@@ -2411,8 +2207,11 @@ final class ActivitySectionCompact: UIView {
         ])
     }
 
-    func configure(goals: DailyGoals, activityScore: ActivityScore, parentVC: UIViewController? = nil) {
+    private var scoreHistory: [DailyScoreEntry] = []
+
+    func configure(goals: DailyGoals, activityScore: ActivityScore, parentVC: UIViewController? = nil, scoreHistory: [DailyScoreEntry] = []) {
         self.parentVC = parentVC
+        self.scoreHistory = scoreHistory
 
         // עדכון יישור לפי שפה נוכחית
         titleLabel.textAlignment = textAlignment
@@ -2423,26 +2222,31 @@ final class ActivitySectionCompact: UIView {
             label: "activity.move".localized,
             percent: goals.movePercent ?? 0,
             color: .systemRed,
-            explanation: "explanation.activity_move".localized
+            explanation: "explanation.activity_move".localized,
+            metricId: "activity_score"
         ))
 
         ringsStack.addArrangedSubview(createRingItem(
             label: "activity.exercise".localized,
             percent: goals.exercisePercent ?? 0,
             color: .systemGreen,
-            explanation: "explanation.activity_exercise".localized
+            explanation: "explanation.activity_exercise".localized,
+            metricId: "daily_goals"
         ))
 
         ringsStack.addArrangedSubview(createRingItem(
             label: "activity.stand".localized,
             percent: goals.standPercent ?? 0,
             color: .systemCyan,
-            explanation: "explanation.activity_stand".localized
+            explanation: "explanation.activity_stand".localized,
+            metricId: "daily_goals"
         ))
     }
 
-    private func createRingItem(label: String, percent: Double, color: UIColor, explanation: String) -> UIView {
-        let container = TappableMetricCard(title: label, explanation: explanation, parentVC: parentVC)
+    private func createRingItem(label: String, percent: Double, color: UIColor, explanation: String, metricId: String? = nil) -> UIView {
+        let container = TappableMetricCard(title: label, explanation: explanation, parentVC: parentVC,
+                                            metricId: metricId, scoreHistory: scoreHistory.isEmpty ? nil : scoreHistory,
+                                            iconName: nil, iconColor: color, barColor: color)
 
         let percentLabel = UILabel()
         percentLabel.text = "\(Int(percent))%"
@@ -2555,97 +2359,6 @@ final class GuidanceCardView: UIView {
         }
 
         return "guidance.default".localized
-    }
-}
-
-// MARK: - Metric Detail View Controller
-
-final class MetricDetailViewController: UIViewController {
-
-    private let metric: any InsightMetric
-
-    init(metric: any InsightMetric) {
-        self.metric = metric
-        super.init(nibName: nil, bundle: nil)
-        modalPresentationStyle = .pageSheet
-        if let sheet = sheetPresentationController {
-            sheet.detents = [.medium()]
-            sheet.prefersGrabberVisible = true
-        }
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
-        setupUI()
-    }
-
-    private func setupUI() {
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 16
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-
-        // Icon
-        let iconView = UIImageView(image: UIImage(systemName: StarMetricsCalculator.icon(for: metric.id)))
-        iconView.tintColor = StarMetricsCalculator.color(for: metric)
-        iconView.contentMode = .scaleAspectFit
-
-        // Title
-        let titleLabel = UILabel()
-        titleLabel.text = metric.nameKey.localized
-        titleLabel.font = AIONDesign.fontTitle2
-        titleLabel.textColor = AIONDesign.textPrimary
-
-        // Value
-        let valueLabel = UILabel()
-        valueLabel.text = metric.displayValue
-        valueLabel.font = UIFont.systemFont(ofSize: 48, weight: .bold)
-        valueLabel.textColor = StarMetricsCalculator.color(for: metric)
-
-        // Why it matters
-        let whyLabel = UILabel()
-        whyLabel.text = StarMetricsCalculator.whyItMatters(for: metric.id)
-        whyLabel.font = AIONDesign.fontBody
-        whyLabel.textColor = AIONDesign.textSecondary
-        whyLabel.textAlignment = .center
-        whyLabel.numberOfLines = 0
-
-        // Action advice
-        let actionLabel = UILabel()
-        actionLabel.text = StarMetricsCalculator.actionAdvice(for: metric)
-        actionLabel.font = AIONDesign.fontBody
-        actionLabel.textColor = AIONDesign.textPrimary
-        actionLabel.textAlignment = .center
-        actionLabel.numberOfLines = 0
-
-        // Reliability badge
-        let reliabilityLabel = UILabel()
-        reliabilityLabel.text = "\("reliability.label".localized): \(metric.reliability.localizationKey.localized)"
-        reliabilityLabel.font = AIONDesign.fontCaption
-        reliabilityLabel.textColor = AIONDesign.textTertiary
-
-        stack.addArrangedSubview(iconView)
-        stack.addArrangedSubview(titleLabel)
-        stack.addArrangedSubview(valueLabel)
-        stack.addArrangedSubview(whyLabel)
-        stack.addArrangedSubview(actionLabel)
-        stack.addArrangedSubview(reliabilityLabel)
-
-        NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 48),
-            iconView.heightAnchor.constraint(equalToConstant: 48),
-
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 32),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
-        ])
     }
 }
 

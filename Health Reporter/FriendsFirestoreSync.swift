@@ -184,7 +184,7 @@ enum FriendsFirestoreSync {
                         uid: uid,
                         displayName: displayName,
                         photoURL: data["photoURL"] as? String,
-                        addedAt: addedAt
+                        followedAt: addedAt
                     )
                 }
 

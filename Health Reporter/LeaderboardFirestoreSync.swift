@@ -148,18 +148,24 @@ enum LeaderboardFirestoreSync {
             }
     }
 
-    // MARK: - Fetch Friends Leaderboard
+    // MARK: - Fetch Friends Leaderboard (legacy — delegates to following)
 
     static func fetchFriendsLeaderboard(completion: @escaping ([LeaderboardEntry]) -> Void) {
+        fetchFollowingLeaderboard(completion: completion)
+    }
+
+    // MARK: - Fetch Following Leaderboard
+
+    static func fetchFollowingLeaderboard(completion: @escaping ([LeaderboardEntry]) -> Void) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
             DispatchQueue.main.async { completion([]) }
             return
         }
 
-        // First get friends list
-        FriendsFirestoreSync.fetchFriends { friends in
-            guard !friends.isEmpty else {
-                // Return only current user if no friends
+        // First get following list
+        FollowFirestoreSync.fetchFollowing { following in
+            guard !following.isEmpty else {
+                // Return only current user if not following anyone
                 fetchCurrentUserEntry { entry in
                     if var e = entry {
                         e.rank = 1
@@ -172,8 +178,8 @@ enum LeaderboardFirestoreSync {
                 return
             }
 
-            // Get friend UIDs + current user
-            var uids = friends.map { $0.uid }
+            // Get following UIDs + current user
+            var uids = following.map { $0.uid }
             uids.append(currentUid)
 
             // Firestore 'in' query limited to 30 items

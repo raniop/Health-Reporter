@@ -24,7 +24,7 @@ final class LeaderboardViewController: UIViewController {
     private lazy var tabBarControl: AnimatedTabBarControl = {
         let control = AnimatedTabBarControl(items: [
             .init(title: "social.global".localized, icon: "globe"),
-            .init(title: "social.friendsOnly".localized, icon: "person.2")
+            .init(title: "social.following".localized, icon: "person.2")
         ])
         control.translatesAutoresizingMaskIntoConstraints = false
         control.onSelectionChanged = { [weak self] index in

@@ -58,6 +58,9 @@ enum AnalysisCache {
     static let keyActivityScore = "AION.ScoreBreakdown.Activity"
     static let keyLoadBalanceScore = "AION.ScoreBreakdown.LoadBalance"
 
+    // User Personal Notes Key
+    static let keyUserNotes = "AION.UserPersonalNotes"
+
     // MARK: - Cache Duration
     /// מטמון תקף ל-24 שעות (לא נקרא ל-Gemini שוב גם אם יש שינוי)
     static let maxAgeSeconds: TimeInterval = 24 * 3600
@@ -681,6 +684,11 @@ extension AnalysisCache {
         }.sorted()
         components.append(contentsOf: energyValues)
 
+        // שילוב הערות אישיות ב-hash כדי לאלץ ניתוח מחדש כשההערות משתנות
+        if let notes = loadUserNotes(), !notes.isEmpty {
+            components.append("notes:\(notes)")
+        }
+
         // יצירת string אחד וה-hash שלו
         let combined = components.joined(separator: "|")
         let hash = SHA256.hash(data: Data(combined.utf8))
@@ -699,8 +707,35 @@ extension AnalysisCache {
         if let vo2 = model.vo2Max { components.append("vo2:\(vo2)") }
         if let bmi = model.bodyMassIndex { components.append("bmi:\(bmi)") }
 
+        // שילוב הערות אישיות ב-hash כדי לאלץ ניתוח מחדש כשההערות משתנות
+        if let notes = loadUserNotes(), !notes.isEmpty {
+            components.append("notes:\(notes)")
+        }
+
         let combined = components.joined(separator: "|")
         let hash = SHA256.hash(data: Data(combined.utf8))
         return hash.compactMap { String(format: "%02x", $0) }.joined()
+    }
+
+    // MARK: - User Personal Notes
+
+    /// שמירת הערות אישיות שיצורפו לניתוח Gemini
+    static func saveUserNotes(_ notes: String) {
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            UserDefaults.standard.removeObject(forKey: keyUserNotes)
+        } else {
+            UserDefaults.standard.set(trimmed, forKey: keyUserNotes)
+        }
+    }
+
+    /// טעינת הערות אישיות
+    static func loadUserNotes() -> String? {
+        return UserDefaults.standard.string(forKey: keyUserNotes)
+    }
+
+    /// מחיקת הערות אישיות
+    static func clearUserNotes() {
+        UserDefaults.standard.removeObject(forKey: keyUserNotes)
     }
 }

@@ -948,6 +948,79 @@ final class DailyMetricsEngine {
 
         return aggregated
     }
+
+    // MARK: - 7-Day Score History
+
+    /// Compute scores for each of the last 7 days from the full historical data array.
+    /// Each day is computed by slicing `fullHistoricalData` so that day[i] becomes
+    /// `todayData` and everything before it becomes its `historicalData`.
+    func calculate7DayHistory(
+        fullHistoricalData: [HealthDataModel],
+        completion: @escaping ([DailyScoreEntry]) -> Void
+    ) {
+        let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
+        let dayFormatter = DateFormatter()
+        dayFormatter.locale = Locale(identifier: isHebrew ? "he_IL" : "en_US")
+        dayFormatter.dateFormat = "EEEEE" // single letter day name
+
+        let totalDays = fullHistoricalData.count
+        guard totalDays >= 7 else {
+            completion([])
+            return
+        }
+
+        var entries: [DailyScoreEntry?] = Array(repeating: nil, count: 7)
+        let group = DispatchGroup()
+        let lock = NSLock()
+
+        for dayOffset in 0..<7 {
+            group.enter()
+            let todayIndex = totalDays - 7 + dayOffset
+            let todayData = fullHistoricalData[todayIndex]
+            let historicalSlice = Array(fullHistoricalData.prefix(todayIndex))
+
+            self.calculateDailyMetrics(
+                todayData: todayData,
+                historicalData: historicalSlice,
+                period: .day
+            ) { metrics in
+                let date = todayData.date ?? Calendar.current.date(
+                    byAdding: .day, value: dayOffset - 6, to: Date()
+                )!
+                let dayName = dayFormatter.string(from: date)
+
+                let entry = DailyScoreEntry(
+                    date: date,
+                    dayOfWeekShort: dayName,
+                    mainScore: metrics.mainScore,
+                    sleepScore: metrics.sleepQuality.value,
+                    recoveryReadiness: metrics.recoveryReadiness.value,
+                    stressLoadIndex: metrics.stressLoadIndex.value,
+                    morningFreshness: metrics.morningFreshness.value,
+                    nervousSystemBalance: metrics.nervousSystemBalance.value,
+                    recoveryDebt: metrics.recoveryDebt.value,
+                    sleepConsistency: metrics.sleepConsistency.value,
+                    trainingStrain: metrics.trainingStrain.value,
+                    loadBalance: metrics.loadBalance.value,
+                    cardioFitnessTrend: metrics.cardioFitnessTrend.value,
+                    energyForecast: metrics.energyForecast.value,
+                    workoutReadiness: metrics.workoutReadiness.value,
+                    activityScore: metrics.activityScore.value,
+                    dailyGoals: metrics.dailyGoals.value
+                )
+
+                lock.lock()
+                entries[dayOffset] = entry
+                lock.unlock()
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) {
+            let sorted = entries.compactMap { $0 }
+            completion(sorted)
+        }
+    }
 }
 
 // MARK: - Extensions

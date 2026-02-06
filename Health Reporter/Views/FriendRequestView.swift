@@ -2,15 +2,20 @@
 //  FriendRequestView.swift
 //  Health Reporter
 //
-//  תצוגת בקשת חברות - עיצוב מודרני עם Glass Morphism ואנימציות.
+//  Flat surface cards with subtle borders and clean typography (2026 aesthetic).
+//  No glass morphism. Two classes: FriendRequestView, UserCardView.
 //
 
 import UIKit
+
+// MARK: - FriendRequestViewDelegate
 
 protocol FriendRequestViewDelegate: AnyObject {
     func friendRequestView(_ view: FriendRequestView, didAcceptRequest request: FriendRequest)
     func friendRequestView(_ view: FriendRequestView, didDeclineRequest request: FriendRequest)
 }
+
+// MARK: - FriendRequestView
 
 final class FriendRequestView: UIView {
 
@@ -18,20 +23,22 @@ final class FriendRequestView: UIView {
 
     weak var delegate: FriendRequestViewDelegate?
     private var request: FriendRequest?
-    private var confettiView: ConfettiBurstView?
 
     // MARK: - UI Elements
 
-    private let glassBackground: GlassMorphismView = {
-        let view = GlassMorphismView()
-        view.cornerRadius = AIONDesign.cornerRadius
+    private let cardBackground: UIView = {
+        let view = UIView()
+        view.backgroundColor = AIONDesign.surface
+        view.layer.cornerRadius = 18
+        view.layer.borderWidth = 1
+        view.layer.borderColor = AIONDesign.separator.withAlphaComponent(0.15).cgColor
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
 
     private let avatarRing: AvatarRingView = {
         let view = AvatarRingView(size: 56)
-        view.ringColors = [AIONDesign.accentPrimary, AIONDesign.accentSecondary, AIONDesign.accentSuccess]
+        view.ringColors = [AIONDesign.accentPrimary, AIONDesign.accentSecondary]
         view.isAnimated = true
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
@@ -51,17 +58,9 @@ final class FriendRequestView: UIView {
         l.font = .systemFont(ofSize: 13, weight: .regular)
         l.textColor = AIONDesign.textSecondary
         l.textAlignment = LocalizationManager.shared.textAlignment
-        l.text = "social.wantsToBeYourFriend".localized
+        l.text = "social.wantsToFollowYou".localized
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
-    }()
-
-    private let acceptButton: GradientButton = {
-        let b = GradientButton()
-        b.setTitle("social.accept".localized, for: .normal)
-        b.gradientColors = [AIONDesign.accentSecondary, AIONDesign.accentSuccess]
-        b.translatesAutoresizingMaskIntoConstraints = false
-        return b
     }()
 
     private let declineButton: UIButton = {
@@ -69,8 +68,19 @@ final class FriendRequestView: UIView {
         b.setTitle("social.decline".localized, for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
         b.setTitleColor(AIONDesign.textSecondary, for: .normal)
-        b.backgroundColor = AIONDesign.surfaceElevated.withAlphaComponent(0.5)
-        b.layer.cornerRadius = AIONDesign.cornerRadiusSmall
+        b.backgroundColor = AIONDesign.surfaceElevated
+        b.layer.cornerRadius = 10
+        b.translatesAutoresizingMaskIntoConstraints = false
+        return b
+    }()
+
+    private let acceptButton: UIButton = {
+        let b = UIButton(type: .system)
+        b.setTitle("social.accept".localized, for: .normal)
+        b.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+        b.setTitleColor(.white, for: .normal)
+        b.backgroundColor = AIONDesign.accentSuccess
+        b.layer.cornerRadius = 10
         b.translatesAutoresizingMaskIntoConstraints = false
         return b
     }()
@@ -82,17 +92,6 @@ final class FriendRequestView: UIView {
         s.distribution = .fillEqually
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
-    }()
-
-    private let swipeHintLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 11, weight: .medium)
-        l.textColor = AIONDesign.textTertiary
-        l.textAlignment = .center
-        l.text = "החלק לאישור או דחייה"
-        l.alpha = 0.6
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
     }()
 
     // MARK: - Init
@@ -114,12 +113,11 @@ final class FriendRequestView: UIView {
     private func setupUI() {
         translatesAutoresizingMaskIntoConstraints = false
 
-        addSubview(glassBackground)
-        glassBackground.addSubview(avatarRing)
-        glassBackground.addSubview(nameLabel)
-        glassBackground.addSubview(subtitleLabel)
-        glassBackground.addSubview(buttonsStack)
-        glassBackground.addSubview(swipeHintLabel)
+        addSubview(cardBackground)
+        cardBackground.addSubview(avatarRing)
+        cardBackground.addSubview(nameLabel)
+        cardBackground.addSubview(subtitleLabel)
+        cardBackground.addSubview(buttonsStack)
 
         buttonsStack.addArrangedSubview(declineButton)
         buttonsStack.addArrangedSubview(acceptButton)
@@ -129,66 +127,62 @@ final class FriendRequestView: UIView {
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 110),
 
-            glassBackground.topAnchor.constraint(equalTo: topAnchor),
-            glassBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
-            glassBackground.trailingAnchor.constraint(equalTo: trailingAnchor),
-            glassBackground.bottomAnchor.constraint(equalTo: bottomAnchor),
+            cardBackground.topAnchor.constraint(equalTo: topAnchor),
+            cardBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
+            cardBackground.trailingAnchor.constraint(equalTo: trailingAnchor),
+            cardBackground.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            avatarRing.topAnchor.constraint(equalTo: glassBackground.topAnchor, constant: 16),
+            avatarRing.topAnchor.constraint(equalTo: cardBackground.topAnchor, constant: 16),
             avatarRing.widthAnchor.constraint(equalToConstant: 56),
             avatarRing.heightAnchor.constraint(equalToConstant: 56),
 
-            nameLabel.topAnchor.constraint(equalTo: glassBackground.topAnchor, constant: 16),
+            nameLabel.topAnchor.constraint(equalTo: cardBackground.topAnchor, constant: 16),
 
             subtitleLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 4),
 
-            buttonsStack.bottomAnchor.constraint(equalTo: glassBackground.bottomAnchor, constant: -16),
+            buttonsStack.bottomAnchor.constraint(equalTo: cardBackground.bottomAnchor, constant: -16),
             buttonsStack.heightAnchor.constraint(equalToConstant: 38),
-
-            swipeHintLabel.centerXAnchor.constraint(equalTo: glassBackground.centerXAnchor),
-            swipeHintLabel.bottomAnchor.constraint(equalTo: glassBackground.bottomAnchor, constant: -4),
         ])
 
         // RTL/LTR specific constraints
         if isRTL {
             // RTL: Avatar on right, text on left
             NSLayoutConstraint.activate([
-                avatarRing.trailingAnchor.constraint(equalTo: glassBackground.trailingAnchor, constant: -16),
+                avatarRing.trailingAnchor.constraint(equalTo: cardBackground.trailingAnchor, constant: -16),
                 nameLabel.trailingAnchor.constraint(equalTo: avatarRing.leadingAnchor, constant: -12),
-                nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: glassBackground.leadingAnchor, constant: 16),
+                nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: cardBackground.leadingAnchor, constant: 16),
                 subtitleLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
                 subtitleLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-                buttonsStack.leadingAnchor.constraint(equalTo: glassBackground.leadingAnchor, constant: 16),
+                buttonsStack.leadingAnchor.constraint(equalTo: cardBackground.leadingAnchor, constant: 16),
                 buttonsStack.trailingAnchor.constraint(equalTo: avatarRing.leadingAnchor, constant: -12),
             ])
         } else {
             // LTR: Avatar on left, text on right
             NSLayoutConstraint.activate([
-                avatarRing.leadingAnchor.constraint(equalTo: glassBackground.leadingAnchor, constant: 16),
+                avatarRing.leadingAnchor.constraint(equalTo: cardBackground.leadingAnchor, constant: 16),
                 nameLabel.leadingAnchor.constraint(equalTo: avatarRing.trailingAnchor, constant: 12),
-                nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: glassBackground.trailingAnchor, constant: -16),
+                nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: cardBackground.trailingAnchor, constant: -16),
                 subtitleLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
                 subtitleLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
                 buttonsStack.leadingAnchor.constraint(equalTo: avatarRing.trailingAnchor, constant: 12),
-                buttonsStack.trailingAnchor.constraint(equalTo: glassBackground.trailingAnchor, constant: -16),
+                buttonsStack.trailingAnchor.constraint(equalTo: cardBackground.trailingAnchor, constant: -16),
             ])
         }
 
         acceptButton.addTarget(self, action: #selector(acceptTapped), for: .touchUpInside)
         declineButton.addTarget(self, action: #selector(declineTapped), for: .touchUpInside)
-
-        // Hide swipe hint after first view
-        swipeHintLabel.isHidden = true
     }
 
     private func setupSwipeGestures() {
-        let swipeRight = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeAccept))
-        swipeRight.direction = LocalizationManager.shared.currentLanguage.isRTL ? .left : .right
-        addGestureRecognizer(swipeRight)
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
 
-        let swipeLeft = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeDecline))
-        swipeLeft.direction = LocalizationManager.shared.currentLanguage.isRTL ? .right : .left
-        addGestureRecognizer(swipeLeft)
+        let swipeAccept = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeAccept))
+        swipeAccept.direction = isRTL ? .left : .right
+        addGestureRecognizer(swipeAccept)
+
+        let swipeDecline = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeDecline))
+        swipeDecline.direction = isRTL ? .right : .left
+        addGestureRecognizer(swipeDecline)
     }
 
     // MARK: - Configure
@@ -218,7 +212,6 @@ final class FriendRequestView: UIView {
         guard let request = request else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 
-        // Animate swipe
         UIView.animate(withDuration: 0.3, animations: {
             self.transform = CGAffineTransform(translationX: self.bounds.width, y: 0)
             self.alpha = 0
@@ -232,7 +225,6 @@ final class FriendRequestView: UIView {
         guard let request = request else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
-        // Animate swipe
         UIView.animate(withDuration: 0.3, animations: {
             self.transform = CGAffineTransform(translationX: -self.bounds.width, y: 0)
             self.alpha = 0
@@ -248,7 +240,7 @@ final class FriendRequestView: UIView {
     }
 }
 
-// MARK: - User Card View (for search results and friend list)
+// MARK: - UserCardView
 
 final class UserCardView: UIView {
 
@@ -260,9 +252,12 @@ final class UserCardView: UIView {
 
     // MARK: - UI Elements
 
-    private let glassBackground: GlassMorphismView = {
-        let view = GlassMorphismView()
-        view.cornerRadius = AIONDesign.cornerRadius
+    private let cardBackground: UIView = {
+        let view = UIView()
+        view.backgroundColor = AIONDesign.surface
+        view.layer.cornerRadius = 14
+        view.layer.borderWidth = 1
+        view.layer.borderColor = AIONDesign.separator.withAlphaComponent(0.15).cgColor
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
@@ -272,13 +267,6 @@ final class UserCardView: UIView {
         view.ringWidth = 2
         view.isAnimated = false
         view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-
-    private let statusIndicator: PulsingStatusIndicator = {
-        let view = PulsingStatusIndicator(size: 12)
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.isHidden = true
         return view
     }()
 
@@ -303,7 +291,7 @@ final class UserCardView: UIView {
     private let actionButton: UIButton = {
         let b = UIButton(type: .system)
         b.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
-        b.layer.cornerRadius = AIONDesign.cornerRadiusSmall
+        b.layer.cornerRadius = 8
         b.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
         b.translatesAutoresizingMaskIntoConstraints = false
         return b
@@ -334,37 +322,32 @@ final class UserCardView: UIView {
     private func setupUI() {
         translatesAutoresizingMaskIntoConstraints = false
 
-        addSubview(glassBackground)
-        glassBackground.addSubview(avatarRing)
-        glassBackground.addSubview(statusIndicator)
-        glassBackground.addSubview(nameLabel)
-        glassBackground.addSubview(statusLabel)
-        glassBackground.addSubview(actionButton)
-        glassBackground.addSubview(activityIndicator)
+        addSubview(cardBackground)
+        cardBackground.addSubview(avatarRing)
+        cardBackground.addSubview(nameLabel)
+        cardBackground.addSubview(statusLabel)
+        cardBackground.addSubview(actionButton)
+        cardBackground.addSubview(activityIndicator)
 
         let isRTL = LocalizationManager.shared.currentLanguage.isRTL
 
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 76),
 
-            glassBackground.topAnchor.constraint(equalTo: topAnchor),
-            glassBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
-            glassBackground.trailingAnchor.constraint(equalTo: trailingAnchor),
-            glassBackground.bottomAnchor.constraint(equalTo: bottomAnchor),
+            cardBackground.topAnchor.constraint(equalTo: topAnchor),
+            cardBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
+            cardBackground.trailingAnchor.constraint(equalTo: trailingAnchor),
+            cardBackground.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            avatarRing.centerYAnchor.constraint(equalTo: glassBackground.centerYAnchor),
+            avatarRing.centerYAnchor.constraint(equalTo: cardBackground.centerYAnchor),
             avatarRing.widthAnchor.constraint(equalToConstant: 48),
             avatarRing.heightAnchor.constraint(equalToConstant: 48),
 
-            statusIndicator.bottomAnchor.constraint(equalTo: avatarRing.bottomAnchor, constant: 2),
-            statusIndicator.widthAnchor.constraint(equalToConstant: 12),
-            statusIndicator.heightAnchor.constraint(equalToConstant: 12),
-
-            nameLabel.topAnchor.constraint(equalTo: glassBackground.topAnchor, constant: 18),
+            nameLabel.topAnchor.constraint(equalTo: cardBackground.topAnchor, constant: 18),
 
             statusLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 4),
 
-            actionButton.centerYAnchor.constraint(equalTo: glassBackground.centerYAnchor),
+            actionButton.centerYAnchor.constraint(equalTo: cardBackground.centerYAnchor),
             actionButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 90),
             actionButton.heightAnchor.constraint(equalToConstant: 34),
 
@@ -376,22 +359,20 @@ final class UserCardView: UIView {
         if isRTL {
             // RTL: Avatar on right, button on left
             NSLayoutConstraint.activate([
-                avatarRing.trailingAnchor.constraint(equalTo: glassBackground.trailingAnchor, constant: -16),
-                statusIndicator.trailingAnchor.constraint(equalTo: avatarRing.trailingAnchor, constant: 2),
+                avatarRing.trailingAnchor.constraint(equalTo: cardBackground.trailingAnchor, constant: -16),
                 nameLabel.trailingAnchor.constraint(equalTo: avatarRing.leadingAnchor, constant: -12),
                 nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: actionButton.trailingAnchor, constant: 12),
                 statusLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
-                actionButton.leadingAnchor.constraint(equalTo: glassBackground.leadingAnchor, constant: 16),
+                actionButton.leadingAnchor.constraint(equalTo: cardBackground.leadingAnchor, constant: 16),
             ])
         } else {
             // LTR: Avatar on left, button on right
             NSLayoutConstraint.activate([
-                avatarRing.leadingAnchor.constraint(equalTo: glassBackground.leadingAnchor, constant: 16),
-                statusIndicator.leadingAnchor.constraint(equalTo: avatarRing.trailingAnchor, constant: -14),
+                avatarRing.leadingAnchor.constraint(equalTo: cardBackground.leadingAnchor, constant: 16),
                 nameLabel.leadingAnchor.constraint(equalTo: avatarRing.trailingAnchor, constant: 12),
                 nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: actionButton.leadingAnchor, constant: -12),
                 statusLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-                actionButton.trailingAnchor.constraint(equalTo: glassBackground.trailingAnchor, constant: -16),
+                actionButton.trailingAnchor.constraint(equalTo: cardBackground.trailingAnchor, constant: -16),
             ])
         }
 
@@ -407,21 +388,20 @@ final class UserCardView: UIView {
     func configure(with result: UserSearchResult) {
         nameLabel.text = result.displayName
         avatarRing.loadImage(from: result.photoURL)
-        statusIndicator.isHidden = true
 
-        if result.isFriend {
-            statusLabel.text = "social.alreadyFriends".localized
+        if result.isFollowing {
+            statusLabel.text = "social.following".localized
             statusLabel.textColor = AIONDesign.accentSuccess
-            actionButton.isHidden = true
+            configureActionButton(title: "social.unfollow".localized, style: .destructive)
             avatarRing.ringColors = [AIONDesign.accentSuccess, AIONDesign.accentSecondary]
         } else if result.hasPendingRequest {
             if result.requestSentByMe {
-                statusLabel.text = "social.requestPending".localized
+                statusLabel.text = "social.followRequestSent".localized
                 statusLabel.textColor = AIONDesign.accentWarning
                 actionButton.isHidden = true
                 avatarRing.ringColors = [AIONDesign.accentWarning, AIONDesign.accentPrimary]
             } else {
-                statusLabel.text = "social.sentYouRequest".localized
+                statusLabel.text = "social.wantsToFollowYou".localized
                 statusLabel.textColor = AIONDesign.accentPrimary
                 configureActionButton(title: "social.accept".localized, style: .primary)
                 avatarRing.ringColors = [AIONDesign.accentPrimary, AIONDesign.accentSecondary]
@@ -439,7 +419,7 @@ final class UserCardView: UIView {
                 statusLabel.text = ""
                 avatarRing.ringColors = [AIONDesign.accentPrimary, AIONDesign.accentSecondary]
             }
-            configureActionButton(title: "social.sendRequest".localized, style: .secondary)
+            configureActionButton(title: "social.follow".localized, style: .secondary)
         }
     }
 
@@ -448,8 +428,6 @@ final class UserCardView: UIView {
     func configure(with friend: Friend) {
         nameLabel.text = friend.displayName
         avatarRing.loadImage(from: friend.photoURL)
-        statusIndicator.isHidden = false
-        statusIndicator.isOnline = true // Could be dynamic based on actual status
 
         if let tierName = friend.carTierName, !tierName.isEmpty {
             let tier = friend.carTierIndex.flatMap { CarTierEngine.tiers[safe: $0] }
@@ -463,7 +441,7 @@ final class UserCardView: UIView {
             avatarRing.ringColors = [AIONDesign.accentSuccess, AIONDesign.accentSecondary]
         }
 
-        configureActionButton(title: "social.remove".localized, style: .destructive)
+        configureActionButton(title: "social.unfollow".localized, style: .destructive)
     }
 
     // MARK: - Button Styles
@@ -472,6 +450,11 @@ final class UserCardView: UIView {
         case primary
         case secondary
         case destructive
+    }
+
+    /// Public method for external callers to configure the action button.
+    func configureExternalAction(title: String, isDestructive: Bool) {
+        configureActionButton(title: title, style: isDestructive ? .destructive : .primary)
     }
 
     private func configureActionButton(title: String, style: ButtonStyle) {
@@ -484,14 +467,14 @@ final class UserCardView: UIView {
             actionButton.setTitleColor(.white, for: .normal)
             actionButton.layer.borderWidth = 0
         case .secondary:
-            actionButton.backgroundColor = AIONDesign.surfaceElevated.withAlphaComponent(0.5)
+            actionButton.backgroundColor = AIONDesign.surfaceElevated
             actionButton.setTitleColor(AIONDesign.accentPrimary, for: .normal)
-            actionButton.layer.borderWidth = 1.5
+            actionButton.layer.borderWidth = 1
             actionButton.layer.borderColor = AIONDesign.accentPrimary.cgColor
         case .destructive:
-            actionButton.backgroundColor = AIONDesign.surfaceElevated.withAlphaComponent(0.5)
+            actionButton.backgroundColor = AIONDesign.surfaceElevated
             actionButton.setTitleColor(AIONDesign.accentDanger, for: .normal)
-            actionButton.layer.borderWidth = 1.5
+            actionButton.layer.borderWidth = 1
             actionButton.layer.borderColor = AIONDesign.accentDanger.cgColor
         }
     }

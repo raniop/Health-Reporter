@@ -74,109 +74,6 @@ class GeminiService {
         }
     }
 
-    /// מנתח נתוני בריאות ומחזיר תובנות
-    func analyzeHealthData(_ healthData: HealthDataModel, completion: @escaping (String?, [String]?, [String]?, Error?) -> Void) {
-        guard let summary = createHealthSummary(from: healthData),
-              let jsonString = summary.toJSONString() else {
-            completion(nil, nil, nil, NSError(domain: "GeminiService", code: -1, userInfo: [NSLocalizedDescriptionKey: "שגיאה ביצירת סיכום נתונים"]))
-            return
-        }
-        
-        let prompt = """
-        # MISSION
-        אתה "מנוע סינתזה בריאותי מרכזי" לאפליקציית בריאות אישית מתקדמת. אתה פועל כצוות מומחים רב-תחומי: רופא ספורט, דיאטן קליני, ומאמן ביצועים.
-
-        # DATA INPUT
-        נתוני בריאות (30 הימים האחרונים):
-        \(jsonString)
-
-        # ANALYSIS REQUIREMENTS
-        1. ניתוח שבועי (Week-over-Week):
-           - זהה שינויים באחוזים ב: דופק במנוחה (RHR), משך שינה, קלוריות פעילות, ו-VO2 Max (אם זמין).
-           - הדגש "דגלים אדומים" (למשל: RHR עלה >5% ומשך שינה ירד >10% מצביע על אימון יתר/מחלה).
-
-        2. סקירה הוליסטית משלושה מומחים:
-           - רופא ספורט: התמקד במגמות קרדיווסקולריות וסמני התאוששות.
-           - דיאטן קליני: קשר בין הוצאה אנרגטית לצריכת קלוריות (אם זמין) או הצע התאמות מקרונוטריינטים בהתבסס על עוצמת האימון.
-           - מאמן ביצועים: נתח עומס אימון מול התאוששות. האם המשתמש מוכן ל"שבוע דחיפה" או "שבוע הפחתה"?
-
-        3. המלצות מעשיות ("ה-3 היומיות"):
-           - ספק בדיוק 3 פעולות ספציפיות ולא גנריות לשבוע הקרוב.
-           - דוגמה: "הגדל חלבון ב-20ג' ביום שלישי/חמישי כדי להתאים לסשני חתירה בעוצמה גבוהה."
-
-        # OUTPUT FORMAT
-        אנא תן תשובה בעברית בפורמט הבא:
-        
-        ## תובנות כלליות
-        [סקירה כללית של מצב הבריאות]
-        
-        ## ניתוח שבועי
-        [שינויים באחוזים וזיהוי דגלים אדומים]
-        
-        ## דעת המומחים
-        ### רופא ספורט
-        [ניתוח קרדיווסקולרי וסמני התאוששות]
-        
-        ### דיאטן קליני
-        [ניתוח תזונתי והמלצות]
-        
-        ### מאמן ביצועים
-        [ניתוח עומס אימון והתאוששות]
-        
-        ## 🎯 ACTIONABLE DIRECTIVES (STOP/START/WATCH)
-        - **STOP:** [משפט אחד – מה להפסיק]
-        - **START:** [משפט אחד – מה להתחיל]
-        - **WATCH:** [משפט אחד – מה לעקוב]
-
-        ## 3 המלצות מעשיות לשבוע הקרוב
-        1. [המלצה ספציפית ומעשית]
-        2. [המלצה ספציפית ומעשית]
-        3. [המלצה ספציפית ומעשית]
-        
-        ## גורמי סיכון (אם יש)
-        [רשימת גורמי סיכון פוטנציאליים]
-        """
-        
-        sendRequest(prompt: prompt, temperature: 0.2) { response, error in
-            if let error = error {
-                completion(nil, nil, nil, error)
-                return
-            }
-            
-            guard let response = response else {
-                completion(nil, nil, nil, NSError(domain: "GeminiService", code: -2, userInfo: [NSLocalizedDescriptionKey: "לא התקבלה תשובה מ-Gemini"]))
-                return
-            }
-            
-            // פענוח התשובה לחלקים
-            let (insights, recommendations, riskFactors) = self.parseResponse(response)
-            completion(insights, recommendations, riskFactors, nil)
-        }
-    }
-    
-    private func createHealthSummary(from healthData: HealthDataModel, currentWeek: WeeklyHealthSnapshot? = nil, previousWeek: WeeklyHealthSnapshot? = nil) -> HealthSummary? {
-        let endDate = Date()
-        let startDate = Calendar.current.date(byAdding: .month, value: -3, to: endDate) ?? endDate
-        let dateRange = DateInterval(start: startDate, end: endDate)
-        
-        var keyMetrics: [String: Any] = [:]
-        
-        if let steps = healthData.steps {
-            keyMetrics["steps"] = steps
-        }
-        if let heartRate = healthData.heartRate {
-            keyMetrics["heart_rate"] = heartRate
-        }
-        if let bmi = healthData.bodyMassIndex {
-            keyMetrics["bmi"] = bmi
-        }
-        if let sleepHours = healthData.sleepHours {
-            keyMetrics["sleep_hours"] = sleepHours
-        }
-        
-        return HealthSummary(dataModel: healthData, dateRange: dateRange, keyMetrics: keyMetrics, currentWeek: currentWeek, previousWeek: previousWeek)
-    }
-    
     /// מנתח נתוני בריאות עם השוואה שבועית (אופציונלי: צרור 6 הגרפים ל־AION)
     /// Gemini בוחר את הרכב בעצמו בהתבסס על הניתוח
     /// כולל הקשר מקור נתונים (Garmin/Oura/Apple Watch) להתאמה אישית
@@ -226,6 +123,22 @@ class GeminiService {
 
             // Data source context for tailored analysis
             let dataSourceContext = self.buildDataSourceContext()
+
+            // הערות אישיות מהמשתמש (למשל: "שתיתי אלכוהול אתמול")
+            let userNotesBlock: String
+            if let notes = AnalysisCache.loadUserNotes(), !notes.isEmpty {
+                userNotesBlock = """
+
+                ==================================================
+                USER PERSONAL CONTEXT
+                ==================================================
+                The user provided these personal notes. Factor them into your analysis
+                and mention them where relevant (e.g., how alcohol affects HRV/sleep):
+                \(notes)
+                """
+            } else {
+                userNotesBlock = ""
+            }
 
             // שליפת הרכב הקודם מה-cache (Car Identity Lock)
             var lastCarModel: String? = nil
@@ -354,6 +267,7 @@ class GeminiService {
             \(payloadJSON)
             \(graphsBlock)
             \(dataSourceContext)
+            \(userNotesBlock)
 
             ==================================================
             PREVIOUS ANALYSIS (for continuity)

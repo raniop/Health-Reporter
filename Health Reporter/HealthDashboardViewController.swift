@@ -1242,7 +1242,8 @@ class HealthDashboardViewController: UIViewController {
               let curEnd = calendar.date(byAdding: .day, value: 6, to: curStart),
               let prevStart = calendar.date(byAdding: .weekOfYear, value: -1, to: curStart),
               let prevEnd = calendar.date(byAdding: .day, value: 6, to: prevStart) else {
-            analyzeWithGemini(loadId: loadId, healthDataHash: healthDataHash)
+            applyNoDataState()
+            NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
             return
         }
         let g = DispatchGroup()
@@ -1254,34 +1255,11 @@ class HealthDashboardViewController: UIViewController {
         HealthKitManager.shared.createWeeklySnapshot(weekStartDate: curStart, weekEndDate: curEnd, previousWeekSnapshot: nil) { cur = $0; g.leave() }
         g.notify(queue: .main) { [weak self] in
             guard let self = self, let c = cur, let p = prev else {
-                self?.analyzeWithGemini(loadId: loadId, healthDataHash: healthDataHash)
+                self?.applyNoDataState()
+                NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
                 return
             }
             self.analyzeWithGeminiWoW(current: c, previous: p, chartBundle: chartBundle, loadId: loadId, healthDataHash: healthDataHash)
-        }
-    }
-
-    private func analyzeWithGemini(loadId: Int, healthDataHash: String) {
-        guard let data = healthData, data.hasRealData else {
-            applyNoDataState()
-            NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
-            return
-        }
-        GeminiService.shared.analyzeHealthData(data) { [weak self] insights, recs, risks, err in
-            DispatchQueue.main.async {
-                guard let self = self, self.loadId == loadId else { return }
-                if let err = err {
-                    if (err as NSError).code == NSURLErrorCancelled { return }
-                    let msg = (err as NSError).code == NSURLErrorTimedOut
-                        ? "dashboard.geminiTimeout".localized
-                        : err.localizedDescription
-                    self.showAlert(title: "error".localized, message: msg)
-                    NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
-                    return
-                }
-                self.applyAnalysis(insights: insights, recs: recs, risks: risks, healthDataHash: healthDataHash)
-                NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
-            }
         }
     }
 

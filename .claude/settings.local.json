@@ -20,7 +20,8 @@
       "Bash(xargs cat:*)",
       "Bash(swift build:*)",
       "Bash(xcrun simctl:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(firebase:*)"
     ]
   }
 }

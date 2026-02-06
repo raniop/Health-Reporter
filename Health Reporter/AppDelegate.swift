@@ -56,21 +56,70 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
-    /// Request notification permissions - can be called from onboarding or for returning users
+    /// Request notification permissions - can be called from onboarding or for returning users.
+    /// Checks current authorization status first to handle denied/already-authorized states.
     func requestNotificationPermissions(application: UIApplication? = nil) {
         let app = application ?? UIApplication.shared
-        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-        UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { granted, error in
-            if let error = error {
-                print("Push notification authorization error: \(error)")
-                return
-            }
-            print("Push notification permission granted: \(granted)")
 
-            DispatchQueue.main.async {
-                app.registerForRemoteNotifications()
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            switch settings.authorizationStatus {
+            case .notDetermined:
+                // First time — show system prompt
+                let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+                UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { granted, error in
+                    if let error = error {
+                        print("Push notification authorization error: \(error)")
+                        return
+                    }
+                    print("Push notification permission granted: \(granted)")
+                    DispatchQueue.main.async {
+                        app.registerForRemoteNotifications()
+                    }
+                }
+
+            case .denied:
+                // Previously denied — show custom alert directing user to Settings
+                DispatchQueue.main.async {
+                    self?.showNotificationDeniedAlert()
+                }
+
+            case .authorized, .provisional, .ephemeral:
+                // Already authorized — just register for remote notifications
+                DispatchQueue.main.async {
+                    app.registerForRemoteNotifications()
+                }
+
+            @unknown default:
+                break
             }
         }
+    }
+
+    /// Shows an alert explaining that notifications are disabled, with a button to open Settings.
+    private func showNotificationDeniedAlert() {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootVC = windowScene.windows.first?.rootViewController else { return }
+
+        let alert = UIAlertController(
+            title: "notifications.denied.title".localized,
+            message: "notifications.denied.message".localized,
+            preferredStyle: .alert
+        )
+
+        alert.addAction(UIAlertAction(title: "notifications.denied.openSettings".localized, style: .default) { _ in
+            if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(settingsURL)
+            }
+        })
+
+        alert.addAction(UIAlertAction(title: "notifications.denied.later".localized, style: .cancel))
+
+        // Present from the topmost VC
+        var topVC = rootVC
+        while let presented = topVC.presentedViewController {
+            topVC = presented
+        }
+        topVC.present(alert, animated: true)
     }
 
     // MARK: - Remote Notification Registration
@@ -182,7 +231,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     private func handleNotificationAction(type: String, userInfo: [AnyHashable: Any]) {
         // Post notification to navigate to the appropriate screen
         switch type {
-        case "friend_request_received", "friend_request_accepted":
+        case "friend_request_received", "friend_request_accepted",
+             "follow_request_received", "follow_request_accepted",
+             "new_follower":
             NotificationCenter.default.post(
                 name: NSNotification.Name("OpenSocialHub"),
                 object: nil,

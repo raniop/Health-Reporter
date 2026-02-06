@@ -32,6 +32,20 @@ enum AnalyticsEvent: String {
     case friendRemoved = "friend_removed"
     case leaderboardViewed = "leaderboard_viewed"
     case userProfileViewed = "user_profile_viewed"
+    case followRequestSent = "follow_request_sent"
+    case followed = "followed"
+    case unfollowed = "unfollowed"
+    case rivalCardTapped = "rival_card_tapped"
+    case inviteFriendsTapped = "invite_friends_tapped"
+
+    // Profile Events
+    case profileShareTapped = "profile_share_tapped"
+    case profileEditTapped = "profile_edit_tapped"
+    case profileStatTapped = "profile_stat_tapped"
+
+    // Social Hub Events (Social-First)
+    case storyAvatarTapped = "story_avatar_tapped"
+    case activityFeedCardTapped = "activity_feed_card_tapped"
 
     // Car Tier Events
     case carTierChanged = "car_tier_changed"
@@ -64,6 +78,10 @@ enum AnalyticsScreen: String {
     case activity = "Activity"
     case socialHub = "Social_Hub"
     case leaderboard = "Leaderboard"
+    case followRequests = "Follow_Requests"
+    case followersList = "Followers_List"
+    case followingList = "Following_List"
+    case userSearch = "User_Search"
     case profile = "Profile"
     case userProfile = "User_Profile"
     case settings = "Settings"
@@ -193,6 +211,34 @@ final class AnalyticsService {
             "viewed_user_id": userId,
             "is_friend": isFriend
         ])
+    }
+
+    func logFollowRequestSent(toUserId: String) {
+        logEvent(.followRequestSent, parameters: [
+            "target_user_id": toUserId
+        ])
+    }
+
+    func logFollowed(userId: String) {
+        logEvent(.followed, parameters: [
+            "followed_user_id": userId
+        ])
+    }
+
+    func logUnfollowed(userId: String) {
+        logEvent(.unfollowed, parameters: [
+            "unfollowed_user_id": userId
+        ])
+    }
+
+    func logRivalCardTapped(rivalUserId: String) {
+        logEvent(.rivalCardTapped, parameters: [
+            "rival_user_id": rivalUserId
+        ])
+    }
+
+    func logInviteFriendsTapped() {
+        logEvent(.inviteFriendsTapped)
     }
 
     // MARK: - Car Tier Events

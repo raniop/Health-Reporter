@@ -1,11 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // נתוני ניתוח AION – קריאה/כתיבה רק למשתמש המחובר על המסמך שלו
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
 
-      // Friends subcollection - הרשאות גם ליצירה על ידי החבר (reciprocal)
+    // ─── Users ───
+    match /users/{userId} {
+      // כל משתמש מאומת יכול לקרוא פרופילים (חיפוש, לידרבורד, צפייה בפרופיל)
+      allow read: if request.auth != null;
+      // רק הבעלים יכול ליצור/למחוק את המסמך שלו
+      allow create, delete: if request.auth != null && request.auth.uid == userId;
+      // עדכון פתוח למשתמשים מאומתים (נדרש לעדכון followersCount/followingCount)
+      allow update: if request.auth != null;
+
+      // Followers subcollection
+      match /followers/{followerUid} {
+        allow read: if request.auth != null;
+        // העוקב יכול להוסיף/להסיר את עצמו, או הבעלים יכול לנהל
+        allow write: if request.auth != null &&
+                     (request.auth.uid == userId || request.auth.uid == followerUid);
+      }
+
+      // Following subcollection
+      match /following/{followingUid} {
+        allow read: if request.auth != null;
+        // הבעלים יכול לנהל את מי שהוא עוקב, או שהנעקב יכול להסיר את עצמו (removeFollower)
+        allow write: if request.auth != null &&
+                     (request.auth.uid == userId || request.auth.uid == followingUid);
+      }
+
+      // Legacy friends subcollection (תאימות לאחור)
       match /friends/{friendUid} {
         allow read: if request.auth != null && request.auth.uid == userId;
         allow write: if request.auth != null &&
@@ -13,9 +35,9 @@ service cloud.firestore {
       }
     }
 
-    // Friend requests collection
-    match /friendRequests/{requestId} {
-      // כל משתמש מאומת יכול ליצור בקשת חברות
+    // ─── Follow Requests ───
+    match /followRequests/{requestId} {
+      // כל משתמש מאומת יכול ליצור בקשת מעקב
       allow create: if request.auth != null;
 
       // קריאה רק לבקשות נכנסות/יוצאות שלי
@@ -28,6 +50,19 @@ service cloud.firestore {
                     request.auth.uid == resource.data.toUid;
 
       // מחיקה - השולח או המקבל יכולים למחוק
+      allow delete: if request.auth != null &&
+                    (request.auth.uid == resource.data.toUid ||
+                     request.auth.uid == resource.data.fromUid);
+    }
+
+    // ─── Legacy Friend Requests (תאימות לאחור) ───
+    match /friendRequests/{requestId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null &&
+                  (request.auth.uid == resource.data.toUid ||
+                   request.auth.uid == resource.data.fromUid);
+      allow update: if request.auth != null &&
+                    request.auth.uid == resource.data.toUid;
       allow delete: if request.auth != null &&
                     (request.auth.uid == resource.data.toUid ||
                      request.auth.uid == resource.data.fromUid);

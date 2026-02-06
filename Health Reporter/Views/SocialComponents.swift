@@ -1136,3 +1136,476 @@ final class ConfettiBurstView: UIView {
         return image
     }
 }
+
+// MARK: - RivalComparisonCard
+
+/// כרטיס השוואה בין המשתמש ליריב (חבר עם ניקוד דומה)
+final class RivalComparisonCard: UIView {
+
+    var onTapped: (() -> Void)?
+
+    private let glassBackground: GlassMorphismView = {
+        let view = GlassMorphismView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
+    private let avatarRing: AvatarRingView = {
+        let view = AvatarRingView(size: 44)
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
+    private let nameLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 14, weight: .semibold)
+        label.textColor = AIONDesign.textPrimary
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+
+    private let comparisonBarContainer: UIView = {
+        let view = UIView()
+        view.layer.cornerRadius = 4
+        view.clipsToBounds = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
+    private let userBarView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
+    private let rivalBarView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
+    private let statusLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 13, weight: .medium)
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+
+    private var userBarWidthConstraint: NSLayoutConstraint?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupView()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupView()
+    }
+
+    private func setupView() {
+        translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(glassBackground)
+        addSubview(avatarRing)
+        addSubview(nameLabel)
+        addSubview(comparisonBarContainer)
+        comparisonBarContainer.addSubview(userBarView)
+        comparisonBarContainer.addSubview(rivalBarView)
+        addSubview(statusLabel)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        nameLabel.textAlignment = LocalizationManager.shared.textAlignment
+
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        addGestureRecognizer(tapGesture)
+
+        let userBarWidth = userBarView.widthAnchor.constraint(equalToConstant: 0)
+        userBarWidthConstraint = userBarWidth
+
+        NSLayoutConstraint.activate([
+            glassBackground.topAnchor.constraint(equalTo: topAnchor),
+            glassBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
+            glassBackground.trailingAnchor.constraint(equalTo: trailingAnchor),
+            glassBackground.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            avatarRing.topAnchor.constraint(equalTo: topAnchor, constant: AIONDesign.spacing),
+            avatarRing.centerXAnchor.constraint(equalTo: centerXAnchor),
+            avatarRing.widthAnchor.constraint(equalToConstant: 44),
+            avatarRing.heightAnchor.constraint(equalToConstant: 44),
+
+            nameLabel.topAnchor.constraint(equalTo: avatarRing.bottomAnchor, constant: AIONDesign.spacingSmall),
+            nameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: AIONDesign.spacingSmall),
+            nameLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -AIONDesign.spacingSmall),
+
+            comparisonBarContainer.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: AIONDesign.spacingSmall),
+            comparisonBarContainer.leadingAnchor.constraint(equalTo: leadingAnchor, constant: AIONDesign.spacing),
+            comparisonBarContainer.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -AIONDesign.spacing),
+            comparisonBarContainer.heightAnchor.constraint(equalToConstant: 8),
+
+            userBarView.topAnchor.constraint(equalTo: comparisonBarContainer.topAnchor),
+            userBarView.leadingAnchor.constraint(equalTo: isRTL ? comparisonBarContainer.trailingAnchor : comparisonBarContainer.leadingAnchor),
+            userBarView.bottomAnchor.constraint(equalTo: comparisonBarContainer.bottomAnchor),
+            userBarWidth,
+
+            rivalBarView.topAnchor.constraint(equalTo: comparisonBarContainer.topAnchor),
+            rivalBarView.trailingAnchor.constraint(equalTo: isRTL ? comparisonBarContainer.leadingAnchor : comparisonBarContainer.trailingAnchor),
+            rivalBarView.bottomAnchor.constraint(equalTo: comparisonBarContainer.bottomAnchor),
+            rivalBarView.leadingAnchor.constraint(equalTo: isRTL ? comparisonBarContainer.leadingAnchor : userBarView.trailingAnchor),
+
+            statusLabel.topAnchor.constraint(equalTo: comparisonBarContainer.bottomAnchor, constant: AIONDesign.spacingSmall),
+            statusLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: AIONDesign.spacingSmall),
+            statusLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -AIONDesign.spacingSmall),
+            statusLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AIONDesign.spacing),
+
+            widthAnchor.constraint(equalToConstant: 160),
+        ])
+    }
+
+    @objc private func handleTap() {
+        UIView.animate(
+            withDuration: AIONDesign.animationFast,
+            delay: 0,
+            usingSpringWithDamping: AIONDesign.springDamping,
+            initialSpringVelocity: AIONDesign.springVelocity
+        ) {
+            self.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+        } completion: { _ in
+            UIView.animate(
+                withDuration: AIONDesign.animationFast,
+                delay: 0,
+                usingSpringWithDamping: AIONDesign.springDamping,
+                initialSpringVelocity: AIONDesign.springVelocity
+            ) {
+                self.transform = .identity
+            }
+        }
+        onTapped?()
+    }
+
+    func configure(rivalName: String, rivalPhotoURL: String?, rivalScore: Int, userScore: Int, rivalCarTierIndex: Int?) {
+        nameLabel.text = rivalName
+        avatarRing.loadImage(from: rivalPhotoURL)
+
+        let totalScore = max(userScore + rivalScore, 1)
+        let userProportion = CGFloat(userScore) / CGFloat(totalScore)
+
+        if userScore > rivalScore {
+            userBarView.backgroundColor = AIONDesign.accentSuccess
+            rivalBarView.backgroundColor = AIONDesign.accentSecondary
+            let diff = userScore - rivalScore
+            statusLabel.text = String(format: "social.rival.youLead".localized, diff)
+            statusLabel.textColor = AIONDesign.accentSuccess
+        } else if rivalScore > userScore {
+            userBarView.backgroundColor = AIONDesign.accentPrimary
+            rivalBarView.backgroundColor = AIONDesign.accentWarning
+            let diff = rivalScore - userScore
+            statusLabel.text = String(format: "social.rival.ahead".localized, diff)
+            statusLabel.textColor = AIONDesign.accentWarning
+        } else {
+            userBarView.backgroundColor = AIONDesign.accentPrimary
+            rivalBarView.backgroundColor = AIONDesign.accentPrimary
+            statusLabel.text = "social.rival.tied".localized
+            statusLabel.textColor = AIONDesign.accentPrimary
+        }
+
+        layoutIfNeeded()
+        let barWidth = comparisonBarContainer.bounds.width
+        let userWidth = barWidth * userProportion
+
+        UIView.animate(withDuration: AIONDesign.animationMedium, delay: 0, options: .curveEaseOut) {
+            self.userBarWidthConstraint?.constant = userWidth
+            self.layoutIfNeeded()
+        }
+    }
+}
+
+// MARK: - WeeklyBarChart
+
+/// גרף עמודות שבועי - 7 עמודות ליום בשבוע
+final class WeeklyBarChart: UIView {
+
+    var barHeight: CGFloat = 60
+
+    private let stackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.distribution = .fillEqually
+        stack.alignment = .bottom
+        stack.spacing = 6
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }()
+
+    private let labelsStack: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.distribution = .fillEqually
+        stack.alignment = .center
+        stack.spacing = 6
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }()
+
+    private var barViews: [UIView] = []
+    private var barHeightConstraints: [NSLayoutConstraint] = []
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupView()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupView()
+    }
+
+    private func setupView() {
+        translatesAutoresizingMaskIntoConstraints = false
+        semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+
+        addSubview(stackView)
+        addSubview(labelsStack)
+
+        NSLayoutConstraint.activate([
+            stackView.topAnchor.constraint(equalTo: topAnchor),
+            stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stackView.heightAnchor.constraint(equalToConstant: barHeight),
+
+            labelsStack.topAnchor.constraint(equalTo: stackView.bottomAnchor, constant: 4),
+            labelsStack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            labelsStack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            labelsStack.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+
+        setupBars()
+        setupLabels()
+    }
+
+    private func setupBars() {
+        for _ in 0..<7 {
+            let bar = UIView()
+            bar.translatesAutoresizingMaskIntoConstraints = false
+            bar.backgroundColor = AIONDesign.surface
+            bar.layer.cornerRadius = AIONDesign.cornerRadiusSmall / 2
+            bar.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+            bar.clipsToBounds = true
+
+            let heightConstraint = bar.heightAnchor.constraint(equalToConstant: 4)
+            heightConstraint.isActive = true
+
+            stackView.addArrangedSubview(bar)
+            barViews.append(bar)
+            barHeightConstraints.append(heightConstraint)
+        }
+    }
+
+    private func setupLabels() {
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        let englishDays = ["S", "M", "T", "W", "T", "F", "S"]
+        let hebrewDays = ["א", "ב", "ג", "ד", "ה", "ו", "ש"]
+        let dayLabels = isRTL ? hebrewDays : englishDays
+
+        for day in dayLabels {
+            let label = UILabel()
+            label.text = day
+            label.font = .systemFont(ofSize: 11, weight: .medium)
+            label.textColor = AIONDesign.textTertiary
+            label.textAlignment = .center
+            label.translatesAutoresizingMaskIntoConstraints = false
+            labelsStack.addArrangedSubview(label)
+        }
+    }
+
+    func configure(scores: [Int]) {
+        guard scores.count == 7 else { return }
+
+        layoutIfNeeded()
+
+        for (index, score) in scores.enumerated() {
+            guard index < barViews.count else { break }
+            let clampedScore = max(0, min(score, 100))
+            let height = max(4, barHeight * CGFloat(clampedScore) / 100.0)
+
+            barViews[index].backgroundColor = colorForScore(clampedScore)
+
+            UIView.animate(
+                withDuration: AIONDesign.animationMedium,
+                delay: Double(index) * 0.05,
+                usingSpringWithDamping: AIONDesign.springDamping,
+                initialSpringVelocity: AIONDesign.springVelocity
+            ) {
+                self.barHeightConstraints[index].constant = height
+                self.layoutIfNeeded()
+            }
+        }
+    }
+
+    private func colorForScore(_ score: Int) -> UIColor {
+        switch score {
+        case 82...100: return AIONDesign.accentSuccess
+        case 65...81: return AIONDesign.accentSecondary
+        case 45...64: return AIONDesign.accentPrimary
+        case 25...44: return AIONDesign.accentWarning
+        default: return AIONDesign.accentDanger
+        }
+    }
+}
+
+// MARK: - CircularProgressView
+
+/// טבעת התקדמות מעגלית עם ציון 0-100
+final class CircularProgressView: UIView {
+
+    var score: Int = 0 {
+        didSet { updateProgress() }
+    }
+
+    var ringWidth: CGFloat = 8 {
+        didSet { setNeedsLayout() }
+    }
+
+    var size: CGFloat = 100 {
+        didSet { invalidateIntrinsicContentSize(); setNeedsLayout() }
+    }
+
+    private let trackLayer = CAShapeLayer()
+    private let progressLayer = CAShapeLayer()
+    private let gradientLayer = CAGradientLayer()
+
+    private let scoreLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 28, weight: .bold)
+        label.textColor = AIONDesign.textPrimary
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+
+    private let denominatorLabel: UILabel = {
+        let label = UILabel()
+        label.text = "/100"
+        label.font = .systemFont(ofSize: 12, weight: .medium)
+        label.textColor = AIONDesign.textTertiary
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+
+    override var intrinsicContentSize: CGSize {
+        return CGSize(width: size, height: size)
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupView()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupView()
+    }
+
+    private func setupView() {
+        translatesAutoresizingMaskIntoConstraints = false
+
+        // Track layer (background ring)
+        trackLayer.fillColor = UIColor.clear.cgColor
+        trackLayer.strokeColor = AIONDesign.surface.cgColor
+        trackLayer.lineWidth = ringWidth
+        trackLayer.lineCap = .round
+        layer.addSublayer(trackLayer)
+
+        // Gradient layer masked by progress shape
+        gradientLayer.colors = [AIONDesign.accentPrimary.cgColor, AIONDesign.accentSecondary.cgColor]
+        gradientLayer.startPoint = CGPoint(x: 0, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 1, y: 1)
+
+        progressLayer.fillColor = UIColor.clear.cgColor
+        progressLayer.strokeColor = UIColor.white.cgColor
+        progressLayer.lineWidth = ringWidth
+        progressLayer.lineCap = .round
+        progressLayer.strokeEnd = 0
+
+        gradientLayer.mask = progressLayer
+        layer.addSublayer(gradientLayer)
+
+        addSubview(scoreLabel)
+        addSubview(denominatorLabel)
+
+        NSLayoutConstraint.activate([
+            scoreLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            scoreLabel.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -6),
+
+            denominatorLabel.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: 0),
+            denominatorLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+
+            widthAnchor.constraint(equalToConstant: size),
+            heightAnchor.constraint(equalToConstant: size),
+        ])
+
+        scoreLabel.text = "0"
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        let radius = (min(bounds.width, bounds.height) - ringWidth) / 2
+
+        let startAngle = -CGFloat.pi / 2
+        let endAngle = startAngle + CGFloat.pi * 2
+
+        let circularPath = UIBezierPath(
+            arcCenter: center,
+            radius: radius,
+            startAngle: startAngle,
+            endAngle: endAngle,
+            clockwise: true
+        )
+
+        trackLayer.path = circularPath.cgPath
+        trackLayer.lineWidth = ringWidth
+
+        progressLayer.path = circularPath.cgPath
+        progressLayer.lineWidth = ringWidth
+
+        gradientLayer.frame = bounds
+    }
+
+    private func updateProgress() {
+        let clampedScore = max(0, min(score, 100))
+        scoreLabel.text = "\(clampedScore)"
+
+        // Update gradient colors based on score tier
+        let tierColors = gradientColorsForScore(clampedScore)
+        gradientLayer.colors = tierColors.map { $0.cgColor }
+
+        // Animate stroke
+        let targetStrokeEnd = CGFloat(clampedScore) / 100.0
+        let animation = CABasicAnimation(keyPath: "strokeEnd")
+        animation.fromValue = progressLayer.strokeEnd
+        animation.toValue = targetStrokeEnd
+        animation.duration = AIONDesign.animationMedium
+        animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        animation.fillMode = .forwards
+        animation.isRemovedOnCompletion = false
+
+        progressLayer.strokeEnd = targetStrokeEnd
+        progressLayer.add(animation, forKey: "progressAnimation")
+    }
+
+    private func gradientColorsForScore(_ score: Int) -> [UIColor] {
+        switch score {
+        case 82...100: return [AIONDesign.accentSuccess, AIONDesign.accentSecondary]
+        case 65...81: return [AIONDesign.accentSecondary, AIONDesign.accentPrimary]
+        case 45...64: return [AIONDesign.accentPrimary, AIONDesign.accentSecondary]
+        case 25...44: return [AIONDesign.accentWarning, AIONDesign.accentPrimary]
+        default: return [AIONDesign.accentDanger, AIONDesign.accentWarning]
+        }
+    }
+}

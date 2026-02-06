@@ -2,7 +2,8 @@
 //  SocialHubViewController.swift
 //  Health Reporter
 //
-//  מסך ראשי לחברים - טאבים: חברים, בקשות, חיפוש. עיצוב מודרני עם Glass Morphism.
+//  2026 Social-First redesign — Instagram-style stories row, activity feed cards,
+//  horizontal rivals carousel, compact top performers, weekly stats, invite banner.
 //
 
 import UIKit
@@ -10,40 +11,17 @@ import FirebaseAuth
 
 final class SocialHubViewController: UIViewController {
 
-    // MARK: - Properties
+    // MARK: - Data
 
-    private var currentSegment: Int = 0
-    private var friends: [Friend] = []
-    private var pendingRequests: [FriendRequest] = []
-    private var searchResults: [UserSearchResult] = []
-    private var isSearching = false
+    private var leaderboardEntries: [LeaderboardEntry] = []
+    private var currentUserEntry: LeaderboardEntry?
+    private var rankChange: RankChange?
+    private var rivals: [LeaderboardEntry] = []
+    private var followingRelations: [FollowRelation] = []
 
-    // Dynamic constraint for scrollView top
-    private var scrollViewTopConstraint: NSLayoutConstraint?
+    private let lastRankKey = "arenaLastRank"
 
-    // MARK: - Recently Viewed Users
-    private let recentlyViewedKey = "recentlyViewedUsers"
-    private let maxRecentlyViewed = 5
-
-    private var recentlyViewedUsers: [[String: String]] {
-        get { UserDefaults.standard.array(forKey: recentlyViewedKey) as? [[String: String]] ?? [] }
-        set { UserDefaults.standard.set(newValue, forKey: recentlyViewedKey) }
-    }
-
-    // MARK: - UI Elements
-
-    private lazy var tabBarControl: AnimatedTabBarControl = {
-        let control = AnimatedTabBarControl(items: [
-            .init(title: "social.friends".localized, icon: "person.2.fill"),
-            .init(title: "social.requests".localized, icon: "person.badge.plus"),
-            .init(title: "social.search".localized, icon: "magnifyingglass")
-        ])
-        control.translatesAutoresizingMaskIntoConstraints = false
-        control.onSelectionChanged = { [weak self] index in
-            self?.tabChanged(to: index)
-        }
-        return control
-    }()
+    // MARK: - UI Chrome
 
     private let scrollView: UIScrollView = {
         let sv = UIScrollView()
@@ -56,45 +34,12 @@ final class SocialHubViewController: UIViewController {
     private let contentStack: UIStackView = {
         let s = UIStackView()
         s.axis = .vertical
-        s.spacing = AIONDesign.spacing
+        s.spacing = 20
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
     }()
 
-    private let searchBar: UISearchBar = {
-        let sb = UISearchBar()
-        sb.placeholder = "social.searchPlaceholder".localized
-        sb.searchBarStyle = .minimal
-        sb.backgroundImage = UIImage()
-        sb.translatesAutoresizingMaskIntoConstraints = false
-        sb.isHidden = true
-        return sb
-    }()
-
-    private let emptyStateView: UIView = {
-        let v = UIView()
-        v.isHidden = true
-        v.translatesAutoresizingMaskIntoConstraints = false
-        return v
-    }()
-
-    private let emptyStateIcon: UIImageView = {
-        let iv = UIImageView()
-        iv.contentMode = .scaleAspectFit
-        iv.tintColor = AIONDesign.textTertiary
-        iv.translatesAutoresizingMaskIntoConstraints = false
-        return iv
-    }()
-
-    private let emptyStateLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 16, weight: .medium)
-        l.textColor = AIONDesign.textSecondary
-        l.textAlignment = .center
-        l.numberOfLines = 0
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
+    private let refreshControl = UIRefreshControl()
 
     private let loadingIndicator: UIActivityIndicatorView = {
         let ai = UIActivityIndicatorView(style: .large)
@@ -104,33 +49,52 @@ final class SocialHubViewController: UIViewController {
         return ai
     }()
 
-    private let recentSearchesContainer: GlassMorphismView = {
-        let v = GlassMorphismView()
-        v.translatesAutoresizingMaskIntoConstraints = false
-        v.isHidden = true
-        v.cornerRadius = AIONDesign.cornerRadius
-        return v
+    // Inline search UI
+    private let searchBar: UISearchBar = {
+        let sb = UISearchBar()
+        sb.placeholder = "social.searchPlaceholder".localized
+        sb.searchBarStyle = .minimal
+        sb.backgroundImage = UIImage()
+        sb.translatesAutoresizingMaskIntoConstraints = false
+        if let textField = sb.value(forKey: "searchField") as? UITextField {
+            textField.textColor = AIONDesign.textPrimary
+            textField.backgroundColor = AIONDesign.surface
+            textField.attributedPlaceholder = NSAttributedString(
+                string: "social.searchPlaceholder".localized,
+                attributes: [.foregroundColor: AIONDesign.textTertiary]
+            )
+            textField.textAlignment = LocalizationManager.shared.textAlignment
+        }
+        sb.tintColor = AIONDesign.accentPrimary
+        sb.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        return sb
     }()
 
-    private let recentSearchesTitleLabel: UILabel = {
-        let l = UILabel()
-        l.text = "social.recentlyViewed".localized
-        l.font = .systemFont(ofSize: 14, weight: .semibold)
-        l.textColor = AIONDesign.textSecondary
-        l.textAlignment = LocalizationManager.shared.textAlignment
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }()
-
-    private let recentSearchesStack: UIStackView = {
+    private let searchResultsStack: UIStackView = {
         let s = UIStackView()
         s.axis = .vertical
-        s.spacing = 4
+        s.spacing = 10
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
     }()
 
-    private let refreshControl = UIRefreshControl()
+    private let searchResultsScrollView: UIScrollView = {
+        let sv = UIScrollView()
+        sv.showsVerticalScrollIndicator = false
+        sv.alwaysBounceVertical = true
+        sv.keyboardDismissMode = .interactive
+        sv.translatesAutoresizingMaskIntoConstraints = false
+        sv.isHidden = true
+        return sv
+    }()
+
+    // Bell badge
+    private var bellBadgeLabel: UILabel?
+    private var hasLoadedOnce = false
+
+    // Inline search
+    private var searchResults: [UserSearchResult] = []
+    private var isSearchActive = false
 
     // MARK: - Lifecycle
 
@@ -139,112 +103,134 @@ final class SocialHubViewController: UIViewController {
         title = "social.title".localized
         view.backgroundColor = AIONDesign.background
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
-        setupUI()
+
         setupNavigationBar()
+        setupLayout()
         setupRefreshControl()
 
-        // Analytics: Log screen view
         AnalyticsService.shared.logScreenView(.socialHub)
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadData()
+        loadArenaData()
+        updateBellBadge()
     }
 
-    // MARK: - Setup
+    // MARK: - Public (backward compat)
 
-    private func setupUI() {
-        view.addSubview(tabBarControl)
-        view.addSubview(searchBar)
-        view.addSubview(recentSearchesContainer)
-        view.addSubview(scrollView)
-        scrollView.addSubview(contentStack)
-        view.addSubview(emptyStateView)
-        view.addSubview(loadingIndicator)
+    func switchToRequestsSegment() {
+        // No-op: maintained for backward compatibility with tab bar routing.
+    }
 
-        // Setup empty state view
-        emptyStateView.addSubview(emptyStateIcon)
-        emptyStateView.addSubview(emptyStateLabel)
+    // MARK: - Navigation Bar
 
-        // Setup recent searches container
-        recentSearchesContainer.addSubview(recentSearchesTitleLabel)
-        recentSearchesContainer.addSubview(recentSearchesStack)
+    private func setupNavigationBar() {
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithTransparentBackground()
+        appearance.titleTextAttributes = [
+            .foregroundColor: AIONDesign.textPrimary,
+            .font: UIFont.systemFont(ofSize: 18, weight: .bold)
+        ]
+        navigationItem.standardAppearance = appearance
+        navigationItem.scrollEdgeAppearance = appearance
 
+        // Right: Bell with badge (follow requests) — outer container allows badge overflow
+        let bellOuter = UIView(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
+        bellOuter.clipsToBounds = false
+
+        let bellContainer = UIView(frame: CGRect(x: 4, y: 4, width: 36, height: 36))
+        bellContainer.backgroundColor = AIONDesign.surface
+        bellContainer.layer.cornerRadius = 18
+        bellContainer.clipsToBounds = false
+        bellOuter.addSubview(bellContainer)
+
+        let bellImg = UIImageView(image: UIImage(systemName: "bell.fill",
+                                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)))
+        bellImg.tintColor = AIONDesign.textPrimary
+        bellImg.contentMode = .scaleAspectFit
+        bellImg.frame = CGRect(x: 8, y: 8, width: 20, height: 20)
+        bellContainer.addSubview(bellImg)
+
+        let badge = UILabel()
+        badge.font = .monospacedDigitSystemFont(ofSize: 9, weight: .black)
+        badge.textColor = .white
+        badge.backgroundColor = UIColor(hex: "#FF2D55") ?? AIONDesign.accentDanger
+        badge.textAlignment = .center
+        badge.layer.cornerRadius = 8
+        badge.clipsToBounds = true
+        badge.frame = CGRect(x: 22, y: -4, width: 16, height: 16)
+        badge.isHidden = true
+        bellContainer.addSubview(badge)
+        bellBadgeLabel = badge
+
+        let bellTap = UITapGestureRecognizer(target: self, action: #selector(bellTapped))
+        bellOuter.addGestureRecognizer(bellTap)
+        bellOuter.isUserInteractionEnabled = true
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: bellOuter)
+    }
+
+    // MARK: - Bell Badge
+
+    private func updateBellBadge() {
+        FollowFirestoreSync.fetchPendingFollowRequestsCount { [weak self] count in
+            DispatchQueue.main.async {
+                if count > 0 {
+                    self?.bellBadgeLabel?.text = "\(count)"
+                    self?.bellBadgeLabel?.isHidden = false
+                    let w = max(16, (self?.bellBadgeLabel?.intrinsicContentSize.width ?? 16) + 8)
+                    self?.bellBadgeLabel?.frame.size.width = w
+                    self?.bellBadgeLabel?.layer.cornerRadius = 8
+                } else {
+                    self?.bellBadgeLabel?.isHidden = true
+                }
+            }
+        }
+    }
+
+    // MARK: - Layout
+
+    private func setupLayout() {
         searchBar.delegate = self
 
+        view.addSubview(searchBar)
+        view.addSubview(scrollView)
+        scrollView.addSubview(contentStack)
+        view.addSubview(searchResultsScrollView)
+        searchResultsScrollView.addSubview(searchResultsStack)
+        view.addSubview(loadingIndicator)
+
         NSLayoutConstraint.activate([
-            tabBarControl.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: AIONDesign.spacing),
-            tabBarControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: AIONDesign.spacing),
-            tabBarControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -AIONDesign.spacing),
-            tabBarControl.heightAnchor.constraint(equalToConstant: 48),
+            // Search bar pinned at top
+            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
 
-            searchBar.topAnchor.constraint(equalTo: tabBarControl.bottomAnchor, constant: AIONDesign.spacing),
-            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: AIONDesign.spacingSmall),
-            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -AIONDesign.spacingSmall),
-
-            recentSearchesContainer.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: AIONDesign.spacing),
-            recentSearchesContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: AIONDesign.spacing),
-            recentSearchesContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -AIONDesign.spacing),
-
-            recentSearchesTitleLabel.topAnchor.constraint(equalTo: recentSearchesContainer.topAnchor, constant: AIONDesign.spacing),
-            recentSearchesTitleLabel.leadingAnchor.constraint(equalTo: recentSearchesContainer.leadingAnchor, constant: AIONDesign.spacing),
-            recentSearchesTitleLabel.trailingAnchor.constraint(equalTo: recentSearchesContainer.trailingAnchor, constant: -AIONDesign.spacing),
-
-            recentSearchesStack.topAnchor.constraint(equalTo: recentSearchesTitleLabel.bottomAnchor, constant: AIONDesign.spacingSmall),
-            recentSearchesStack.leadingAnchor.constraint(equalTo: recentSearchesContainer.leadingAnchor, constant: AIONDesign.spacing),
-            recentSearchesStack.trailingAnchor.constraint(equalTo: recentSearchesContainer.trailingAnchor, constant: -AIONDesign.spacing),
-            recentSearchesStack.bottomAnchor.constraint(equalTo: recentSearchesContainer.bottomAnchor, constant: -AIONDesign.spacing),
-
+            // Social content below search bar
+            scrollView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
 
-            contentStack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: AIONDesign.spacing),
-            contentStack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: AIONDesign.spacing),
-            contentStack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -AIONDesign.spacing),
-            contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -AIONDesign.spacingLarge),
+            contentStack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 12),
+            contentStack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: 16),
+            contentStack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -16),
+            contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -40),
 
-            emptyStateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            emptyStateView.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: 40),
-            emptyStateView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-            emptyStateView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
+            // Search results overlay (same position as scroll view)
+            searchResultsScrollView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
+            searchResultsScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchResultsScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            searchResultsScrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
 
-            emptyStateIcon.topAnchor.constraint(equalTo: emptyStateView.topAnchor),
-            emptyStateIcon.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
-            emptyStateIcon.widthAnchor.constraint(equalToConstant: 60),
-            emptyStateIcon.heightAnchor.constraint(equalToConstant: 60),
-
-            emptyStateLabel.topAnchor.constraint(equalTo: emptyStateIcon.bottomAnchor, constant: AIONDesign.spacing),
-            emptyStateLabel.leadingAnchor.constraint(equalTo: emptyStateView.leadingAnchor),
-            emptyStateLabel.trailingAnchor.constraint(equalTo: emptyStateView.trailingAnchor),
-            emptyStateLabel.bottomAnchor.constraint(equalTo: emptyStateView.bottomAnchor),
+            searchResultsStack.topAnchor.constraint(equalTo: searchResultsScrollView.contentLayoutGuide.topAnchor, constant: 12),
+            searchResultsStack.leadingAnchor.constraint(equalTo: searchResultsScrollView.frameLayoutGuide.leadingAnchor, constant: 16),
+            searchResultsStack.trailingAnchor.constraint(equalTo: searchResultsScrollView.frameLayoutGuide.trailingAnchor, constant: -16),
+            searchResultsStack.bottomAnchor.constraint(equalTo: searchResultsScrollView.contentLayoutGuide.bottomAnchor, constant: -40),
 
             loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
         ])
-
-        // Set initial scrollView top constraint (will be updated based on search visibility)
-        scrollViewTopConstraint = scrollView.topAnchor.constraint(equalTo: tabBarControl.bottomAnchor, constant: AIONDesign.spacing)
-        scrollViewTopConstraint?.isActive = true
-
-        // Tap gesture to dismiss keyboard
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
-        tapGesture.cancelsTouchesInView = false
-        view.addGestureRecognizer(tapGesture)
-
-        updateSearchBarVisibility()
-    }
-
-    private func setupNavigationBar() {
-        let leaderboardButton = UIBarButtonItem(
-            image: UIImage(systemName: "trophy.fill"),
-            style: .plain,
-            target: self,
-            action: #selector(leaderboardTapped)
-        )
-        leaderboardButton.tintColor = AIONDesign.accentPrimary
-        navigationItem.leftBarButtonItem = leaderboardButton
     }
 
     private func setupRefreshControl() {
@@ -253,359 +239,18 @@ final class SocialHubViewController: UIViewController {
         scrollView.refreshControl = refreshControl
     }
 
-    @objc private func handleRefresh() {
-        loadData()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.refreshControl.endRefreshing()
-        }
-    }
-
-    @objc private func dismissKeyboard() {
-        searchBar.resignFirstResponder()
-    }
-
-    // MARK: - Data Loading
-
-    private func loadData() {
-        switch currentSegment {
-        case 0:
-            loadFriends()
-        case 1:
-            loadRequests()
-        case 2:
-            updateSearchUI()
-        default:
-            break
-        }
-    }
-
-    private func loadFriends() {
-        showLoading(true)
-        FriendsFirestoreSync.fetchFriends { [weak self] friends in
-            self?.friends = friends
-            self?.showLoading(false)
-            self?.updateFriendsUI()
-            self?.animateCardsEntrance()
-        }
-    }
-
-    private func loadRequests() {
-        showLoading(true)
-        FriendsFirestoreSync.fetchPendingRequests { [weak self] requests in
-            self?.pendingRequests = requests
-            self?.showLoading(false)
-            self?.updateRequestsUI()
-            self?.updateRequestsBadge()
-            self?.animateCardsEntrance()
-        }
-    }
-
-    // MARK: - UI Updates
-
-    private func updateSearchBarVisibility() {
-        let isSearch = currentSegment == 2
-
-        // Update scrollView top constraint based on search visibility
-        scrollViewTopConstraint?.isActive = false
-        if isSearch {
-            scrollViewTopConstraint = scrollView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: AIONDesign.spacing)
-        } else {
-            scrollViewTopConstraint = scrollView.topAnchor.constraint(equalTo: tabBarControl.bottomAnchor, constant: AIONDesign.spacing)
-        }
-        scrollViewTopConstraint?.isActive = true
-
-        UIView.animate(withDuration: AIONDesign.animationMedium) {
-            self.searchBar.isHidden = !isSearch
-            self.searchBar.alpha = isSearch ? 1 : 0
-
-            // Hide recent searches when not in search tab
-            if !isSearch {
-                self.recentSearchesContainer.isHidden = true
-                self.recentSearchesContainer.alpha = 0
-                // Make sure scrollView is visible when leaving search tab
-                self.scrollView.isHidden = false
-            }
-
-            self.view.layoutIfNeeded()
-        }
-
-        if isSearch {
-            searchBar.becomeFirstResponder()
-        } else {
-            searchBar.resignFirstResponder()
-            searchBar.text = ""
-        }
-    }
-
-    private func clearContent() {
-        contentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        emptyStateView.isHidden = true
-    }
-
-    private func showLoading(_ show: Bool) {
-        if show {
-            loadingIndicator.startAnimating()
-            scrollView.alpha = 0.5
-            emptyStateView.isHidden = true
-        } else {
-            loadingIndicator.stopAnimating()
-            UIView.animate(withDuration: AIONDesign.animationFast) {
-                self.scrollView.alpha = 1
-            }
-        }
-    }
-
-    private func showEmptyState(_ message: String, icon: String) {
-        emptyStateLabel.text = message
-        let config = UIImage.SymbolConfiguration(pointSize: 40, weight: .light)
-        emptyStateIcon.image = UIImage(systemName: icon, withConfiguration: config)
-        emptyStateView.isHidden = false
-
-        // Animate entrance
-        emptyStateView.alpha = 0
-        emptyStateView.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
-        UIView.animate(
-            withDuration: AIONDesign.animationMedium,
-            delay: 0,
-            usingSpringWithDamping: AIONDesign.springDamping,
-            initialSpringVelocity: AIONDesign.springVelocity
-        ) {
-            self.emptyStateView.alpha = 1
-            self.emptyStateView.transform = .identity
-        }
-    }
-
-    private func updateFriendsUI() {
-        clearContent()
-
-        if friends.isEmpty {
-            showEmptyState("social.noFriends".localized, icon: "person.2.slash")
-            return
-        }
-
-        for friend in friends {
-            let card = UserCardView()
-            card.configure(with: friend)
-            card.onActionTapped = { [weak self] in
-                self?.confirmRemoveFriend(friend)
-            }
-            card.onCardTapped = { [weak self] in
-                self?.showUserProfile(uid: friend.uid)
-            }
-            contentStack.addArrangedSubview(card)
-        }
-    }
-
-    private func updateRequestsUI() {
-        clearContent()
-
-        if pendingRequests.isEmpty {
-            showEmptyState("social.noRequests".localized, icon: "person.badge.clock")
-            return
-        }
-
-        for request in pendingRequests {
-            let card = FriendRequestView()
-            card.configure(with: request)
-            card.delegate = self
-            contentStack.addArrangedSubview(card)
-        }
-    }
-
-    private func updateSearchUI() {
-        clearContent()
-
-        let searchText = searchBar.text?.trimmingCharacters(in: .whitespaces) ?? ""
-        if searchText.isEmpty && !isSearching {
-            updateRecentSearchesUI()
-            let hasRecentlyViewed = !recentlyViewedUsers.isEmpty
-            recentSearchesContainer.isHidden = !hasRecentlyViewed
-            recentSearchesContainer.alpha = hasRecentlyViewed ? 1 : 0
-            scrollView.isHidden = true
-            emptyStateView.isHidden = hasRecentlyViewed
-            if !hasRecentlyViewed {
-                showEmptyState("social.searchHint".localized, icon: "magnifyingglass")
-            }
-            return
-        }
-
-        recentSearchesContainer.isHidden = true
-        recentSearchesContainer.alpha = 0
-        scrollView.isHidden = false
-
-        if searchResults.isEmpty && isSearching {
-            showEmptyState("social.noResults".localized, icon: "person.slash")
-            return
-        }
-
-        if searchResults.isEmpty && !isSearching {
-            showEmptyState("social.searchHint".localized, icon: "magnifyingglass")
-            return
-        }
-
-        for (index, result) in searchResults.enumerated() {
-            let card = UserCardView()
-            card.configure(with: result)
-            card.onActionTapped = { [weak self, index] in
-                self?.sendFriendRequest(to: result, cardIndex: index)
-            }
-            card.onCardTapped = { [weak self] in
-                self?.saveRecentlyViewedUser(uid: result.uid, displayName: result.displayName, photoURL: result.photoURL)
-                self?.showUserProfile(uid: result.uid)
-            }
-            contentStack.addArrangedSubview(card)
-        }
-
-        animateCardsEntrance()
-    }
-
-    private func animateCardsEntrance() {
-        for (index, view) in contentStack.arrangedSubviews.enumerated() {
-            view.alpha = 0
-            view.transform = CGAffineTransform(translationX: 0, y: 20)
-
-            UIView.animate(
-                withDuration: AIONDesign.animationMedium,
-                delay: Double(index) * 0.06,
-                usingSpringWithDamping: AIONDesign.springDamping,
-                initialSpringVelocity: AIONDesign.springVelocity
-            ) {
-                view.alpha = 1
-                view.transform = .identity
-            }
-        }
-    }
-
-    private func updateRequestsBadge() {
-        FriendsFirestoreSync.fetchPendingRequestsCount { [weak self] count in
-            if count > 0 {
-                self?.tabBarItem.badgeValue = "\(count)"
-            } else {
-                self?.tabBarItem.badgeValue = nil
-            }
-        }
-    }
-
-    // MARK: - Recently Viewed Users
-
-    private func saveRecentlyViewedUser(uid: String, displayName: String, photoURL: String?) {
-        var users = recentlyViewedUsers
-        users.removeAll { $0["uid"] == uid }
-        var userData: [String: String] = ["uid": uid, "displayName": displayName]
-        if let photoURL = photoURL {
-            userData["photoURL"] = photoURL
-        }
-        users.insert(userData, at: 0)
-        if users.count > maxRecentlyViewed {
-            users = Array(users.prefix(maxRecentlyViewed))
-        }
-        recentlyViewedUsers = users
-    }
-
-    private func updateRecentSearchesUI() {
-        recentSearchesStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-
-        for user in recentlyViewedUsers {
-            guard let uid = user["uid"], let displayName = user["displayName"] else { continue }
-            let photoURL = user["photoURL"]
-            let button = createRecentUserButton(uid: uid, displayName: displayName, photoURL: photoURL)
-            recentSearchesStack.addArrangedSubview(button)
-        }
-    }
-
-    private func createRecentUserButton(uid: String, displayName: String, photoURL: String?) -> UIView {
-        let container = UIView()
-        container.translatesAutoresizingMaskIntoConstraints = false
-
-        let avatarSize: CGFloat = 36
-        let avatarImageView = UIImageView()
-        avatarImageView.translatesAutoresizingMaskIntoConstraints = false
-        avatarImageView.contentMode = .scaleAspectFill
-        avatarImageView.clipsToBounds = true
-        avatarImageView.layer.cornerRadius = avatarSize / 2
-        avatarImageView.backgroundColor = AIONDesign.surfaceElevated
-
-        if let photoURL = photoURL, let url = URL(string: photoURL) {
-            URLSession.shared.dataTask(with: url) { data, _, _ in
-                if let data = data, let image = UIImage(data: data) {
-                    DispatchQueue.main.async {
-                        avatarImageView.image = image
-                    }
-                }
-            }.resume()
-        } else {
-            avatarImageView.image = UIImage(systemName: "person.circle.fill")
-            avatarImageView.tintColor = AIONDesign.textTertiary
-        }
-
-        let nameLabel = UILabel()
-        nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.text = displayName
-        nameLabel.font = .systemFont(ofSize: 16, weight: .medium)
-        nameLabel.textColor = AIONDesign.textPrimary
-        nameLabel.textAlignment = LocalizationManager.shared.currentLanguage.isRTL ? .right : .left
-
-        container.addSubview(avatarImageView)
-        container.addSubview(nameLabel)
-
-        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
-
-        NSLayoutConstraint.activate([
-            container.heightAnchor.constraint(equalToConstant: 48),
-
-            avatarImageView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            avatarImageView.widthAnchor.constraint(equalToConstant: avatarSize),
-            avatarImageView.heightAnchor.constraint(equalToConstant: avatarSize),
-
-            nameLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-        ])
-
-        // RTL/LTR specific constraints
-        if isRTL {
-            NSLayoutConstraint.activate([
-                avatarImageView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                nameLabel.trailingAnchor.constraint(equalTo: avatarImageView.leadingAnchor, constant: -12),
-                nameLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            ])
-        } else {
-            NSLayoutConstraint.activate([
-                avatarImageView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                nameLabel.leadingAnchor.constraint(equalTo: avatarImageView.trailingAnchor, constant: 12),
-                nameLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            ])
-        }
-
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(recentUserTapped(_:)))
-        container.addGestureRecognizer(tapGesture)
-        container.tag = uid.hashValue
-        container.accessibilityIdentifier = uid
-        container.isUserInteractionEnabled = true
-
-        return container
-    }
-
-    @objc private func recentUserTapped(_ gesture: UITapGestureRecognizer) {
-        guard let container = gesture.view, let uid = container.accessibilityIdentifier else { return }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        showUserProfile(uid: uid)
-    }
-
-    // MARK: - Public Methods
-
-    func switchToRequestsSegment() {
-        tabBarControl.selectedIndex = 1
-    }
-
     // MARK: - Actions
 
-    private func tabChanged(to index: Int) {
-        currentSegment = index
-        updateSearchBarVisibility()
-        searchResults = []
-        isSearching = false
-        loadData()
+    @objc private func handleRefresh() {
+        loadArenaData()
+    }
 
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    @objc private func bellTapped() {
+        let vc = FollowRequestsViewController()
+        vc.delegate = self
+        let nav = UINavigationController(rootViewController: vc)
+        nav.modalPresentationStyle = .formSheet
+        present(nav, animated: true)
     }
 
     @objc private func leaderboardTapped() {
@@ -613,57 +258,1071 @@ final class SocialHubViewController: UIViewController {
         navigationController?.pushViewController(vc, animated: true)
     }
 
-    private func showUserProfile(uid: String) {
+    // MARK: - Data Loading
+
+    private func loadArenaData() {
+        let isFirstLoad = !hasLoadedOnce
+
+        if isFirstLoad {
+            loadingIndicator.startAnimating()
+            scrollView.alpha = 0.5
+        }
+
+        let group = DispatchGroup()
+
+        // Fetch 1: Leaderboard (friends/following)
+        group.enter()
+        LeaderboardFirestoreSync.fetchFriendsLeaderboard { [weak self] entries in
+            guard let self = self else { group.leave(); return }
+            self.leaderboardEntries = entries
+            self.currentUserEntry = entries.first(where: { $0.isCurrentUser })
+
+            if let userEntry = self.currentUserEntry, let currentRank = userEntry.rank {
+                let previousRank = UserDefaults.standard.object(forKey: self.lastRankKey) as? Int
+                self.rankChange = RankChange(previousRank: previousRank, currentRank: currentRank)
+                UserDefaults.standard.set(currentRank, forKey: self.lastRankKey)
+            } else {
+                self.rankChange = nil
+            }
+
+            if let userScore = self.currentUserEntry?.healthScore {
+                self.rivals = entries.filter {
+                    !$0.isCurrentUser && abs($0.healthScore - userScore) <= 10
+                }
+            } else {
+                self.rivals = []
+            }
+            group.leave()
+        }
+
+        // Fetch 2: Following list (for stories row)
+        group.enter()
+        FollowFirestoreSync.fetchFollowing { [weak self] relations in
+            self?.followingRelations = relations
+            group.leave()
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+            self.loadingIndicator.stopAnimating()
+            self.refreshControl.endRefreshing()
+
+            if isFirstLoad {
+                self.hasLoadedOnce = true
+                UIView.animate(withDuration: 0.25) { self.scrollView.alpha = 1 }
+                self.rebuildSections()
+            } else {
+                self.rebuildSectionsQuietly()
+            }
+        }
+    }
+
+    // MARK: - Rebuild
+
+    private func rebuildSections() {
+        contentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        buildStoriesRow()
+        buildActivityFeed()
+        buildRivalsBattle()
+        buildTopPerformersStrip()
+        buildWeeklyMomentum()
+        buildInviteBanner()
+
+        animateSectionEntrance()
+    }
+
+    private func rebuildSectionsQuietly() {
+        contentStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        buildStoriesRow()
+        buildActivityFeed()
+        buildRivalsBattle()
+        buildTopPerformersStrip()
+        buildWeeklyMomentum()
+        buildInviteBanner()
+    }
+
+    // =========================================================================
+    // MARK: - Section 1 : Stories Row (Instagram-style)
+    // =========================================================================
+
+    private func buildStoriesRow() {
+        // Don't show stories row if there's nothing to display
+        guard currentUserEntry != nil || !followingRelations.isEmpty else { return }
+
+        let carousel = UIScrollView()
+        carousel.translatesAutoresizingMaskIntoConstraints = false
+        carousel.showsHorizontalScrollIndicator = false
+        carousel.alwaysBounceHorizontal = true
+        carousel.clipsToBounds = false
+        carousel.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.spacing = 14
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        carousel.addSubview(stack)
+
+        // First item: current user "My Score"
+        if let me = currentUserEntry {
+            let myStory = makeStoryCircle(
+                name: "social.myScore".localized,
+                photoURL: me.photoURL,
+                tierIndex: me.carTierIndex,
+                uid: nil,
+                isCurrentUser: true
+            )
+            stack.addArrangedSubview(myStory)
+        }
+
+        // Following users
+        for relation in followingRelations {
+            let firstName = relation.displayName.components(separatedBy: " ").first ?? relation.displayName
+            let story = makeStoryCircle(
+                name: firstName,
+                photoURL: relation.photoURL,
+                tierIndex: relation.carTierIndex ?? 0,
+                uid: relation.uid,
+                isCurrentUser: false
+            )
+            stack.addArrangedSubview(story)
+        }
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: carousel.contentLayoutGuide.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: carousel.contentLayoutGuide.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: carousel.contentLayoutGuide.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: carousel.contentLayoutGuide.bottomAnchor),
+            stack.heightAnchor.constraint(equalTo: carousel.frameLayoutGuide.heightAnchor),
+            carousel.heightAnchor.constraint(equalToConstant: 90),
+        ])
+
+        contentStack.addArrangedSubview(carousel)
+    }
+
+    private func makeStoryCircle(name: String, photoURL: String?, tierIndex: Int, uid: String?, isCurrentUser: Bool) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.isUserInteractionEnabled = true
+
+        let avatarSize: CGFloat = 56
+        let avatar = AvatarRingView(size: avatarSize)
+        avatar.translatesAutoresizingMaskIntoConstraints = false
+        avatar.ringWidth = 2.5
+
+        // Ring colors from tier
+        let tier = CarTierEngine.tiers[safe: tierIndex]
+        if isCurrentUser {
+            avatar.ringColors = [AIONDesign.accentPrimary, AIONDesign.accentSecondary]
+            avatar.isAnimated = true
+        } else {
+            let tierColor = tier?.color ?? AIONDesign.accentPrimary
+            avatar.ringColors = [tierColor, tierColor.withAlphaComponent(0.6)]
+            avatar.isAnimated = false
+        }
+        avatar.loadImage(from: photoURL)
+        container.addSubview(avatar)
+
+        let nameLabel = UILabel()
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        nameLabel.text = name
+        nameLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        nameLabel.textColor = AIONDesign.textSecondary
+        nameLabel.textAlignment = .center
+        nameLabel.lineBreakMode = .byTruncatingTail
+        container.addSubview(nameLabel)
+
+        NSLayoutConstraint.activate([
+            container.widthAnchor.constraint(equalToConstant: 68),
+
+            avatar.topAnchor.constraint(equalTo: container.topAnchor, constant: 4),
+            avatar.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            avatar.widthAnchor.constraint(equalToConstant: avatarSize),
+            avatar.heightAnchor.constraint(equalToConstant: avatarSize),
+
+            nameLabel.topAnchor.constraint(equalTo: avatar.bottomAnchor, constant: 4),
+            nameLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            nameLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            nameLabel.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor),
+        ])
+
+        if let uid = uid {
+            container.accessibilityIdentifier = uid
+            let tap = UITapGestureRecognizer(target: self, action: #selector(storyAvatarTapped(_:)))
+            container.addGestureRecognizer(tap)
+        }
+
+        return container
+    }
+
+    @objc private func storyAvatarTapped(_ gesture: UITapGestureRecognizer) {
+        guard let uid = gesture.view?.accessibilityIdentifier else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        AnalyticsService.shared.logEvent(.storyAvatarTapped, parameters: ["user_uid": uid])
+        pushUserProfile(uid: uid)
+    }
+
+    // =========================================================================
+    // MARK: - Section 2 : Activity Feed (replaces leaderboard table)
+    // =========================================================================
+
+    private func buildActivityFeed() {
+        let otherEntries = leaderboardEntries.filter { !$0.isCurrentUser }
+
+        if otherEntries.isEmpty {
+            buildEmptyState()
+            return
+        }
+
+        let header = makeSectionHeader(text: "social.activity".localized, icon: "bolt.heart.fill")
+        contentStack.addArrangedSubview(header)
+
+        // Sort by lastUpdated (most recent first)
+        let sorted = otherEntries.sorted { ($0.lastUpdated ?? .distantPast) > ($1.lastUpdated ?? .distantPast) }
+
+        for entry in sorted {
+            let card = makeActivityCard(entry: entry)
+            contentStack.addArrangedSubview(card)
+        }
+    }
+
+    private func makeActivityCard(entry: LeaderboardEntry) -> UIView {
+        let card = makeFloatingCard()
+        card.isUserInteractionEnabled = true
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Avatar
+        let avatar = AvatarRingView(size: 44)
+        avatar.translatesAutoresizingMaskIntoConstraints = false
+        avatar.ringWidth = 2
+        let tier = CarTierEngine.tiers[safe: entry.carTierIndex]
+        let tierColor = tier?.color ?? AIONDesign.accentPrimary
+        avatar.ringColors = [tierColor, tierColor.withAlphaComponent(0.6)]
+        avatar.loadImage(from: entry.photoURL)
+        card.addSubview(avatar)
+
+        // Name + tier emoji
+        let nameLabel = UILabel()
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        nameLabel.font = .systemFont(ofSize: 15, weight: .bold)
+        nameLabel.textColor = AIONDesign.textPrimary
+        nameLabel.text = entry.displayName
+        nameLabel.lineBreakMode = .byTruncatingTail
+        nameLabel.textAlignment = LocalizationManager.shared.textAlignment
+        card.addSubview(nameLabel)
+
+        // Tier label + time
+        let subtitleLabel = UILabel()
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        subtitleLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        subtitleLabel.textColor = AIONDesign.textTertiary
+        let tierEmoji = tier?.emoji ?? ""
+        let timeAgo = relativeTimeString(from: entry.lastUpdated)
+        subtitleLabel.text = "\(tierEmoji) \(entry.carTierLabel)  ·  \(timeAgo)"
+        subtitleLabel.textAlignment = LocalizationManager.shared.textAlignment
+        card.addSubview(subtitleLabel)
+
+        // Score (large)
+        let scoreLabel = UILabel()
+        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        scoreLabel.text = "\(entry.healthScore)"
+        scoreLabel.font = .monospacedDigitSystemFont(ofSize: 28, weight: .black)
+        scoreLabel.textColor = tierColor
+        card.addSubview(scoreLabel)
+
+        NSLayoutConstraint.activate([
+            card.heightAnchor.constraint(equalToConstant: 80),
+
+            avatar.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            avatar.widthAnchor.constraint(equalToConstant: 44),
+            avatar.heightAnchor.constraint(equalToConstant: 44),
+
+            nameLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            subtitleLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 3),
+
+            scoreLabel.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+        ])
+
+        if isRTL {
+            NSLayoutConstraint.activate([
+                avatar.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+                nameLabel.trailingAnchor.constraint(equalTo: avatar.leadingAnchor, constant: -12),
+                nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: scoreLabel.trailingAnchor, constant: 12),
+                subtitleLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
+                subtitleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: scoreLabel.trailingAnchor, constant: 12),
+                scoreLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                avatar.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+                nameLabel.leadingAnchor.constraint(equalTo: avatar.trailingAnchor, constant: 12),
+                nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: scoreLabel.leadingAnchor, constant: -12),
+                subtitleLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+                subtitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: scoreLabel.leadingAnchor, constant: -12),
+                scoreLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            ])
+        }
+
+        // Tap
+        let tap = UITapGestureRecognizer(target: self, action: #selector(activityCardTapped(_:)))
+        card.addGestureRecognizer(tap)
+        card.accessibilityIdentifier = entry.uid
+
+        return card
+    }
+
+    @objc private func activityCardTapped(_ gesture: UITapGestureRecognizer) {
+        guard let uid = gesture.view?.accessibilityIdentifier else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        AnalyticsService.shared.logEvent(.activityFeedCardTapped, parameters: ["user_uid": uid])
+        pushUserProfile(uid: uid)
+    }
+
+    private func buildEmptyState() {
+        let card = makeFloatingCard()
+
+        let iconConfig = UIImage.SymbolConfiguration(pointSize: 38, weight: .ultraLight)
+        let icon = UIImageView(image: UIImage(systemName: "person.badge.plus", withConfiguration: iconConfig))
+        icon.tintColor = AIONDesign.accentPrimary.withAlphaComponent(0.6)
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = UILabel()
+        label.text = "social.noDataYet".localized
+        label.font = .systemFont(ofSize: 15, weight: .medium)
+        label.textColor = AIONDesign.textSecondary
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        let stack = UIStackView(arrangedSubviews: [icon, label])
+        stack.axis = .vertical
+        stack.spacing = 10
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            card.heightAnchor.constraint(equalToConstant: 140),
+            stack.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: card.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: card.trailingAnchor, constant: -24),
+            icon.heightAnchor.constraint(equalToConstant: 44),
+        ])
+
+        // Tap to focus search bar
+        let tap = UITapGestureRecognizer(target: self, action: #selector(focusSearchBar))
+        card.addGestureRecognizer(tap)
+        card.isUserInteractionEnabled = true
+
+        contentStack.addArrangedSubview(card)
+    }
+
+    // =========================================================================
+    // MARK: - Section 3 : Rivals Battle (kept, minor restyle)
+    // =========================================================================
+
+    private func buildRivalsBattle() {
+        guard !rivals.isEmpty else { return }
+
+        let header = makeSectionHeader(text: "social.challengeFriends".localized, icon: "bolt.fill")
+        contentStack.addArrangedSubview(header)
+
+        // Horizontal scroll
+        let carousel = UIScrollView()
+        carousel.translatesAutoresizingMaskIntoConstraints = false
+        carousel.showsHorizontalScrollIndicator = false
+        carousel.alwaysBounceHorizontal = true
+        carousel.clipsToBounds = false
+        carousel.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+
+        let carouselStack = UIStackView()
+        carouselStack.axis = .horizontal
+        carouselStack.spacing = 12
+        carouselStack.translatesAutoresizingMaskIntoConstraints = false
+        carouselStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        carousel.addSubview(carouselStack)
+
+        let userScore = currentUserEntry?.healthScore ?? 0
+
+        for rival in rivals {
+            let card = makeRivalCard(rival: rival, userScore: userScore)
+            carouselStack.addArrangedSubview(card)
+        }
+
+        NSLayoutConstraint.activate([
+            carouselStack.topAnchor.constraint(equalTo: carousel.contentLayoutGuide.topAnchor),
+            carouselStack.leadingAnchor.constraint(equalTo: carousel.contentLayoutGuide.leadingAnchor),
+            carouselStack.trailingAnchor.constraint(equalTo: carousel.contentLayoutGuide.trailingAnchor),
+            carouselStack.bottomAnchor.constraint(equalTo: carousel.contentLayoutGuide.bottomAnchor),
+            carouselStack.heightAnchor.constraint(equalTo: carousel.frameLayoutGuide.heightAnchor),
+            carousel.heightAnchor.constraint(equalToConstant: 100),
+        ])
+
+        contentStack.addArrangedSubview(carousel)
+    }
+
+    private func makeRivalCard(rival: LeaderboardEntry, userScore: Int) -> UIView {
+        let card = UIView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.backgroundColor = AIONDesign.surface
+        card.layer.cornerRadius = 18
+        card.isUserInteractionEnabled = true
+
+        let avatar = AvatarRingView(size: 36)
+        avatar.translatesAutoresizingMaskIntoConstraints = false
+        avatar.ringWidth = 2
+        avatar.loadImage(from: rival.photoURL)
+        card.addSubview(avatar)
+
+        let nameLabel = UILabel()
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        nameLabel.text = rival.displayName
+        nameLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        nameLabel.textColor = AIONDesign.textPrimary
+        nameLabel.lineBreakMode = .byTruncatingTail
+        card.addSubview(nameLabel)
+
+        let scoreLabel = UILabel()
+        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        scoreLabel.text = "\(rival.healthScore)"
+        scoreLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        scoreLabel.textColor = AIONDesign.textTertiary
+        card.addSubview(scoreLabel)
+
+        // VS badge
+        let diff = userScore - rival.healthScore
+        let diffBadge = UIView()
+        diffBadge.translatesAutoresizingMaskIntoConstraints = false
+        diffBadge.layer.cornerRadius = 10
+
+        let diffLabel = UILabel()
+        diffLabel.translatesAutoresizingMaskIntoConstraints = false
+        diffLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .bold)
+
+        if diff > 0 {
+            diffLabel.text = "+\(diff)"
+            diffLabel.textColor = AIONDesign.accentSuccess
+            diffBadge.backgroundColor = AIONDesign.accentSuccess.withAlphaComponent(0.12)
+        } else if diff < 0 {
+            diffLabel.text = "\(diff)"
+            diffLabel.textColor = AIONDesign.accentDanger
+            diffBadge.backgroundColor = AIONDesign.accentDanger.withAlphaComponent(0.12)
+        } else {
+            diffLabel.text = "="
+            diffLabel.textColor = AIONDesign.textTertiary
+            diffBadge.backgroundColor = AIONDesign.separator.withAlphaComponent(0.15)
+        }
+
+        diffBadge.addSubview(diffLabel)
+        card.addSubview(diffBadge)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        NSLayoutConstraint.activate([
+            card.widthAnchor.constraint(equalToConstant: 175),
+            avatar.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            diffLabel.topAnchor.constraint(equalTo: diffBadge.topAnchor, constant: 3),
+            diffLabel.bottomAnchor.constraint(equalTo: diffBadge.bottomAnchor, constant: -3),
+            diffLabel.leadingAnchor.constraint(equalTo: diffBadge.leadingAnchor, constant: 8),
+            diffLabel.trailingAnchor.constraint(equalTo: diffBadge.trailingAnchor, constant: -8),
+        ])
+
+        if isRTL {
+            NSLayoutConstraint.activate([
+                avatar.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
+                nameLabel.trailingAnchor.constraint(equalTo: avatar.leadingAnchor, constant: -10),
+                nameLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+                nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: diffBadge.trailingAnchor, constant: 6),
+                scoreLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
+                scoreLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
+                diffBadge.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+                diffBadge.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                avatar.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
+                nameLabel.leadingAnchor.constraint(equalTo: avatar.trailingAnchor, constant: 10),
+                nameLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+                nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: diffBadge.leadingAnchor, constant: -6),
+                scoreLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+                scoreLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
+                diffBadge.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+                diffBadge.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            ])
+        }
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(rivalCardTapped(_:)))
+        card.addGestureRecognizer(tap)
+        card.accessibilityIdentifier = rival.uid
+
+        return card
+    }
+
+    @objc private func rivalCardTapped(_ gesture: UITapGestureRecognizer) {
+        guard let uid = gesture.view?.accessibilityIdentifier else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        pushUserProfile(uid: uid)
+    }
+
+    // =========================================================================
+    // MARK: - Section 4 : Top Performers Strip (compact)
+    // =========================================================================
+
+    private func buildTopPerformersStrip() {
+        let top3 = leaderboardEntries.prefix(3)
+        guard !top3.isEmpty else { return }
+
+        // Header with "See All" link
+        let headerContainer = UIView()
+        headerContainer.translatesAutoresizingMaskIntoConstraints = false
+
+        let headerLabel = UILabel()
+        headerLabel.translatesAutoresizingMaskIntoConstraints = false
+        headerLabel.font = .systemFont(ofSize: 13, weight: .heavy)
+        headerLabel.textColor = AIONDesign.textSecondary
+
+        let iconAttachment = NSTextAttachment()
+        iconAttachment.image = UIImage(
+            systemName: "crown.fill",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .bold)
+        )?.withTintColor(AIONDesign.accentPrimary, renderingMode: .alwaysOriginal)
+        let attrText = NSMutableAttributedString(attachment: iconAttachment)
+        attrText.append(NSAttributedString(string: "  " + "social.topPerformers".localized.uppercased(), attributes: [
+            .font: UIFont.systemFont(ofSize: 13, weight: .heavy),
+            .foregroundColor: AIONDesign.textSecondary,
+            .kern: 0.8 as NSNumber,
+        ]))
+        headerLabel.attributedText = attrText
+        headerLabel.textAlignment = LocalizationManager.shared.textAlignment
+
+        let seeAllBtn = UIButton(type: .system)
+        seeAllBtn.translatesAutoresizingMaskIntoConstraints = false
+        seeAllBtn.setTitle("social.seeAll".localized, for: .normal)
+        seeAllBtn.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        seeAllBtn.setTitleColor(AIONDesign.accentPrimary, for: .normal)
+        seeAllBtn.addTarget(self, action: #selector(leaderboardTapped), for: .touchUpInside)
+
+        headerContainer.addSubview(headerLabel)
+        headerContainer.addSubview(seeAllBtn)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        NSLayoutConstraint.activate([
+            headerLabel.topAnchor.constraint(equalTo: headerContainer.topAnchor, constant: 4),
+            headerLabel.bottomAnchor.constraint(equalTo: headerContainer.bottomAnchor),
+            seeAllBtn.centerYAnchor.constraint(equalTo: headerLabel.centerYAnchor),
+            headerContainer.heightAnchor.constraint(equalToConstant: 26),
+        ])
+        if isRTL {
+            NSLayoutConstraint.activate([
+                headerLabel.trailingAnchor.constraint(equalTo: headerContainer.trailingAnchor, constant: -4),
+                seeAllBtn.leadingAnchor.constraint(equalTo: headerContainer.leadingAnchor),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                headerLabel.leadingAnchor.constraint(equalTo: headerContainer.leadingAnchor, constant: 4),
+                seeAllBtn.trailingAnchor.constraint(equalTo: headerContainer.trailingAnchor),
+            ])
+        }
+
+        contentStack.addArrangedSubview(headerContainer)
+
+        // Compact strip
+        let strip = UIStackView()
+        strip.axis = .horizontal
+        strip.spacing = 10
+        strip.distribution = .fillEqually
+        strip.translatesAutoresizingMaskIntoConstraints = false
+        strip.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+
+        let medals = ["", "\u{1F947}", "\u{1F948}", "\u{1F949}"]
+
+        for (index, entry) in top3.enumerated() {
+            let cell = makeCompactTop3Cell(entry: entry, medal: medals[safe: index + 1] ?? "")
+            strip.addArrangedSubview(cell)
+        }
+
+        strip.heightAnchor.constraint(equalToConstant: 80).isActive = true
+        contentStack.addArrangedSubview(strip)
+    }
+
+    private func makeCompactTop3Cell(entry: LeaderboardEntry, medal: String) -> UIView {
+        let cell = UIView()
+        cell.translatesAutoresizingMaskIntoConstraints = false
+        cell.backgroundColor = AIONDesign.surface
+        cell.layer.cornerRadius = 16
+        cell.clipsToBounds = true
+        cell.isUserInteractionEnabled = true
+
+        let hStack = UIStackView()
+        hStack.axis = .horizontal
+        hStack.spacing = 6
+        hStack.alignment = .center
+        hStack.translatesAutoresizingMaskIntoConstraints = false
+        hStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+
+        let medalLabel = UILabel()
+        medalLabel.text = medal
+        medalLabel.font = .systemFont(ofSize: 18)
+
+        let avatar = AvatarRingView(size: 32)
+        avatar.translatesAutoresizingMaskIntoConstraints = false
+        avatar.ringWidth = 1.5
+        avatar.isAnimated = false
+        avatar.loadImage(from: entry.photoURL)
+
+        let vStack = UIStackView()
+        vStack.axis = .vertical
+        vStack.spacing = 1
+
+        let nameLabel = UILabel()
+        nameLabel.text = entry.displayName.components(separatedBy: " ").first ?? entry.displayName
+        nameLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+        nameLabel.textColor = AIONDesign.textPrimary
+        nameLabel.lineBreakMode = .byTruncatingTail
+
+        let scoreLabel = UILabel()
+        scoreLabel.text = "\(entry.healthScore)"
+        scoreLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .bold)
+        scoreLabel.textColor = AIONDesign.accentPrimary
+
+        vStack.addArrangedSubview(nameLabel)
+        vStack.addArrangedSubview(scoreLabel)
+
+        hStack.addArrangedSubview(medalLabel)
+        hStack.addArrangedSubview(avatar)
+        hStack.addArrangedSubview(vStack)
+
+        cell.addSubview(hStack)
+
+        NSLayoutConstraint.activate([
+            avatar.widthAnchor.constraint(equalToConstant: 32),
+            avatar.heightAnchor.constraint(equalToConstant: 32),
+            hStack.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+            hStack.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 8),
+            hStack.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor, constant: -8),
+        ])
+
+        if entry.isCurrentUser {
+            cell.layer.borderWidth = 1.5
+            cell.layer.borderColor = AIONDesign.accentPrimary.withAlphaComponent(0.35).cgColor
+        }
+
+        cell.accessibilityIdentifier = entry.uid
+        let tap = UITapGestureRecognizer(target: self, action: #selector(top3CellTapped(_:)))
+        cell.addGestureRecognizer(tap)
+
+        return cell
+    }
+
+    @objc private func top3CellTapped(_ gesture: UITapGestureRecognizer) {
+        guard let uid = gesture.view?.accessibilityIdentifier else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        pushUserProfile(uid: uid)
+    }
+
+    // =========================================================================
+    // MARK: - Section 5 : Weekly Momentum (kept)
+    // =========================================================================
+
+    private func buildWeeklyMomentum() {
+        let header = makeSectionHeader(text: "social.weeklyStats".localized, icon: "chart.bar.fill")
+        contentStack.addArrangedSubview(header)
+
+        let card = makeFloatingCard()
+
+        let currentScore = currentUserEntry?.healthScore ?? 50
+        let mockScores = (0..<7).map { _ in max(0, min(100, currentScore + Int.random(in: -15...15))) }
+
+        let chart = WeeklyBarChart()
+        chart.translatesAutoresizingMaskIntoConstraints = false
+
+        let bestScore = mockScores.max() ?? 0
+        let avgScore = mockScores.isEmpty ? 0 : mockScores.reduce(0, +) / mockScores.count
+        let daysAbove80 = mockScores.filter { $0 >= 80 }.count
+
+        let statsRow = UIStackView()
+        statsRow.axis = .horizontal
+        statsRow.distribution = .fillEqually
+        statsRow.spacing = 8
+        statsRow.translatesAutoresizingMaskIntoConstraints = false
+        statsRow.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+
+        statsRow.addArrangedSubview(makeStatPill(value: "\(bestScore)", label: "social.statBest".localized))
+        statsRow.addArrangedSubview(makeStatPill(value: "\(avgScore)", label: "social.statAvg".localized))
+        statsRow.addArrangedSubview(makeStatPill(value: "\(daysAbove80)/7", label: "social.statDays80".localized))
+
+        let innerStack = UIStackView(arrangedSubviews: [chart, statsRow])
+        innerStack.axis = .vertical
+        innerStack.spacing = 14
+        innerStack.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(innerStack)
+
+        NSLayoutConstraint.activate([
+            innerStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            innerStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            innerStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
+        ])
+
+        contentStack.addArrangedSubview(card)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak chart] in
+            chart?.configure(scores: mockScores)
+        }
+    }
+
+    private func makeStatPill(value: String, label: String) -> UIView {
+        let pill = UIView()
+        pill.backgroundColor = AIONDesign.surfaceElevated.withAlphaComponent(0.5)
+        pill.layer.cornerRadius = 12
+        pill.translatesAutoresizingMaskIntoConstraints = false
+
+        let valLabel = UILabel()
+        valLabel.text = value
+        valLabel.font = .monospacedDigitSystemFont(ofSize: 16, weight: .bold)
+        valLabel.textColor = AIONDesign.textPrimary
+        valLabel.textAlignment = .center
+        valLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = label
+        titleLabel.font = .systemFont(ofSize: 10, weight: .medium)
+        titleLabel.textColor = AIONDesign.textTertiary
+        titleLabel.textAlignment = .center
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let stack = UIStackView(arrangedSubviews: [valLabel, titleLabel])
+        stack.axis = .vertical
+        stack.spacing = 1
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        pill.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            pill.heightAnchor.constraint(equalToConstant: 46),
+            stack.centerXAnchor.constraint(equalTo: pill.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: pill.centerYAnchor),
+        ])
+
+        return pill
+    }
+
+    // =========================================================================
+    // MARK: - Section 6 : Invite Banner (kept)
+    // =========================================================================
+
+    private func buildInviteBanner() {
+        let banner = UIView()
+        banner.translatesAutoresizingMaskIntoConstraints = false
+        banner.layer.cornerRadius = 22
+        banner.clipsToBounds = true
+
+        let gradientBg = CAGradientLayer()
+        gradientBg.colors = [
+            AIONDesign.accentPrimary.withAlphaComponent(0.14).cgColor,
+            AIONDesign.accentSecondary.withAlphaComponent(0.07).cgColor,
+        ]
+        gradientBg.startPoint = CGPoint(x: 0, y: 0.5)
+        gradientBg.endPoint = CGPoint(x: 1, y: 0.5)
+        gradientBg.cornerRadius = 22
+        banner.layer.insertSublayer(gradientBg, at: 0)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        let iconView = UIImageView(image: UIImage(
+            systemName: "person.badge.plus",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
+        ))
+        iconView.tintColor = AIONDesign.accentPrimary
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        let textStack = UIStackView()
+        textStack.axis = .vertical
+        textStack.spacing = 2
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = "social.inviteFriends".localized
+        titleLabel.font = .systemFont(ofSize: 15, weight: .bold)
+        titleLabel.textColor = AIONDesign.textPrimary
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "social.moreFriendsMoreCompetition".localized
+        subtitleLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        subtitleLabel.textColor = AIONDesign.textSecondary
+        subtitleLabel.textAlignment = LocalizationManager.shared.textAlignment
+
+        textStack.addArrangedSubview(titleLabel)
+        textStack.addArrangedSubview(subtitleLabel)
+
+        let chevronName = isRTL ? "chevron.left" : "chevron.right"
+        let arrowIcon = UIImageView(image: UIImage(
+            systemName: chevronName,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
+        ))
+        arrowIcon.tintColor = AIONDesign.accentPrimary
+        arrowIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        banner.addSubview(iconView)
+        banner.addSubview(textStack)
+        banner.addSubview(arrowIcon)
+
+        NSLayoutConstraint.activate([
+            banner.heightAnchor.constraint(equalToConstant: 72),
+            iconView.centerYAnchor.constraint(equalTo: banner.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 28),
+            iconView.heightAnchor.constraint(equalToConstant: 28),
+            textStack.centerYAnchor.constraint(equalTo: banner.centerYAnchor),
+            arrowIcon.centerYAnchor.constraint(equalTo: banner.centerYAnchor),
+        ])
+
+        if isRTL {
+            NSLayoutConstraint.activate([
+                iconView.trailingAnchor.constraint(equalTo: banner.trailingAnchor, constant: -20),
+                textStack.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -14),
+                textStack.leadingAnchor.constraint(greaterThanOrEqualTo: arrowIcon.trailingAnchor, constant: 12),
+                arrowIcon.leadingAnchor.constraint(equalTo: banner.leadingAnchor, constant: 20),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                iconView.leadingAnchor.constraint(equalTo: banner.leadingAnchor, constant: 20),
+                textStack.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 14),
+                textStack.trailingAnchor.constraint(lessThanOrEqualTo: arrowIcon.leadingAnchor, constant: -12),
+                arrowIcon.trailingAnchor.constraint(equalTo: banner.trailingAnchor, constant: -20),
+            ])
+        }
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(inviteTapped))
+        banner.addGestureRecognizer(tap)
+        banner.isUserInteractionEnabled = true
+
+        contentStack.addArrangedSubview(banner)
+
+        DispatchQueue.main.async {
+            gradientBg.frame = banner.bounds
+        }
+    }
+
+    @objc private func inviteTapped() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let shareText = "social.shareText".localized
+        let activityVC = UIActivityViewController(activityItems: [shareText], applicationActivities: nil)
+        activityVC.popoverPresentationController?.sourceView = view
+        present(activityVC, animated: true)
+    }
+
+    // =========================================================================
+    // MARK: - Shared Helpers
+    // =========================================================================
+
+    private func makeFloatingCard() -> UIView {
+        let card = UIView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.backgroundColor = AIONDesign.surface
+        card.layer.cornerRadius = 22
+        card.clipsToBounds = true
+        return card
+    }
+
+    private func makeSectionHeader(text: String, icon: String) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 13, weight: .heavy)
+        label.textColor = AIONDesign.textSecondary
+
+        let iconAttachment = NSTextAttachment()
+        iconAttachment.image = UIImage(
+            systemName: icon,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .bold)
+        )?.withTintColor(AIONDesign.accentPrimary, renderingMode: .alwaysOriginal)
+
+        let attrText = NSMutableAttributedString(attachment: iconAttachment)
+        attrText.append(NSAttributedString(string: "  " + text.uppercased(), attributes: [
+            .font: UIFont.systemFont(ofSize: 13, weight: .heavy),
+            .foregroundColor: AIONDesign.textSecondary,
+            .kern: 0.8 as NSNumber,
+        ]))
+        label.attributedText = attrText
+        label.textAlignment = LocalizationManager.shared.textAlignment
+
+        container.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: container.topAnchor, constant: 4),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 4),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -4),
+            container.heightAnchor.constraint(equalToConstant: 26),
+        ])
+
+        return container
+    }
+
+    private func pushUserProfile(uid: String) {
         let vc = UserProfileViewController(userUid: uid)
         navigationController?.pushViewController(vc, animated: true)
     }
 
-    private func confirmRemoveFriend(_ friend: Friend) {
-        let message = String(format: "social.confirmRemove".localized, friend.displayName)
-        let alert = UIAlertController(title: "social.removeFriend".localized, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
-        alert.addAction(UIAlertAction(title: "social.remove".localized, style: .destructive) { [weak self] _ in
-            self?.removeFriend(friend)
-        })
-        present(alert, animated: true)
+    /// Converts a date to a relative time string like "2h ago", "yesterday", etc.
+    private func relativeTimeString(from date: Date?) -> String {
+        guard let date = date else { return "" }
+        let seconds = Int(Date().timeIntervalSince(date))
+
+        if seconds < 60 {
+            return "social.timeAgo.now".localized
+        } else if seconds < 3600 {
+            return String(format: "social.timeAgo.minutes".localized, seconds / 60)
+        } else if seconds < 86400 {
+            return String(format: "social.timeAgo.hours".localized, seconds / 3600)
+        } else if seconds < 172800 {
+            return "social.timeAgo.yesterday".localized
+        } else {
+            return String(format: "social.timeAgo.days".localized, seconds / 86400)
+        }
     }
 
-    private func removeFriend(_ friend: Friend) {
-        FriendsFirestoreSync.removeFriend(friendUid: friend.uid) { [weak self] error in
-            if let error = error {
-                self?.showError(error.localizedDescription)
-            } else {
-                self?.loadFriends()
+    @objc private func focusSearchBar() {
+        searchBar.becomeFirstResponder()
+    }
+
+    // MARK: - Inline Search
+
+    private func showSearchResults() {
+        searchResultsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        if searchResults.isEmpty {
+            let emptyLabel = UILabel()
+            emptyLabel.text = "social.noResults".localized
+            emptyLabel.font = .systemFont(ofSize: 15, weight: .medium)
+            emptyLabel.textColor = AIONDesign.textSecondary
+            emptyLabel.textAlignment = .center
+            emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+            let wrapper = UIView()
+            wrapper.translatesAutoresizingMaskIntoConstraints = false
+            wrapper.addSubview(emptyLabel)
+            NSLayoutConstraint.activate([
+                wrapper.heightAnchor.constraint(equalToConstant: 80),
+                emptyLabel.centerXAnchor.constraint(equalTo: wrapper.centerXAnchor),
+                emptyLabel.centerYAnchor.constraint(equalTo: wrapper.centerYAnchor),
+            ])
+            searchResultsStack.addArrangedSubview(wrapper)
+            return
+        }
+
+        for (index, result) in searchResults.enumerated() {
+            let card = UserCardView()
+            card.configure(with: result)
+
+            card.onActionTapped = { [weak self] in
+                self?.followUserFromSearch(result, cardIndex: index)
+            }
+
+            card.onCardTapped = { [weak self] in
+                self?.saveRecentlyViewedUser(result)
+                self?.pushUserProfile(uid: result.uid)
+            }
+
+            searchResultsStack.addArrangedSubview(card)
+        }
+
+        // Animate cards in
+        for (index, view) in searchResultsStack.arrangedSubviews.enumerated() {
+            view.alpha = 0
+            view.transform = CGAffineTransform(translationX: 0, y: 20)
+            UIView.animate(
+                withDuration: 0.35,
+                delay: Double(index) * 0.05,
+                usingSpringWithDamping: 0.8,
+                initialSpringVelocity: 0.3
+            ) {
+                view.alpha = 1
+                view.transform = .identity
             }
         }
     }
 
-    private func sendFriendRequest(to user: UserSearchResult, cardIndex: Int) {
-        guard let card = contentStack.arrangedSubviews[safe: cardIndex] as? UserCardView else { return }
+    private func followUserFromSearch(_ user: UserSearchResult, cardIndex: Int) {
+        guard let card = searchResultsStack.arrangedSubviews[safe: cardIndex] as? UserCardView else { return }
         card.setLoading(true)
 
-        FriendsFirestoreSync.sendFriendRequest(toUid: user.uid) { [weak self] error in
+        FollowFirestoreSync.followUser(targetUid: user.uid) { [weak self] error in
+            guard let self = self else { return }
             card.setLoading(false)
-            if let error = error {
-                self?.showError(error.localizedDescription)
+
+            if error != nil {
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
             } else {
-                if cardIndex < (self?.searchResults.count ?? 0) {
-                    self?.searchResults[cardIndex].hasPendingRequest = true
-                    self?.searchResults[cardIndex].requestSentByMe = true
-                    card.configure(with: self?.searchResults[cardIndex] ?? user)
+                if cardIndex < self.searchResults.count {
+                    self.searchResults[cardIndex].hasPendingRequest = true
+                    self.searchResults[cardIndex].requestSentByMe = true
+                    card.configure(with: self.searchResults[cardIndex])
                 }
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
-
-                // Analytics: Log friend request sent
-                AnalyticsService.shared.logFriendRequestSent(toUserId: user.uid)
             }
         }
     }
 
-    private func showError(_ message: String) {
-        let alert = UIAlertController(title: "error".localized, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
-        present(alert, animated: true)
+    private func enterSearchMode() {
+        isSearchActive = true
+        scrollView.isHidden = true
+        searchResultsScrollView.isHidden = false
+        searchBar.setShowsCancelButton(true, animated: true)
+    }
+
+    private func exitSearchMode() {
+        isSearchActive = false
+        searchBar.text = nil
+        searchBar.setShowsCancelButton(false, animated: true)
+        searchBar.resignFirstResponder()
+        searchResults = []
+        searchResultsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        searchResultsScrollView.isHidden = true
+        scrollView.isHidden = false
+    }
+
+    // Recently viewed (shared with UserSearchViewController via UserDefaults)
+    private func saveRecentlyViewedUser(_ result: UserSearchResult) {
+        let key = "recentlyViewedUsers"
+        var users = UserDefaults.standard.array(forKey: key) as? [[String: String]] ?? []
+        users.removeAll { $0["uid"] == result.uid }
+        var userData: [String: String] = ["uid": result.uid, "displayName": result.displayName]
+        if let photoURL = result.photoURL {
+            userData["photoURL"] = photoURL
+        }
+        users.insert(userData, at: 0)
+        if users.count > 5 { users = Array(users.prefix(5)) }
+        UserDefaults.standard.set(users, forKey: key)
+    }
+
+    // MARK: - Staggered Spring Entrance
+
+    private func animateSectionEntrance() {
+        for (index, section) in contentStack.arrangedSubviews.enumerated() {
+            section.alpha = 0
+            section.transform = CGAffineTransform(translationX: 0, y: 24)
+
+            let delay = Double(index) * 0.07
+            let damping: CGFloat = 0.78 + CGFloat(index) * 0.015
+            UIView.animate(
+                withDuration: 0.55,
+                delay: delay,
+                usingSpringWithDamping: min(damping, 0.92),
+                initialSpringVelocity: 0.4
+            ) {
+                section.alpha = 1
+                section.transform = .identity
+            }
+        }
     }
 }
 
@@ -671,91 +1330,49 @@ final class SocialHubViewController: UIViewController {
 
 extension SocialHubViewController: UISearchBarDelegate {
 
+    func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
+        enterSearchMode()
+    }
+
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        exitSearchMode()
+    }
+
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         searchBar.resignFirstResponder()
-        performSearch()
     }
 
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(performSearch), object: nil)
-        perform(#selector(performSearch), with: nil, afterDelay: 0.5)
-    }
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(performInlineSearch), object: nil)
 
-    @objc private func performSearch() {
-        guard let query = searchBar.text?.trimmingCharacters(in: .whitespaces),
-              query.count >= 2 else {
+        let trimmed = searchText.trimmingCharacters(in: .whitespaces)
+        if trimmed.count < 2 {
             searchResults = []
-            isSearching = false
-            updateSearchUI()
+            searchResultsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
             return
         }
 
-        isSearching = true
-        showLoading(true)
+        perform(#selector(performInlineSearch), with: nil, afterDelay: 0.4)
+    }
 
-        FriendsFirestoreSync.searchUsers(query: query) { [weak self] results in
-            self?.searchResults = results
-            self?.showLoading(false)
-            self?.updateSearchUI()
+    @objc private func performInlineSearch() {
+        guard let query = searchBar.text?.trimmingCharacters(in: .whitespaces),
+              query.count >= 2 else { return }
+
+        FollowFirestoreSync.searchUsers(query: query) { [weak self] results in
+            guard let self = self, self.isSearchActive else { return }
+            self.searchResults = results
+            self.showSearchResults()
         }
     }
 }
 
-// MARK: - FriendRequestViewDelegate
+// MARK: - FollowRequestsViewControllerDelegate
 
-extension SocialHubViewController: FriendRequestViewDelegate {
-
-    func friendRequestView(_ view: FriendRequestView, didAcceptRequest request: FriendRequest) {
-        // Optimistic update
-        if let index = pendingRequests.firstIndex(where: { $0.id == request.id }) {
-            pendingRequests.remove(at: index)
-
-            // Animate removal
-            UIView.animate(withDuration: AIONDesign.animationMedium, animations: {
-                view.alpha = 0
-                view.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
-            }) { _ in
-                self.updateRequestsUI()
-                self.updateRequestsBadge()
-                self.notifyTabBarToUpdateBadge()
-            }
-        }
-
-        FriendsFirestoreSync.acceptFriendRequest(requestId: request.id) { [weak self] error in
-            if let error = error {
-                self?.showError(error.localizedDescription)
-                self?.loadRequests()
-            }
-        }
-    }
-
-    func friendRequestView(_ view: FriendRequestView, didDeclineRequest request: FriendRequest) {
-        // Optimistic update
-        if let index = pendingRequests.firstIndex(where: { $0.id == request.id }) {
-            pendingRequests.remove(at: index)
-
-            UIView.animate(withDuration: AIONDesign.animationMedium, animations: {
-                view.alpha = 0
-                view.transform = CGAffineTransform(translationX: -100, y: 0)
-            }) { _ in
-                self.updateRequestsUI()
-                self.updateRequestsBadge()
-                self.notifyTabBarToUpdateBadge()
-            }
-        }
-
-        FriendsFirestoreSync.declineFriendRequest(requestId: request.id) { [weak self] error in
-            if let error = error {
-                self?.showError(error.localizedDescription)
-                self?.loadRequests()
-            }
-        }
-    }
-
-    private func notifyTabBarToUpdateBadge() {
-        if let tabBarController = self.tabBarController as? MainTabBarController {
-            tabBarController.updateSocialTabBadge()
-        }
+extension SocialHubViewController: FollowRequestsViewControllerDelegate {
+    func followRequestsViewControllerDidUpdateRequests(_ controller: FollowRequestsViewController) {
+        updateBellBadge()
+        loadArenaData()
     }
 }
 

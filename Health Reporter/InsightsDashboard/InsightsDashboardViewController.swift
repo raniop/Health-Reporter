@@ -16,6 +16,8 @@ final class InsightsDashboardViewController: UIViewController {
     private var dailyMetrics: DailyMetrics?
     private var starMetrics: StarMetrics?
     private var currentPeriodData: HealthDataModel?  // נתוני התקופה הנוכחית
+    private var storedHistoricalData: [HealthDataModel] = []  // 90 days retained for 7-day charts
+    private var scoreHistory: [DailyScoreEntry] = []           // 7-day computed score history
     private var isLoading = true
     private var selectedPeriod: TimePeriod = .day
 
@@ -201,6 +203,9 @@ final class InsightsDashboardViewController: UIViewController {
                 // לוג נתוני periodModel
                 print("📊 [Dashboard] periodModel for \(self.selectedPeriod): steps=\(periodModel.steps ?? 0), calories=\(periodModel.activeEnergy ?? 0)")
 
+                // Retain historical data for 7-day chart calculations
+                self.storedHistoricalData = historicalData
+
                 DailyMetricsEngine.shared.calculateDailyMetrics(
                     todayData: periodModel,
                     historicalData: historicalData,
@@ -214,6 +219,15 @@ final class InsightsDashboardViewController: UIViewController {
                         self.isLoading = false
                         self.loadingIndicator.stopAnimating()
                         self.contentStack.isHidden = false
+                    }
+
+                    // Compute 7-day score history in background
+                    DailyMetricsEngine.shared.calculate7DayHistory(
+                        fullHistoricalData: historicalData
+                    ) { [weak self] history in
+                        guard let self = self else { return }
+                        self.scoreHistory = history
+                        self.updateUI()  // Refresh to make history available to bottom sheets
                     }
                 }
             }
@@ -281,7 +295,8 @@ final class InsightsDashboardViewController: UIViewController {
             carName: getCarName(),
             sleepScore: metrics.sleepQuality.value != nil ? Int(metrics.sleepQuality.value!) : nil,
             energyForecast: metrics.energyForecast,
-            parentVC: self
+            parentVC: self,
+            scoreHistory: self.scoreHistory
         )
 
         // שמירת הציון הראשי היומי
@@ -316,7 +331,8 @@ final class InsightsDashboardViewController: UIViewController {
             readiness: metrics.recoveryReadiness,
             stressLoad: metrics.stressLoadIndex,
             morningFreshness: metrics.morningFreshness,
-            parentVC: self
+            parentVC: self,
+            scoreHistory: self.scoreHistory
         )
 
         // Update sleep section
@@ -324,7 +340,8 @@ final class InsightsDashboardViewController: UIViewController {
             quality: metrics.sleepQuality,
             debt: metrics.sleepDebt,
             consistency: metrics.sleepConsistency,
-            parentVC: self
+            parentVC: self,
+            scoreHistory: self.scoreHistory
         )
 
         // Update training section
@@ -332,14 +349,16 @@ final class InsightsDashboardViewController: UIViewController {
             strain: metrics.trainingStrain,
             loadBalance: metrics.loadBalance,
             cardioTrend: metrics.cardioFitnessTrend,
-            parentVC: self
+            parentVC: self,
+            scoreHistory: self.scoreHistory
         )
 
         // Update activity section
         activitySectionView.configure(
             goals: metrics.dailyGoals,
             activityScore: metrics.activityScore,
-            parentVC: self
+            parentVC: self,
+            scoreHistory: self.scoreHistory
         )
 
         // Update guidance card
@@ -362,7 +381,11 @@ final class InsightsDashboardViewController: UIViewController {
     }
 
     private func showMetricDetail(_ metric: any InsightMetric) {
-        let detailVC = MetricDetailViewController(metric: metric)
+        let config = ScoreDetailConfig.from(
+            metric: metric,
+            scoreHistory: self.scoreHistory
+        )
+        let detailVC = ScoreDetailWithGraphViewController(config: config)
         present(detailVC, animated: true)
     }
 
@@ -372,7 +395,7 @@ final class InsightsDashboardViewController: UIViewController {
             message: "explanation.sleepScore".localized,
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "general.ok".localized, style: .default))
+        alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
         present(alert, animated: true)
     }
 

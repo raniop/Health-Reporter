@@ -21,8 +21,8 @@ const db = getFirestore();
  * Trigger: When a new friend request is created
  * Action: Send push notification to the recipient
  */
-exports.onFriendRequestCreated = onDocumentCreated(
-    "friendRequests/{requestId}",
+exports.onFollowRequestCreated = onDocumentCreated(
+    "followRequests/{requestId}",
     async (event) => {
       const snapshot = event.data;
       if (!snapshot) {
@@ -49,11 +49,11 @@ exports.onFriendRequestCreated = onDocumentCreated(
       const message = {
         token: fcmToken,
         notification: {
-          title: "בקשת חברות חדשה",
-          body: `${fromDisplayName} רוצה להיות חבר שלך`,
+          title: "בקשת מעקב חדשה",
+          body: `${fromDisplayName} רוצה לעקוב אחריך`,
         },
         data: {
-          type: "friend_request_received",
+          type: "follow_request_received",
           requestId: event.params.requestId,
           fromUid: requestData.fromUid,
           fromDisplayName: fromDisplayName,
@@ -214,15 +214,85 @@ exports.onMorningNotificationSettingsChanged = onDocumentWritten(
 );
 
 // ============================================================================
-// FRIEND REQUEST NOTIFICATIONS (existing)
+// NEW FOLLOWER NOTIFICATION (direct follow — open privacy)
 // ============================================================================
 
 /**
- * Trigger: When a friend request status changes to "accepted"
+ * Trigger: When a new follower document is created in a user's followers subcollection
+ * Action: Send push notification to the user who was followed
+ */
+exports.onNewFollower = onDocumentCreated(
+    "users/{userId}/followers/{followerId}",
+    async (event) => {
+      const userId = event.params.userId; // Who got followed
+      const followerId = event.params.followerId; // Who started following
+
+      console.log(`New follower: ${followerId} started following ${userId}`);
+
+      // Get follower's display name
+      const followerDoc = await db.collection("users").doc(followerId).get();
+      const followerName = followerDoc.data()?.displayName || "מישהו";
+
+      // Get recipient's FCM token
+      const recipientDoc = await db.collection("users").doc(userId).get();
+      const fcmToken = recipientDoc.data()?.fcmToken;
+
+      if (!fcmToken) {
+        console.log(`No FCM token for user ${userId}`);
+        return null;
+      }
+
+      // Send notification
+      const message = {
+        token: fcmToken,
+        notification: {
+          title: "עוקב חדש! 🎉",
+          body: `${followerName} התחיל/ה לעקוב אחריך`,
+        },
+        data: {
+          type: "new_follower",
+          followerUid: followerId,
+          followerDisplayName: followerName,
+        },
+        apns: {
+          payload: {
+            aps: {
+              badge: 1,
+              sound: "default",
+            },
+          },
+        },
+      };
+
+      try {
+        await getMessaging().send(message);
+        console.log(`New follower notification sent to ${userId}`);
+        return {success: true};
+      } catch (error) {
+        console.error(`Error sending notification: ${error}`);
+        if (error.code === "messaging/invalid-registration-token" ||
+            error.code === "messaging/registration-token-not-registered") {
+          const {FieldValue} = require("firebase-admin/firestore");
+          await db.collection("users").doc(userId).update({
+            fcmToken: FieldValue.delete(),
+          });
+          console.log(`Removed invalid FCM token for user ${userId}`);
+        }
+        return {success: false, error: error.message};
+      }
+    },
+);
+
+// ============================================================================
+// FOLLOW REQUEST ACCEPTED NOTIFICATION
+// ============================================================================
+
+/**
+ * Trigger: When a follow request status changes to "accepted"
  * Action: Send push notification to the original sender
  */
-exports.onFriendRequestAccepted = onDocumentUpdated(
-    "friendRequests/{requestId}",
+exports.onFollowRequestAccepted = onDocumentUpdated(
+    "followRequests/{requestId}",
     async (event) => {
       const beforeData = event.data?.before?.data();
       const afterData = event.data?.after?.data();
@@ -260,11 +330,11 @@ exports.onFriendRequestAccepted = onDocumentUpdated(
       const message = {
         token: fcmToken,
         notification: {
-          title: "בקשת החברות אושרה!",
-          body: `${acceptingDisplayName} אישר/ה את בקשת החברות שלך`,
+          title: "בקשת המעקב אושרה!",
+          body: `${acceptingDisplayName} אישר/ה את בקשת המעקב שלך`,
         },
         data: {
-          type: "friend_request_accepted",
+          type: "follow_request_accepted",
           requestId: event.params.requestId,
           acceptedByUid: toUid,
           acceptedByDisplayName: acceptingDisplayName,

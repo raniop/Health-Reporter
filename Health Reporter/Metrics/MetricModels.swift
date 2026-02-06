@@ -624,3 +624,69 @@ struct DailyMetrics {
         ]
     }
 }
+
+// MARK: - 7-Day Score History Models
+
+/// One day's computed metric scores (for 7-day bar charts in detail sheets)
+struct DailyScoreEntry {
+    let date: Date
+    let dayOfWeekShort: String  // Single letter: M, T, W... or א, ב, ג...
+
+    // Hero Scores
+    let mainScore: Double?
+    let sleepScore: Double?
+
+    // Recovery Domain
+    let recoveryReadiness: Double?
+    let stressLoadIndex: Double?
+    let morningFreshness: Double?
+    let nervousSystemBalance: Double?
+    let recoveryDebt: Double?
+
+    // Sleep Domain
+    let sleepConsistency: Double?
+
+    // Training/Load Domain
+    let trainingStrain: Double?
+    let loadBalance: Double?
+    let cardioFitnessTrend: Double?
+    let energyForecast: Double?
+    let workoutReadiness: Double?
+
+    // Activity Domain
+    let activityScore: Double?
+    let dailyGoals: Double?
+
+    /// Lookup a score value by metric ID string
+    func value(for metricId: String) -> Double? {
+        switch metricId {
+        case "nervous_system_balance": return nervousSystemBalance
+        case "recovery_readiness": return recoveryReadiness
+        case "recovery_debt": return recoveryDebt
+        case "stress_load_index": return stressLoadIndex
+        case "morning_freshness": return morningFreshness
+        case "sleep_quality": return sleepScore
+        case "sleep_consistency": return sleepConsistency
+        case "sleep_highlight": return sleepScore
+        case "training_strain": return trainingStrain
+        case "load_balance": return loadBalance
+        case "energy_forecast": return energyForecast
+        case "workout_readiness": return workoutReadiness
+        case "activity_score": return activityScore
+        case "daily_goals": return dailyGoals
+        case "cardio_fitness_trend": return cardioFitnessTrend
+        case "main_score", "health_score": return mainScore
+        default: return nil
+        }
+    }
+}
+
+/// A single data point for the 7-day bar chart
+struct BarChartDataPoint {
+    let date: Date
+    let dayLabel: String
+    let value: Double
+    let isToday: Bool
+}
+
+// ScoreDetailConfig is defined in ScoreDetailWithGraphViewController.swift (requires UIKit)

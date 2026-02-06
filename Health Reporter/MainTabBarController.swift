@@ -13,6 +13,9 @@ import UserNotifications
 final class MainTabBarController: UITabBarController {
 
     private var socialNavController: UINavigationController?
+    private var dashboardNavController: UINavigationController?
+    private var profileNavController: UINavigationController?
+    private var dashboardBellBadgeLabel: UILabel?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -23,11 +26,9 @@ final class MainTabBarController: UITabBarController {
         tabBar.tintColor = AIONDesign.accentPrimary
         tabBar.unselectedItemTintColor = AIONDesign.textTertiary
 
-        // מסך ראשי חדש – משמעות ולא נתונים גולמיים
         let home = InsightsDashboardViewController()
         home.tabBarItem = UITabBarItem(title: "tab.dashboard".localized, image: UIImage(systemName: "square.grid.2x2"), tag: 0)
 
-        // ביצועים: סיכום (דשבורד ישן) + פעילות + מגמות
         let unified = UnifiedTrendsActivityViewController()
         unified.tabBarItem = UITabBarItem(title: "tab.unified".localized, image: UIImage(systemName: "figure.run"), tag: 1)
 
@@ -40,20 +41,29 @@ final class MainTabBarController: UITabBarController {
         let profile = ProfileViewController()
         profile.tabBarItem = UITabBarItem(title: "tab.profile".localized, image: UIImage(systemName: "person.circle"), tag: 4)
 
+        let homeNav = UINavigationController(rootViewController: home)
+        dashboardNavController = homeNav
+
         let socialNav = UINavigationController(rootViewController: social)
         socialNavController = socialNav
 
+        let profileNav = UINavigationController(rootViewController: profile)
+        profileNavController = profileNav
+
         viewControllers = [
-            UINavigationController(rootViewController: home),
+            homeNav,
             UINavigationController(rootViewController: unified),
             UINavigationController(rootViewController: insights),
             socialNav,
-            UINavigationController(rootViewController: profile),
+            profileNav,
         ]
 
         for nav in viewControllers as? [UINavigationController] ?? [] {
             configureNavigationBar(nav.navigationBar)
         }
+
+        // Add bell button to Dashboard nav bar
+        setupDashboardBellButton(for: home)
 
         // Listen for background color changes
         NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
@@ -61,8 +71,49 @@ final class MainTabBarController: UITabBarController {
         // Listen for notification to open Social Hub
         NotificationCenter.default.addObserver(self, selector: #selector(handleOpenSocialHub(_:)), name: NSNotification.Name("OpenSocialHub"), object: nil)
 
-        // Update social tab badge on launch
-        updateSocialTabBadge()
+        // Update follow request badges on launch
+        updateFollowRequestBadge()
+
+        // Fallback: prompt users who skipped notifications during onboarding
+        checkNotificationPermissionFallback()
+    }
+
+    // MARK: - Dashboard Bell Button
+
+    private func setupDashboardBellButton(for vc: UIViewController) {
+        let bellContainer = UIView(frame: CGRect(x: 0, y: 0, width: 32, height: 32))
+        let bellImageView = UIImageView(image: UIImage(systemName: "bell.fill"))
+        bellImageView.tintColor = AIONDesign.accentPrimary
+        bellImageView.contentMode = .scaleAspectFit
+        bellImageView.frame = CGRect(x: 2, y: 4, width: 24, height: 24)
+        bellContainer.addSubview(bellImageView)
+
+        let badge = UILabel()
+        badge.font = .systemFont(ofSize: 10, weight: .bold)
+        badge.textColor = .white
+        badge.backgroundColor = AIONDesign.accentDanger
+        badge.textAlignment = .center
+        badge.layer.cornerRadius = 8
+        badge.clipsToBounds = true
+        badge.frame = CGRect(x: 18, y: 0, width: 16, height: 16)
+        badge.isHidden = true
+        bellContainer.addSubview(badge)
+        dashboardBellBadgeLabel = badge
+
+        let bellTap = UITapGestureRecognizer(target: self, action: #selector(dashboardBellTapped))
+        bellContainer.addGestureRecognizer(bellTap)
+        bellContainer.isUserInteractionEnabled = true
+
+        let bellBarButton = UIBarButtonItem(customView: bellContainer)
+        vc.navigationItem.rightBarButtonItem = bellBarButton
+    }
+
+    @objc private func dashboardBellTapped() {
+        let vc = FollowRequestsViewController()
+        vc.delegate = self
+        let nav = UINavigationController(rootViewController: vc)
+        nav.modalPresentationStyle = .formSheet
+        present(nav, animated: true)
     }
 
     deinit {
@@ -72,39 +123,62 @@ final class MainTabBarController: UITabBarController {
     // MARK: - Deep Linking
 
     @objc private func handleOpenSocialHub(_ notification: Notification) {
-        // Switch to Social tab (index 3)
-        selectedIndex = 3
-
-        // Pop to root in case we're deep in navigation
-        socialNavController?.popToRootViewController(animated: false)
-
-        // If this is a friend request notification, switch to the requests segment
         if let userInfo = notification.userInfo,
            let type = userInfo["type"] as? String,
-           type == "friend_request_received" {
-            // Give the view controller time to load, then switch to requests segment
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                if let socialVC = self?.socialNavController?.viewControllers.first as? SocialHubViewController {
-                    socialVC.switchToRequestsSegment()
-                }
-            }
+           (type == "friend_request_received" || type == "follow_request_received") {
+            // Show Social tab for follow requests
+            selectedIndex = 3
+            socialNavController?.popToRootViewController(animated: false)
+        } else {
+            // Switch to Social tab
+            selectedIndex = 3
+            socialNavController?.popToRootViewController(animated: false)
         }
     }
 
     // MARK: - Badge Management
 
-    /// עדכון badge בטאב Social לפי מספר הבקשות הממתינות
-    func updateSocialTabBadge() {
-        FriendsFirestoreSync.fetchPendingRequestsCount { [weak self] count in
+    /// Update bell button badges on Dashboard and Profile, plus app icon badge
+    func updateFollowRequestBadge() {
+        FollowFirestoreSync.fetchPendingFollowRequestsCount { [weak self] count in
             DispatchQueue.main.async {
+                // Update Dashboard bell badge
                 if count > 0 {
-                    self?.socialNavController?.tabBarItem.badgeValue = "\(count)"
+                    self?.dashboardBellBadgeLabel?.text = "\(count)"
+                    self?.dashboardBellBadgeLabel?.isHidden = false
                 } else {
-                    self?.socialNavController?.tabBarItem.badgeValue = nil
+                    self?.dashboardBellBadgeLabel?.isHidden = true
                 }
 
                 // Update app icon badge
                 UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
+            }
+        }
+    }
+
+    /// Backward compatibility alias
+    func updateSocialTabBadge() {
+        updateFollowRequestBadge()
+    }
+
+    // MARK: - Notification Permission Fallback
+
+    /// For users who skipped notifications during onboarding, re-prompt after a delay.
+    /// Throttled to once per 7 days to avoid being annoying.
+    private func checkNotificationPermissionFallback() {
+        let lastPromptKey = "lastNotificationPromptDate"
+        let lastPrompt = UserDefaults.standard.object(forKey: lastPromptKey) as? Date ?? .distantPast
+        let daysSinceLastPrompt = Calendar.current.dateComponents([.day], from: lastPrompt, to: Date()).day ?? 999
+
+        guard daysSinceLastPrompt >= 7 else { return }
+
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .notDetermined else { return }
+
+            // User has never decided — prompt after short delay so the UI is ready
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                UserDefaults.standard.set(Date(), forKey: lastPromptKey)
+                (UIApplication.shared.delegate as? AppDelegate)?.requestNotificationPermissions()
             }
         }
     }
@@ -174,5 +248,13 @@ final class MainTabBarController: UITabBarController {
         if let photoURL = user.photoURL?.absoluteString {
             ProfileFirestoreSync.savePhotoURL(photoURL)
         }
+    }
+}
+
+// MARK: - FollowRequestsViewControllerDelegate
+
+extension MainTabBarController: FollowRequestsViewControllerDelegate {
+    func followRequestsViewControllerDidUpdateRequests(_ controller: FollowRequestsViewController) {
+        updateFollowRequestBadge()
     }
 }

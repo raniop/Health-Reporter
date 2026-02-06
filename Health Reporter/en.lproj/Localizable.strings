@@ -63,6 +63,11 @@
 "profile.editName" = "Edit Name";
 "profile.enterName" = "Enter your name";
 "profile.name" = "Name";
+"profile.editProfile" = "Edit Profile";
+"profile.shareProfile" = "Share Profile";
+"profile.score" = "Score";
+"profile.shareText" = "Check out my health score of %d on AION Health!";
+"profile.bodyMetrics" = "Body Metrics";
 "profile.selectUserType" = "Select User Type";
 
 /* Home (main screen) */
@@ -323,6 +328,10 @@
 "insights.lastUpdate" = "Last update";
 "insights.noSignificantChange" = "No Significant Change";
 "insights.noSignificantChangeMsg" = "Your data hasn't changed enough to justify a new analysis. The analysis will update automatically when there's a significant change in HRV, sleep or activity.";
+"insights.personalNotes" = "Anything different today?";
+"insights.notesPlaceholder" = "e.g., I drank alcohol yesterday, I felt stressed this week...";
+"insights.notesSaved" = "Info updated and will be included in the next analysis";
+"insights.notesSave" = "Update Info";
 "insights.refreshAnyway" = "Refresh anyway";
 "insights.waitingForAnalysis" = "Waiting for analysis...";
 "insights.carSelectedAfter" = "Your car will be chosen after the first analysis of your data";
@@ -507,6 +516,12 @@
 "chart.noRestingHRData" = "No resting heart rate data";
 "chart.noHRVData" = "No HRV data";
 
+/* 7-Day Score Charts */
+"chart.average" = "Average";
+"chart.today" = "Today";
+"chart.7day.title" = "Last 7 Days";
+"chart.no_data" = "Not enough data";
+
 /* Debug Screen */
 "debug.query" = "Query";
 "debug.response" = "Response";
@@ -653,6 +668,76 @@
 /* Leaderboard Extended */
 "social.points" = "points";
 "social.pointsToNextRank" = "%d points to next rank";
+
+/* Follow System */
+"social.followers" = "Followers";
+"social.following" = "Following";
+"social.follow" = "Follow";
+"social.unfollow" = "Unfollow";
+"social.followBack" = "Follow Back";
+"social.removeFollower" = "Remove Follower";
+"social.wantsToFollowYou" = "Wants to follow you";
+"social.followRequests" = "Follow Requests";
+"social.noFollowers" = "No followers yet";
+"social.noFollowing" = "Not following anyone yet";
+"social.followRequestSent" = "Request Sent";
+"social.requested" = "Requested";
+"social.unfollowConfirm" = "Are you sure you want to unfollow %@?";
+"social.removeFollowerConfirm" = "Are you sure you want to remove %@ from your followers?";
+
+/* Arena / Competition */
+"social.arena" = "Arena";
+"social.rankUp" = "up";
+"social.rankDown" = "down";
+"social.pointsAhead" = "%d pts ahead";
+"social.youLeadBy" = "You lead by %d";
+"social.challengeFriends" = "Challenge Your Friends";
+"social.noRivals" = "No rivals nearby";
+"social.weeklyStats" = "Weekly Stats";
+"social.bestScore" = "Best Score";
+"social.avgScore" = "Average";
+"social.daysAbove" = "Days Above 80";
+"social.weeklyRank" = "Your rank this week: #%d";
+"social.inviteFriends" = "Invite Friends";
+"social.moreFriendsMoreCompetition" = "More friends = more competition!";
+"social.seeGlobal" = "See Global";
+"social.fullLeaderboard" = "Leaderboard";
+"social.myRank" = "My Rank";
+"social.new" = "New";
+"social.noDataYet" = "Follow friends to see their activity here";
+"social.topFollowing" = "Top Following";
+"social.statBest" = "Best";
+"social.statAvg" = "Average";
+"social.statDays80" = "Days 80+";
+"social.invite" = "Invite";
+"social.shareText" = "Join me on AION Health!";
+"social.searchUsers" = "Search Users";
+"social.unfollowConfirmTitle" = "Unfollow";
+"social.unfollowConfirmMessage" = "Are you sure you want to unfollow %@?";
+"social.rival.youLead" = "You lead by %d";
+"social.rival.ahead" = "%d pts ahead";
+"social.rival.tied" = "Tied!";
+"social.rank" = "Rank";
+
+/* Social Hub - Stories & Activity Feed */
+"social.myScore" = "My Score";
+"social.activity" = "Activity";
+"social.topPerformers" = "Top Performers";
+"social.seeAll" = "See All";
+"social.timeAgo.now" = "just now";
+"social.timeAgo.minutes" = "%dm ago";
+"social.timeAgo.hours" = "%dh ago";
+"social.timeAgo.yesterday" = "yesterday";
+"social.timeAgo.days" = "%dd ago";
+
+/* Settings Screen */
+"settings.title" = "Settings";
+
+/* Follow Privacy */
+"profile.followPrivacy" = "Follow Privacy";
+"profile.followPrivacyOpen" = "Open";
+"profile.followPrivacyApproval" = "Approval Required";
+"profile.followPrivacyDescription" = "Choose who can follow you";
 
 /* ===== Insights Dashboard - Main Home Screen ===== */
 
@@ -860,7 +945,7 @@
 "healthScore.detail.explanation" = "Your main daily score.\n\nCalculated from 6 metrics:\n• Recovery Readiness - 25%\n• Sleep Quality - 20%\n• Nervous System Balance - 20%\n• Energy Forecast - 15%\n• Activity Score - 10%\n• Load Balance - 10%\n\nUpdates daily based on that day's data.";
 
 "carScore.detail.title" = "Body Condition Score";
-"carScore.detail.explanation" = "The score that determines your car.\n\nCalculated from 4 metrics over 7-90 days:\n• Readiness - 40%\n• Sleep - 25%\n• HRV - 20%\n• Strain - 15%\n\nUpdates slowly as it's based on long-term averages.\n\n🚗 0-24 → Fiat Panda\n🚗 25-44 → Toyota Corolla\n🚗 45-64 → BMW M3\n🚗 65-81 → Porsche 911 Turbo\n🚗 82-100 → Ferrari SF90";
+"carScore.detail.explanation" = "The score that determines your car.\n\nCalculated from 4 metrics over 7-90 days:\n• Readiness - 40%\n• Sleep - 25%\n• HRV - 20%\n• Strain - 15%";
 
 "sleepScore.detail.title" = "Sleep Score";
 "sleepScore.detail.explanation" = "Based on sleep duration, consistency of your sleep schedule, and disturbances during the night.";
@@ -880,6 +965,12 @@
 "onboarding.notifications.bullet3" = "Friend activity updates";
 "onboarding.notifications.enable" = "Enable Notifications";
 "onboarding.notifications.skip" = "Maybe Later";
+
+// MARK: - Notification Permission Denied
+"notifications.denied.title" = "Enable Notifications";
+"notifications.denied.message" = "Notifications help you stay on top of your health goals and friend activity. Enable them in Settings to get the most out of AION Health.";
+"notifications.denied.openSettings" = "Open Settings";
+"notifications.denied.later" = "Not Now";
 
 "onboarding.healthkit.title" = "Connect Your Health";
 "onboarding.healthkit.subtitle" = "Unlock powerful insights from your data";

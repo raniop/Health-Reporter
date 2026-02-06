@@ -184,6 +184,10 @@ final class InsightsTabViewController: UIViewController {
     private var typingAnimator: TypingAnimator?
     private var counterAnimator: NumberCounterAnimator?
 
+    // Personal notes
+    private var notesTextView: UITextView?
+    private var notesPlaceholderLabel: UILabel?
+
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -202,6 +206,10 @@ final class InsightsTabViewController: UIViewController {
 
         // Analytics: Log screen view
         AnalyticsService.shared.logScreenView(.insights)
+
+        // Keyboard notifications — scroll to text view when keyboard appears
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
     }
 
     @objc private func backgroundColorDidChange() {
@@ -259,6 +267,48 @@ final class InsightsTabViewController: UIViewController {
             loadingLabel.topAnchor.constraint(equalTo: loadingSpinner.bottomAnchor, constant: 16),
             loadingLabel.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
         ])
+
+        // Dismiss keyboard on tap outside text view
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tapGesture.cancelsTouchesInView = false
+        scrollView.addGestureRecognizer(tapGesture)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+              let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval,
+              let curve = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt else { return }
+
+        let keyboardHeight = keyboardFrame.height - (tabBarController?.tabBar.frame.height ?? 0)
+        let contentInset = UIEdgeInsets(top: 0, left: 0, bottom: keyboardHeight, right: 0)
+
+        UIView.animate(withDuration: duration, delay: 0, options: UIView.AnimationOptions(rawValue: curve << 16)) {
+            self.scrollView.contentInset = contentInset
+            self.scrollView.scrollIndicatorInsets = contentInset
+        }
+
+        // Scroll to make text view visible
+        if let textView = self.notesTextView {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                let textViewRect = textView.convert(textView.bounds, to: self.scrollView)
+                let visibleRect = textViewRect.insetBy(dx: 0, dy: -40) // extra padding
+                self.scrollView.scrollRectToVisible(visibleRect, animated: true)
+            }
+        }
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        guard let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval,
+              let curve = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt else { return }
+
+        UIView.animate(withDuration: duration, delay: 0, options: UIView.AnimationOptions(rawValue: curve << 16)) {
+            self.scrollView.contentInset = .zero
+            self.scrollView.scrollIndicatorInsets = .zero
+        }
     }
 
     private func setupRefreshButton() {
@@ -417,6 +467,7 @@ final class InsightsTabViewController: UIViewController {
 
         guard let insights = AnalysisCache.loadLatest(), !insights.isEmpty else {
             addEmptyState()
+            addPersonalNotesCard()
             return
         }
 
@@ -425,6 +476,7 @@ final class InsightsTabViewController: UIViewController {
         // Build Premium UI
         addHeader()
         addHeroCarCard(parsed: parsed)
+        addPersonalNotesCard()
         addWeeklyDataGrid(parsed: parsed)
         addPerformanceSection(parsed: parsed)
         addBottlenecksCard(parsed: parsed)
@@ -433,6 +485,217 @@ final class InsightsTabViewController: UIViewController {
         addNutritionButton(parsed: parsed)
         addDirectivesCard(parsed: parsed)
         addSummaryCard(parsed: parsed)
+    }
+
+    // MARK: - Personal Notes Card (Apple-style)
+
+    private var notesSaveButton: UIButton?
+    private var notesTextContainerView: UIView?
+
+    private func addPersonalNotesCard() {
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        let card = UIView()
+        card.backgroundColor = cardBgColor
+        card.layer.cornerRadius = 16
+        card.layer.cornerCurve = .continuous
+        // Subtle shadow for depth
+        card.layer.shadowColor = UIColor.black.cgColor
+        card.layer.shadowOpacity = 0.18
+        card.layer.shadowOffset = CGSize(width: 0, height: 2)
+        card.layer.shadowRadius = 8
+        card.translatesAutoresizingMaskIntoConstraints = false
+
+        let innerStack = UIStackView()
+        innerStack.axis = .vertical
+        innerStack.spacing = 14
+        innerStack.alignment = .fill
+        innerStack.translatesAutoresizingMaskIntoConstraints = false
+        innerStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        card.addSubview(innerStack)
+
+        // ── Header row: icon circle + title + save button ──
+        let headerRow = UIStackView()
+        headerRow.axis = .horizontal
+        headerRow.spacing = 10
+        headerRow.alignment = .center
+        headerRow.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+
+        // Icon with tinted circle background
+        let iconCircle = UIView()
+        iconCircle.backgroundColor = AIONDesign.accentPrimary.withAlphaComponent(0.12)
+        iconCircle.layer.cornerRadius = 15
+        iconCircle.layer.cornerCurve = .continuous
+        iconCircle.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            iconCircle.widthAnchor.constraint(equalToConstant: 30),
+            iconCircle.heightAnchor.constraint(equalToConstant: 30),
+        ])
+
+        let iconView = UIImageView()
+        let iconConfig = UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
+        iconView.image = UIImage(systemName: "square.and.pencil", withConfiguration: iconConfig)
+        iconView.tintColor = AIONDesign.accentPrimary
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconCircle.addSubview(iconView)
+        NSLayoutConstraint.activate([
+            iconView.centerXAnchor.constraint(equalTo: iconCircle.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconCircle.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 15),
+            iconView.heightAnchor.constraint(equalToConstant: 15),
+        ])
+
+        let titleLabel = UILabel()
+        titleLabel.text = "insights.personalNotes".localized
+        if let descriptor = UIFont.systemFont(ofSize: 15, weight: .semibold).fontDescriptor.withDesign(.rounded) {
+            titleLabel.font = UIFont(descriptor: descriptor, size: 15)
+        } else {
+            titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        }
+        titleLabel.textColor = textWhite
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
+
+        let spacer = UIView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        // Save button — pill style, appears when user types
+        let saveBtn = UIButton(type: .system)
+        saveBtn.setTitle("insights.notesSave".localized, for: .normal)
+        if let descriptor = UIFont.systemFont(ofSize: 13, weight: .semibold).fontDescriptor.withDesign(.rounded) {
+            saveBtn.titleLabel?.font = UIFont(descriptor: descriptor, size: 13)
+        } else {
+            saveBtn.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        }
+        saveBtn.setTitleColor(.white, for: .normal)
+        saveBtn.backgroundColor = AIONDesign.accentPrimary
+        saveBtn.layer.cornerRadius = 13
+        saveBtn.layer.cornerCurve = .continuous
+        saveBtn.contentEdgeInsets = UIEdgeInsets(top: 5, left: 14, bottom: 5, right: 14)
+        saveBtn.setContentHuggingPriority(.required, for: .horizontal)
+        saveBtn.addTarget(self, action: #selector(saveNotesTapped), for: .touchUpInside)
+        saveBtn.alpha = 0
+        saveBtn.transform = CGAffineTransform(scaleX: 0.85, y: 0.85)
+        self.notesSaveButton = saveBtn
+
+        headerRow.addArrangedSubview(iconCircle)
+        headerRow.addArrangedSubview(titleLabel)
+        headerRow.addArrangedSubview(spacer)
+        headerRow.addArrangedSubview(saveBtn)
+        innerStack.addArrangedSubview(headerRow)
+
+        // ── Text input area with elevated background ──
+        let textContainer = UIView()
+        textContainer.backgroundColor = AIONDesign.surfaceElevated
+        textContainer.layer.cornerRadius = 12
+        textContainer.layer.cornerCurve = .continuous
+        textContainer.layer.borderWidth = 1
+        textContainer.layer.borderColor = AIONDesign.textTertiary.withAlphaComponent(0.08).cgColor
+        textContainer.translatesAutoresizingMaskIntoConstraints = false
+        self.notesTextContainerView = textContainer
+
+        let textView = UITextView()
+        textView.backgroundColor = .clear
+        if let descriptor = UIFont.systemFont(ofSize: 14.5, weight: .regular).fontDescriptor.withDesign(.rounded) {
+            textView.font = UIFont(descriptor: descriptor, size: 14.5)
+        } else {
+            textView.font = .systemFont(ofSize: 14.5, weight: .regular)
+        }
+        textView.textColor = textWhite
+        textView.textAlignment = LocalizationManager.shared.textAlignment
+        textView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        textView.isScrollEnabled = false
+        textView.textContainerInset = UIEdgeInsets(top: 12, left: 10, bottom: 12, right: 10)
+        textView.translatesAutoresizingMaskIntoConstraints = false
+        textView.delegate = self
+        textView.keyboardDismissMode = .interactive
+        self.notesTextView = textView
+
+        // Placeholder
+        let placeholder = UILabel()
+        placeholder.text = "insights.notesPlaceholder".localized
+        if let descriptor = UIFont.systemFont(ofSize: 14.5, weight: .regular).fontDescriptor.withDesign(.rounded) {
+            placeholder.font = UIFont(descriptor: descriptor, size: 14.5)
+        } else {
+            placeholder.font = .systemFont(ofSize: 14.5, weight: .regular)
+        }
+        placeholder.textColor = AIONDesign.textTertiary
+        placeholder.textAlignment = LocalizationManager.shared.textAlignment
+        placeholder.numberOfLines = 0
+        placeholder.translatesAutoresizingMaskIntoConstraints = false
+        self.notesPlaceholderLabel = placeholder
+
+        textContainer.addSubview(textView)
+        textContainer.addSubview(placeholder)
+
+        NSLayoutConstraint.activate([
+            textView.topAnchor.constraint(equalTo: textContainer.topAnchor),
+            textView.leadingAnchor.constraint(equalTo: textContainer.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: textContainer.trailingAnchor),
+            textView.bottomAnchor.constraint(equalTo: textContainer.bottomAnchor),
+            textView.heightAnchor.constraint(greaterThanOrEqualToConstant: 80),
+
+            placeholder.topAnchor.constraint(equalTo: textContainer.topAnchor, constant: 12),
+            placeholder.leadingAnchor.constraint(equalTo: textContainer.leadingAnchor, constant: 15),
+            placeholder.trailingAnchor.constraint(equalTo: textContainer.trailingAnchor, constant: -15),
+        ])
+
+        innerStack.addArrangedSubview(textContainer)
+
+        // Load existing notes
+        if let notes = AnalysisCache.loadUserNotes(), !notes.isEmpty {
+            textView.text = notes
+            placeholder.isHidden = true
+            // Show save button if there's existing text
+            saveBtn.alpha = 1
+            saveBtn.transform = .identity
+        }
+
+        NSLayoutConstraint.activate([
+            innerStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            innerStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            innerStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
+        ])
+
+        stack.addArrangedSubview(card)
+    }
+
+    @objc private func saveNotesTapped() {
+        let text = notesTextView?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        AnalysisCache.saveUserNotes(text)
+
+        // Dismiss keyboard
+        notesTextView?.resignFirstResponder()
+
+        // Haptic
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+
+        guard let btn = notesSaveButton else { return }
+        let originalTitle = btn.title(for: .normal)
+        let originalBg = btn.backgroundColor
+
+        // Animate to success state
+        UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
+            btn.backgroundColor = AIONDesign.accentSuccess
+            btn.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
+        }
+
+        let iconConfig = UIImage.SymbolConfiguration(pointSize: 12, weight: .bold)
+        let checkImage = UIImage(systemName: "checkmark", withConfiguration: iconConfig)
+        btn.setTitle(nil, for: .normal)
+        btn.setImage(checkImage, for: .normal)
+        btn.tintColor = .white
+
+        // Bounce back after a moment
+        UIView.animate(withDuration: 0.3, delay: 1.0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.3) {
+            btn.transform = .identity
+            btn.backgroundColor = originalBg
+        } completion: { _ in
+            btn.setImage(nil, for: .normal)
+            btn.setTitle(originalTitle, for: .normal)
+            btn.tintColor = .white
+        }
     }
 
     // MARK: - Header
@@ -3313,5 +3576,43 @@ private func showDiscoveryLoadingAnimation() {
         label.textColor = color
         label.textAlignment = LocalizationManager.shared.textAlignment
         return label
+    }
+}
+
+// MARK: - UITextViewDelegate (Personal Notes)
+
+extension InsightsTabViewController: UITextViewDelegate {
+    func textViewDidChange(_ textView: UITextView) {
+        let hasText = !textView.text.isEmpty
+        notesPlaceholderLabel?.isHidden = hasText
+
+        // Show/hide save button with spring animation
+        UIView.animate(withDuration: 0.35, delay: 0, usingSpringWithDamping: 0.75, initialSpringVelocity: 0.5) {
+            self.notesSaveButton?.alpha = hasText ? 1 : 0
+            self.notesSaveButton?.transform = hasText ? .identity : CGAffineTransform(scaleX: 0.85, y: 0.85)
+        }
+    }
+
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        notesPlaceholderLabel?.isHidden = !textView.text.isEmpty
+        // Subtle highlight on the text container border
+        UIView.animate(withDuration: 0.2) {
+            self.notesTextContainerView?.layer.borderColor = AIONDesign.accentPrimary.withAlphaComponent(0.25).cgColor
+        }
+    }
+
+    func textViewDidEndEditing(_ textView: UITextView) {
+        notesPlaceholderLabel?.isHidden = !textView.text.isEmpty
+        // Restore border
+        UIView.animate(withDuration: 0.2) {
+            self.notesTextContainerView?.layer.borderColor = AIONDesign.textTertiary.withAlphaComponent(0.08).cgColor
+        }
+        // Hide save button if empty
+        if textView.text.isEmpty {
+            UIView.animate(withDuration: 0.25) {
+                self.notesSaveButton?.alpha = 0
+                self.notesSaveButton?.transform = CGAffineTransform(scaleX: 0.85, y: 0.85)
+            }
+        }
     }
 }

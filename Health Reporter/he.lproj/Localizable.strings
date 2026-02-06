@@ -63,6 +63,11 @@
 "profile.editName" = "עריכת שם";
 "profile.enterName" = "הזן את שמך";
 "profile.name" = "שם";
+"profile.editProfile" = "עריכת פרופיל";
+"profile.shareProfile" = "שיתוף פרופיל";
+"profile.score" = "ציון";
+"profile.shareText" = "בדקו את ציון הבריאות שלי - %d ב-AION Health!";
+"profile.bodyMetrics" = "מדדי גוף";
 "profile.selectUserType" = "בחר סוג משתמש";
 
 /* Home (מסך ראשי) */
@@ -314,6 +319,10 @@
 "insights.lastUpdate" = "עדכון אחרון";
 "insights.noSignificantChange" = "אין שינוי משמעותי";
 "insights.noSignificantChangeMsg" = "הנתונים שלך לא השתנו מספיק כדי להצדיק ניתוח חדש. הניתוח יתעדכן אוטומטית כשיהיה שינוי משמעותי ב-HRV, שינה או פעילות.";
+"insights.personalNotes" = "האם היה משהו שונה היום?";
+"insights.notesPlaceholder" = "למשל: שתיתי אלכוהול אתמול, הרגשתי לחוץ השבוע...";
+"insights.notesSaved" = "המידע עודכן ויצורף לניתוח הבא";
+"insights.notesSave" = "עדכן מידע";
 "insights.refreshAnyway" = "רענן בכל זאת";
 "insights.waitingForAnalysis" = "ממתין לניתוח...";
 "insights.carSelectedAfter" = "הרכב שלך ייבחר לאחר ניתוח ראשון של הנתונים";
@@ -511,6 +520,12 @@
 "chart.noRestingHRData" = "אין נתוני דופק מנוחה";
 "chart.noHRVData" = "אין נתוני HRV";
 
+/* 7-Day Score Charts */
+"chart.average" = "ממוצע";
+"chart.today" = "היום";
+"chart.7day.title" = "7 ימים אחרונים";
+"chart.no_data" = "אין מספיק נתונים";
+
 /* Debug Screen */
 "debug.query" = "שאילתה";
 "debug.response" = "תשובה";
@@ -657,6 +672,76 @@
 /* Leaderboard Extended */
 "social.points" = "נקודות";
 "social.pointsToNextRank" = "עוד %d נקודות לדירוג הבא";
+
+/* מערכת עוקבים */
+"social.followers" = "עוקבים";
+"social.following" = "עוקב";
+"social.follow" = "עקוב";
+"social.unfollow" = "הפסק לעקוב";
+"social.followBack" = "עקוב בחזרה";
+"social.removeFollower" = "הסר עוקב";
+"social.wantsToFollowYou" = "רוצה לעקוב אחריך";
+"social.followRequests" = "בקשות מעקב";
+"social.noFollowers" = "אין עוקבים עדיין";
+"social.noFollowing" = "לא עוקב אחרי אף אחד עדיין";
+"social.followRequestSent" = "בקשה נשלחה";
+"social.requested" = "בקשה נשלחה";
+"social.unfollowConfirm" = "האם אתה בטוח שברצונך להפסיק לעקוב אחרי %@?";
+"social.removeFollowerConfirm" = "האם אתה בטוח שברצונך להסיר את %@ מהעוקבים שלך?";
+
+/* זירה / תחרות */
+"social.arena" = "זירה";
+"social.rankUp" = "עלייה";
+"social.rankDown" = "ירידה";
+"social.pointsAhead" = "%d נק׳ מקדימים";
+"social.youLeadBy" = "אתה מוביל ב-%d";
+"social.challengeFriends" = "אתגר את החברים";
+"social.noRivals" = "אין יריבים קרובים";
+"social.weeklyStats" = "סטטיסטיקה שבועית";
+"social.bestScore" = "ציון הכי גבוה";
+"social.avgScore" = "ממוצע";
+"social.daysAbove" = "ימים מעל 80";
+"social.weeklyRank" = "הדירוג שלך השבוע: #%d";
+"social.inviteFriends" = "הזמן חברים";
+"social.moreFriendsMoreCompetition" = "יותר חברים = יותר תחרות!";
+"social.seeGlobal" = "צפה בגלובלי";
+"social.fullLeaderboard" = "לוח תוצאות";
+"social.myRank" = "הדירוג שלי";
+"social.new" = "חדש";
+"social.noDataYet" = "עקוב אחרי חברים כדי לראות את הפעילות שלהם כאן";
+"social.topFollowing" = "מובילים";
+"social.statBest" = "הכי גבוה";
+"social.statAvg" = "ממוצע";
+"social.statDays80" = "ימים 80+";
+"social.invite" = "הזמן";
+"social.shareText" = "הצטרף אליי ב-AION Health!";
+"social.searchUsers" = "חיפוש משתמשים";
+"social.unfollowConfirmTitle" = "הפסק לעקוב";
+"social.unfollowConfirmMessage" = "להפסיק לעקוב אחרי %@?";
+"social.rival.youLead" = "אתה מוביל ב-%d";
+"social.rival.ahead" = "%d נק׳ לפניך";
+"social.rival.tied" = "שוויון!";
+"social.rank" = "דירוג";
+
+/* רכזת חברתית - סטוריז ופיד פעילות */
+"social.myScore" = "הציון שלי";
+"social.activity" = "פעילות";
+"social.topPerformers" = "המובילים";
+"social.seeAll" = "הצג הכל";
+"social.timeAgo.now" = "עכשיו";
+"social.timeAgo.minutes" = "לפני %d דק׳";
+"social.timeAgo.hours" = "לפני %d שע׳";
+"social.timeAgo.yesterday" = "אתמול";
+"social.timeAgo.days" = "לפני %d ימים";
+
+/* מסך הגדרות */
+"settings.title" = "הגדרות";
+
+/* פרטיות מעקב */
+"profile.followPrivacy" = "פרטיות מעקב";
+"profile.followPrivacyOpen" = "פתוח";
+"profile.followPrivacyApproval" = "דורש אישור";
+"profile.followPrivacyDescription" = "בחר מי יכול לעקוב אחריך";
 
 /* ===== Insights Dashboard - מסך בית ראשי ===== */
 
@@ -864,7 +949,7 @@
 "healthScore.detail.explanation" = "הציון הראשי היומי שלך.\n\nמחושב משילוב של 6 מדדים:\n• מוכנות להתאוששות - 25%\n• איכות שינה - 20%\n• איזון מערכת העצבים - 20%\n• תחזית אנרגיה - 15%\n• ציון פעילות - 10%\n• איזון עומס - 10%\n\nהציון מתעדכן כל יום לפי הנתונים של אותו היום.";
 
 "carScore.detail.title" = "ציון מצב גופני";
-"carScore.detail.explanation" = "הציון שקובע את הרכב שלך.\n\nמחושב מממוצע של 4 מדדים על פני 7-90 יום:\n• מוכנות (Readiness) - 40%\n• שינה - 25%\n• HRV - 20%\n• עומס (Strain) - 15%\n\nהציון מתעדכן לאט יותר כי הוא מבוסס על ממוצעים ארוכי טווח.\n\n🚗 0-24 → Fiat Panda\n🚗 25-44 → Toyota Corolla\n🚗 45-64 → BMW M3\n🚗 65-81 → Porsche 911 Turbo\n🚗 82-100 → Ferrari SF90";
+"carScore.detail.explanation" = "הציון שקובע את הרכב שלך.\n\nמחושב מממוצע של 4 מדדים על פני 7-90 יום:\n• מוכנות (Readiness) - 40%\n• שינה - 25%\n• HRV - 20%\n• עומס (Strain) - 15%\n\nהציון מתעדכן לאט יותר כי הוא מבוסס על ממוצעים ארוכי טווח.";
 
 "sleepScore.detail.title" = "ציון שינה";
 "sleepScore.detail.explanation" = "מבוסס על משך השינה, עקביות זמני השינה והפרעות במהלך הלילה.";
@@ -884,6 +969,12 @@
 "onboarding.notifications.bullet3" = "עדכונים על פעילות חברים";
 "onboarding.notifications.enable" = "אפשר התראות";
 "onboarding.notifications.skip" = "אולי אחר כך";
+
+// MARK: - Notification Permission Denied
+"notifications.denied.title" = "הפעלת התראות";
+"notifications.denied.message" = "התראות עוזרות לך לעקוב אחרי יעדי הבריאות שלך ופעילות חברים. הפעל אותן בהגדרות כדי להפיק את המרב מ-AION Health.";
+"notifications.denied.openSettings" = "פתח הגדרות";
+"notifications.denied.later" = "לא עכשיו";
 
 "onboarding.healthkit.title" = "חבר את הבריאות שלך";
 "onboarding.healthkit.subtitle" = "פתח תובנות עוצמתיות מהנתונים שלך";
