@@ -504,34 +504,47 @@ enum FriendsFirestoreSync {
     /// Fetches the current FCM token and saves it to Firestore.
     /// Call this after login and on each app launch to ensure the token is always fresh.
     static func refreshAndSaveFCMToken() {
+        let uid = Auth.auth().currentUser?.uid
+        print("[FCM] refreshAndSaveFCMToken called. Logged in: \(uid != nil), uid suffix: \(uid.map { String($0.suffix(4)) } ?? "none")")
         Messaging.messaging().token { token, error in
             if let error = error {
-                print("[FCM] Failed to fetch token: \(error)")
+                print("[FCM] ❌ Failed to fetch token: \(error.localizedDescription) (code: \((error as NSError).code))")
                 return
             }
-            guard let token = token else {
-                print("[FCM] Token is nil")
+            guard let token = token, !token.isEmpty else {
+                print("[FCM] ❌ Token is nil or empty - Firebase did not return a token")
                 return
             }
-            print("[FCM] Refreshed token: \(token)")
-            saveFCMToken(token)
+            print("[FCM] ✅ Token received, length: \(token.count), prefix: \(String(token.prefix(20)))...")
+            saveFCMToken(token) { err in
+                if let err = err {
+                    print("[FCM] ❌ Save to Firestore FAILED: \(err.localizedDescription)")
+                } else {
+                    print("[FCM] ✅ Token saved to Firestore successfully")
+                }
+            }
         }
     }
 
     /// Saves the FCM token to Firestore for push notifications
     static func saveFCMToken(_ token: String, completion: ((Error?) -> Void)? = nil) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
+            print("[FCM] ❌ saveFCMToken SKIP: no user logged in - token will NOT be saved to Firestore")
             completion?(NSError(domain: "FriendsFirestoreSync", code: -1,
                                 userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
             return
         }
 
+        print("[FCM] Saving token to Firestore for uid ...\(String(currentUid.suffix(4)))")
         let lang = LocalizationManager.shared.currentLanguage.rawValue
         db.collection(usersCollection).document(currentUid).setData([
             "fcmToken": token,
             "fcmTokenUpdatedAt": FieldValue.serverTimestamp(),
             "language": lang
         ], merge: true) { error in
+            if let error = error {
+                print("[FCM] ❌ Firestore setData error: \(error.localizedDescription)")
+            }
             DispatchQueue.main.async { completion?(error) }
         }
     }

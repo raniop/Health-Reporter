@@ -5,13 +5,16 @@
  */
 
 const functions = require("firebase-functions");
-const {initializeApp} = require("firebase-admin/app");
-const {getFirestore, FieldValue} = require("firebase-admin/firestore");
-const {getMessaging} = require("firebase-admin/messaging");
+const admin = require("firebase-admin");
 
-initializeApp();
-const db = getFirestore();
-const messaging = getMessaging();
+// Use Application Default Credentials so FCM send works (fixes third-party-auth-error).
+// Ensure "Firebase Cloud Messaging API" is enabled in Google Cloud Console for this project.
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(),
+});
+const db = admin.firestore();
+const messaging = admin.messaging();
+const FieldValue = admin.firestore.FieldValue;
 
 // ─── Helper: send FCM and handle invalid tokens ───
 

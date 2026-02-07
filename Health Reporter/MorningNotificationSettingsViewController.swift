@@ -47,6 +47,13 @@ final class MorningNotificationSettingsViewController: UIViewController {
         loadCurrentSettings()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // So that other devices (e.g. Lior) get notifications: refresh FCM token and re-sync morning settings to Firestore every time this screen is opened.
+        FriendsFirestoreSync.refreshAndSaveFCMToken()
+        manager.syncSettingsToFirestore()
+    }
+
     // MARK: - Setup UI
 
     private func setupUI() {

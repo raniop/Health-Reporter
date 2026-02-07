@@ -306,6 +306,7 @@ final class LoginViewController: UIViewController {
         syncUserDisplayNameToFirestore()
 
         // Refresh and save FCM token now that user is logged in
+        print("[FCM] Login successful - refreshing and saving FCM token to Firestore...")
         FriendsFirestoreSync.refreshAndSaveFCMToken()
 
         // Analytics: Log successful login/signup and set user ID

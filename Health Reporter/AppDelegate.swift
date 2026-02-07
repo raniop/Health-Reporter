@@ -39,7 +39,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Refresh FCM token for already-logged-in users on every app launch
         if Auth.auth().currentUser != nil {
+            print("[FCM] App launch: user logged in, refreshing FCM token...")
             FriendsFirestoreSync.refreshAndSaveFCMToken()
+        } else {
+            print("[FCM] App launch: no user logged in, skipping FCM refresh")
         }
 
         return true
@@ -74,27 +77,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
                 UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { granted, error in
                     if let error = error {
-                        print("Push notification authorization error: \(error)")
+                        print("[FCM] ❌ Notification permission request error: \(error.localizedDescription)")
                         return
                     }
-                    print("Push notification permission granted: \(granted)")
+                    print("[FCM] Notification permission: granted=\(granted) (must be true to get FCM token)")
                     DispatchQueue.main.async {
                         app.registerForRemoteNotifications()
                         if granted {
-                            // Schedule morning notification now that we have permission
                             MorningNotificationManager.shared.scheduleMorningNotification()
                         }
                     }
                 }
 
             case .denied:
-                // Previously denied — show custom alert directing user to Settings
+                print("[FCM] ❌ Notification permission DENIED - user must enable in Settings to get token")
                 DispatchQueue.main.async {
                     self?.showNotificationDeniedAlert()
                 }
 
             case .authorized, .provisional, .ephemeral:
-                // Already authorized — just register for remote notifications
+                print("[FCM] Notification already authorized, registering for remote notifications")
                 DispatchQueue.main.async {
                     app.registerForRemoteNotifications()
                 }
@@ -136,11 +138,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Messaging.messaging().apnsToken = deviceToken
-        print("APNs token registered successfully")
+        print("[FCM] ✅ APNs device token received - FCM will now be able to get a token")
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("Failed to register for remote notifications: \(error)")
+        print("[FCM] ❌ APNs registration FAILED: \(error.localizedDescription) (e.g. Simulator has no push - use real device)")
     }
 
     // MARK: UISceneSession Lifecycle
@@ -260,23 +262,24 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 extension AppDelegate: MessagingDelegate {
 
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        guard let token = fcmToken else {
-            print("[FCM] Token is nil")
+        if let token = fcmToken, !token.isEmpty {
+            print("[FCM] didReceiveRegistrationToken: got token, length \(token.count)")
+        } else {
+            print("[FCM] ❌ didReceiveRegistrationToken: token is nil or empty - push may not work")
             return
         }
-        print("[FCM] Token received: \(token)")
+        let token = fcmToken!
 
-        // Only save if user is logged in; otherwise it will be saved after login
         guard Auth.auth().currentUser != nil else {
-            print("[FCM] User not logged in yet, will save token after login")
+            print("[FCM] ⚠️ Token received but user NOT logged in - token NOT saved. Will save after login.")
             return
         }
 
         FriendsFirestoreSync.saveFCMToken(token) { error in
             if let error = error {
-                print("[FCM] Failed to save token: \(error)")
+                print("[FCM] ❌ didReceiveRegistrationToken save failed: \(error.localizedDescription)")
             } else {
-                print("[FCM] Token saved to Firestore")
+                print("[FCM] ✅ didReceiveRegistrationToken: token saved to Firestore")
             }
         }
     }
