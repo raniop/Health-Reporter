@@ -8,7 +8,7 @@
 import Foundation
 import HealthKit
 
-/// סיכום נתוני פעילות לטווח – רק מדדים רלוונטיים (ללא אופניים/שחייה).
+/// Activity data summary for a range – only relevant metrics (no cycling/swimming).
 struct ActivitySummary {
     var steps: Double?
     var distanceKm: Double?
@@ -25,7 +25,7 @@ class HealthKitManager {
     
     private let healthStore = HKHealthStore()
     
-    // סוגי נתונים – מבקשים הרשאה להכל מראש (שינה, טמפרטורה, פעילות, תזונה, לב, נשימה וכו׳).
+    // Data types – request authorization for everything upfront (sleep, temperature, activity, nutrition, heart, respiratory, etc.).
     private let readTypes: Set<HKObjectType> = {
         var types: Set<HKObjectType> = []
         func addQ(_ id: HKQuantityTypeIdentifier) {
@@ -38,7 +38,7 @@ class HealthKitManager {
             if let t = HKObjectType.characteristicType(forIdentifier: id) { types.insert(t) }
         }
         
-        // פעילות וצעדים
+        // Activity and steps
         addQ(.stepCount)
         addQ(.distanceWalkingRunning)
         addQ(.distanceCycling)
@@ -52,7 +52,7 @@ class HealthKitManager {
         addQ(.pushCount)
         addQ(.distanceWheelchair)
         
-        // לב וכלי דם
+        // Heart and cardiovascular
         addQ(.heartRate)
         addQ(.restingHeartRate)
         addQ(.walkingHeartRateAverage)
@@ -67,7 +67,7 @@ class HealthKitManager {
         addC(.lowHeartRateEvent)
         addC(.irregularHeartRhythmEvent)
         
-        // גוף – משקל, גובה, טמפרטורה
+        // Body – weight, height, temperature
         addQ(.height)
         addQ(.bodyMass)
         addQ(.bodyMassIndex)
@@ -79,18 +79,18 @@ class HealthKitManager {
             addQ(.appleSleepingWristTemperature)
         }
         
-        // נשימה
+        // Respiratory
         addQ(.respiratoryRate)
         addQ(.forcedVitalCapacity)
         addQ(.forcedExpiratoryVolume1)
         addQ(.peakExpiratoryFlowRate)
         addQ(.oxygenSaturation)
         
-        // שינה (איכות שינה = sleepAnalysis – שלבים, משך וכו׳)
+        // Sleep (sleep quality = sleepAnalysis – stages, duration, etc.)
         addC(.sleepAnalysis)
         addC(.appleStandHour)
         
-        // תזונה
+        // Nutrition
         addQ(.dietaryEnergyConsumed)
         addQ(.dietaryProtein)
         addQ(.dietaryCarbohydrates)
@@ -110,11 +110,11 @@ class HealthKitManager {
         addQ(.dietaryMagnesium)
         addQ(.dietaryZinc)
         
-        // סוכר, אינסולין
+        // Blood sugar, insulin
         addQ(.bloodGlucose)
         addQ(.insulinDelivery)
         
-        // הליכה ויציבות
+        // Walking and stability
         addQ(.walkingSpeed)
         addQ(.walkingStepLength)
         addQ(.walkingAsymmetryPercentage)
@@ -124,16 +124,16 @@ class HealthKitManager {
         addQ(.stairAscentSpeed)
         addQ(.stairDescentSpeed)
         
-        // שחייה, אימון
+        // Swimming, workout
         addQ(.swimmingStrokeCount)
         addQ(.numberOfTimesFallen)
         
-        // אודיו וסביבה
+        // Audio and environment
         addQ(.environmentalAudioExposure)
         addQ(.headphoneAudioExposure)
         addC(.audioExposureEvent)
         
-        // אחר
+        // Other
         addQ(.bloodAlcoholContent)
         addQ(.numberOfAlcoholicBeverages)
         addQ(.uvExposure)
@@ -141,7 +141,7 @@ class HealthKitManager {
         addC(.handwashingEvent)
         addC(.toothbrushingEvent)
         
-        // מאפיינים (גיל, מין וכו׳)
+        // Characteristics (age, sex, etc.)
         addX(.dateOfBirth)
         addX(.biologicalSex)
         addX(.bloodType)
@@ -153,15 +153,15 @@ class HealthKitManager {
     
     private init() {}
     
-    /// בודק אם HealthKit זמין במכשיר
+    /// Check if HealthKit is available on the device
     func isHealthDataAvailable() -> Bool {
         return HKHealthStore.isHealthDataAvailable()
     }
     
-    /// מבקש הרשאות גישה לנתוני בריאות
+    /// Request access permissions for health data
     func requestAuthorization(completion: @escaping (Bool, Error?) -> Void) {
         guard isHealthDataAvailable() else {
-            completion(false, NSError(domain: "HealthKitManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "HealthKit לא זמין במכשיר זה"]))
+            completion(false, NSError(domain: "HealthKitManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "HealthKit is not available on this device"]))
             return
         }
         
@@ -172,17 +172,17 @@ class HealthKitManager {
         }
     }
     
-    /// קורא את כל נתוני הבריאות
+    /// Read all health data
     func fetchAllHealthData(completion: @escaping (HealthDataModel?, Error?) -> Void) {
         fetchAllHealthData(for: .month, includeWeeklySnapshots: false, completion: completion)
     }
     
-    /// קורא נתוני בריאות לטווח נתון (יום / שבוע / חודש)
+    /// Read health data for a given range (day / week / month)
     func fetchAllHealthData(for range: DataRange, includeWeeklySnapshots: Bool = false, completion: @escaping (HealthDataModel?, Error?) -> Void) {
         fetchAllHealthData(includeWeeklySnapshots: includeWeeklySnapshots, startDate: range.interval().start, endDate: range.interval().end, completion: completion)
     }
 
-    /// מביא נתוני פעילות לטווח – צעדים, מרחק, קלוריות, דקות אימון, קומות, Move, Stand בלבד.
+    /// Fetch activity data for a range – steps, distance, calories, exercise minutes, flights climbed, Move, Stand only.
     func fetchActivityForRange(_ range: DataRange, completion: @escaping (ActivitySummary?) -> Void) {
         let (start, end) = range.interval()
         let label = range.displayLabel()
@@ -217,7 +217,7 @@ class HealthKitManager {
         }
     }
 
-    /// נתוני פעילות יומיים לגרפים – צעדים, מרחק, קלוריות לכל יום בטווח.
+    /// Daily activity data for graphs – steps, distance, calories per day in range.
     struct ActivityTimeSeries {
         var steps: StepsGraphData
         var distance: EfficiencyGraphData
@@ -275,7 +275,7 @@ class HealthKitManager {
         }
     }
     
-    /// קורא את כל נתוני הבריאות עם אפשרות לנתונים שבועיים
+    /// Read all health data with option for weekly data
     func fetchAllHealthData(includeWeeklySnapshots: Bool = false, startDate: Date? = nil, endDate: Date? = nil, completion: @escaping (HealthDataModel?, Error?) -> Void) {
         var healthData = HealthDataModel()
         let group = DispatchGroup()
@@ -283,42 +283,42 @@ class HealthKitManager {
         let end = endDate ?? Date()
         let start = startDate ?? Calendar.current.date(byAdding: .day, value: -30, to: end) ?? end
         
-        // צעדים
+        // Steps
         group.enter()
         fetchSteps(startDate: start, endDate: end) { steps in
             healthData.steps = steps
             group.leave()
         }
         
-        // מרחק
+        // Distance
         group.enter()
         fetchDistance(startDate: start, endDate: end) { distance in
             healthData.distance = distance
             group.leave()
         }
         
-        // אנרגיה פעילה
+        // Active energy
         group.enter()
         fetchActiveEnergy(startDate: start, endDate: end) { energy in
             healthData.activeEnergy = energy
             group.leave()
         }
         
-        // דופק
+        // Heart rate
         group.enter()
         fetchHeartRate(startDate: start, endDate: end) { heartRate in
             healthData.heartRate = heartRate
             group.leave()
         }
         
-        // דופק במנוחה
+        // Resting heart rate
         group.enter()
         fetchRestingHeartRate(startDate: start, endDate: end) { restingHeartRate in
             healthData.restingHeartRate = restingHeartRate
             group.leave()
         }
         
-        // לחץ דם
+        // Blood pressure
         group.enter()
         fetchBloodPressure(startDate: start, endDate: end) { systolic, diastolic in
             healthData.bloodPressureSystolic = systolic
@@ -326,14 +326,14 @@ class HealthKitManager {
             group.leave()
         }
         
-        // ריווי חמצן
+        // Oxygen saturation
         group.enter()
         fetchOxygenSaturation(startDate: start, endDate: end) { oxygen in
             healthData.oxygenSaturation = oxygen
             group.leave()
         }
         
-        // משקל
+        // Weight
         group.enter()
         fetchBodyMass(startDate: start, endDate: end) { weight in
             healthData.bodyMass = weight
@@ -347,14 +347,14 @@ class HealthKitManager {
             group.leave()
         }
         
-        // אחוז שומן
+        // Body fat percentage
         group.enter()
         fetchBodyFatPercentage(startDate: start, endDate: end) { bodyFat in
             healthData.bodyFatPercentage = bodyFat
             group.leave()
         }
         
-        // שינה - שליפה מ-18:00 אתמול כדי לתפוס שינה שהתחילה לפני חצות (כמו אפל Health)
+        // Sleep - fetch from 18:00 yesterday to catch sleep that started before midnight (like Apple Health)
         group.enter()
         let cal = Calendar.current
         let sleepQueryStart = cal.date(byAdding: .hour, value: -6, to: cal.startOfDay(for: end)) ?? start
@@ -364,14 +364,14 @@ class HealthKitManager {
             group.leave()
         }
         
-        // קלוריות תזונתיות
+        // Dietary calories
         group.enter()
         fetchDietaryEnergy(startDate: start, endDate: end) { calories in
             healthData.dietaryEnergy = calories
             group.leave()
         }
         
-        // סוכר בדם
+        // Blood glucose
         group.enter()
         fetchBloodGlucose(startDate: start, endDate: end) { glucose in
             healthData.bloodGlucose = glucose
@@ -482,7 +482,7 @@ class HealthKitManager {
             healthData.totalWorkoutCalories = workouts.compactMap(\.totalCalories).reduce(0, +)
             healthData.workoutTypes = Array(Set(workouts.map(\.type)))
             healthData.lastWorkout = workouts.first
-            // שומר את כל האימונים המפורטים (עד 50 אחרונים)
+            // Save all detailed workouts (up to 50 most recent)
             healthData.recentWorkouts = Array(workouts.prefix(50))
             group.leave()
         }
@@ -727,7 +727,7 @@ class HealthKitManager {
         healthStore.execute(query)
     }
     
-    /// טוען גובה ומשקל אחרונים לפרופיל. תאריך: עד 10 שנים לאחור. completion: (heightCm, weightKg).
+    /// Load latest height and weight for profile. Date range: up to 10 years back. completion: (heightCm, weightKg).
     func fetchProfileMetrics(completion: @escaping (Double?, Double?) -> Void) {
         let end = Date()
         let start = Calendar.current.date(byAdding: .year, value: -10, to: end) ?? end
@@ -749,7 +749,7 @@ class HealthKitManager {
         }
     }
 
-    /// גיל בשנים מתאריך לידה (Health). מחזיר nil אם אין הרשאה/נתון.
+    /// Age in years from date of birth (Health). Returns nil if no permission/data.
     func fetchDateOfBirth(completion: @escaping (Int?) -> Void) {
         guard isHealthDataAvailable() else { completion(nil); return }
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -829,7 +829,7 @@ class HealthKitManager {
         healthStore.execute(query)
     }
     
-    /// ממזג מקטעי שינה חופפים (כמו באפל) – מסכמים איחוד מקטעים, לא סכום גולמי.
+    /// Merge overlapping sleep segments (like Apple) – summing merged intervals, not raw sum.
     private static func mergeOverlappingSleepIntervals(_ intervals: [(start: Date, end: Date)]) -> [(start: Date, end: Date)] {
         guard !intervals.isEmpty else { return [] }
         let sorted = intervals.sorted { $0.start < $1.start }
@@ -846,7 +846,7 @@ class HealthKitManager {
         return out
     }
     
-    /// זמן במיטה (inBed) – כמו באפל. מרכז מקטעים, סופר שעות.
+    /// Time in bed (inBed) – like Apple. Merges segments, counts hours.
     private func fetchTimeInBed(startDate: Date, endDate: Date, matchByEndDate: Bool = false, completion: @escaping (Double?) -> Void) {
         guard let sleepType = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else {
             completion(nil)
@@ -872,7 +872,7 @@ class HealthKitManager {
         healthStore.execute(query)
     }
 
-    /// קצב נשימות בטווח (למשל בזמן שינה) – min/max נשימות לדקה.
+    /// Respiratory rate in range (e.g. during sleep) – min/max breaths per minute.
     private func fetchRespiratoryRateInRange(startDate: Date, endDate: Date, completion: @escaping ((min: Double, max: Double)?) -> Void) {
         guard let rt = HKQuantityType.quantityType(forIdentifier: .respiratoryRate) else {
             completion(nil)
@@ -978,66 +978,66 @@ class HealthKitManager {
         healthStore.execute(query)
     }
     
-    /// יוצר Weekly Snapshot לשבוע מסוים
+    /// Create Weekly Snapshot for a specific week
     func createWeeklySnapshot(weekStartDate: Date, weekEndDate: Date, completion: @escaping (WeeklyHealthSnapshot) -> Void) {
         createWeeklySnapshot(weekStartDate: weekStartDate, weekEndDate: weekEndDate, previousWeekSnapshot: nil, completion: completion)
     }
     
-    /// יוצר Weekly Snapshot לשבוע מסוים עם נתונים מהשבוע הקודם לחישובים
+    /// Create Weekly Snapshot for a specific week with previous week data for calculations
     func createWeeklySnapshot(weekStartDate: Date, weekEndDate: Date, previousWeekSnapshot: WeeklyHealthSnapshot?, completion: @escaping (WeeklyHealthSnapshot) -> Void) {
         var snapshot = WeeklyHealthSnapshot(weekStartDate: weekStartDate, weekEndDate: weekEndDate)
         let group = DispatchGroup()
         
-        // דופק במנוחה (ממוצע שבועי)
+        // Resting heart rate (weekly average)
         group.enter()
         fetchRestingHeartRate(startDate: weekStartDate, endDate: weekEndDate) { rhr in
             snapshot.restingHeartRate = rhr
             group.leave()
         }
         
-        // שינה (סה"כ שעות)
+        // Sleep (total hours)
         group.enter()
         fetchSleepData(startDate: weekStartDate, endDate: weekEndDate) { sleepHours, _, _ in
             snapshot.sleepDurationHours = sleepHours
             group.leave()
         }
         
-        // קלוריות פעילות (סה"כ)
+        // Active calories (total)
         group.enter()
         fetchActiveEnergy(startDate: weekStartDate, endDate: weekEndDate) { calories in
             snapshot.activeCalories = calories
             group.leave()
         }
         
-        // VO2 Max (הכי עדכני)
+        // VO2 Max (most recent)
         group.enter()
         fetchVO2Max(startDate: weekStartDate, endDate: weekEndDate) { vo2Max in
             snapshot.vo2Max = vo2Max
             group.leave()
         }
         
-        // צעדים
+        // Steps
         group.enter()
         fetchSteps(startDate: weekStartDate, endDate: weekEndDate) { steps in
             snapshot.steps = steps
             group.leave()
         }
         
-        // מרחק
+        // Distance
         group.enter()
         fetchDistance(startDate: weekStartDate, endDate: weekEndDate) { distance in
             snapshot.distanceKm = distance
             group.leave()
         }
         
-        // דופק ממוצע
+        // Average heart rate
         group.enter()
         fetchHeartRate(startDate: weekStartDate, endDate: weekEndDate) { heartRate in
             snapshot.averageHeartRate = heartRate
             group.leave()
         }
         
-        // משקל
+        // Weight
         group.enter()
         fetchBodyMass(startDate: weekStartDate, endDate: weekEndDate) { weight in
             snapshot.bodyMass = weight
@@ -1051,7 +1051,7 @@ class HealthKitManager {
             group.leave()
         }
         
-        // לחץ דם
+        // Blood pressure
         group.enter()
         fetchBloodPressure(startDate: weekStartDate, endDate: weekEndDate) { systolic, diastolic in
             snapshot.bloodPressureSystolic = systolic
@@ -1059,14 +1059,14 @@ class HealthKitManager {
             group.leave()
         }
         
-        // ריווי חמצן
+        // Oxygen saturation
         group.enter()
         fetchOxygenSaturation(startDate: weekStartDate, endDate: weekEndDate) { oxygen in
             snapshot.oxygenSaturation = oxygen
             group.leave()
         }
         
-        // קלוריות תזונתיות
+        // Dietary calories
         group.enter()
         fetchDietaryEnergy(startDate: weekStartDate, endDate: weekEndDate) { calories in
             snapshot.dietaryEnergy = calories
@@ -1087,7 +1087,7 @@ class HealthKitManager {
             group.leave()
         }
         
-        // Recovery Score (נדרש HRV ו-RHR מהשבוע הקודם)
+        // Recovery Score (requires HRV and RHR from previous week)
         group.enter()
         let previousHRV = previousWeekSnapshot?.heartRateVariability
         let previousRHR = previousWeekSnapshot?.restingHeartRate
@@ -1095,7 +1095,7 @@ class HealthKitManager {
         var currentRHR: Double?
         var currentSleep: Double?
         
-        // נאסוף את הנתונים הנדרשים
+        // Collect the required data
         let recoveryGroup = DispatchGroup()
         recoveryGroup.enter()
         fetchRestingHeartRate(startDate: weekStartDate, endDate: weekEndDate) { rhr in
@@ -1170,7 +1170,7 @@ class HealthKitManager {
         }
     }
     
-    /// מחשב ממוצע HRV של 7 ימים
+    /// Calculate 7-day HRV average
     func calculateHRV7DayAverage(endDate: Date, completion: @escaping (Double?) -> Void) {
         let cal = Calendar.current
         guard let start = cal.date(byAdding: .day, value: -7, to: endDate) else {
@@ -1180,7 +1180,7 @@ class HealthKitManager {
         fetchHRV(startDate: start, endDate: endDate, completion: completion)
     }
     
-    /// מחשב Training Strain (1-10) על בסיס HR zones
+    /// Calculate Training Strain (1-10) based on HR zones
     func calculateTrainingStrain(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
             completion(nil)
@@ -1194,7 +1194,7 @@ class HealthKitManager {
                 return
             }
             
-            // חישוב פשוט של strain על בסיס זמן ב-zones שונים
+            // Simple strain calculation based on time in different zones
             // Zone 5 (90-100%): 10 points/hour
             // Zone 4 (80-90%): 7 points/hour
             // Zone 3 (70-80%): 4 points/hour
@@ -1209,7 +1209,7 @@ class HealthKitManager {
                 let duration = sample.endDate.timeIntervalSince(sample.startDate)
                 totalDuration += duration
                 
-                // חישוב strain על בסיס HR (הנחה: max HR = 220 - age, נשתמש ב-190 כערך ברירת מחדל)
+                // Calculate strain based on HR (assumption: max HR = 220 - age, using 190 as default)
                 let maxHR: Double = 190
                 let hrPercent = hr / maxHR
                 
@@ -1226,46 +1226,46 @@ class HealthKitManager {
                     zoneMultiplier = 1.0
                 }
                 
-                totalStrain += zoneMultiplier * (duration / 3600.0) // שעות
+                totalStrain += zoneMultiplier * (duration / 3600.0) // hours
             }
             
-            // נרמול ל-1-10
-            let normalizedStrain = min(10.0, totalStrain / max(1.0, totalDuration / 3600.0 / 24.0)) // נרמול ליום
+            // Normalize to 1-10
+            let normalizedStrain = min(10.0, totalStrain / max(1.0, totalDuration / 3600.0 / 24.0)) // normalize per day
             completion(normalizedStrain)
         }
         
         healthStore.execute(query)
     }
     
-    /// מחשב Recovery Score (0-100%) על בסיס HRV, RHR, ושינה
+    /// Calculate Recovery Score (0-100%) based on HRV, RHR, and sleep
     func calculateRecoveryScore(hrv: Double?, rhr: Double?, sleepHours: Double?, previousHRV: Double?, previousRHR: Double?, completion: @escaping (Double?) -> Void) {
-        var score: Double = 50.0 // נקודת התחלה
+        var score: Double = 50.0 // Starting point
         
-        // HRV component (40% מהציון)
+        // HRV component (40% of score)
         if let hrv = hrv, let prevHRV = previousHRV, prevHRV > 0 {
             let hrvChange = (hrv / prevHRV) * 100.0
             if hrvChange >= 100 {
-                score += 20.0 // HRV טוב
+                score += 20.0 // HRV good
             } else if hrvChange >= 90 {
                 score += 10.0
             } else if hrvChange < 90 {
-                score -= 20.0 // HRV נמוך
+                score -= 20.0 // HRV low
             }
         }
         
-        // RHR component (30% מהציון)
+        // RHR component (30% of score)
         if let rhr = rhr, let prevRHR = previousRHR, prevRHR > 0 {
             let rhrChange = (rhr / prevRHR) * 100.0
             if rhrChange <= 100 {
-                score += 15.0 // RHR תקין או נמוך יותר
+                score += 15.0 // RHR normal or lower
             } else if rhrChange <= 105 {
                 score += 5.0
             } else {
-                score -= 15.0 // RHR גבוה
+                score -= 15.0 // RHR high
             }
         }
         
-        // Sleep component (30% מהציון)
+        // Sleep component (30% of score)
         if let sleep = sleepHours {
             if sleep >= 8.0 {
                 score += 15.0
@@ -1278,26 +1278,26 @@ class HealthKitManager {
             }
         }
         
-        // נרמול ל-0-100
+        // Normalize to 0-100
         score = max(0.0, min(100.0, score))
         completion(score)
     }
     
-    /// מחשב Efficiency Factor (Pace/HR או Distance/HR)
+    /// Calculate Efficiency Factor (Pace/HR or Distance/HR)
     func calculateEfficiencyFactor(distance: Double?, averageHR: Double?, completion: @escaping (Double?) -> Void) {
         guard let dist = distance, let hr = averageHR, hr > 0, dist > 0 else {
             completion(nil)
             return
         }
         
-        // EF = distance / HR (ככל שהערך גבוה יותר, כך היעילות טובה יותר)
+        // EF = distance / HR (higher value = better efficiency)
         let ef = dist / hr
         completion(ef)
     }
     
-    // MARK: - Chart Data (להגרפים המקצועיים)
+    // MARK: - Chart Data (for the professional graphs)
     
-    /// טוען נתונים יומיים לכל 6 הגרפים של AION
+    /// Load daily data for all 6 AION graphs
     func fetchChartData(for range: DataRange, completion: @escaping (AIONChartDataBundle?) -> Void) {
         let (start, end) = range.interval()
         let label = range.displayLabel()
@@ -1353,9 +1353,9 @@ class HealthKitManager {
             fetchSteps(startDate: dayStart, endDate: dayEnd) { steps = $0; g.leave() }
             g.enter()
             fetchDistance(startDate: dayStart, endDate: dayEnd) { dist = $0; g.leave() }
-            // שינה ו-Time in Bed: שולפים מ-18:00 אתמול עד עכשיו (כמו אפל Health)
-            // זה תופס שינה שהתחילה לפני חצות ומסתיימת אחרי חצות
-            let sleepQueryStart = cal.date(byAdding: .hour, value: -6, to: dayStart) ?? dayStart  // 18:00 אתמול
+            // Sleep and Time in Bed: fetch from 18:00 yesterday to now (like Apple Health)
+            // This catches sleep that started before midnight and ended after midnight
+            let sleepQueryStart = cal.date(byAdding: .hour, value: -6, to: dayStart) ?? dayStart  // 18:00 yesterday
             g.enter()
             fetchTimeInBed(startDate: sleepQueryStart, endDate: dayEnd, matchByEndDate: false) { timeInBedHours = $0; g.leave() }
             g.enter()
@@ -1403,7 +1403,7 @@ class HealthKitManager {
             fetchDietaryFat(startDate: dayStart, endDate: dayEnd) { fat = $0; g.leave() }
             
             g.notify(queue: .main) {
-                // רק אם יש נתון אמיתי אחד לפחות ליום זה – ניצור readiness point
+                // Only if there's at least one real data point for this day – create readiness point
                 let hasDayData = energy != nil || sleepHours != nil || rhr != nil || hrv != nil
                 if hasDayData {
                     let strain = min(10.0, (energy ?? 0) / 200.0)
@@ -1464,7 +1464,7 @@ class HealthKitManager {
 
     // MARK: - Data Source Detection
 
-    /// זיהוי מקורות נתונים מדגימות HealthKit
+    /// Detect data sources from HealthKit samples
     func detectDataSources(for dataType: HKSampleType, days: Int = 7, completion: @escaping (SourceDetectionResult?) -> Void) {
         let end = Date()
         let start = Calendar.current.date(byAdding: .day, value: -days, to: end) ?? end
@@ -1482,9 +1482,9 @@ class HealthKitManager {
         healthStore.execute(query)
     }
 
-    /// זיהוי מקור עיקרי מכל סוגי הנתונים
+    /// Detect primary data source from all data types
     func detectPrimaryDataSource(completion: @escaping (HealthDataSource) -> Void) {
-        // בודקים דופק מנוחה ו-HRV - הכי אמינים לזיהוי מכשיר
+        // Check resting HR and HRV - most reliable for device detection
         guard let rhrType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate),
               let hrvType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else {
             completion(.appleWatch)
@@ -1526,7 +1526,7 @@ class HealthKitManager {
 
     // MARK: - Enhanced Sleep Data (Garmin/Oura detailed stages)
 
-    /// שליפת נתוני שינה מפורטים עם כל השלבים
+    /// Fetch detailed sleep data with all stages
     func fetchDetailedSleepData(startDate: Date, endDate: Date, completion: @escaping (DetailedSleepStages?) -> Void) {
         guard let sleepType = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else {
             completion(nil)
@@ -1558,7 +1558,7 @@ class HealthKitManager {
                 case .asleepCore:
                     lightSleep += duration
                 case .asleepUnspecified:
-                    // אם אין פירוט - מניחים שינה קלה
+                    // If no detail - assume light sleep
                     lightSleep += duration
                 case .awake:
                     awakeTime += duration
@@ -1588,7 +1588,7 @@ class HealthKitManager {
 
     // MARK: - Body Temperature (Oura)
 
-    /// שליפת טמפרטורת גוף בסיסית (Oura מסנכרן לאפל הלט')
+    /// Fetch basal body temperature (Oura syncs to Apple Health)
     func fetchBasalBodyTemperature(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let tempType = HKQuantityType.quantityType(forIdentifier: .basalBodyTemperature) else {
             completion(nil)
@@ -1603,7 +1603,7 @@ class HealthKitManager {
         healthStore.execute(query)
     }
 
-    /// שליפת סטיית טמפרטורה מהבסיס (7 ימים אחורה)
+    /// Fetch body temperature deviation from baseline (7 days back)
     func fetchBodyTemperatureDeviation(completion: @escaping (Double?) -> Void) {
         let end = Date()
         let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: end) ?? end
@@ -1639,7 +1639,7 @@ class HealthKitManager {
 
     // MARK: - SpO2 (Oxygen Saturation)
 
-    /// שליפת רמת חמצן ממוצעת
+    /// Fetch average oxygen saturation level
     func fetchSpO2Average(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let o2Type = HKQuantityType.quantityType(forIdentifier: .oxygenSaturation) else {
             completion(nil)
@@ -1650,7 +1650,7 @@ class HealthKitManager {
         let query = HKStatisticsQuery(quantityType: o2Type, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, _ in
             let spo2 = result?.averageQuantity()?.doubleValue(for: HKUnit.percent())
             DispatchQueue.main.async {
-                // המרה מ-0-1 ל-0-100 אם צריך
+                // Convert from 0-1 to 0-100 if needed
                 if let val = spo2, val <= 1 {
                     completion(val * 100)
                 } else {
@@ -1663,7 +1663,7 @@ class HealthKitManager {
 
     // MARK: - Heart Rate Samples for Strain Calculation
 
-    /// שליפת דגימות דופק לחישוב Training Strain
+    /// Fetch heart rate samples for Training Strain calculation
     func fetchHeartRateSamples(startDate: Date, endDate: Date, completion: @escaping ([(value: Double, date: Date)]) -> Void) {
         guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
             completion([])
@@ -1688,7 +1688,7 @@ class HealthKitManager {
 
     // MARK: - HRV Baseline
 
-    /// שליפת ממוצע HRV ל-7 ימים (baseline)
+    /// Fetch 7-day HRV average (baseline)
     func fetchHRVBaseline(days: Int = 7, completion: @escaping (Double?) -> Void) {
         let end = Date()
         guard let start = Calendar.current.date(byAdding: .day, value: -days, to: end),
@@ -1705,7 +1705,7 @@ class HealthKitManager {
         healthStore.execute(query)
     }
 
-    /// שליפת מערך HRV יומי לחישוב מגמה
+    /// Fetch daily HRV array for trend calculation
     func fetchDailyHRVValues(days: Int = 7, completion: @escaping ([Double]) -> Void) {
         let end = Date()
         guard let start = Calendar.current.date(byAdding: .day, value: -days, to: end) else {
@@ -1729,13 +1729,13 @@ class HealthKitManager {
         }
 
         group.notify(queue: .main) {
-            completion(dailyValues.reversed()) // מהישן לחדש
+            completion(dailyValues.reversed()) // oldest to newest
         }
     }
 
     // MARK: - Enhanced Data Fetch with Source
 
-    /// שליפת כל הנתונים המורחבים כולל מקור וציונים מחושבים
+    /// Fetch all enhanced data including source and calculated scores
     func fetchEnhancedHealthData(for range: DataRange, completion: @escaping (HealthDataModel?) -> Void) {
         let (start, end) = range.interval()
         var model = HealthDataModel()
@@ -1822,7 +1822,7 @@ class HealthKitManager {
 
     // MARK: - Workouts
 
-    /// שליפת כל האימונים בטווח תאריכים
+    /// Fetch all workouts in a date range
     func fetchWorkouts(startDate: Date, endDate: Date, completion: @escaping ([WorkoutData]) -> Void) {
         let workoutType = HKObjectType.workoutType()
         let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
@@ -1859,7 +1859,7 @@ class HealthKitManager {
         healthStore.execute(query)
     }
 
-    /// המרת סוג אימון לטקסט
+    /// Convert workout type to text
     private static func workoutTypeString(_ type: HKWorkoutActivityType) -> String {
         switch type {
         case .running: return "Running"
@@ -1890,7 +1890,7 @@ class HealthKitManager {
 
     // MARK: - Walking Metrics
 
-    /// מהירות הליכה ממוצעת (קמ"ש)
+    /// Average walking speed (km/h)
     func fetchWalkingSpeed(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let t = HKQuantityType.quantityType(forIdentifier: .walkingSpeed) else { completion(nil); return }
         let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
@@ -1901,7 +1901,7 @@ class HealthKitManager {
         healthStore.execute(q)
     }
 
-    /// אורך צעד ממוצע (מטר)
+    /// Average step length (meters)
     func fetchWalkingStepLength(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let t = HKQuantityType.quantityType(forIdentifier: .walkingStepLength) else { completion(nil); return }
         let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
@@ -1911,7 +1911,7 @@ class HealthKitManager {
         healthStore.execute(q)
     }
 
-    /// אסימטריית הליכה (%)
+    /// Walking asymmetry (%)
     func fetchWalkingAsymmetry(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let t = HKQuantityType.quantityType(forIdentifier: .walkingAsymmetryPercentage) else { completion(nil); return }
         let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
@@ -1921,7 +1921,7 @@ class HealthKitManager {
         healthStore.execute(q)
     }
 
-    /// יציבות הליכה
+    /// Walking steadiness
     func fetchWalkingSteadiness(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let t = HKQuantityType.quantityType(forIdentifier: .appleWalkingSteadiness) else { completion(nil); return }
         let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
@@ -1931,7 +1931,7 @@ class HealthKitManager {
         healthStore.execute(q)
     }
 
-    /// מרחק מבחן 6 דקות הליכה
+    /// Six-minute walk test distance
     func fetchSixMinuteWalkDistance(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let t = HKQuantityType.quantityType(forIdentifier: .sixMinuteWalkTestDistance) else { completion(nil); return }
         let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
@@ -1941,7 +1941,7 @@ class HealthKitManager {
         healthStore.execute(q)
     }
 
-    /// Heart Rate Recovery (דקה אחת אחרי אימון)
+    /// Heart Rate Recovery (one minute after workout)
     func fetchHeartRateRecovery(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let t = HKQuantityType.quantityType(forIdentifier: .heartRateRecoveryOneMinute) else { completion(nil); return }
         let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
@@ -1951,7 +1951,7 @@ class HealthKitManager {
         healthStore.execute(q)
     }
 
-    /// אנרגיה בסיסית (BMR)
+    /// Basal energy (BMR)
     func fetchBasalEnergy(startDate: Date, endDate: Date, completion: @escaping (Double?) -> Void) {
         guard let t = HKQuantityType.quantityType(forIdentifier: .basalEnergyBurned) else { completion(nil); return }
         let p = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
@@ -1973,8 +1973,8 @@ class HealthKitManager {
 
     // MARK: - Daily Health Data for Gemini Payload
 
-    /// שליפת נתוני בריאות יומיים ל-X ימים (ברירת מחדל: 90 ימים)
-    /// מחזיר מערך של RawDailyHealthEntry לשימוש ב-GeminiHealthPayloadBuilder
+    /// Fetch daily health data for X days (default: 90 days)
+    /// Returns an array of RawDailyHealthEntry for use in GeminiHealthPayloadBuilder
     func fetchDailyHealthData(days: Int = 90, completion: @escaping ([RawDailyHealthEntry]) -> Void) {
         let calendar = Calendar.current
         let endDate = Date()
@@ -2218,11 +2218,11 @@ class HealthKitManager {
         var remHours: Double?
     }
 
-    /// שליפת נתוני שינה יומיים - לוגיקה פשוטה ונכונה
-    /// השינה מיוחסת ליום ההתעוררות:
-    /// - ליל שני→שלישי (התעוררת בבוקר שלישי) = מיוחס ליום שלישי
-    /// - שינה שנגמרת בין 00:00-14:00 = שייכת לאותו יום קלנדרי
-    /// - שינה שנגמרת בין 14:00-24:00 = תנומה, מתעלמים
+    /// Fetch daily sleep data - simple and correct logic
+    /// Sleep is attributed to the waking day:
+    /// - Monday night→Tuesday (woke up Tuesday morning) = attributed to Tuesday
+    /// - Sleep ending between 00:00-14:00 = belongs to that calendar day
+    /// - Sleep ending between 14:00-24:00 = nap, ignored
     private func fetchDailySleepData(startDate: Date, endDate: Date, completion: @escaping ([(Date, DailySleepData)]) -> Void) {
         guard let sleepType = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else {
             completion([])
@@ -2231,8 +2231,8 @@ class HealthKitManager {
 
         let calendar = Calendar.current
 
-        // שליפה אחת גדולה של כל נתוני השינה בטווח המבוקש
-        // מרחיבים את הטווח יום אחד אחורה כדי לתפוס שינה שהתחילה לפני startDate אבל נגמרה אחריו
+        // One large fetch of all sleep data in the requested range
+        // Extend the range one day back to catch sleep that started before startDate but ended after it
         let extendedStart = calendar.date(byAdding: .day, value: -1, to: startDate) ?? startDate
         let datePredicate = HKQuery.predicateForSamples(withStart: extendedStart, end: endDate, options: [])
         let asleepPredicate = HKCategoryValueSleepAnalysis.predicateForSamples(equalTo: HKCategoryValueSleepAnalysis.allAsleepValues)
@@ -2244,10 +2244,10 @@ class HealthKitManager {
                 return
             }
 
-            // מיון לפי תאריך התחלה
+            // Sort by start date
             let sortedSamples = samples.sorted { $0.startDate < $1.startDate }
 
-            // לוג לדיבוג - 20 samples אחרונים
+            // Debug log - last 20 samples
             print("🛏️ [fetchDailySleepData] Total samples from HealthKit: \(sortedSamples.count)")
             for (i, s) in sortedSamples.suffix(20).enumerated() {
                 let durMin = s.endDate.timeIntervalSince(s.startDate) / 60.0
@@ -2255,7 +2255,7 @@ class HealthKitManager {
                 print("🛏️   \(i+1). \(s.startDate) → \(s.endDate) (\(String(format: "%.0f", durMin))m, endHour=\(endHourLocal))")
             }
 
-            // יצירת entries ריקים לכל הימים
+            // Create empty entries for all days
             var dailyResults: [Date: DailySleepData] = [:]
             var currentDate = calendar.startOfDay(for: startDate)
             let finalDate = calendar.startOfDay(for: endDate)
@@ -2264,17 +2264,17 @@ class HealthKitManager {
                 currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate.addingTimeInterval(86400)
             }
 
-            // חישוב שינה לכל יום
-            // לוגיקת אפל: יום X = כל השינה מ-19:00 של יום X-1 עד 19:00 של יום X
-            // זה כולל שינה לילית + תנומות צהריים
+            // Calculate sleep for each day
+            // Apple logic: day X = all sleep from 19:00 of day X-1 to 19:00 of day X
+            // This includes nighttime sleep + afternoon naps
             var finalResults: [(Date, DailySleepData)] = []
 
             for day in dailyResults.keys.sorted() {
-                // טווח השינה ליום זה: מ-19:00 אתמול עד 19:00 היום (24 שעות מלאות)
-                let dayStart19 = calendar.date(byAdding: .hour, value: -5, to: day)! // 19:00 אתמול
-                let dayEnd19 = calendar.date(byAdding: .hour, value: 19, to: day)!   // 19:00 היום
+                // Sleep range for this day: from 19:00 yesterday to 19:00 today (full 24 hours)
+                let dayStart19 = calendar.date(byAdding: .hour, value: -5, to: day)! // 19:00 yesterday
+                let dayEnd19 = calendar.date(byAdding: .hour, value: 19, to: day)!   // 19:00 today
 
-                // מציאת כל ה-samples שנמצאים בטווח הזה (כולל תנומות)
+                // Find all samples in this range (including naps)
                 let daySamples = sortedSamples.filter { sample in
                     return sample.startDate >= dayStart19 && sample.startDate < dayEnd19
                 }
@@ -2284,17 +2284,17 @@ class HealthKitManager {
                     continue
                 }
 
-                // מיזוג intervals חופפים וסכימת הזמן בפועל (כמו אפל)
+                // Merge overlapping intervals and sum actual time (like Apple)
                 let intervals: [(start: Date, end: Date)] = daySamples.map { ($0.startDate, $0.endDate) }
                 let merged = Self.mergeOverlappingSleepIntervals(intervals)
                 let totalHours = merged.map { $0.end.timeIntervalSince($0.start) / 3600.0 }.reduce(0, +)
 
-                // לצורך הלוג
+                // For the log
                 let sortedDaySamples = daySamples.sorted { $0.startDate < $1.startDate }
                 let sessionStart = sortedDaySamples.first!.startDate
                 let sessionEnd = sortedDaySamples.map { $0.endDate }.max()!
 
-                // חישוב deep/REM
+                // Calculate deep/REM
                 var deepHours: Double = 0
                 var remHours: Double = 0
                 for sample in daySamples {
@@ -2307,7 +2307,7 @@ class HealthKitManager {
                     }
                 }
 
-                // לוג ל-7 ימים אחרונים
+                // Log for last 7 days
                 let daysAgo = calendar.dateComponents([.day], from: day, to: Date()).day ?? 0
                 if daysAgo <= 7 {
                     let h = Int(totalHours)
@@ -2317,7 +2317,7 @@ class HealthKitManager {
                     formatter.locale = Locale(identifier: "he_IL")
                     print("🛏️ [fetchDailySleepData] \(formatter.string(from: day)) → \(h)h \(m)m (\(daySamples.count) samples)")
 
-                    // לוג מפורט ליום רביעי (היום)
+                    // Detailed log for today
                     if daysAgo == 0 {
                         let timeFormatter = DateFormatter()
                         timeFormatter.dateFormat = "HH:mm dd/MM"

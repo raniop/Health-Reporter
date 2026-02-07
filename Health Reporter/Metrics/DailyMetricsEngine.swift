@@ -2,7 +2,7 @@
 //  DailyMetricsEngine.swift
 //  Health Reporter
 //
-//  מנוע חישוב 15 המדדים היומיים
+//  Engine for calculating the 15 daily metrics
 //
 
 import Foundation
@@ -15,21 +15,21 @@ final class DailyMetricsEngine {
 
     // MARK: - Main Calculation
 
-    /// מחשב את כל 15 המדדים היומיים (או שבועיים/חודשיים לפי period)
+    /// Calculates all 15 daily metrics (or weekly/monthly based on period)
     func calculateDailyMetrics(
         todayData: HealthDataModel,
         historicalData: [HealthDataModel],
         period: TimePeriod = .day,
         completion: @escaping (DailyMetrics) -> Void
     ) {
-        // קביעת חלונות זמן לפי התקופה הנבחרת
+        // Determine time windows based on the selected period
         let (primaryWindow, secondaryWindow, tertiaryWindow) = windowSizes(for: period)
 
         let last7Days = Array(historicalData.suffix(primaryWindow))
         let last14Days = Array(historicalData.suffix(secondaryWindow))
         let last28Days = Array(historicalData.suffix(tertiaryWindow))
 
-        // עבור שבוע/חודש - אגרגציה של נתוני התקופה
+        // For week/month - aggregate the period's data
         let periodData: HealthDataModel
         switch period {
         case .day:
@@ -83,7 +83,7 @@ final class DailyMetricsEngine {
 
     // MARK: - Individual Metric Calculations
 
-    /// 1. איזון מערכת העצבים
+    /// 1. Nervous System Balance
     private func calculateNervousSystemBalance(
         today: HealthDataModel,
         last7: [HealthDataModel],
@@ -134,7 +134,7 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 2. מוכנות להתאוששות
+    /// 2. Recovery Readiness
     private func calculateRecoveryReadiness(today: HealthDataModel, last7: [HealthDataModel]) -> RecoveryReadiness {
         // Calculate readiness from components
         let hrv = normalize(today.heartRateVariability)
@@ -193,13 +193,13 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 3. חוב התאוששות
+    /// 3. Recovery Debt
     private func calculateRecoveryDebt(last7: [HealthDataModel]) -> RecoveryDebt {
         var debtSum = 0.0
         var validDays = 0
 
         for day in last7 {
-            // צריך לפחות נתון שינה כדי לחשב readiness
+            // Need at least sleep data to calculate readiness
             guard let sleep = normalize(day.sleepHours), sleep > 0 else { continue }
 
             let dayReadiness = interpolate(value: sleep, from: (5.0, 30), mid: (7.0, 65), to: (9.0, 90))
@@ -213,7 +213,7 @@ final class DailyMetricsEngine {
             validDays += 1
         }
 
-        // צריך לפחות יום אחד עם נתונים
+        // Need at least one day with data
         guard validDays > 0 else {
             return RecoveryDebt(
                 value: nil,
@@ -232,7 +232,7 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 4. מדד עומס לחץ
+    /// 4. Stress Load Index
     private func calculateStressLoadIndex(
         today: HealthDataModel,
         last28: [HealthDataModel]
@@ -290,7 +290,7 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 5. רעננות בוקר
+    /// 5. Morning Freshness
     private func calculateMorningFreshness(
         today: HealthDataModel,
         last28: [HealthDataModel]
@@ -337,11 +337,11 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 6. איכות שינה
-    /// נוסחה מבוססת Apple Health Sleep Score:
-    /// - משך שינה: 50 נקודות (יעד: 7-9 שעות)
-    /// - שעת שינה/עקביות: 30 נקודות (מוערך מנתוני שלבים)
-    /// - הפרעות: 20 נקודות (מוערך מיעילות השינה)
+    /// 6. Sleep Quality
+    /// Formula based on Apple Health Sleep Score:
+    /// - Sleep duration: 50 points (target: 7-9 hours)
+    /// - Bedtime/consistency: 30 points (estimated from sleep stage data)
+    /// - Disturbances: 20 points (estimated from sleep efficiency)
     private func calculateSleepQuality(today: HealthDataModel) -> SleepQuality {
         let duration = normalize(today.sleepHours)
         let deep = normalize(today.sleepDeepHours)
@@ -353,32 +353,32 @@ final class DailyMetricsEngine {
         var score: Double?
 
         if let d = duration, d > 0 {
-            // === משך שינה (0-50 נקודות) - כמו אפל ===
-            // הציון שלך מאפל: 6:21 שעות = 39/50
-            // זה אומר: ~6.35 שעות = 39 נקודות
+            // === Sleep Duration (0-50 points) - Apple-style ===
+            // Your Apple score: 6:21 hours = 39/50
+            // Meaning: ~6.35 hours = 39 points
             let durationScore: Double
             if d >= 8.0 {
-                durationScore = 50  // 8+ שעות = מקסימום
+                durationScore = 50  // 8+ hours = maximum
             } else if d >= 7.0 {
-                durationScore = 45 + (d - 7.0) * 5  // 7-8 שעות = 45-50
+                durationScore = 45 + (d - 7.0) * 5  // 7-8 hours = 45-50
             } else if d >= 6.0 {
-                durationScore = 35 + (d - 6.0) * 10  // 6-7 שעות = 35-45 (6.35h ≈ 39)
+                durationScore = 35 + (d - 6.0) * 10  // 6-7 hours = 35-45 (6.35h ~ 39)
             } else if d >= 5.0 {
-                durationScore = 20 + (d - 5.0) * 15  // 5-6 שעות = 20-35
+                durationScore = 20 + (d - 5.0) * 15  // 5-6 hours = 20-35
             } else {
-                durationScore = max(0, d * 4)  // פחות מ-5 שעות
+                durationScore = max(0, d * 4)  // Less than 5 hours
             }
 
-            // === שעת שינה / עקביות (0-30 נקודות) ===
-            // הציון שלך מאפל: 29/30
-            // ברירת מחדל גבוהה - רוב האנשים הולכים לישון בזמן סביר
-            var consistencyScore = 28.0  // ברירת מחדל גבוהה כמו אפל
+            // === Bedtime / Consistency (0-30 points) ===
+            // Your Apple score: 29/30
+            // High default - most people go to sleep at a reasonable time
+            var consistencyScore = 28.0  // High default like Apple
 
             if let dp = deep, let r = rem {
                 deepPercent = (dp / d) * 100
                 remPercent = (r / d) * 100
 
-                // שינה עם שלבים מאוזנים = שינה איכותית = זמן שינה טוב
+                // Sleep with balanced stages = quality sleep = good sleep timing
                 let deepOptimal = deepPercent! >= 10 && deepPercent! <= 25
                 let remOptimal = remPercent! >= 15 && remPercent! <= 30
 
@@ -397,10 +397,10 @@ final class DailyMetricsEngine {
                 consistencyScore = remPercent! >= 15 && remPercent! <= 30 ? 29 : 26
             }
 
-            // === הפרעות (0-20 נקודות) ===
-            // הציון שלך מאפל: 16/20
-            // ברירת מחדל טובה - רוב השינה רציפה
-            var disturbanceScore = 17.0  // קצת יותר גבוה מ-16
+            // === Disturbances (0-20 points) ===
+            // Your Apple score: 16/20
+            // Good default - most sleep is continuous
+            var disturbanceScore = 17.0  // Slightly higher than 16
 
             if let dp = deep, let r = rem {
                 let qualitySleep = dp + r
@@ -418,7 +418,7 @@ final class DailyMetricsEngine {
                 }
             }
 
-            // === סה"כ ===
+            // === Total ===
             score = durationScore + consistencyScore + disturbanceScore
 
             // Debug log
@@ -439,7 +439,7 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 7. עקביות שינה
+    /// 7. Sleep Consistency
     private func calculateSleepConsistency(last14: [HealthDataModel]) -> SleepConsistency {
         let durations = last14.compactMap { normalize($0.sleepHours) }
 
@@ -475,41 +475,41 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 8. דגש שינה (בסגנון אפל) - ממוצע + גרף 7 ימים
+    /// 8. Sleep Highlight (Apple-style) - average + 7-day chart
     private func calculateSleepHighlight(last7: [HealthDataModel]) -> SleepHighlight {
         let target = 7.5
         var totalHours = 0.0
         var validDays = 0
         var dailyEntries: [DailySleepEntry] = []
 
-        // בדיקת שפה לפי הגדרות האפליקציה (לא המערכת)
+        // Check language based on app settings (not the system)
         let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
 
-        // יצירת פורמטר לימים בשבוע
+        // Create formatter for days of the week
         let dayFormatter = DateFormatter()
         dayFormatter.locale = Locale(identifier: isHebrew ? "he_IL" : "en_US")
 
-        // לוג לדיבוג
+        // Debug log
         let debugFormatter = DateFormatter()
         debugFormatter.dateFormat = "EEEE dd/MM"
         debugFormatter.locale = Locale(identifier: "he_IL")
         print("🛏️ [SleepHighlight] Processing \(last7.count) days:")
 
-        // עיבוד כל יום
+        // Process each day
         for (index, day) in last7.enumerated() {
             let hours = normalize(day.sleepHours) ?? 0
 
-            // קבלת שם היום הקצר
+            // Get the short day name
             let dayName: String
             if let date = day.date {
-                dayFormatter.dateFormat = "EEEEE" // אות אחת: א, ב, ג... או M, T, W...
+                dayFormatter.dateFormat = "EEEEE" // Single letter: S, M, T... or equivalent
                 dayName = dayFormatter.string(from: date)
                 let h = Int(hours)
                 let m = Int(round((hours - Double(h)) * 60))
                 print("🛏️   Day \(index): \(debugFormatter.string(from: date)) (\(dayName)) = \(h)h \(m)m")
             } else {
-                // אם אין תאריך, נשתמש באינדקס
-                let hebrewDays = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"]
+                // If there's no date, use the index
+                let hebrewDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
                 let englishDays = ["M", "T", "W", "T", "F", "S", "S"]
                 let idx = dailyEntries.count % 7
                 dayName = isHebrew ? hebrewDays[idx] : englishDays[idx]
@@ -542,7 +542,7 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 9. עומס אימון
+    /// 9. Training Strain
     private func calculateTrainingStrain(today: HealthDataModel) -> InsightTrainingStrain {
         // Simple strain calculation based on exercise minutes
         let exerciseMin = today.exerciseMinutes ?? 0
@@ -558,7 +558,7 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 10. איזון עומסים (ACWR)
+    /// 10. Load Balance (ACWR)
     private func calculateLoadBalance(
         last7: [HealthDataModel],
         last28: [HealthDataModel]
@@ -615,13 +615,13 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 11. תחזית אנרגיה
+    /// 11. Energy Forecast
     private func calculateEnergyForecast(
         today: HealthDataModel,
         recoveryReadiness: RecoveryReadiness
     ) -> EnergyForecast {
 
-        // אם אין נתוני readiness, אין תחזית אנרגיה
+        // If there's no readiness data, no energy forecast
         guard let readinessValue = recoveryReadiness.value else {
             return EnergyForecast(
                 value: nil,
@@ -634,44 +634,44 @@ final class DailyMetricsEngine {
             )
         }
 
-        // === נוסחה חדשה: ממוצע משוקלל של מדדים ===
-        // תחזית אנרגיה = שילוב של מוכנות + שינה + HRV
+        // === New formula: weighted average of metrics ===
+        // Energy forecast = combination of readiness + sleep + HRV
 
-        // 1. מרכיב מוכנות (50% מהציון)
+        // 1. Readiness component (50% of score)
         let readinessContribution = readinessValue * 0.50
 
-        // 2. מרכיב שינה (30% מהציון)
+        // 2. Sleep component (30% of score)
         var sleepContribution = 0.0
         if let hours = normalize(today.sleepHours) {
-            // 6 שעות = 50, 7 שעות = 70, 8+ שעות = 90
+            // 6 hours = 50, 7 hours = 70, 8+ hours = 90
             let sleepScore = interpolate(value: hours, from: (5.0, 30), mid: (7.0, 70), to: (8.5, 95))
             sleepContribution = sleepScore * 0.30
         } else {
-            // ללא נתוני שינה, תן ציון ממוצע
+            // Without sleep data, give an average score
             sleepContribution = 60 * 0.30
         }
 
-        // 3. מרכיב HRV (20% מהציון) - בונוס אם HRV טוב
+        // 3. HRV component (20% of score) - bonus if HRV is good
         var hrvContribution = 0.0
         if let hrv = normalize(today.heartRateVariability) {
             // HRV 30 = 40, HRV 50 = 70, HRV 80+ = 95
             let hrvScore = interpolate(value: hrv, from: (25, 35), mid: (50, 70), to: (80, 95))
             hrvContribution = hrvScore * 0.20
         } else {
-            // ללא נתוני HRV, תן ציון ממוצע
+            // Without HRV data, give an average score
             hrvContribution = 60 * 0.20
         }
 
         let finalScore = readinessContribution + sleepContribution + hrvContribution
 
-        // בונוס/מינוס קטן על פעילות (לא מוריד יותר מ-5 נקודות)
+        // Small bonus/penalty for activity (does not subtract more than 5 points)
         let exerciseMin = today.exerciseMinutes ?? 0
         var activityAdjust = 0.0
         if exerciseMin > 90 {
-            // פעילות כבדה מאוד - קצת עייפות
+            // Very heavy activity - some fatigue
             activityAdjust = -5
         } else if exerciseMin > 0 && exerciseMin <= 60 {
-            // פעילות מתונה - מעלה אנרגיה
+            // Moderate activity - boosts energy
             activityAdjust = 3
         }
 
@@ -682,20 +682,20 @@ final class DailyMetricsEngine {
             reliability: .high,
             trend: nil,
             readinessContribution: readinessValue,
-            sleepBoost: sleepContribution / 0.30,  // ציון השינה המקורי (0-100)
+            sleepBoost: sleepContribution / 0.30,  // Original sleep score (0-100)
             strainDrain: activityAdjust,
-            hrvBoost: hrvContribution / 0.20  // ציון ה-HRV המקורי (0-100)
+            hrvBoost: hrvContribution / 0.20  // Original HRV score (0-100)
         )
     }
 
-    /// 12. מוכנות לאימון
+    /// 12. Workout Readiness
     private func calculateWorkoutReadiness(
         nervousSystem: NervousSystemBalance,
         sleepQuality: SleepQuality,
         recoveryReadiness: RecoveryReadiness
     ) -> WorkoutReadiness {
 
-        // צריך לפחות 2 מדדים אמיתיים כדי לחשב מוכנות לאימון
+        // Need at least 2 real metrics to calculate workout readiness
         let hasData = [recoveryReadiness.value, sleepQuality.value, nervousSystem.value].compactMap { $0 }.count
 
         guard hasData >= 2 else {
@@ -713,7 +713,7 @@ final class DailyMetricsEngine {
         let sleepWeight = sleepQuality.value
         let autonomicWeight = nervousSystem.value
 
-        // חשב ממוצע רק מהערכים הקיימים
+        // Calculate average only from existing values
         let values = [recoveryWeight, sleepWeight, autonomicWeight].compactMap { $0 }
         let score = values.reduce(0, +) / Double(values.count)
 
@@ -729,7 +729,7 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 13. ציון פעילות
+    /// 13. Activity Score
     private func calculateActivityScore(
         today: HealthDataModel,
         last90: [HealthDataModel]
@@ -765,7 +765,7 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 14. יעדים יומיים
+    /// 14. Daily Goals
     private func calculateDailyGoals(today: HealthDataModel) -> DailyGoals {
         let moveGoal = 500.0 // kcal
         let exerciseGoal = 30.0 // minutes
@@ -790,7 +790,7 @@ final class DailyMetricsEngine {
         )
     }
 
-    /// 15. מגמת כושר לב-ריאה
+    /// 15. Cardio Fitness Trend
     private func calculateCardioFitnessTrend(
         last7: [HealthDataModel],
         last28: [HealthDataModel]
@@ -888,61 +888,61 @@ final class DailyMetricsEngine {
 
     // MARK: - Period Helpers
 
-    /// קביעת גדלי חלונות זמן לפי התקופה
+    /// Determine time window sizes based on the period
     private func windowSizes(for period: TimePeriod) -> (primary: Int, secondary: Int, tertiary: Int) {
         switch period {
         case .day:
-            return (7, 14, 28)      // יומי: 7 ימים, 14 ימים, 28 ימים
+            return (7, 14, 28)      // Daily: 7 days, 14 days, 28 days
         case .week:
-            return (7, 28, 56)      // שבועי: שבוע, 4 שבועות, 8 שבועות
+            return (7, 28, 56)      // Weekly: 1 week, 4 weeks, 8 weeks
         case .month:
-            return (30, 60, 90)     // חודשי: 30 יום, 60 יום, 90 יום
+            return (30, 60, 90)     // Monthly: 30 days, 60 days, 90 days
         }
     }
 
-    /// אגרגציה של נתונים לתקופה (ממוצעים)
+    /// Aggregate data for a period (averages)
     private func aggregateData(_ data: [HealthDataModel]) -> HealthDataModel {
         guard !data.isEmpty else { return HealthDataModel() }
 
         var aggregated = HealthDataModel()
 
-        // Steps - סכום
+        // Steps - sum
         let stepsValues = data.compactMap { normalize($0.steps) }
         aggregated.steps = stepsValues.isEmpty ? nil : stepsValues.reduce(0, +)
 
-        // Active Energy - סכום
+        // Active Energy - sum
         let energyValues = data.compactMap { normalize($0.activeEnergy) }
         aggregated.activeEnergy = energyValues.isEmpty ? nil : energyValues.reduce(0, +)
 
-        // Exercise Minutes - סכום
+        // Exercise Minutes - sum
         let exerciseValues = data.compactMap { normalize($0.exerciseMinutes) }
         aggregated.exerciseMinutes = exerciseValues.isEmpty ? nil : exerciseValues.reduce(0, +)
 
-        // Sleep Hours - ממוצע
+        // Sleep Hours - average
         let sleepValues = data.compactMap { normalize($0.sleepHours) }
         aggregated.sleepHours = average(sleepValues)
 
-        // Deep Sleep - ממוצע
+        // Deep Sleep - average
         let deepValues = data.compactMap { normalize($0.sleepDeepHours) }
         aggregated.sleepDeepHours = average(deepValues)
 
-        // REM Sleep - ממוצע
+        // REM Sleep - average
         let remValues = data.compactMap { normalize($0.sleepRemHours) }
         aggregated.sleepRemHours = average(remValues)
 
-        // HRV - ממוצע
+        // HRV - average
         let hrvValues = data.compactMap { normalize($0.heartRateVariability) }
         aggregated.heartRateVariability = average(hrvValues)
 
-        // RHR - ממוצע
+        // RHR - average
         let rhrValues = data.compactMap { normalize($0.restingHeartRate) }
         aggregated.restingHeartRate = average(rhrValues)
 
-        // VO2 Max - ממוצע
+        // VO2 Max - average
         let vo2Values = data.compactMap { normalize($0.vo2Max) }
         aggregated.vo2Max = average(vo2Values)
 
-        // Stand Hours - ממוצע
+        // Stand Hours - average
         let standValues = data.compactMap { normalize($0.standHours) }
         aggregated.standHours = average(standValues)
 

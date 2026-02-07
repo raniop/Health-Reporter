@@ -2,8 +2,8 @@
 //  InsightsDashboardViewController.swift
 //  Health Reporter
 //
-//  מסך ראשי חדש - Insights Dashboard
-//  מציג משמעות ולא נתונים גולמיים
+//  Main screen - Insights Dashboard
+//  Shows meaning, not raw data
 //
 
 import UIKit
@@ -15,7 +15,7 @@ final class InsightsDashboardViewController: UIViewController {
 
     private var dailyMetrics: DailyMetrics?
     private var starMetrics: StarMetrics?
-    private var currentPeriodData: HealthDataModel?  // נתוני התקופה הנוכחית
+    private var currentPeriodData: HealthDataModel?  // Current period data
     private var storedHistoricalData: [HealthDataModel] = []  // 90 days retained for 7-day charts
     private var scoreHistory: [DailyScoreEntry] = []           // 7-day computed score history
     private var isLoading = true
@@ -78,7 +78,7 @@ final class InsightsDashboardViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = AIONDesign.background
 
-        // הגדרת כיוון סמנטי (RTL/LTR)
+        // Configure semantic direction (RTL/LTR)
         configureSemanticDirection()
 
         // Scroll view
@@ -161,7 +161,7 @@ final class InsightsDashboardViewController: UIViewController {
         }
 
         #if DEBUG
-        // יוזר טסט - משתמשים בנתונים מדומים מה-cache
+        // Test user - using mock data from cache
         if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email),
            let mockData = HealthDataCache.shared.healthData,
            let mockBundle = HealthDataCache.shared.chartBundle {
@@ -187,7 +187,7 @@ final class InsightsDashboardViewController: UIViewController {
                 // Convert RawDailyHealthEntry to HealthDataModel
                 let historicalData = historicalEntries.map { entry -> HealthDataModel in
                     var model = HealthDataModel()
-                    model.date = entry.date  // חשוב! צריך את התאריך לגרף השינה
+                    model.date = entry.date  // Important! Need the date for the sleep chart
                     model.steps = entry.steps
                     model.heartRateVariability = entry.hrvMs
                     model.restingHeartRate = entry.restingHR
@@ -200,7 +200,7 @@ final class InsightsDashboardViewController: UIViewController {
                 }
 
                 // Calculate metrics with period awareness
-                // לוג נתוני periodModel
+                // Log periodModel data
                 print("📊 [Dashboard] periodModel for \(self.selectedPeriod): steps=\(periodModel.steps ?? 0), calories=\(periodModel.activeEnergy ?? 0)")
 
                 // Retain historical data for 7-day chart calculations
@@ -212,7 +212,7 @@ final class InsightsDashboardViewController: UIViewController {
                     period: self.selectedPeriod
                 ) { dailyMetrics in
                     DispatchQueue.main.async {
-                        self.currentPeriodData = periodModel  // שמירת נתוני התקופה
+                        self.currentPeriodData = periodModel  // Save period data
                         self.dailyMetrics = dailyMetrics
                         self.starMetrics = StarMetricsCalculator.shared.calculateStarMetrics(from: dailyMetrics)
                         self.updateUI()
@@ -235,11 +235,11 @@ final class InsightsDashboardViewController: UIViewController {
     }
 
     #if DEBUG
-    /// טעינת נתונים מדומים ליוזר טסט
+    /// Load mock data for test user
     private func loadDataWithMockData(mockData: HealthDataModel, mockBundle: AIONChartDataBundle) {
         print("🧪 [InsightsDashboard] Loading with mock data: steps=\(mockData.steps ?? 0), hrv=\(mockData.heartRateVariability ?? 0)")
 
-        // יצירת היסטוריה מדומה מה-chartBundle (7 ימים)
+        // Create mock history from chartBundle (7 days)
         var historicalData: [HealthDataModel] = []
         for i in 0..<mockBundle.steps.points.count {
             var dayModel = HealthDataModel()
@@ -299,7 +299,7 @@ final class InsightsDashboardViewController: UIViewController {
             scoreHistory: self.scoreHistory
         )
 
-        // שמירת הציון הראשי היומי
+        // Save the daily main score
         if let mainScore = metrics.mainScore {
             let scoreInt = Int(mainScore)
             let scoreLevel = RangeLevel.from(score: mainScore)
@@ -308,7 +308,7 @@ final class InsightsDashboardViewController: UIViewController {
             AnalysisCache.saveMainScore(scoreInt, status: healthStatus)
         }
 
-        // שמירת פירוט הציונים לשליחה לשעון (רק כשזה יום)
+        // Save score breakdown for sending to watch (only for day period)
         if selectedPeriod == .day {
             AnalysisCache.saveScoreBreakdown(
                 recovery: metrics.recoveryReadiness.value.map { Int($0) },
@@ -401,13 +401,13 @@ final class InsightsDashboardViewController: UIViewController {
 
     // MARK: - Score Helpers
 
-    /// מחזיר את ציון הרכב - אותה לוגיקה כמו ב-InsightsTabViewController
+    /// Returns the car score - same logic as in InsightsTabViewController
     private func getCarScore() -> Int? {
-        // עדיפות לציון השמור מ-HealthScoreEngine
+        // Prefer the saved score from HealthScoreEngine
         if let savedScore = AnalysisCache.loadHealthScore() {
             return savedScore
         }
-        // fallback: חישוב מ-CarTierEngine
+        // fallback: calculate from CarTierEngine
         let stats = AnalysisCache.loadWeeklyStats()
         let score = CarTierEngine.computeHealthScore(
             readinessAvg: stats?.readiness,
@@ -418,7 +418,7 @@ final class InsightsDashboardViewController: UIViewController {
         return score > 0 ? score : nil
     }
 
-    /// מחזיר את שם הרכב - רק מ-Gemini! אסור להציג שמות גנריים
+    /// Returns the car name - only from Gemini! Must not display generic names
     private func getCarName() -> String? {
         // ONLY return Gemini car name - NEVER use generic tier names
         if let savedCar = AnalysisCache.loadSelectedCar() {
@@ -438,7 +438,7 @@ final class InsightsDashboardViewController: UIViewController {
         scrollView.semanticContentAttribute = semanticAttribute
         contentStack.semanticContentAttribute = semanticAttribute
 
-        // הגדרת alignment לפי כיוון השפה
+        // Set alignment based on language direction
         contentStack.alignment = .fill
     }
 }

@@ -8,6 +8,7 @@
 import UIKit
 import CoreData
 import FirebaseCore
+import FirebaseAuth
 import FirebaseMessaging
 import UserNotifications
 import WatchConnectivity
@@ -35,6 +36,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Initialize Watch Connectivity
         _ = WatchConnectivityManager.shared
         print("WatchConnectivity: Initialized in AppDelegate")
+
+        // Refresh FCM token for already-logged-in users on every app launch
+        if Auth.auth().currentUser != nil {
+            FriendsFirestoreSync.refreshAndSaveFCMToken()
+        }
 
         return true
     }
@@ -74,6 +80,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     print("Push notification permission granted: \(granted)")
                     DispatchQueue.main.async {
                         app.registerForRemoteNotifications()
+                        if granted {
+                            // Schedule morning notification now that we have permission
+                            MorningNotificationManager.shared.scheduleMorningNotification()
+                        }
                     }
                 }
 
@@ -251,17 +261,22 @@ extension AppDelegate: MessagingDelegate {
 
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let token = fcmToken else {
-            print("FCM token is nil")
+            print("[FCM] Token is nil")
             return
         }
-        print("FCM token received: \(token)")
+        print("[FCM] Token received: \(token)")
 
-        // Save token to Firestore for the current user
+        // Only save if user is logged in; otherwise it will be saved after login
+        guard Auth.auth().currentUser != nil else {
+            print("[FCM] User not logged in yet, will save token after login")
+            return
+        }
+
         FriendsFirestoreSync.saveFCMToken(token) { error in
             if let error = error {
-                print("Failed to save FCM token: \(error)")
+                print("[FCM] Failed to save token: \(error)")
             } else {
-                print("FCM token saved to Firestore")
+                print("[FCM] Token saved to Firestore")
             }
         }
     }

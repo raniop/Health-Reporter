@@ -2,7 +2,7 @@
 //  AnalysisLoadingPage.swift
 //  Health Reporter
 //
-//  מסך טעינה אחרון - ממתין לסיום הניתוח של Gemini
+//  Final loading screen - waits for Gemini analysis to complete
 //
 
 import UIKit
@@ -334,13 +334,13 @@ final class AnalysisLoadingPage: UIViewController {
 
     private func checkIfAlreadyComplete() {
         print("🎬 [AnalysisLoadingPage] checkIfAlreadyComplete - state=\(OnboardingCoordinator.shared.analysisState), isComplete=\(OnboardingCoordinator.shared.isAnalysisComplete)")
-        // אם הניתוח כבר הסתיים (המשתמש עבר מהר על המסכים)
+        // If analysis already completed (user went through screens quickly)
         if OnboardingCoordinator.shared.isAnalysisComplete {
             print("🎬 [AnalysisLoadingPage] Analysis already complete - calling handleAnalysisComplete")
             handleAnalysisComplete()
         } else if OnboardingCoordinator.shared.analysisState == .idle {
             print("🎬 [AnalysisLoadingPage] Analysis idle - completing quickly")
-            // אם לא התחיל (למשל דילג על HealthKit) - סיים מיד
+            // If not started (e.g. skipped HealthKit) - finish immediately
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
                 self?.updateProgress(to: 1.0, step: "onboarding.progress.ready".localized)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

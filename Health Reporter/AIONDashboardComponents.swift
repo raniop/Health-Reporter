@@ -2,12 +2,12 @@
 //  AIONDashboardComponents.swift
 //  Health Reporter
 //
-//  קומפוננטות דשבורד בסגנון Synthesis – צבעי לוגו, כרטיסים, STOP/START/WATCH.
+//  Dashboard components in Synthesis style – logo colors, cards, STOP/START/WATCH.
 //
 
 import UIKit
 
-// MARK: - כפתור מידע (i) לכרטיסים – קטן, משמאל
+// MARK: - Info button (i) for cards – small, on the left
 final class CardInfoButton: UIButton {
     var explanation: String = ""
 
@@ -58,7 +58,7 @@ enum CardExplanations {
     static var activitySwimming: String { "explanation.activitySwimming".localized }
 }
 
-// MARK: - KPI Ring (עיגול ערך + תווית)
+// MARK: - KPI Ring (value circle + label)
 final class KPIRingView: UIView {
     private let valueLabel = UILabel()
     private let titleLabel = UILabel()
@@ -142,13 +142,13 @@ final class KPIRingView: UIView {
     }
 }
 
-// MARK: - Bio-Stack Card (שינה / טמפ') - עם תמיכה בגרף מגמה
+// MARK: - Bio-Stack Card (sleep / temp) - with trend chart support
 final class BioStackCardView: UIView {
     // MARK: - UI Elements
-    private let headerStack = UIStackView()  // כותרת + אייקון בשורה אחת
+    private let headerStack = UIStackView()  // Title + icon in one row
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
-    private let valueLabel = UILabel()       // "ממוצע: X"
+    private let valueLabel = UILabel()       // "Average: X"
     private let barView = UIView()
     private let barFill = UIView()
     private let subtitleLabel = UILabel()
@@ -156,7 +156,7 @@ final class BioStackCardView: UIView {
     private let minLabel = UILabel()
     private let maxLabel = UILabel()
 
-    // נתוני גרף
+    // Chart data
     private var trendDataPoints: [Double] = []
     private var chartColor: UIColor = AIONDesign.accentPrimary
     private var showingTrend: Bool = false
@@ -175,12 +175,12 @@ final class BioStackCardView: UIView {
         setupUI()
     }
 
-    // MARK: - Setup UI מאפס
+    // MARK: - Setup UI from scratch
     private func setupUI() {
         backgroundColor = AIONDesign.surface
         layer.cornerRadius = AIONDesign.cornerRadius
 
-        // Header Stack: [Title] [Icon] - מימין לשמאל
+        // Header Stack: [Title] [Icon] - right to left
         headerStack.axis = .horizontal
         headerStack.spacing = 4
         headerStack.alignment = .center
@@ -211,7 +211,7 @@ final class BioStackCardView: UIView {
             headerStack.addArrangedSubview(titleLabel)
         }
 
-        // Value Label - "ממוצע: X"
+        // Value Label - "Average: X"
         valueLabel.font = .systemFont(ofSize: 14, weight: .semibold)
         valueLabel.textColor = AIONDesign.textPrimary
         valueLabel.textAlignment = LocalizationManager.shared.textAlignment
@@ -286,25 +286,25 @@ final class BioStackCardView: UIView {
 
         NSLayoutConstraint.activate([
 
-            // Chart - מתחיל אחרי ה-value
+            // Chart - starts after the value
             chartContainer.topAnchor.constraint(equalTo: valueLabel.bottomAnchor, constant: 6),
             chartContainer.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 26),
             chartContainer.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             chartContainer.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -20),
 
-            // Min/Max labels בצד שמאל של הגרף
+            // Min/Max labels on the left side of the chart
             maxLabel.topAnchor.constraint(equalTo: chartContainer.topAnchor),
             maxLabel.trailingAnchor.constraint(equalTo: chartContainer.leadingAnchor, constant: -2),
             minLabel.bottomAnchor.constraint(equalTo: chartContainer.bottomAnchor),
             minLabel.trailingAnchor.constraint(equalTo: chartContainer.leadingAnchor, constant: -2),
 
-            // Progress bar (למצב יום)
+            // Progress bar (for day mode)
             barView.topAnchor.constraint(equalTo: valueLabel.bottomAnchor, constant: 8),
             barView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
             barView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
             barView.heightAnchor.constraint(equalToConstant: 6),
 
-            // Subtitle בתחתית
+            // Subtitle at bottom
             subtitleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
             subtitleLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
             subtitleLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
@@ -320,7 +320,7 @@ final class BioStackCardView: UIView {
         }
     }
 
-    // MARK: - Configure (מצב יום אחד עם progress bar)
+    // MARK: - Configure (single day mode with progress bar)
     func configure(icon: String, title: String, value: String, progress: CGFloat?, subtitle: String? = nil) {
         showingTrend = false
         iconView.image = UIImage(systemName: icon)
@@ -342,7 +342,7 @@ final class BioStackCardView: UIView {
         setNeedsLayout()
     }
 
-    // MARK: - Configure Trend (מצב 7/30 ימים עם גרף)
+    // MARK: - Configure Trend (7/30 day mode with chart)
     func configureTrend(icon: String, title: String, value: String, subtitle: String?, dataPoints: [Double], isPositiveTrendGood: Bool = true) {
         showingTrend = true
         self.isPositiveTrendGood = isPositiveTrendGood
@@ -351,13 +351,13 @@ final class BioStackCardView: UIView {
         valueLabel.text = value
         trendDataPoints = dataPoints
 
-        // חישוב צבע לפי מגמה
+        // Calculate color based on trend
         chartColor = calculateTrendColor(dataPoints: dataPoints, isPositiveTrendGood: isPositiveTrendGood)
 
         barView.isHidden = true
         chartContainer.isHidden = false
 
-        // שנתות min/max
+        // Min/max ticks
         if let minVal = dataPoints.min(), let maxVal = dataPoints.max() {
             minLabel.text = String(format: "%.0f", minVal)
             maxLabel.text = String(format: "%.0f", maxVal)
@@ -389,7 +389,7 @@ final class BioStackCardView: UIView {
         let changePercent = abs(secondAvg - firstAvg) / max(firstAvg, 1) * 100
 
         if changePercent < 3 {
-            return AIONDesign.accentPrimary // יציב
+            return AIONDesign.accentPrimary // Stable
         }
 
         let isGoodTrend = isPositiveTrendGood ? isIncreasing : !isIncreasing
@@ -427,7 +427,7 @@ final class BioStackCardView: UIView {
             points.append(CGPoint(x: x, y: y))
         }
 
-        // קו הגרף
+        // Chart line
         let path = UIBezierPath()
         if let first = points.first {
             path.move(to: first)
@@ -472,7 +472,7 @@ final class BioStackCardView: UIView {
         gradientLayer.mask = maskLayer
         chartContainer.layer.insertSublayer(gradientLayer, at: 0)
 
-        // נקודות בקצוות
+        // Dots at endpoints
         if points.count >= 2 {
             for idx in [0, points.count - 1] {
                 let dot = CAShapeLayer()
@@ -485,7 +485,7 @@ final class BioStackCardView: UIView {
     }
 }
 
-// MARK: - Bio Trend Card (גרף מגמה קטן לשינה/RHR)
+// MARK: - Bio Trend Card (small trend chart for sleep/RHR)
 
 final class BioTrendCardView: UIView {
     private let iconView = UIImageView()
@@ -494,7 +494,7 @@ final class BioTrendCardView: UIView {
     private let subtitleLabel = UILabel()
     private let chartContainer = UIView()
 
-    // נקודות הגרף
+    // Chart data points
     private var dataPoints: [Double] = []
     private var chartColor: UIColor = AIONDesign.accentPrimary
 
@@ -580,7 +580,7 @@ final class BioTrendCardView: UIView {
     }
 
     private func drawChart() {
-        // נקה layers ישנים
+        // Clean old layers
         chartContainer.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
 
         guard !dataPoints.isEmpty, chartContainer.bounds.width > 0 else { return }
@@ -589,12 +589,12 @@ final class BioTrendCardView: UIView {
         let height = chartContainer.bounds.height
         let padding: CGFloat = 2
 
-        // מציאת min/max עם padding
+        // Find min/max with padding
         let minVal = (dataPoints.min() ?? 0)
         let maxVal = (dataPoints.max() ?? 100)
         let range = max(maxVal - minVal, 1)
 
-        // חישוב נקודות
+        // Calculate points
         let stepX = (width - padding * 2) / CGFloat(max(1, dataPoints.count - 1))
         var points: [CGPoint] = []
 
@@ -605,7 +605,7 @@ final class BioTrendCardView: UIView {
             points.append(CGPoint(x: x, y: y))
         }
 
-        // ציור הקו
+        // Draw the line
         let path = UIBezierPath()
         if let first = points.first {
             path.move(to: first)
@@ -623,7 +623,7 @@ final class BioTrendCardView: UIView {
         lineLayer.lineJoin = .round
         chartContainer.layer.addSublayer(lineLayer)
 
-        // ציור gradient מתחת לקו
+        // Draw gradient below the line
         let fillPath = UIBezierPath()
         if let first = points.first {
             fillPath.move(to: CGPoint(x: first.x, y: height))
@@ -651,7 +651,7 @@ final class BioTrendCardView: UIView {
 
         chartContainer.layer.insertSublayer(gradientLayer, at: 0)
 
-        // נקודות על הגרף (ראשון ואחרון)
+        // Dots on the chart (first and last)
         if points.count >= 2 {
             for idx in [0, points.count - 1] {
                 let dot = CAShapeLayer()
@@ -888,7 +888,7 @@ final class DirectivesCardView: UIView {
 
 // MARK: - Activity Rings View (Apple-style)
 
-/// טבעות פעילות בסגנון Apple Fitness
+/// Activity rings in Apple Fitness style
 final class ActivityRingsView: UIView {
 
     // Ring colors matching Apple's Activity app
@@ -1103,7 +1103,7 @@ final class ActivityRingsView: UIView {
 
 // MARK: - Activity Stats Card (Compact horizontal stats)
 
-/// כרטיס סטטיסטיקות פעילות קומפקטי
+/// Compact activity statistics card
 final class ActivityStatsCardView: UIView {
 
     private let stack = UIStackView()
@@ -1265,7 +1265,7 @@ enum AIONDirectivesParser {
         return (stop ?? "—", start ?? "—", watch ?? "—")
     }
 
-    /// מסיר מקף בתחילת משפט ומחליף ב־• יפה.
+    /// Removes a dash at the start of a sentence and replaces with a nice bullet.
     static func bullet(_ s: String) -> String {
         var t = s.trimmingCharacters(in: .whitespaces)
         if t.hasPrefix("- ") { t = String(t.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
@@ -1274,7 +1274,7 @@ enum AIONDirectivesParser {
     }
 }
 
-// MARK: - Score Cube View (קובייה בודדת לציון)
+// MARK: - Score Cube View (single score cube)
 
 final class ScoreCubeView: UIView {
 
@@ -1471,7 +1471,7 @@ final class ScoreCubeView: UIView {
     }
 }
 
-// MARK: - Score Cubes Row View (שורת 3 קוביות)
+// MARK: - Score Cubes Row View (row of 3 cubes)
 
 final class ScoreCubesRowView: UIView {
 
@@ -1595,7 +1595,7 @@ final class ScoreCubesRowView: UIView {
     }
 }
 
-// MARK: - Energy Forecast Card View (כרטיס תחזית אנרגיה)
+// MARK: - Energy Forecast Card View (energy forecast card)
 
 final class EnergyForecastCardView: UIView {
 
@@ -1792,7 +1792,7 @@ final class EnergyForecastCardView: UIView {
     }
 }
 
-// MARK: - Mini Energy Trend Graph View (גרף מגמה מיני)
+// MARK: - Mini Energy Trend Graph View (mini trend graph)
 
 final class MiniEnergyTrendGraphView: UIView {
 

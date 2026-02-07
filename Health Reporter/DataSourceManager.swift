@@ -2,7 +2,7 @@
 //  DataSourceManager.swift
 //  Health Reporter
 //
-//  מנהל זיהוי מקור נתונים (Apple Watch / Garmin / Oura) והעדפות משתמש.
+//  Manages data source detection (Apple Watch / Garmin / Oura) and user preferences.
 //
 
 import Foundation
@@ -10,7 +10,7 @@ import HealthKit
 
 // MARK: - Health Data Source Enum
 
-/// מקורות נתונים נתמכים
+/// Supported data sources
 enum HealthDataSource: String, CaseIterable, Codable {
     case appleWatch = "Apple Watch"
     case garmin = "Garmin"
@@ -21,7 +21,7 @@ enum HealthDataSource: String, CaseIterable, Codable {
     case other = "Other"
     case autoDetect = "Auto"
 
-    /// שם תצוגה בעברית
+    /// Display name (non-localized)
     var displayNameHebrew: String {
         switch self {
         case .appleWatch: return "Apple Watch"
@@ -30,8 +30,8 @@ enum HealthDataSource: String, CaseIterable, Codable {
         case .whoop: return "WHOOP"
         case .fitbit: return "Fitbit"
         case .samsung: return "Samsung Health"
-        case .other: return "אחר"
-        case .autoDetect: return "זיהוי אוטומטי"
+        case .other: return "Other"
+        case .autoDetect: return "Auto Detect"
         }
     }
 
@@ -49,7 +49,7 @@ enum HealthDataSource: String, CaseIterable, Codable {
         }
     }
 
-    /// שם קצר לאינדיקטור
+    /// Short name for indicator
     var shortName: String {
         switch self {
         case .appleWatch: return "Watch"
@@ -63,7 +63,7 @@ enum HealthDataSource: String, CaseIterable, Codable {
         }
     }
 
-    /// אייקון SF Symbol
+    /// SF Symbol icon
     var icon: String {
         switch self {
         case .appleWatch: return "applewatch"
@@ -77,7 +77,7 @@ enum HealthDataSource: String, CaseIterable, Codable {
         }
     }
 
-    /// צבע מזהה
+    /// Identifying color
     var color: String {
         switch self {
         case .appleWatch: return "#007AFF"  // Apple Blue
@@ -91,7 +91,7 @@ enum HealthDataSource: String, CaseIterable, Codable {
         }
     }
 
-    /// חוזקות הידועות של כל מכשיר
+    /// Known strengths of each device
     var strengths: [String] {
         switch self {
         case .appleWatch:
@@ -139,14 +139,14 @@ enum HealthDataSource: String, CaseIterable, Codable {
 
 // MARK: - Source Detection Result
 
-/// תוצאת זיהוי מקורות נתונים
+/// Data source detection result
 struct SourceDetectionResult {
     let primarySource: HealthDataSource
     let detectedSources: Set<HealthDataSource>
     let sourceCounts: [HealthDataSource: Int]
     let lastSyncDates: [HealthDataSource: Date]
 
-    /// מקור עיקרי לפי מספר דגימות
+    /// Primary source by number of samples
     var dominantSource: HealthDataSource {
         sourceCounts.max(by: { $0.value < $1.value })?.key ?? primarySource
     }
@@ -154,7 +154,7 @@ struct SourceDetectionResult {
 
 // MARK: - Data Source Manager
 
-/// Singleton לניהול מקורות נתונים
+/// Singleton for managing data sources
 final class DataSourceManager {
     static let shared = DataSourceManager()
 
@@ -163,40 +163,40 @@ final class DataSourceManager {
 
     // MARK: - Known Source Identifiers
 
-    /// מזהי Garmin ידועים
+    /// Known Garmin identifiers
     private let garminIdentifiers: Set<String> = [
         "garmin", "garmin connect", "connect iq", "garmin health",
         "com.garmin", "garmin.com"
     ]
 
-    /// מזהי Oura ידועים
+    /// Known Oura identifiers
     private let ouraIdentifiers: Set<String> = [
         "oura", "oura ring", "ouraring", "com.ouraring"
     ]
 
-    /// מזהי Apple ידועים
+    /// Known Apple identifiers
     private let appleIdentifiers: Set<String> = [
         "apple watch", "watch", "com.apple.health", "com.apple"
     ]
 
-    /// מזהי WHOOP ידועים
+    /// Known WHOOP identifiers
     private let whoopIdentifiers: Set<String> = [
         "whoop", "com.whoop"
     ]
 
-    /// מזהי Fitbit ידועים
+    /// Known Fitbit identifiers
     private let fitbitIdentifiers: Set<String> = [
         "fitbit", "com.fitbit"
     ]
 
-    /// מזהי Samsung ידועים
+    /// Known Samsung identifiers
     private let samsungIdentifiers: Set<String> = [
         "samsung", "samsung health", "com.samsung"
     ]
 
     // MARK: - User Preferences
 
-    /// העדפת המשתמש למקור נתונים
+    /// User preference for data source
     var preferredSource: HealthDataSource {
         get {
             if let rawValue = UserDefaults.standard.string(forKey: userDefaultsKey),
@@ -211,7 +211,7 @@ final class DataSourceManager {
         }
     }
 
-    /// תוצאת הזיהוי האחרונה (cached)
+    /// Last detection result (cached)
     private(set) var lastDetectionResult: SourceDetectionResult?
 
     // MARK: - Init
@@ -220,12 +220,12 @@ final class DataSourceManager {
 
     // MARK: - Source Detection
 
-    /// זיהוי מקור מדגימת HealthKit בודדת
+    /// Detect source from a single HealthKit sample
     func detectSource(from sample: HKSample) -> HealthDataSource {
         let sourceName = sample.sourceRevision.source.name.lowercased()
         let bundleId = (sample.sourceRevision.source.bundleIdentifier ?? "").lowercased()
 
-        // בדיקה לפי שם מקור ו-bundle identifier
+        // Check by source name and bundle identifier
         if garminIdentifiers.contains(where: { sourceName.contains($0) || bundleId.contains($0) }) {
             return .garmin
         }
@@ -248,7 +248,7 @@ final class DataSourceManager {
         return .other
     }
 
-    /// ניתוח מערך דגימות לזיהוי מקור עיקרי
+    /// Analyze an array of samples to detect the primary source
     func analyzeDataSources(samples: [HKSample]) -> SourceDetectionResult {
         var sourceCounts: [HealthDataSource: Int] = [:]
         var detectedSources: Set<HealthDataSource> = []
@@ -259,7 +259,7 @@ final class DataSourceManager {
             sourceCounts[source, default: 0] += 1
             detectedSources.insert(source)
 
-            // עדכון תאריך סנכרון אחרון
+            // Update last sync date
             if let existing = lastSyncDates[source] {
                 if sample.endDate > existing {
                     lastSyncDates[source] = sample.endDate
@@ -269,12 +269,12 @@ final class DataSourceManager {
             }
         }
 
-        // קביעת מקור עיקרי
+        // Determine the primary source
         let primarySource: HealthDataSource
         if preferredSource != .autoDetect {
             primarySource = preferredSource
         } else {
-            // זיהוי אוטומטי - לפי כמות הדגימות
+            // Auto detect - by number of samples
             primarySource = sourceCounts.max(by: { $0.value < $1.value })?.key ?? .appleWatch
         }
 
@@ -289,7 +289,7 @@ final class DataSourceManager {
         return result
     }
 
-    /// זיהוי מקור מרשימת מקורות HealthKit
+    /// Detect sources from a set of HealthKit sources
     func detectSources(from sources: Set<HKSource>) -> Set<HealthDataSource> {
         var detected: Set<HealthDataSource> = []
 
@@ -317,7 +317,7 @@ final class DataSourceManager {
 
     // MARK: - Effective Source
 
-    /// מחזיר את המקור האפקטיבי (העדפה או זיהוי)
+    /// Returns the effective source (preference or detected)
     func effectiveSource() -> HealthDataSource {
         if preferredSource != .autoDetect {
             return preferredSource
@@ -327,7 +327,7 @@ final class DataSourceManager {
 
     // MARK: - Source Info
 
-    /// מחזיר מידע על חוזקות המקור הנבחר לתצוגה
+    /// Returns information about the selected source's strengths for display
     func sourceInfoText() -> String {
         let source = effectiveSource()
         let strengths = source.strengths
@@ -336,25 +336,25 @@ final class DataSourceManager {
             return ""
         }
 
-        return "חוזקות \(source.displayNameHebrew): " + strengths.joined(separator: ", ")
+        return "Strengths of \(source.displayName): " + strengths.joined(separator: ", ")
     }
 
-    /// האם המקור הנוכחי מספק HRV מדויק בשינה
+    /// Whether the current source provides accurate sleep HRV
     func hasAccurateSleepHRV() -> Bool {
         let source = effectiveSource()
         return source == .oura || source == .whoop
     }
 
-    /// האם המקור מספק שלבי שינה מפורטים
+    /// Whether the source provides detailed sleep stages
     func hasDetailedSleepStages() -> Bool {
         let source = effectiveSource()
         return source == .oura || source == .garmin || source == .whoop
     }
 
-    /// האם המקור מספק Body Battery / Readiness נייטיבי
+    /// Whether the source provides native Body Battery / Readiness score
     func hasNativeReadinessScore() -> Bool {
-        // אף מקור לא מסנכרן את ה-Readiness/Body Battery לאפל הלט'
-        // לכן תמיד נצטרך לחשב
+        // No source syncs Readiness/Body Battery to Apple Health
+        // Therefore we always need to calculate it ourselves
         return false
     }
 }

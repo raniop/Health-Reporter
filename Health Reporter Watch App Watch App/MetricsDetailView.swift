@@ -22,7 +22,7 @@ struct MetricsDetailView: View {
                 MetricRow(
                     icon: "heart.fill",
                     iconColor: .red,
-                    label: "דופק",
+                    label: "watch.metrics.heartRate".localized,
                     value: "\(data.heartRate)",
                     unit: "bpm"
                 )
@@ -30,7 +30,7 @@ struct MetricsDetailView: View {
                 MetricRow(
                     icon: "heart.text.square.fill",
                     iconColor: .pink,
-                    label: "דופק מנוחה",
+                    label: "watch.metrics.restingHeartRate".localized,
                     value: "\(data.restingHeartRate)",
                     unit: "bpm"
                 )
@@ -43,7 +43,7 @@ struct MetricsDetailView: View {
                     unit: "ms"
                 )
             } header: {
-                Label("לב", systemImage: "heart.fill")
+                Label("watch.metrics.sectionHeart".localized, systemImage: "heart.fill")
                     .foregroundColor(.red)
             }
 
@@ -52,12 +52,12 @@ struct MetricsDetailView: View {
                 MetricRow(
                     icon: "bed.double.fill",
                     iconColor: .purple,
-                    label: "שינה",
+                    label: "watch.metrics.sleep".localized,
                     value: data.formattedSleepHours,
                     unit: ""
                 )
             } header: {
-                Label("שינה", systemImage: "moon.fill")
+                Label("watch.metrics.sectionSleep".localized, systemImage: "moon.fill")
                     .foregroundColor(.purple)
             }
 
@@ -66,7 +66,7 @@ struct MetricsDetailView: View {
                 MetricRow(
                     icon: "figure.walk",
                     iconColor: .green,
-                    label: "צעדים",
+                    label: "watch.metrics.steps".localized,
                     value: formatNumber(data.steps),
                     unit: ""
                 )
@@ -74,7 +74,7 @@ struct MetricsDetailView: View {
                 MetricRow(
                     icon: "flame.fill",
                     iconColor: .orange,
-                    label: "קלוריות",
+                    label: "watch.metrics.calories".localized,
                     value: "\(data.moveCalories)",
                     unit: "kcal"
                 )
@@ -82,20 +82,20 @@ struct MetricsDetailView: View {
                 MetricRow(
                     icon: "figure.run",
                     iconColor: .green,
-                    label: "אימון",
+                    label: "watch.metrics.exercise".localized,
                     value: "\(data.exerciseMinutes)",
-                    unit: "דק׳"
+                    unit: "watch.metrics.exerciseUnit".localized
                 )
 
                 MetricRow(
                     icon: "figure.stand",
                     iconColor: .cyan,
-                    label: "עמידה",
+                    label: "watch.metrics.standing".localized,
                     value: "\(data.standHours)",
-                    unit: "שע׳"
+                    unit: "watch.metrics.standingUnit".localized
                 )
             } header: {
-                Label("פעילות", systemImage: "figure.walk")
+                Label("watch.metrics.sectionActivity".localized, systemImage: "figure.walk")
                     .foregroundColor(.green)
             }
 
@@ -104,7 +104,7 @@ struct MetricsDetailView: View {
                 MetricRow(
                     icon: "chart.bar.fill",
                     iconColor: .blue,
-                    label: "ציון בריאות",
+                    label: "watch.metrics.healthScore".localized,
                     value: "\(data.healthScore)",
                     unit: "/100"
                 )
@@ -112,12 +112,12 @@ struct MetricsDetailView: View {
                 MetricRow(
                     icon: "checkmark.shield.fill",
                     iconColor: .teal,
-                    label: "אמינות",
+                    label: "watch.metrics.reliability".localized,
                     value: "\(data.reliabilityScore)",
                     unit: "%"
                 )
             } header: {
-                Label("ציון", systemImage: "chart.bar.fill")
+                Label("watch.metrics.sectionScore".localized, systemImage: "chart.bar.fill")
                     .foregroundColor(.blue)
             }
         }

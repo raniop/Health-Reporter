@@ -2,7 +2,7 @@
 //  MorningNotificationSettingsViewController.swift
 //  Health Reporter
 //
-//  מסך הגדרות התראות בוקר יומיות.
+//  Daily morning notification settings screen.
 //
 
 import UIKit

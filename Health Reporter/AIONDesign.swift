@@ -2,7 +2,7 @@
 //  AIONDesign.swift
 //  Health Reporter
 //
-//  ערכת עיצוב – Pro Lab / Synthesis. תמיד כהה, צבעי לוגו (ציאן/טורקיז/ירוק).
+//  Design system – Pro Lab / Synthesis. Always dark, logo colors (cyan/turquoise/green).
 //
 
 import UIKit
@@ -12,13 +12,13 @@ import UIKit
 private let kBackgroundColorKey = "AION.BackgroundColor"
 
 enum BackgroundColor: String, CaseIterable {
-    case midnight = "#0D0D0F"      // ברירת מחדל - שחור כהה
-    case charcoal = "#1A1A1D"      // אפור כהה
-    case navy = "#0A1628"          // כחול כהה
-    case forest = "#0D1A14"        // ירוק כהה
-    case wine = "#1A0D14"          // בורדו כהה
-    case slate = "#1C1F26"         // אפור-כחול
-    case light = "#F5F5F7"         // רקע בהיר/לבן
+    case midnight = "#0D0D0F"      // Default - dark black
+    case charcoal = "#1A1A1D"      // Dark gray
+    case navy = "#0A1628"          // Dark blue
+    case forest = "#0D1A14"        // Dark green
+    case wine = "#1A0D14"          // Dark burgundy
+    case slate = "#1C1F26"         // Gray-blue
+    case light = "#F5F5F7"         // Light/white background
 
     var color: UIColor {
         UIColor(hex: rawValue)!
@@ -26,17 +26,17 @@ enum BackgroundColor: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .midnight: return "לילה"
-        case .charcoal: return "פחם"
-        case .navy: return "כחול עמוק"
-        case .forest: return "יער"
-        case .wine: return "יין"
-        case .slate: return "צפחה"
-        case .light: return "בהיר"
+        case .midnight: return "Midnight"
+        case .charcoal: return "Charcoal"
+        case .navy: return "Deep Blue"
+        case .forest: return "Forest"
+        case .wine: return "Wine"
+        case .slate: return "Slate"
+        case .light: return "Light"
         }
     }
 
-    /// האם זה רקע בהיר (דורש טקסט כהה)
+    /// Whether this is a light background (requires dark text)
     var isLight: Bool {
         self == .light
     }
@@ -56,7 +56,7 @@ enum BackgroundColor: String, CaseIterable {
 }
 
 enum AIONDesign {
-    // MARK: - Surfaces (דינמי לפי רקע בהיר/כהה)
+    // MARK: - Surfaces (dynamic based on light/dark background)
     static var background: UIColor {
         BackgroundColor.current.color
     }
@@ -81,7 +81,7 @@ enum AIONDesign {
         BackgroundColor.current.isLight ? .default : .black
     }
 
-    // MARK: - Text (דינמי לפי רקע בהיר/כהה)
+    // MARK: - Text (dynamic based on light/dark background)
     static var textPrimary: UIColor {
         BackgroundColor.current.isLight
             ? UIColor(hex: "#000000")!
@@ -98,14 +98,14 @@ enum AIONDesign {
             : UIColor(hex: "#EBEBF5")!.withAlphaComponent(0.45)
     }
 
-    // MARK: - Accents (גרדיאנט הלוגו: ירוק ליים → טורקיז → ציאן)
-    static let accentPrimary = UIColor(hex: "#00B4D8")!   // ציאן – מרכז הלוגו
-    static let accentSecondary = UIColor(hex: "#00C9A7")! // טורקיז
-    static let accentSuccess = UIColor(hex: "#7BED9F")!   // ירוק ליים – עלה/צמיחה
+    // MARK: - Accents (logo gradient: lime green -> turquoise -> cyan)
+    static let accentPrimary = UIColor(hex: "#00B4D8")!   // Cyan – logo center
+    static let accentSecondary = UIColor(hex: "#00C9A7")! // Turquoise
+    static let accentSuccess = UIColor(hex: "#7BED9F")!   // Lime green – leaf/growth
     static let accentWarning = UIColor(hex: "#CA6702")!
     static let accentDanger = UIColor(hex: "#9D0208")!
 
-    // MARK: - Chart colors (בהתאמה ללוגו)
+    // MARK: - Chart colors (matching the logo)
     static let chartRecovery = UIColor(hex: "#00B4D8")!
     static let chartStrain = UIColor(hex: "#00C9A7")!
     static let chartSleep = UIColor(hex: "#5C4D7D")!
@@ -170,7 +170,7 @@ enum AIONDesign {
     static func resolveTextTertiary(_ trait: UITraitCollection) -> UIColor { textTertiary }
     static func resolveSeparator(_ trait: UITraitCollection) -> UIColor { separator }
 
-    /// פסקה עם יישור דינמי לפי שפה
+    /// Paragraph with dynamic alignment based on language
     static func localizedParagraphStyle() -> NSParagraphStyle {
         let p = NSMutableParagraphStyle()
         let isRTL = LocalizationManager.shared.currentLanguage.isRTL
@@ -179,7 +179,7 @@ enum AIONDesign {
         return p
     }
 
-    /// מייצר NSAttributedString עם יישור דינמי לפי שפה
+    /// Creates an NSAttributedString with dynamic alignment based on language
     static func attributedStringRTL(_ text: String, font: UIFont = .systemFont(ofSize: 15, weight: .regular), color: UIColor? = nil) -> NSAttributedString {
         let c = color ?? textPrimary
         return NSAttributedString(

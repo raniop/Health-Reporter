@@ -2,7 +2,7 @@
 //  GraphDataModels.swift
 //  Health Reporter
 //
-//  מודלים ל־6 הגרפים המקצועיים של AION.
+//  Models for the 6 professional AION graphs.
 //
 
 import Foundation
@@ -36,13 +36,13 @@ struct EfficiencyGraphData {
 struct SleepDayPoint {
     var date: Date
     var totalHours: Double?
-    var totalSeconds: Int64?  // משך שינה בשניות – לתצוגה מדויקת (תואם אפל)
+    var totalSeconds: Int64?  // Sleep duration in seconds – for precise display (matches Apple)
     var deepHours: Double?
     var remHours: Double?
     var bbt: Double?  // Basal body temp °C
-    var timeInBedHours: Double?  // זמן במיטה (אפל)
-    var respiratoryMin: Double?  // קצב נשימות בשינה – מינימום (נשימות/דקה)
-    var respiratoryMax: Double?  // קצב נשימות בשינה – מקסימום
+    var timeInBedHours: Double?  // Time in bed (Apple)
+    var respiratoryMin: Double?  // Respiratory rate during sleep – minimum (breaths/min)
+    var respiratoryMax: Double?  // Respiratory rate during sleep – maximum
 }
 
 struct SleepArchitectureGraphData {
@@ -87,7 +87,7 @@ struct NutritionGraphData {
     var periodLabel: String
 }
 
-// MARK: - חלופות לגרפים ריקים (צעדים, RHR, HRV)
+// MARK: - Fallbacks for empty graphs (Steps, RHR, HRV)
 
 struct StepsDataPoint {
     var date: Date
@@ -114,7 +114,7 @@ struct HRVTrendGraphData {
     var periodLabel: String
 }
 
-/// צרור כל נתוני הגרפים לשליחה ל-AION
+/// Bundle of all chart data for sending to AION
 struct AIONChartDataBundle {
     var range: DataRange
     var rangeLabel: String
@@ -128,7 +128,7 @@ struct AIONChartDataBundle {
     var rhrTrend: RHRTrendGraphData
     var hrvTrend: HRVTrendGraphData
 
-    /// האם יש נתונים אמיתיים מ-HealthKit (לא רק אפסים סינתטיים)
+    /// Whether there is real data from HealthKit (not just synthetic zeros)
     var hasRealData: Bool {
         let hasHRV = !hrvTrend.points.isEmpty
         let hasRHR = !rhrTrend.points.isEmpty
@@ -141,7 +141,7 @@ struct AIONChartDataBundle {
 
 // MARK: - JSON Schema for Gemini (6 graphs in one Review request)
 
-/// סכמת JSON לאריזת כל 6 הגרפים לשליחה ל-AION ב-Gemini
+/// JSON schema for packing all 6 graphs for sending to AION via Gemini
 struct AIONReviewPayload {
     var period: String
     var graph1_Readiness: [[String: Any]]

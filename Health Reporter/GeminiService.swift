@@ -16,7 +16,7 @@ class GeminiService {
               let plist = NSDictionary(contentsOfFile: path),
               let key = plist["GeminiAPIKey"] as? String,
               key != "YOUR_GEMINI_API_KEY_HERE" else {
-            fatalError("אנא הגדר את מפתח ה-API של Gemini ב-Config.plist")
+            fatalError("Please set the Gemini API key in Config.plist")
         }
         return key
     }
@@ -51,12 +51,12 @@ class GeminiService {
 
     private init() {}
 
-    /// בודק אם יש ניתוח בתהליך כרגע
+    /// Checks if an analysis is currently in progress
     var isRunning: Bool {
         return isAnalysisInProgress
     }
 
-    /// שגיאות שכדאי לנסות שוב
+    /// Errors worth retrying
     private func isRetryableError(_ error: Error) -> Bool {
         let ns = error as NSError
         // Timeout, network connection lost, not connected to internet
@@ -66,7 +66,7 @@ class GeminiService {
                ns.code == -8 // HTTP error (e.g., 503 Service Unavailable)
     }
 
-    /// מבטל בקשה ל‑Gemini שנמצאת כרגע בביצוע (למשל ברענון / שינוי טווח).
+    /// Cancels a Gemini request currently in progress (e.g., on refresh / range change).
     func cancelCurrentRequest() {
         taskQueue.async { [weak self] in
             self?.currentTask?.cancel()
@@ -74,47 +74,47 @@ class GeminiService {
         }
     }
 
-    /// מנתח נתוני בריאות עם השוואה שבועית (אופציונלי: צרור 6 הגרפים ל־AION)
-    /// Gemini בוחר את הרכב בעצמו בהתבסס על הניתוח
-    /// כולל הקשר מקור נתונים (Garmin/Oura/Apple Watch) להתאמה אישית
+    /// Analyzes health data with weekly comparison (optional: 6 chart bundle for AION)
+    /// Gemini selects the car on its own based on the analysis
+    /// Includes data source context (Garmin/Oura/Apple Watch) for personalization
     func analyzeHealthDataWithWeeklyComparison(_ healthData: HealthDataModel, currentWeek: WeeklyHealthSnapshot, previousWeek: WeeklyHealthSnapshot, chartBundle: AIONChartDataBundle? = nil, completion: @escaping (String?, [String]?, [String]?, Error?) -> Void) {
 
-        // שליפת 90 ימים של נתונים יומיים לבניית ה-Payload החדש
+        // Fetch 90 days of daily data to build the new Payload
         HealthKitManager.shared.fetchDailyHealthData(days: 90) { [weak self] dailyEntries in
             guard let self = self else { return }
 
             #if DEBUG
-            // יוזר טסט - לא דורסים את הציון שכבר חושב מנתונים מדומים
+            // Test user - don't overwrite the score already computed from mock data
             let isTestUser = DebugTestHelper.isTestUser(email: Auth.auth().currentUser?.email)
             if !isTestUser {
-                // === חישוב HealthScore מקומי עם HealthScoreEngine ===
+                // === Local HealthScore calculation with HealthScoreEngine ===
                 let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
-                // שמירת הציון והפירוט ב-Cache לשימוש ב-UI
+                // Save the score and breakdown in Cache for UI usage
                 AnalysisCache.saveHealthScoreResult(healthResult)
             } else {
                 print("🧪 [GeminiService] Test user - preserving mock health score")
             }
             #else
-            // === חישוב HealthScore מקומי עם HealthScoreEngine ===
+            // === Local HealthScore calculation with HealthScoreEngine ===
             let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
-            // שמירת הציון והפירוט ב-Cache לשימוש ב-UI
+            // Save the score and breakdown in Cache for UI usage
             AnalysisCache.saveHealthScoreResult(healthResult)
             #endif
 
-            // בניית ה-Payload החדש עם סינון ערכים חסרים ו-outliers
+            // Build the new Payload with filtering of missing values and outliers
             let builder = GeminiHealthPayloadBuilder()
             let payload = builder.build(from: dailyEntries)
 
             guard let payloadJSON = payload.toJSONString() else {
-                completion(nil, nil, nil, NSError(domain: "GeminiService", code: -1, userInfo: [NSLocalizedDescriptionKey: "שגיאה ביצירת payload לניתוח"]))
+                completion(nil, nil, nil, NSError(domain: "GeminiService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Error creating analysis payload"]))
                 return
             }
 
             let graphsBlock: String
             if let bundle = chartBundle, let graphPayload = bundle.toAIONReviewPayload().toJSONString() {
                 graphsBlock = """
-                # 6 הגרפים המקצועיים (JSON)
-                נתח את ה־"intersectionality" של הגרפים. דוגמה: "בגרף 1 (Readiness) ו־3 (Sleep): גם שהעומס נמוך, ההתאוששות לא קפצה. בהתבסס על טמפ' השינה – האם הסביבה הבעיה או התזונה?"
+                # 6 Professional Charts (JSON)
+                Analyze the "intersectionality" of the charts. Example: "In chart 1 (Readiness) and 3 (Sleep): even though load was low, recovery didn't spike. Based on sleep temperature - is the environment or nutrition the issue?"
                 \(graphPayload)
                 """
             } else {
@@ -124,7 +124,7 @@ class GeminiService {
             // Data source context for tailored analysis
             let dataSourceContext = self.buildDataSourceContext()
 
-            // הערות אישיות מהמשתמש (למשל: "שתיתי אלכוהול אתמול")
+            // Personal notes from the user (e.g., "I drank alcohol yesterday")
             let userNotesBlock: String
             if let notes = AnalysisCache.loadUserNotes(), !notes.isEmpty {
                 userNotesBlock = """
@@ -140,7 +140,7 @@ class GeminiService {
                 userNotesBlock = ""
             }
 
-            // שליפת הרכב הקודם מה-cache (Car Identity Lock)
+            // Retrieve the previous car from cache (Car Identity Lock)
             var lastCarModel: String? = nil
             var lastCarReason: String? = nil
             if let savedCar = AnalysisCache.loadSelectedCar() {
@@ -148,9 +148,9 @@ class GeminiService {
                 lastCarReason = savedCar.explanation
             }
 
-            // שליפת התשובה הקודמת להקשר
+            // Retrieve the previous response for context
             let previousAnalysis = AnalysisCache.loadLatest() ?? ""
-            let previousAnalysisBlock = previousAnalysis.isEmpty ? "אין ניתוח קודם זמין" : previousAnalysis
+            let previousAnalysisBlock = previousAnalysis.isEmpty ? "No previous analysis available" : previousAnalysis
 
             let prompt = """
             MISSION: Analyze 90-day health performance trends and provide actionable insights.
@@ -276,7 +276,7 @@ class GeminiService {
             \(previousAnalysisBlock)
             """
 
-            // שמירה לדיבאג (לפני השליחה)
+            // Save for debug (before sending)
             GeminiDebugStore.lastPrompt = prompt
 
             self.sendRequest(prompt: prompt, temperature: 0.2) { response, error in
@@ -286,14 +286,14 @@ class GeminiService {
                 }
 
                 guard let response = response else {
-                    completion(nil, nil, nil, NSError(domain: "GeminiService", code: -2, userInfo: [NSLocalizedDescriptionKey: "לא התקבלה תשובה מ-Gemini"]))
+                    completion(nil, nil, nil, NSError(domain: "GeminiService", code: -2, userInfo: [NSLocalizedDescriptionKey: "No response received from Gemini"]))
                     return
                 }
 
-                // שמירה לדיבאג (אחרי קבלת התשובה)
+                // Save for debug (after receiving the response)
                 GeminiDebugStore.save(prompt: prompt, response: response)
 
-                // פענוח התשובה לחלקים
+                // Parse the response into parts
                 let (insights, recommendations, riskFactors) = self.parseResponse(response)
                 completion(insights, recommendations, riskFactors, nil)
             }
@@ -302,7 +302,7 @@ class GeminiService {
     
     private static func parseAPIError(statusCode: Int, data: Data?) -> String {
         if statusCode == 429 {
-            let quotaMessage = "חסמת את המכסה היומית ל‑Gemini (20 בקשות בחינם). נסה שוב מחר, או שדרג לתוכנית בתשלום ב־Google AI Studio."
+            let quotaMessage = "You've exceeded the daily Gemini quota (20 free requests). Try again tomorrow, or upgrade to a paid plan on Google AI Studio."
             guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let error = json["error"] as? [String: Any] else {
@@ -310,21 +310,21 @@ class GeminiService {
             }
             let status = error["status"] as? String ?? ""
             let message = error["message"] as? String ?? ""
-            if status == "RESOURCE_EXHAUSTED" || message.lowercased().contains("quota") || message.contains("מכסה") {
+            if status == "RESOURCE_EXHAUSTED" || message.lowercased().contains("quota") || message.contains("quota") {
                 return quotaMessage
             }
             if message.lowercased().contains("retry") || message.contains("41") {
-                return quotaMessage + " (המערכת ממליצה לנסות שוב בעוד כ־40 שניות אם זו מגבלת קצב.)"
+                return quotaMessage + " (The system recommends retrying in about 40 seconds if this is a rate limit.)"
             }
             return quotaMessage
         }
         if statusCode == 503 {
-            return "שירות Gemini לא זמין כרגע. נסה שוב בעוד דקות."
+            return "Gemini service is currently unavailable. Try again in a few minutes."
         }
         if statusCode != 200 {
-            return "שגיאת שרת: \(statusCode)"
+            return "Server error: \(statusCode)"
         }
-        return "שגיאה מ‑Gemini"
+        return "Error from Gemini"
     }
 
     private func formatJSONForPrompt(_ json: [String: Any]) -> String {
@@ -415,9 +415,9 @@ class GeminiService {
     }
     
     private func sendRequest(prompt: String, systemInstruction: String? = nil, temperature: Double = 0.2, completion: @escaping (String?, Error?) -> Void) {
-        // מניעת קריאות כפולות
+        // Prevent duplicate calls
         guard !isAnalysisInProgress else {
-            completion(nil, NSError(domain: "GeminiService", code: -10, userInfo: [NSLocalizedDescriptionKey: "ניתוח כבר בתהליך"]))
+            completion(nil, NSError(domain: "GeminiService", code: -10, userInfo: [NSLocalizedDescriptionKey: "Analysis already in progress"]))
             return
         }
         isAnalysisInProgress = true
@@ -428,7 +428,7 @@ class GeminiService {
     private func sendRequestInternal(prompt: String, systemInstruction: String?, temperature: Double, retryCount: Int, completion: @escaping (String?, Error?) -> Void) {
         guard let url = URL(string: "\(baseURL)?key=\(apiKey)") else {
             isAnalysisInProgress = false
-            completion(nil, NSError(domain: "GeminiService", code: -3, userInfo: [NSLocalizedDescriptionKey: "URL לא תקין"]))
+            completion(nil, NSError(domain: "GeminiService", code: -3, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"]))
             return
         }
         
@@ -467,7 +467,7 @@ class GeminiService {
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             self?.taskQueue.async { self?.currentTask = nil }
 
-            // טיפול בשגיאות עם retry
+            // Handle errors with retry
             if let error = error {
                 let ns = error as NSError
                 if ns.code == NSURLErrorCancelled {
@@ -475,7 +475,7 @@ class GeminiService {
                     return
                 }
 
-                // בדוק אם שווה לנסות שוב
+                // Check if it's worth retrying
                 if let self = self, self.isRetryableError(error), retryCount < self.maxRetries {
                     let delay = Double(retryCount + 1) * 2.0 // Exponential backoff: 2s, 4s
                     DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -493,7 +493,7 @@ class GeminiService {
                 let userMessage = Self.parseAPIError(statusCode: httpResponse.statusCode, data: data)
                 let httpError = NSError(domain: "GeminiService", code: -8, userInfo: [NSLocalizedDescriptionKey: userMessage])
 
-                // Retry על שגיאות HTTP מסוימות (503, 429, 500)
+                // Retry on certain HTTP errors (503, 429, 500)
                 if let self = self, [500, 502, 503, 429].contains(httpResponse.statusCode), retryCount < self.maxRetries {
                     let delay = Double(retryCount + 1) * 2.0
                     DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -508,28 +508,28 @@ class GeminiService {
             }
             
             guard let data = data else {
-                completion(nil, NSError(domain: "GeminiService", code: -4, userInfo: [NSLocalizedDescriptionKey: "אין נתונים בתשובה"]))
+                completion(nil, NSError(domain: "GeminiService", code: -4, userInfo: [NSLocalizedDescriptionKey: "No data in response"]))
                 return
             }
             
-            // הצלחה - סיום הניתוח
+            // Success - analysis complete
             self?.isAnalysisInProgress = false
 
             do {
                 guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                    completion(nil, NSError(domain: "GeminiService", code: -5, userInfo: [NSLocalizedDescriptionKey: "פורמט תשובה לא תקין - לא JSON"]))
+                    completion(nil, NSError(domain: "GeminiService", code: -5, userInfo: [NSLocalizedDescriptionKey: "Invalid response format - not JSON"]))
                     return
                 }
 
-                // בדיקה אם יש שגיאה בתשובה (תשובה 200 אבל error ב-JSON)
+                // Check if there's an error in the response (200 response but error in JSON)
                 if let error = json["error"] as? [String: Any],
                    let message = error["message"] as? String {
-                    let userMessage = Self.parseAPIError(statusCode: 200, data: data) ?? "שגיאה מ-Gemini: \(message)"
+                    let userMessage = Self.parseAPIError(statusCode: 200, data: data) ?? "Error from Gemini: \(message)"
                     completion(nil, NSError(domain: "GeminiService", code: -6, userInfo: [NSLocalizedDescriptionKey: userMessage]))
                     return
                 }
 
-                // ניסיון לפרסר את התשובה
+                // Attempt to parse the response
                 if let candidates = json["candidates"] as? [[String: Any]],
                    let firstCandidate = candidates.first {
 
@@ -540,10 +540,10 @@ class GeminiService {
                         let finishReason = firstCandidate["finishReason"] as? String
 
                         if finishReason == "MAX_TOKENS" && !text.isEmpty {
-                            let truncated = text + "\n\n_(התשובה נקטעה בסוף – הוגדל maxOutputTokens להרצה הבאה.)_"
+                            let truncated = text + "\n\n_(Response was truncated - maxOutputTokens increased for next run.)_"
                             completion(truncated, nil)
                         } else if finishReason != "STOP" && finishReason != nil {
-                            completion(nil, NSError(domain: "GeminiService", code: -7, userInfo: [NSLocalizedDescriptionKey: "סיבה: \(finishReason!)"]))
+                            completion(nil, NSError(domain: "GeminiService", code: -7, userInfo: [NSLocalizedDescriptionKey: "Reason: \(finishReason!)"]))
                         } else {
                             completion(text, nil)
                         }
@@ -552,12 +552,12 @@ class GeminiService {
 
                     let finishReason = firstCandidate["finishReason"] as? String
                     if finishReason == "MAX_TOKENS" {
-                        completion(nil, NSError(domain: "GeminiService", code: -7, userInfo: [NSLocalizedDescriptionKey: "התשובה נקטעה - יותר מדי מילים"]))
+                        completion(nil, NSError(domain: "GeminiService", code: -7, userInfo: [NSLocalizedDescriptionKey: "Response truncated - too many words"]))
                         return
                     }
                 }
 
-                completion(nil, NSError(domain: "GeminiService", code: -5, userInfo: [NSLocalizedDescriptionKey: "פורמט תשובה לא תקין. בדוק את הקונסול לפרטים נוספים."]))
+                completion(nil, NSError(domain: "GeminiService", code: -5, userInfo: [NSLocalizedDescriptionKey: "Invalid response format. Check the console for more details."]))
             } catch {
                 completion(nil, error)
             }
@@ -573,7 +573,7 @@ class GeminiService {
         var recommendations: [String] = []
         var riskFactors: [String] = []
         
-        // חילוץ סעיף "תוכנית כוונון" או "תוכנית אופטימיזציה" כהמלצה אחת
+        // Extract the "Tune-Up Plan" or "Optimization Plan" section as a single recommendation
         let tuneUpMarkers = [
             "תוכנית כוונון ל-30-60 הימים הבאים",
             "תוכנית כוונון",
@@ -586,7 +586,7 @@ class GeminiService {
         for marker in tuneUpMarkers {
             if let range = response.range(of: marker, options: .caseInsensitive) {
                 let afterMarker = String(response[range.upperBound...])
-                // מחפש את סוף הסעיף - סיכום או סעיף חדש
+                // Look for the end of the section - summary or a new section
                 let endMarkers = ["סיכום:", "**סיכום**", "Summary:", "---", "\n\n\n"]
                 var endIndex = afterMarker.endIndex
                 for endMarker in endMarkers {
@@ -606,7 +606,7 @@ class GeminiService {
             }
         }
         
-        // ניסיון לפרק את התשובה לחלקים
+        // Attempt to break the response into parts
         let lines = response.components(separatedBy: .newlines)
         var currentSection: String? = nil
         var inRecommendationsSection = false
@@ -615,9 +615,9 @@ class GeminiService {
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             
-            // זיהוי סעיפים - תמיכה במספר פורמטים
-            if trimmed.contains("3 המלצות מעשיות") || 
-               trimmed.contains("המלצות מעשיות") || 
+            // Identify sections - support multiple formats
+            if trimmed.contains("3 המלצות מעשיות") ||
+               trimmed.contains("המלצות מעשיות") ||
                trimmed.contains("המלצות לשבוע") ||
                trimmed.contains("תוכנית כוונון") ||
                trimmed.contains("תוכנית אופטימיזציה") ||
@@ -629,7 +629,7 @@ class GeminiService {
                 inRiskFactorsSection = false
                 currentSection = "recommendations"
                 continue
-            } else if trimmed.contains("גורמי סיכון") || 
+            } else if trimmed.contains("גורמי סיכון") ||
                       trimmed.contains("סיכון") ||
                       trimmed.contains("Check Engine") ||
                       trimmed.contains("early warning") {
@@ -638,9 +638,9 @@ class GeminiService {
                 currentSection = "risks"
                 continue
             } else if trimmed.hasPrefix("##") || trimmed.hasPrefix("###") {
-                // כותרת חדשה - איפוס הסעיף רק אם זה לא חלק מהמלצות
-                // תת-כותרות בתוך תוכנית כוונון עדיין נחשבות חלק מההמלצות
-                if !trimmed.contains("המלצות") && 
+                // New heading - reset section only if it's not part of recommendations
+                // Sub-headings within a tune-up plan are still considered part of recommendations
+                if !trimmed.contains("המלצות") &&
                    !trimmed.contains("סיכון") &&
                    !trimmed.contains("תוכנית") &&
                    !trimmed.contains("Plan") &&
@@ -648,9 +648,9 @@ class GeminiService {
                    !trimmed.contains("Optimization") &&
                    !trimmed.contains("Training") &&
                    !trimmed.contains("Recovery") &&
-                   !trimmed.contains("התאמות") &&
-                   !trimmed.contains("שינויים") &&
-                   !trimmed.contains("הרגל") &&
+                   !trimmed.contains("התאמות") &&    // "adjustments" in Hebrew
+                   !trimmed.contains("שינויים") &&    // "changes" in Hebrew
+                   !trimmed.contains("הרגל") &&       // "habit" in Hebrew
                    !trimmed.contains("habit") {
                     inRecommendationsSection = false
                     inRiskFactorsSection = false
@@ -658,14 +658,14 @@ class GeminiService {
                 }
             }
             
-            // אם אנחנו בתוך סעיף המלצות, גם שורות רגילות (לא רק רשימות) יכולות להיות המלצות
-            if inRecommendationsSection && !trimmed.isEmpty && 
-               !trimmed.hasPrefix("#") && 
+            // If we're inside a recommendations section, regular lines (not just lists) can also be recommendations
+            if inRecommendationsSection && !trimmed.isEmpty &&
+               !trimmed.hasPrefix("#") &&
                !trimmed.contains("---") &&
                trimmed.count > 20 {
-                // אם זה לא רשימה אבל זה חלק מסעיף המלצות, נשמור את זה
+                // If it's not a list but it's part of the recommendations section, keep it
                 if !recommendations.contains(where: { $0 == trimmed }) {
-                    // נבדוק אם זה לא חלק מהמלצה קיימת
+                    // Check if it's not part of an existing recommendation
                     let isPartOfExisting = recommendations.contains { existing in
                         trimmed.contains(existing) || existing.contains(trimmed)
                     }
@@ -675,9 +675,9 @@ class GeminiService {
                 }
             }
             
-            // איסוף המלצות - תמיכה במספר פורמטים
+            // Collect recommendations - support multiple formats
             if inRecommendationsSection || currentSection == "recommendations" {
-                // תמיכה בפורמטים שונים: 1. 2. 3., -, •, *, או תת-כותרות עם **
+                // Support various formats: 1. 2. 3., -, bullet, *, or sub-headings with **
                 if trimmed.hasPrefix("1.") || trimmed.hasPrefix("2.") || trimmed.hasPrefix("3.") ||
                    trimmed.hasPrefix("4.") || trimmed.hasPrefix("5.") || trimmed.hasPrefix("6.") ||
                    trimmed.hasPrefix("7.") || trimmed.hasPrefix("8.") ||
@@ -686,30 +686,30 @@ class GeminiService {
                     
                     var item = trimmed
                     
-                    // הסרת מספרים ותווים בתחילה
+                    // Remove numbers and leading characters
                     item = item.replacingOccurrences(of: "^\\d+\\.\\s*", with: "", options: .regularExpression)
                     item = item.replacingOccurrences(of: "^[-•*]\\s*", with: "", options: .regularExpression)
                     
-                    // אם יש ** בתחילה ובסוף, נסיר אותם
+                    // If there are ** at the start and end, remove them
                     if item.hasPrefix("**") && item.hasSuffix("**") {
                         item = String(item.dropFirst(2).dropLast(2))
                     }
                     
-                    // אם יש : נקח רק את החלק אחרי הנקודתיים
+                    // If there's a colon, take only the part after it
                     if let colonRange = item.range(of: ":") {
                         item = String(item[colonRange.upperBound...])
                     }
                     
                     item = item.trimmingCharacters(in: .whitespaces)
                     
-                    // רק אם זה לא רק מספר או סימן, וזה ארוך מספיק
+                    // Only if it's not just a number or symbol, and it's long enough
                     if !item.isEmpty && item.count > 10 {
                         recommendations.append(item)
                     }
                 }
             }
             
-            // איסוף גורמי סיכון
+            // Collect risk factors
             if inRiskFactorsSection || currentSection == "risks" {
                 if trimmed.hasPrefix("-") || trimmed.hasPrefix("•") || trimmed.hasPrefix("*") ||
                    trimmed.range(of: "^\\d+\\.", options: .regularExpression) != nil {
@@ -724,11 +724,11 @@ class GeminiService {
             }
         }
         
-        // אם לא מצאנו המלצות או גורמי סיכון מובנים, נשתמש בכל התשובה כתובנות
+        // If no structured recommendations or risk factors found, use the entire response as insights
         if recommendations.isEmpty && riskFactors.isEmpty {
             insights = response
         } else {
-            // נשמור את כל התשובה כתובנות אבל נדגיש את ההמלצות
+            // Keep the entire response as insights but highlight the recommendations
             insights = response
         }
 

@@ -685,6 +685,7 @@
 "social.noFollowers" = "אין עוקבים עדיין";
 "social.noFollowing" = "לא עוקב אחרי אף אחד עדיין";
 "social.followRequestSent" = "בקשה נשלחה";
+"social.cancelRequest" = "ביטול בקשה";
 "social.requested" = "בקשה נשלחה";
 "social.unfollowConfirm" = "האם אתה בטוח שברצונך להפסיק לעקוב אחרי %@?";
 "social.removeFollowerConfirm" = "האם אתה בטוח שברצונך להסיר את %@ מהעוקבים שלך?";

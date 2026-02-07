@@ -2,7 +2,7 @@
 //  OnboardingPageViewController.swift
 //  Health Reporter
 //
-//  Container ראשי ל-7 מסכי ה-Onboarding
+//  Main container for the 7 Onboarding screens
 //
 
 import UIKit
@@ -52,7 +52,7 @@ final class OnboardingPageViewController: UIViewController {
         setupUI()
         showPage(at: 0, animated: false)
 
-        // בדיקה אם יש שלב שמור (האפליקציה נסגרה באמצע)
+        // Check if there's a saved step (app closed mid-onboarding)
         let savedStep = OnboardingManager.getSavedStep()
         if savedStep > 0 && savedStep < pages.count {
             showPage(at: savedStep, animated: false)
@@ -130,7 +130,7 @@ final class OnboardingPageViewController: UIViewController {
         currentPageIndex = index
         pageControl.currentPage = index
 
-        // שמירת השלב הנוכחי
+        // Save current step
         OnboardingManager.saveCurrentStep(index)
     }
 
@@ -145,7 +145,7 @@ final class OnboardingPageViewController: UIViewController {
         OnboardingManager.markOnboardingComplete()
         OnboardingCoordinator.shared.reset()
 
-        // מעבר ל-MainTabBarController
+        // Transition to MainTabBarController
         guard let window = view.window else { return }
 
         let mainVC = MainTabBarController()
@@ -173,6 +173,8 @@ extension OnboardingPageViewController: OnboardingPageDelegate {
             DispatchQueue.main.async {
                 if granted {
                     UIApplication.shared.registerForRemoteNotifications()
+                    // Schedule morning notification now that we have permission
+                    MorningNotificationManager.shared.scheduleMorningNotification()
                 }
                 print("🔔 [Onboarding] Notifications permission: \(granted)")
                 self?.goToNextPage()
@@ -188,17 +190,17 @@ extension OnboardingPageViewController: OnboardingPageDelegate {
                 OnboardingCoordinator.shared.setHealthKitGranted(success)
 
                 #if DEBUG
-                // עבור Test User - מתחילים ניתוח גם אם HealthKit נכשל (יש נתונים מדומים)
+                // For Test User - start analysis even if HealthKit failed (mock data available)
                 if DebugTestHelper.isTestUser(email: Auth.auth().currentUser?.email) {
                     print("🧪 [Onboarding] Test user - starting analysis regardless of HealthKit permission")
                     OnboardingCoordinator.shared.startBackgroundAnalysis()
                 } else if success {
-                    // התחל ניתוח ברקע
+                    // Start background analysis
                     OnboardingCoordinator.shared.startBackgroundAnalysis()
                 }
                 #else
                 if success {
-                    // התחל ניתוח ברקע
+                    // Start background analysis
                     OnboardingCoordinator.shared.startBackgroundAnalysis()
                 }
                 #endif

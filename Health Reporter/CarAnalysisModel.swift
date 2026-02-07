@@ -2,14 +2,14 @@
 //  CarAnalysisModel.swift
 //  Health Reporter
 //
-//  מודל נתונים לניתוח רכב מ-Gemini – תואם בדיוק את ה-prompt.
+//  Data model for car analysis from Gemini – matches the prompt exactly.
 //
 
 import Foundation
 
 // MARK: - JSON Response Models (Codable)
 
-/// מודל JSON מובנה לתשובת Gemini
+/// Structured JSON model for Gemini response
 struct CarAnalysisJSONResponse: Codable {
     let carIdentity: CarIdentityJSON
     let performanceReview: PerformanceReviewJSON
@@ -141,7 +141,7 @@ struct SupplementJSON: Codable {
 
 // MARK: - Supplement Recommendation Model
 
-/// מודל המלצת תוסף תזונה - תומך בשתי שפות
+/// Supplement recommendation model - supports two languages
 struct SupplementRecommendation {
     // Bilingual storage
     let nameHe: String
@@ -184,30 +184,30 @@ struct SupplementRecommendation {
     }
 }
 
-/// קטגוריות תוספי תזונה
+/// Supplement categories
 enum SupplementCategory: String, CaseIterable {
-    case performance = "ביצועים ואימון"
-    case recovery = "התאוששות ודלקת"
-    case sleep = "שינה והתאוששות"
-    case general = "בריאות כללית"
+    case performance = "Performance & Training"
+    case recovery = "Recovery & Inflammation"
+    case sleep = "Sleep & Recovery"
+    case general = "General Health"
 }
 
 // MARK: - Car Analysis Response
 
-/// מודל שמייצג את התשובה המלאה של Gemini
-/// תומך בשתי שפות (עברית ואנגלית) עם computed properties שמחזירים לפי השפה הנוכחית
+/// Model representing the full Gemini response
+/// Supports two languages (Hebrew and English) with computed properties that return based on current language
 struct CarAnalysisResponse {
     // MARK: - Bilingual Storage (Hebrew + English)
 
-    // 1. איזה רכב אני עכשיו?
+    // 1. Which car am I now?
     var carModelHe: String
     var carModelEn: String
     var carExplanationHe: String
     var carExplanationEn: String
-    var carImageURL: String  // קישור לתמונת הרכב (נטען מ-Wikipedia)
-    var carWikiName: String  // שם הרכב באנגלית לחיפוש בוויקיפדיה
+    var carImageURL: String  // Link to car image (loaded from Wikipedia)
+    var carWikiName: String  // Car name in English for Wikipedia search
 
-    // 2. סקירת ביצועים מלאה
+    // 2. Full performance review
     var engineHe: String
     var engineEn: String
     var transmissionHe: String
@@ -219,12 +219,12 @@ struct CarAnalysisResponse {
     var electronicsHe: String
     var electronicsEn: String
 
-    // 3. מה מגביל את הביצועים
+    // 3. What limits the performance
     var bottlenecksHe: [String]
     var bottlenecksEn: [String]
     var warningSignals: [String]
 
-    // 4. תוכנית אופטימיזציה
+    // 4. Optimization plan
     var upgradesHe: [String]
     var upgradesEn: [String]
     var skippedMaintenanceHe: [String]
@@ -232,7 +232,7 @@ struct CarAnalysisResponse {
     var stopImmediatelyHe: [String]
     var stopImmediatelyEn: [String]
 
-    // 5. תוכנית כוונון
+    // 5. Tune-up plan
     var trainingAdjustmentsHe: String
     var trainingAdjustmentsEn: String
     var recoveryChangesHe: String
@@ -242,7 +242,7 @@ struct CarAnalysisResponse {
     var habitToRemoveHe: String
     var habitToRemoveEn: String
 
-    // 6. הנחיות פעולה
+    // 6. Action directives
     var directiveStopHe: String
     var directiveStopEn: String
     var directiveStartHe: String
@@ -250,19 +250,19 @@ struct CarAnalysisResponse {
     var directiveWatchHe: String
     var directiveWatchEn: String
 
-    // 7. סיכום
+    // 7. Summary
     var summaryHe: String
     var summaryEn: String
 
-    // 8. תוספי תזונה מומלצים
+    // 8. Recommended supplements
     var supplements: [SupplementRecommendation]
 
-    // 9. תחזית אנרגיה
+    // 9. Energy forecast
     var energyForecastTextHe: String
     var energyForecastTextEn: String
     var energyForecastTrend: String  // "rising", "falling", "stable"
 
-    // התשובה המקורית (לצורך fallback)
+    // The original response (for fallback purposes)
     var rawResponse: String
 
     // MARK: - Language-Aware Computed Properties
@@ -308,14 +308,14 @@ struct CarAnalysisResponse {
     var energyForecastText: String { isHebrew ? energyForecastTextHe : energyForecastTextEn }
 }
 
-/// Parser שמחלץ את הנתונים מתשובת Gemini
+/// Parser that extracts data from the Gemini response
 enum CarAnalysisParser {
 
     // MARK: - JSON Parsing (Primary)
 
-    /// מנסה לפרסר את התשובה כ-JSON מובנה
+    /// Attempts to parse the response as structured JSON
     static func parseJSON(_ response: String) -> CarAnalysisResponse? {
-        // ניקוי - הסרת ```json ו-``` אם קיימים
+        // Cleanup - remove ```json and ``` if present
         var cleaned = response.trimmingCharacters(in: .whitespacesAndNewlines)
         if cleaned.hasPrefix("```json") {
             cleaned = String(cleaned.dropFirst(7))
@@ -478,10 +478,10 @@ enum CarAnalysisParser {
         )
     }
 
-    /// ממיר את ה-JSON המפורסר למודל CarAnalysisResponse
-    /// תומך גם בפורמט bilingual חדש (_he/_en) וגם בפורמט legacy (שדה אחד)
+    /// Converts the parsed JSON to a CarAnalysisResponse model
+    /// Supports both the new bilingual format (_he/_en) and the legacy format (single field)
     private static func convertJSONToResponse(_ json: CarAnalysisJSONResponse, rawResponse: String) -> CarAnalysisResponse {
-        // המרת supplements - handle nil values gracefully
+        // Convert supplements - handle nil values gracefully
         let supplements = json.supplements.map { s in
             let category: SupplementCategory
             switch (s.category ?? "general").lowercased() {
@@ -586,7 +586,7 @@ enum CarAnalysisParser {
     // MARK: - Main Parse Function
 
     static func parse(_ response: String) -> CarAnalysisResponse {
-        // נסיון ראשון: JSON מובנה
+        // First attempt: structured JSON
         if let jsonResult = parseJSON(response) {
             return jsonResult
         }
@@ -604,23 +604,23 @@ enum CarAnalysisParser {
         let carExplanation = extractCarExplanation(from: response)
         let carWikiName = extractCarWikiName(from: response)
 
-        let engine = extractPerformanceSection(from: response, sectionName: "מנוע", nextSections: ["תיבת הילוכים", "TRANSMISSION"])
-        let transmission = extractPerformanceSection(from: response, sectionName: "תיבת הילוכים", nextSections: ["מתלים", "SUSPENSION"])
-        let suspension = extractPerformanceSection(from: response, sectionName: "מתלים", nextSections: ["יעילות דלק", "FUEL"])
-        let fuelEfficiency = extractPerformanceSection(from: response, sectionName: "יעילות דלק", nextSections: ["אלקטרוניקה", "ELECTRONICS"])
-        let electronics = extractPerformanceSection(from: response, sectionName: "אלקטרוניקה", nextSections: ["3.", "מה מגביל", "BOTTLENECK"])
+        let engine = extractPerformanceSection(from: response, sectionName: "מנוע", nextSections: ["תיבת הילוכים", "Transmission", "TRANSMISSION"])
+        let transmission = extractPerformanceSection(from: response, sectionName: "תיבת הילוכים", nextSections: ["מתלים", "Suspension", "SUSPENSION"])
+        let suspension = extractPerformanceSection(from: response, sectionName: "מתלים", nextSections: ["יעילות דלק", "Fuel Efficiency", "FUEL"])
+        let fuelEfficiency = extractPerformanceSection(from: response, sectionName: "יעילות דלק", nextSections: ["אלקטרוניקה", "Electronics", "ELECTRONICS"])
+        let electronics = extractPerformanceSection(from: response, sectionName: "אלקטרוניקה", nextSections: ["3.", "מה מגביל", "What limits", "BOTTLENECK"])
 
         let bottlenecks = extractBottlenecks(from: response)
         let warningSignals = extractWarningSignals(from: response)
 
-        let upgrades = extractListItems(from: response, sectionMarkers: ["UPGRADES", "שדרוגים", "upgrades"])
-        let skippedMaintenance = extractListItems(from: response, sectionMarkers: ["MAINTENANCE", "טיפול אני מדלג", "maintenance"])
-        let stopImmediately = extractListItems(from: response, sectionMarkers: ["STOP IMMEDIATELY", "להפסיק לעשות מיד", "stop doing immediately"])
+        let upgrades = extractListItems(from: response, sectionMarkers: ["UPGRADES", "שדרוגים", "Upgrades", "upgrades"])
+        let skippedMaintenance = extractListItems(from: response, sectionMarkers: ["MAINTENANCE", "טיפול אני מדלג", "Maintenance I'm skipping", "maintenance"])
+        let stopImmediately = extractListItems(from: response, sectionMarkers: ["STOP IMMEDIATELY", "להפסיק לעשות מיד", "Stop doing immediately", "stop doing immediately"])
 
-        let trainingAdjustments = extractSection(from: response, markers: ["TRAINING ADJUSTMENTS", "התאמות אימון", "**התאמות אימון**", "התאמות אימון:"])
-        let recoveryChanges = extractSection(from: response, markers: ["RECOVERY CHANGES", "שינויים בהתאוששות", "**שינויים בהתאוששות ושינה**", "שינויים בהתאוששות"])
-        let habitToAdd = extractSection(from: response, markers: ["HABIT TO ADD", "הרגל להוסיף", "**הרגל אחד בעל השפעה גבוהה להוסיף**", "הרגל אחד להוסיף:", "הרגל להוסיף:"])
-        let habitToRemove = extractSection(from: response, markers: ["HABIT TO REMOVE", "הרגל להסיר", "**הרגל אחד להסיר**", "הרגל אחד להסיר:", "הרגל להסיר:"])
+        let trainingAdjustments = extractSection(from: response, markers: ["TRAINING ADJUSTMENTS", "Training adjustments", "התאמות אימון", "**התאמות אימון**", "התאמות אימון:", "**Training adjustments**", "Training adjustments:"])
+        let recoveryChanges = extractSection(from: response, markers: ["RECOVERY CHANGES", "Recovery changes", "שינויים בהתאוששות", "**שינויים בהתאוששות ושינה**", "שינויים בהתאוששות", "**Recovery and sleep changes**", "Recovery and sleep changes"])
+        let habitToAdd = extractSection(from: response, markers: ["HABIT TO ADD", "Habit to add", "הרגל להוסיף", "**הרגל אחד בעל השפעה גבוהה להוסיף**", "הרגל אחד להוסיף:", "הרגל להוסיף:", "**One high-impact habit to add**", "One habit to add:", "Habit to add:"])
+        let habitToRemove = extractSection(from: response, markers: ["HABIT TO REMOVE", "Habit to remove", "הרגל להסיר", "**הרגל אחד להסיר**", "הרגל אחד להסיר:", "הרגל להסיר:", "**One habit to remove**", "One habit to remove:", "Habit to remove:"])
 
         let directives = extractDirectives(from: response)
         let summary = extractSummary(from: response)
@@ -690,17 +690,17 @@ enum CarAnalysisParser {
     // MARK: - Extraction Helpers
 
     private static func extractCarModel(from text: String) -> String {
-        // מילות מפתח שאסור שיהיו שם הרכב
-        let blacklist = ["stop", "start", "watch", "מנוע", "תיבת", "מתלים", "יעילות", "אלקטרוניקה", "סיכום", "הנחיות", "סקירת", "חשוב", "כתוב", "car_wiki", "generation", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "model", "version", "type", "series"]
+        // Keywords that must not be the car name
+        let blacklist = ["stop", "start", "watch", "מנוע", "engine", "תיבת", "transmission", "מתלים", "suspension", "יעילות", "fuel efficiency", "אלקטרוניקה", "electronics", "סיכום", "summary", "הנחיות", "directives", "סקירת", "review", "חשוב", "important", "כתוב", "write", "car_wiki", "generation", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "model", "version", "type", "series"]
 
-        // קודם כל - מחפש בסקשן 1 בלבד
+        // First - search in section 1 only
         var section1 = ""
-        let sectionMarkers = ["1. איזה רכב אני", "איזה רכב אני", "## 1", "WHICH CAR AM I", "הרכב שאני"]
+        let sectionMarkers = ["1. איזה רכב אני", "איזה רכב אני", "1. Which car am I", "Which car am I", "## 1", "WHICH CAR AM I", "הרכב שאני", "The car that I"]
         for marker in sectionMarkers {
             if let sectionStart = text.range(of: marker, options: .caseInsensitive) {
                 let after = String(text[sectionStart.upperBound...])
-                // מוצא את סוף הסקשן
-                let endMarkers = ["2. סקירת", "## 2", "סקירת ביצועים", "PERFORMANCE REVIEW"]
+                // Find the end of the section
+                let endMarkers = ["2. סקירת", "2. Performance", "## 2", "סקירת ביצועים", "Performance review", "PERFORMANCE REVIEW"]
                 for endMarker in endMarkers {
                     if let sectionEnd = after.range(of: endMarker, options: .caseInsensitive) {
                         section1 = String(after[..<sectionEnd.lowerBound])
@@ -714,8 +714,8 @@ enum CarAnalysisParser {
             }
         }
 
-        // קודם כל - מחפש שם רכב באנגלית מה-CAR_WIKI tag (הכי אמין!)
-        // מחפש ידנית כדי לא לקרוא לפונקציה אחרת
+        // First - search for English car name from the CAR_WIKI tag (most reliable!)
+        // Search manually to avoid calling another function
         let wikiPatterns = [
             #"\[CAR_WIKI:\s*([^\]\n]+)\]"#,
             #"CAR_WIKI:\s*([^\]\n]+)"#,
@@ -725,7 +725,7 @@ enum CarAnalysisParser {
                let match = regex.firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)),
                let range = Range(match.range(at: 1), in: text) {
                 var wikiCarName = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
-                // מסיר סוגריים עם generation וכו'
+                // Remove parentheses with generation info etc.
                 if let parenStart = wikiCarName.firstIndex(of: "(") {
                     wikiCarName = String(wikiCarName[..<parenStart]).trimmingCharacters(in: .whitespaces)
                 }
@@ -735,24 +735,32 @@ enum CarAnalysisParser {
             }
         }
 
-        // תבניות לזיהוי שם הרכב
+        // Patterns for identifying the car name
         let searchTexts = section1.isEmpty ? [text] : [section1, text]
 
         for searchText in searchTexts {
             let patterns = [
-                // פורמט חדש - שם רכב בשורה נפרדת אחרי הכותרת
-                // "פורשה טייקאן (Porsche Taycan)"
+                // New format - car name on separate line after heading
+                // e.g. "Porsche Taycan" or Hebrew equivalent
                 #"עכשיו\??\s*\n+([^\n\[]+)\s*\("#,
                 #"עכשיו\??\s*\n+([א-ת\s]+)\s*\(([A-Za-z\s]+)\)"#,
-                // שם רכב באנגלית בסוגריים
+                #"now\??\s*\n+([^\n\[]+)\s*\("#,
+                // English car name in parentheses
                 #"\(([A-Z][a-z]+\s+[A-Za-z0-9\s\-]+)\)"#,
-                // פורמט "אתה כרגע כמו X:"
+                // Format "You are currently like X:" (Hebrew)
                 #"אתה כרגע כמו\s+([^:]+):"#,
                 #"אתה כרגע\s+([A-Za-z][A-Za-z0-9\s\-]+[A-Za-z0-9])"#,
                 #"אתה\s+([A-Za-z][A-Za-z0-9\s\-]+[A-Za-z0-9])"#,
-                // פורמט ישן עם markdown
+                // Format "You are currently like X:" (English)
+                #"You are currently like\s+([^:]+):"#,
+                #"You are currently\s+([A-Za-z][A-Za-z0-9\s\-]+[A-Za-z0-9])"#,
+                #"You are\s+a\s+([A-Za-z][A-Za-z0-9\s\-]+[A-Za-z0-9])"#,
+                // Old format with markdown (Hebrew)
                 #"אתה כרגע\s+\*\*([^*]+)\*\*"#,
                 #"אתה כרגע כמו\s+\*\*([^*]+)\*\*"#,
+                // Old format with markdown (English)
+                #"You are currently\s+\*\*([^*]+)\*\*"#,
+                #"You are currently like\s+\*\*([^*]+)\*\*"#,
                 #"\*\*([^*\n]{4,50})\*\*"#,
             ]
 
@@ -770,12 +778,12 @@ enum CarAnalysisParser {
                         .replacingOccurrences(of: "]", with: "")
                         .trimmingCharacters(in: .whitespacesAndNewlines)
 
-                    // הסרת נקודה, נקודתיים או סוגר בסוף
+                    // Remove trailing period, colon or parenthesis
                     while carName.hasSuffix(".") || carName.hasSuffix(":") {
                         carName = String(carName.dropLast()).trimmingCharacters(in: .whitespaces)
                     }
 
-                    // סינון מילות מפתח
+                    // Filter out blacklisted keywords
                     let lower = carName.lowercased()
                     let isBlacklisted = blacklist.contains { lower.hasPrefix($0) || lower == $0 }
 
@@ -792,17 +800,17 @@ enum CarAnalysisParser {
             return wikiName
         }
 
-        return "רכב לא מזוהה"
+        return "Unidentified vehicle"
     }
 
     private static func extractCarExplanation(from text: String) -> String {
-        // נסיון 1: מחפש סקשן 1 מפורש
+        // Attempt 1: search for explicit section 1
         var section1 = ""
-        let startMarkers = ["1. איזה רכב אני", "איזה רכב אני", "## 1"]
+        let startMarkers = ["1. איזה רכב אני", "איזה רכב אני", "1. Which car am I", "Which car am I", "## 1"]
         for startMarker in startMarkers {
             if let sectionStart = text.range(of: startMarker, options: .caseInsensitive) {
                 let after = String(text[sectionStart.upperBound...])
-                let endMarkers = ["2. סקירת", "## 2", "## 3", "סקירת ביצועים מלאה", "מנוע\n"]
+                let endMarkers = ["2. סקירת", "2. Performance", "## 2", "## 3", "סקירת ביצועים מלאה", "Full performance review", "מנוע\n", "Engine\n"]
                 var endIdx = after.endIndex
                 for endMarker in endMarkers {
                     if let r = after.range(of: endMarker, options: .caseInsensitive), r.lowerBound < endIdx {
@@ -814,16 +822,16 @@ enum CarAnalysisParser {
             }
         }
 
-        // נסיון 2: פורמט חדש - הטקסט מתחיל עם שם רכב, אחריו CAR_WIKI, ואז ההסבר
+        // Attempt 2: new format - text starts with car name, then CAR_WIKI, then the explanation
         if section1.isEmpty {
-            // מחפש את הטקסט שאחרי שורת CAR_WIKI עד "סקירת ביצועים"
+            // Search for the text after the CAR_WIKI line until "Performance review"
             if let wikiEnd = text.range(of: "[CAR_WIKI:", options: .caseInsensitive) {
-                // מוצא את סוף שורת ה-CAR_WIKI
+                // Find the end of the CAR_WIKI line
                 let afterWiki = String(text[wikiEnd.upperBound...])
                 if let closeBracket = afterWiki.firstIndex(of: "]") {
                     let afterTag = String(afterWiki[afterWiki.index(after: closeBracket)...])
-                    // מוצא את סוף הסקשן
-                    let endMarkers = ["סקירת ביצועים", "מנוע\n", "2.", "## 2"]
+                    // Find the end of the section
+                    let endMarkers = ["סקירת ביצועים", "Performance review", "מנוע\n", "Engine\n", "2.", "## 2"]
                     var endIdx = afterTag.endIndex
                     for endMarker in endMarkers {
                         if let r = afterTag.range(of: endMarker, options: .caseInsensitive), r.lowerBound < endIdx {
@@ -835,7 +843,7 @@ enum CarAnalysisParser {
             }
         }
 
-        // נסיון 3: לוקח את 2-3 השורות הראשונות אחרי שורת השם
+        // Attempt 3: take the first 2-3 lines after the name line
         if section1.isEmpty || section1.trimmingCharacters(in: .whitespacesAndNewlines).count < 20 {
             let lines = text.components(separatedBy: "\n")
             var explanationLines: [String] = []
@@ -843,18 +851,18 @@ enum CarAnalysisParser {
             for line in lines {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.isEmpty { continue }
-                // מדלג על שורת השם ושורת CAR_WIKI
+                // Skip the name line and CAR_WIKI line
                 if trimmed.contains("[CAR_WIKI") || trimmed.contains("CAR_WIKI:") {
                     skipCount += 1
                     continue
                 }
                 if skipCount == 0 && (trimmed.count < 50 || !trimmed.contains(" ")) {
-                    // זו כנראה שורת שם הרכב
+                    // This is probably the car name line
                     skipCount += 1
                     continue
                 }
-                // עוצר כשמגיעים לסקירת ביצועים
-                if trimmed.contains("סקירת ביצועים") || trimmed.hasPrefix("מנוע") {
+                // Stop when reaching performance review
+                if trimmed.contains("סקירת ביצועים") || trimmed.contains("Performance review") || trimmed.hasPrefix("מנוע") || trimmed.hasPrefix("Engine") {
                     break
                 }
                 if skipCount > 0 {
@@ -869,14 +877,18 @@ enum CarAnalysisParser {
 
         var explanation = section1
 
-        // מחפש את המשפט שמתחיל ב"אתה כרגע כמו" אם קיים
+        // Search for the sentence starting with "You are currently like" if present
         if let explStart = explanation.range(of: "אתה כרגע כמו", options: .caseInsensitive) {
+            explanation = String(explanation[explStart.lowerBound...])
+        } else if let explStart = explanation.range(of: "You are currently like", options: .caseInsensitive) {
             explanation = String(explanation[explStart.lowerBound...])
         } else if let explStart = explanation.range(of: "אתה כרגע", options: .caseInsensitive) {
             explanation = String(explanation[explStart.lowerBound...])
+        } else if let explStart = explanation.range(of: "You are currently", options: .caseInsensitive) {
+            explanation = String(explanation[explStart.lowerBound...])
         }
 
-        // ניקוי
+        // Cleanup
         explanation = explanation
             .replacingOccurrences(of: "**", with: "")
             .replacingOccurrences(of: "[CAR_WIKI:", with: "")
@@ -884,8 +896,8 @@ enum CarAnalysisParser {
             .replacingOccurrences(of: "]", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // הסרת שאריות מכותרת הסקשן
-        let headerRemnants = ["עכשיו?", "עכשיו", "?"]
+        // Remove remnants from section header
+        let headerRemnants = ["עכשיו?", "עכשיו", "now?", "now", "?"]
         for remnant in headerRemnants {
             if explanation.hasPrefix(remnant) {
                 explanation = String(explanation.dropFirst(remnant.count))
@@ -893,16 +905,16 @@ enum CarAnalysisParser {
             }
         }
 
-        // הסרת tags אחרים (URL וכו')
+        // Remove other tags (URL etc.)
         explanation = removeImageURL(from: explanation)
 
         return explanation
     }
 
-    /// מסיר קישורי תמונה ותגי metadata מהטקסט
+    /// Removes image links and metadata tags from text
     private static func removeImageURL(from text: String) -> String {
         var result = text
-        // הסרת פורמטים שונים של URL ותגיות
+        // Remove various URL and tag formats
         let patterns = [
             #"\[CAR_IMAGE_URL:\s*https?://[^\]\s]+\]"#,
             #"CAR_IMAGE_URL:\s*https?://[^\s\]\n]+"#,
@@ -915,7 +927,7 @@ enum CarAnalysisParser {
                 result = regex.stringByReplacingMatches(in: result, options: [], range: NSRange(result.startIndex..., in: result), withTemplate: "")
             }
         }
-        // ניקוי רווחים כפולים
+        // Clean up double spaces
         while result.contains("  ") {
             result = result.replacingOccurrences(of: "  ", with: " ")
         }
@@ -923,7 +935,7 @@ enum CarAnalysisParser {
     }
 
     private static func extractCarWikiName(from text: String) -> String {
-        // מחפש שם הרכב באנגלית בפורמט [CAR_WIKI: ...]
+        // Search for car name in English in [CAR_WIKI: ...] format
         let patterns = [
             #"\[CAR_WIKI:\s*([^\]\n]+)\]"#,
             #"CAR_WIKI:\s*([^\]\n]+)"#,
@@ -936,7 +948,7 @@ enum CarAnalysisParser {
                let range = Range(match.range(at: 1), in: text) {
                 var name = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
 
-                // מסיר סוגריים עם מידע על דור/גרסה - לדוגמה "(eighth generation)"
+                // Remove parentheses with generation/version info - e.g. "(eighth generation)"
                 if let parenStart = name.firstIndex(of: "(") {
                     name = String(name[..<parenStart]).trimmingCharacters(in: .whitespacesAndNewlines)
                 }
@@ -967,7 +979,7 @@ enum CarAnalysisParser {
         return ""
     }
 
-    /// Extracts performance section content (מנוע, תיבת הילוכים, etc.)
+    /// Extracts performance section content (Engine, Transmission, etc.)
     /// The section name appears on its own line, and content follows on the NEXT line(s)
     private static func extractPerformanceSection(from text: String, sectionName: String, nextSections: [String]) -> String {
         // Find the section header - it can be on its own line or with ** markers
@@ -1067,27 +1079,39 @@ enum CarAnalysisParser {
         for marker in markers {
             if let range = text.range(of: marker, options: .caseInsensitive) {
                 let after = String(text[range.upperBound...])
-                // מוצא את סוף הסעיף (עד הסעיף הבא או שורה ריקה כפולה)
-                // תומך גם בפורמט markdown ישן וגם בפורמט ALL CAPS חדש
+                // Find the end of the section (until next section or double empty line)
+                // Supports both old markdown format and new ALL CAPS format
                 let endMarkers = [
-                    // פורמט חדש - ALL CAPS / עברית בשורה נפרדת
+                    // New format - ALL CAPS / Hebrew on separate line
                     "\n\nמנוע\n", "\n\nתיבת הילוכים\n", "\n\nמתלים\n", "\n\nיעילות דלק\n", "\n\nאלקטרוניקה\n",
                     "\nמנוע\n", "\nתיבת הילוכים\n", "\nמתלים\n", "\nיעילות דלק\n", "\nאלקטרוניקה\n",
+                    // English equivalents on separate line
+                    "\n\nEngine\n", "\n\nTransmission\n", "\n\nSuspension\n", "\n\nFuel Efficiency\n", "\n\nElectronics\n",
+                    "\nEngine\n", "\nTransmission\n", "\nSuspension\n", "\nFuel Efficiency\n", "\nElectronics\n",
                     "\nENGINE\n", "\nTRANSMISSION\n", "\nSUSPENSION\n", "\nFUEL", "\nELECTRONICS\n",
+                    // Hebrew tune-up section markers
                     "\n\nהתאמות אימון\n", "\n\nשינויים בהתאוששות", "\n\nהרגל אחד", "\n\nהרגל להוסיף", "\n\nהרגל להסיר",
                     "\nהתאמות אימון\n", "\nשינויים בהתאוששות", "\nהרגל אחד", "\nהרגל להוסיף", "\nהרגל להסיר",
-                    // סעיפים שמגיעים אחרי הרגל להסיר
+                    // English tune-up section markers
+                    "\n\nTraining adjustments\n", "\n\nRecovery changes", "\n\nOne habit", "\n\nHabit to add", "\n\nHabit to remove",
+                    "\nTraining adjustments\n", "\nRecovery changes", "\nOne habit", "\nHabit to add", "\nHabit to remove",
+                    // Sections that come after habit to remove
                     "\n\nSTOP", "\n\nSTART", "\n\nWATCH", "\nSTOP\n", "\nSTART\n", "\nWATCH\n",
-                    "\n\nסיכום", "\nסיכום\n", "\nSUMMARY\n", "\n\nSUMMARY",
-                    "\n\nהנחיות פעולה", "\nהנחיות פעולה\n",
-                    "\n\nתוספי תזונה", "\nתוספי תזונה\n", "\n\nSUPPLEMENTS", "\nSUPPLEMENTS\n",
+                    "\n\nסיכום", "\nסיכום\n", "\n\nSummary", "\nSummary\n", "\nSUMMARY\n", "\n\nSUMMARY",
+                    "\n\nהנחיות פעולה", "\nהנחיות פעולה\n", "\n\nAction directives", "\nAction directives\n",
+                    "\n\nתוספי תזונה", "\nתוספי תזונה\n", "\n\nSupplements", "\nSupplements\n", "\n\nSUPPLEMENTS", "\nSUPPLEMENTS\n",
                     // Section numbers
-                    "\n3.", "\n4.", "\n5.", "\n6.", "\n7.", "\n8.", "תוספי תזונה",
-                    // פורמט ישן - markdown
+                    "\n3.", "\n4.", "\n5.", "\n6.", "\n7.", "\n8.", "תוספי תזונה", "Supplements",
+                    // Old format - markdown (Hebrew)
                     "**מנוע**", "**תיבת הילוכים**", "**מתלים**", "**יעילות דלק**", "**אלקטרוניקה**",
                     "**התאמות אימון**", "**שינויים בהתאוששות**", "**הרגל אחד בעל השפעה**", "**הרגל אחד להסיר**",
                     "הרגל אחד להסיר:", "הרגל להסיר:", "הרגל אחד להוסיף:",
                     "**סיכום**", "**הנחיות פעולה**", "**תוספי תזונה**",
+                    // Old format - markdown (English)
+                    "**Engine**", "**Transmission**", "**Suspension**", "**Fuel Efficiency**", "**Electronics**",
+                    "**Training adjustments**", "**Recovery changes**", "**One high-impact habit**", "**One habit to remove**",
+                    "One habit to remove:", "Habit to remove:", "One habit to add:",
+                    "**Summary**", "**Action directives**", "**Supplements**",
                     "## ", "---", "\n\n\n"
                 ]
                 var endIdx = after.endIndex
@@ -1101,7 +1125,7 @@ enum CarAnalysisParser {
                 // Remove first newline if present
                 content = content.trimmingCharacters(in: .newlines)
 
-                // הסרת הסימון הראשוני אם יש - only if it's near the start
+                // Remove leading marker if present - only if it's near the start
                 if content.hasPrefix(")") {
                     content = String(content.dropFirst())
                 } else if content.hasPrefix(":") {
@@ -1117,7 +1141,7 @@ enum CarAnalysisParser {
     }
 
     private static func extractBottlenecks(from text: String) -> [String] {
-        let markers = ["3. מה מגביל", "מה מגביל את הביצועים", "צווארי בקבוק", "bottlenecks", "צוואר בקבוק"]
+        let markers = ["3. מה מגביל", "3. What limits", "מה מגביל את הביצועים", "What limits the performance", "צווארי בקבוק", "Bottlenecks", "bottlenecks", "צוואר בקבוק"]
 
         // First try to extract as list items
         let listItems = extractListItems(from: text, sectionMarkers: markers)
@@ -1131,14 +1155,14 @@ enum CarAnalysisParser {
 
             var after = String(text[range.upperBound...])
 
-            // Skip past the rest of the header line (e.g., "עכשיו?")
+            // Skip past the rest of the header line (e.g., "now?")
             // The actual content starts on the NEXT line
             if let firstNewline = after.firstIndex(of: "\n") {
                 after = String(after[after.index(after: firstNewline)...])
             }
 
             // Find end of section
-            let endMarkers = ["4. תוכנית", "## 4", "תוכנית אופטימיזציה", "אילו שדרוגים", "סימני אזהרה", "---", "\n\n\n"]
+            let endMarkers = ["4. תוכנית", "4. Optimization", "## 4", "תוכנית אופטימיזציה", "Optimization plan", "אילו שדרוגים", "Which upgrades", "סימני אזהרה", "Warning signs", "---", "\n\n\n"]
             var endIdx = after.endIndex
             for endMarker in endMarkers {
                 if let r = after.range(of: endMarker, options: .caseInsensitive), r.lowerBound < endIdx && r.lowerBound != after.startIndex {
@@ -1152,8 +1176,8 @@ enum CarAnalysisParser {
                 .replacingOccurrences(of: "**", with: "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
 
-            // Remove any leftover header text like "מה מגביל את הביצועים עכשיו?"
-            if content.hasPrefix("מה מגביל") {
+            // Remove any leftover header text like "What limits the performance now?"
+            if content.hasPrefix("מה מגביל") || content.hasPrefix("What limits") {
                 if let questionMark = content.firstIndex(of: "?") {
                     content = String(content[content.index(after: questionMark)...])
                         .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1168,8 +1192,9 @@ enum CarAnalysisParser {
                     .filter { sentence in
                         // Filter out short sentences and leftover header text
                         guard sentence.count > 15 else { return false }
-                        // Filter out the repeated question "מה מגביל את הביצועים עכשיו"
+                        // Filter out the repeated question "What limits the performance now"
                         if sentence.contains("מה מגביל את הביצועים") { return false }
+                        if sentence.contains("What limits the performance") { return false }
                         return true
                     }
 
@@ -1178,7 +1203,7 @@ enum CarAnalysisParser {
                 }
 
                 // Fallback: return the whole content as single item if it doesn't contain the question
-                if !content.contains("מה מגביל את הביצועים") {
+                if !content.contains("מה מגביל את הביצועים") && !content.contains("What limits the performance") {
                     return [content]
                 }
             }
@@ -1188,7 +1213,7 @@ enum CarAnalysisParser {
     }
 
     private static func extractWarningSignals(from text: String) -> [String] {
-        let markers = ["סימן אזהרה", "סימני אזהרה", "warning signs", "אזהרה מוקדם"]
+        let markers = ["סימן אזהרה", "Warning sign", "סימני אזהרה", "Warning signs", "warning signs", "אזהרה מוקדם", "Early warning"]
         return extractListItems(from: text, sectionMarkers: markers)
     }
 
@@ -1199,8 +1224,8 @@ enum CarAnalysisParser {
             guard let range = text.range(of: marker, options: .caseInsensitive) else { continue }
 
             let after = String(text[range.upperBound...])
-            // מוצא את סוף הסעיף
-            let endMarkers = ["## ", "---", "\n\n\n", "**", "תוכנית"]
+            // Find the end of the section
+            let endMarkers = ["## ", "---", "\n\n\n", "**", "תוכנית", "Plan"]
             var endIdx = after.endIndex
             for endMarker in endMarkers {
                 if let r = after.range(of: endMarker), r.lowerBound < endIdx && r.lowerBound != after.startIndex {
@@ -1213,11 +1238,11 @@ enum CarAnalysisParser {
 
             for line in lines {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
-                // בודק אם זה פריט ברשימה
+                // Check if this is a list item
                 if trimmed.hasPrefix("-") || trimmed.hasPrefix("•") || trimmed.hasPrefix("*") ||
                    trimmed.range(of: #"^\d+\."#, options: .regularExpression) != nil {
                     var item = trimmed
-                    // הסרת הסימון
+                    // Remove the marker
                     item = item.replacingOccurrences(of: #"^[-•*]\s*"#, with: "", options: .regularExpression)
                     item = item.replacingOccurrences(of: #"^\d+\.\s*"#, with: "", options: .regularExpression)
                     item = item.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespaces)
@@ -1238,13 +1263,15 @@ enum CarAnalysisParser {
         var start = ""
         var watch = ""
 
-        // STOP - תומך בפורמט ALL CAPS חדש וגם markdown ישן
+        // STOP - supports new ALL CAPS format and old markdown format
         let stopPatterns = [
-            #"STOP\s*\n+([^\n]+)"#,           // ALL CAPS על שורה נפרדת
-            #"STOP:\s*([^\n]+)"#,              // STOP: בשורה אחת
+            #"STOP\s*\n+([^\n]+)"#,           // ALL CAPS on separate line
+            #"STOP:\s*([^\n]+)"#,              // STOP: on one line
             #"\*\*STOP:\*\*\s*([^\n]+)"#,      // markdown
-            #"עצור\s*\n+([^\n]+)"#,            // עברית
-            #"עצור:\s*([^\n]+)"#,
+            #"עצור\s*\n+([^\n]+)"#,            // Hebrew "Stop"
+            #"עצור:\s*([^\n]+)"#,              // Hebrew "Stop:"
+            #"Stop\s*\n+([^\n]+)"#,            // English "Stop"
+            #"Stop:\s*([^\n]+)"#,              // English "Stop:"
         ]
         for pattern in stopPatterns {
             if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
@@ -1255,13 +1282,15 @@ enum CarAnalysisParser {
             }
         }
 
-        // START - תומך בפורמט ALL CAPS חדש וגם markdown ישן
+        // START - supports new ALL CAPS format and old markdown format
         let startPatterns = [
-            #"START\s*\n+([^\n]+)"#,           // ALL CAPS על שורה נפרדת
-            #"START:\s*([^\n]+)"#,              // START: בשורה אחת
+            #"START\s*\n+([^\n]+)"#,           // ALL CAPS on separate line
+            #"START:\s*([^\n]+)"#,              // START: on one line
             #"\*\*START:\*\*\s*([^\n]+)"#,      // markdown
-            #"התחל\s*\n+([^\n]+)"#,             // עברית
-            #"התחל:\s*([^\n]+)"#,
+            #"התחל\s*\n+([^\n]+)"#,             // Hebrew "Start"
+            #"התחל:\s*([^\n]+)"#,               // Hebrew "Start:"
+            #"Start\s*\n+([^\n]+)"#,            // English "Start"
+            #"Start:\s*([^\n]+)"#,              // English "Start:"
         ]
         for pattern in startPatterns {
             if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
@@ -1272,13 +1301,15 @@ enum CarAnalysisParser {
             }
         }
 
-        // WATCH - תומך בפורמט ALL CAPS חדש וגם markdown ישן
+        // WATCH - supports new ALL CAPS format and old markdown format
         let watchPatterns = [
-            #"WATCH\s*\n+([^\n]+)"#,           // ALL CAPS על שורה נפרדת
-            #"WATCH:\s*([^\n]+)"#,              // WATCH: בשורה אחת
+            #"WATCH\s*\n+([^\n]+)"#,           // ALL CAPS on separate line
+            #"WATCH:\s*([^\n]+)"#,              // WATCH: on one line
             #"\*\*WATCH:\*\*\s*([^\n]+)"#,      // markdown
-            #"עקוב\s*\n+([^\n]+)"#,             // עברית
-            #"עקוב:\s*([^\n]+)"#,
+            #"עקוב\s*\n+([^\n]+)"#,             // Hebrew "Watch/Follow"
+            #"עקוב:\s*([^\n]+)"#,               // Hebrew "Watch/Follow:"
+            #"Watch\s*\n+([^\n]+)"#,            // English "Watch"
+            #"Watch:\s*([^\n]+)"#,              // English "Watch:"
         ]
         for pattern in watchPatterns {
             if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
@@ -1293,17 +1324,17 @@ enum CarAnalysisParser {
     }
 
     private static func extractSummary(from text: String) -> String {
-        // תומך בפורמט ALL CAPS חדש וגם בפורמט ישן
+        // Supports new ALL CAPS format and old format
         let markers = [
-            "SUMMARY", "סיכום", "## 7. סיכום", "**סיכום**", "סיכום:",
-            "אם הרכב הזה ימשיך", "BOTTOM LINE"
+            "SUMMARY", "Summary", "סיכום", "## 7. סיכום", "## 7. Summary", "**סיכום**", "**Summary**", "סיכום:", "Summary:",
+            "אם הרכב הזה ימשיך", "If this car continues", "BOTTOM LINE", "Bottom line"
         ]
 
         for marker in markers {
             if let range = text.range(of: marker, options: .caseInsensitive) {
                 let after = String(text[range.upperBound...])
-                // לוקח עד סוף הטקסט או עד סימן סיום
-                let endMarkers = ["---", "###", "\n\n\n", "## 8", "תוספי תזונה"]
+                // Take until end of text or until end marker
+                let endMarkers = ["---", "###", "\n\n\n", "## 8", "תוספי תזונה", "Supplements"]
                 var endIdx = after.endIndex
                 for endMarker in endMarkers {
                     if let r = after.range(of: endMarker), r.lowerBound < endIdx {
@@ -1324,20 +1355,20 @@ enum CarAnalysisParser {
 
     // MARK: - Supplements Extraction
 
-    /// חילוץ המלצות תוספי תזונה מתשובת Gemini
+    /// Extract supplement recommendations from Gemini response
     private static func extractSupplements(from text: String) -> [SupplementRecommendation] {
         var supplements: [SupplementRecommendation] = []
 
-        // מחפש סקשן "תוספי תזונה"
-        let markers = ["תוספי תזונה מומלצים", "המלצות תוספי תזונה", "## 8. תוספי תזונה", "SUPPLEMENTS", "תוספים מומלצים"]
+        // Search for "supplements" section
+        let markers = ["תוספי תזונה מומלצים", "Recommended supplements", "המלצות תוספי תזונה", "Supplement recommendations", "## 8. תוספי תזונה", "## 8. Supplements", "SUPPLEMENTS", "Supplements", "תוספים מומלצים", "Recommended supplements"]
 
         for marker in markers {
             guard let range = text.range(of: marker, options: .caseInsensitive) else { continue }
 
             let after = String(text[range.upperBound...])
 
-            // מוצא את סוף הסקשן
-            let endMarkers = ["---", "## 9", "###", "\n\n\n", "סיכום", "SUMMARY"]
+            // Find the end of the section
+            let endMarkers = ["---", "## 9", "###", "\n\n\n", "סיכום", "Summary", "SUMMARY"]
             var endIdx = after.endIndex
             for endMarker in endMarkers {
                 if let r = after.range(of: endMarker, options: .caseInsensitive), r.lowerBound < endIdx {
@@ -1347,7 +1378,7 @@ enum CarAnalysisParser {
 
             let section = String(after[..<endIdx])
 
-            // מחפש תבנית: **שם** (מינון) - סיבה [CATEGORY: xxx]
+            // Search for pattern: **name** (dosage) - reason [CATEGORY: xxx]
             let pattern = #"\*\*([^*]+)\*\*\s*\(([^)]+)\)\s*[-–]\s*([^\[]+)\[CATEGORY:\s*(\w+)\]"#
 
             if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) {
@@ -1382,9 +1413,9 @@ enum CarAnalysisParser {
                 }
             }
 
-            // אם לא מצאנו עם הפורמט המדויק, ננסה פורמט פשוט יותר
+            // If we didn't find with the exact format, try a simpler format
             if supplements.isEmpty {
-                // מחפש תבנית: **שם** (מינון) - סיבה
+                // Search for pattern: **name** (dosage) - reason
                 let simplePattern = #"\*\*([^*]+)\*\*\s*\(([^)]+)\)\s*[-–]\s*([^\n]+)"#
 
                 if let regex = try? NSRegularExpression(pattern: simplePattern, options: []) {
@@ -1400,7 +1431,7 @@ enum CarAnalysisParser {
                         let dosage = String(section[dosageRange]).trimmingCharacters(in: .whitespaces)
                         var reason = String(section[reasonRange]).trimmingCharacters(in: .whitespacesAndNewlines)
 
-                        // הסרת [CATEGORY:...] אם קיים
+                        // Remove [CATEGORY:...] if present
                         if let catRange = reason.range(of: #"\[CATEGORY:[^\]]+\]"#, options: .regularExpression) {
                             reason = String(reason[..<catRange.lowerBound]).trimmingCharacters(in: .whitespaces)
                         }
@@ -1410,9 +1441,9 @@ enum CarAnalysisParser {
                 }
             }
 
-            // פורמט נוסף: שם (מינון) - סיבה (בלי **) או עם bullets/מספרים
+            // Additional format: name (dosage) - reason (without **) or with bullets/numbers
             if supplements.isEmpty {
-                // מחפש: - שם (מינון) - סיבה או 1. שם (מינון) - סיבה
+                // Search for: - name (dosage) - reason or 1. name (dosage) - reason
                 let bulletPattern = #"(?:[-•]\s*|\d+\.\s*)([^(]+)\(([^)]+)\)\s*[-–:]\s*([^\n]+)"#
 
                 if let regex = try? NSRegularExpression(pattern: bulletPattern, options: []) {
@@ -1435,31 +1466,31 @@ enum CarAnalysisParser {
                 }
             }
 
-            // פורמט אחרון: שם בשורה נפרדת עם מינון וסיבה
+            // Last format: name on separate line with dosage and reason
             if supplements.isEmpty {
-                // מחפש שורות עם מבנה: שם\nמינון: xxx\nסיבה: xxx
+                // Search for lines with structure: name\ndosage: xxx\nreason: xxx
                 let lines = section.components(separatedBy: .newlines)
                 var i = 0
                 while i < lines.count {
                     let line = lines[i].trimmingCharacters(in: .whitespaces)
-                    // אם השורה נראית כמו שם תוסף (קצרה, בלי נקודותיים)
+                    // If the line looks like a supplement name (short, no colons)
                     if line.count > 2 && line.count < 40 && !line.contains(":") && !line.hasPrefix("-") && !line.hasPrefix("•") {
                         let name = line.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespaces)
                         var dosage = ""
                         var reason = ""
 
-                        // בודק שורות הבאות
+                        // Check following lines
                         for j in (i+1)..<min(i+4, lines.count) {
                             let nextLine = lines[j].trimmingCharacters(in: .whitespaces)
                             if nextLine.lowercased().hasPrefix("מינון") || nextLine.lowercased().hasPrefix("dosage") {
                                 dosage = nextLine.components(separatedBy: ":").dropFirst().joined(separator: ":").trimmingCharacters(in: .whitespaces)
-                            } else if nextLine.lowercased().hasPrefix("סיבה") || nextLine.lowercased().hasPrefix("reason") || nextLine.lowercased().hasPrefix("למה") {
+                            } else if nextLine.lowercased().hasPrefix("סיבה") || nextLine.lowercased().hasPrefix("reason") || nextLine.lowercased().hasPrefix("למה") || nextLine.lowercased().hasPrefix("why") {
                                 reason = nextLine.components(separatedBy: ":").dropFirst().joined(separator: ":").trimmingCharacters(in: .whitespaces)
                             }
                         }
 
                         if !name.isEmpty && (!dosage.isEmpty || !reason.isEmpty) {
-                            supplements.append(createSupplement(name: name, dosage: dosage.isEmpty ? "לפי הוראות" : dosage, reason: reason.isEmpty ? name : reason))
+                            supplements.append(createSupplement(name: name, dosage: dosage.isEmpty ? "As directed" : dosage, reason: reason.isEmpty ? name : reason))
                             i += 3
                             continue
                         }
@@ -1474,17 +1505,18 @@ enum CarAnalysisParser {
         return supplements
     }
 
-    /// פונקציית עזר ליצירת תוסף עם זיהוי קטגוריה אוטומטי
+    /// Helper function to create a supplement with automatic category detection
     private static func createSupplement(name: String, dosage: String, reason: String) -> SupplementRecommendation {
         let lowerReason = reason.lowercased()
         let lowerName = name.lowercased()
 
         let category: SupplementCategory
-        if lowerReason.contains("שינה") || lowerReason.contains("sleep") || lowerName.contains("מגנזיום") || lowerName.contains("melatonin") || lowerName.contains("magnesium") {
+        // Match Hebrew and English keywords for category detection
+        if lowerReason.contains("שינה") || lowerReason.contains("sleep") || lowerName.contains("מגנזיום") || lowerName.contains("magnesium") || lowerName.contains("melatonin") {
             category = .sleep
-        } else if lowerReason.contains("אימון") || lowerReason.contains("training") || lowerReason.contains("ביצועים") || lowerName.contains("קריאטין") || lowerName.contains("creatine") || lowerName.contains("beta-alanine") {
+        } else if lowerReason.contains("אימון") || lowerReason.contains("training") || lowerReason.contains("ביצועים") || lowerReason.contains("performance") || lowerName.contains("קריאטין") || lowerName.contains("creatine") || lowerName.contains("beta-alanine") {
             category = .performance
-        } else if lowerReason.contains("התאוששות") || lowerReason.contains("recovery") || lowerReason.contains("דלקת") || lowerName.contains("אומגה") || lowerName.contains("omega") || lowerName.contains("turmeric") || lowerName.contains("כורכום") {
+        } else if lowerReason.contains("התאוששות") || lowerReason.contains("recovery") || lowerReason.contains("דלקת") || lowerReason.contains("inflammation") || lowerName.contains("אומגה") || lowerName.contains("omega") || lowerName.contains("turmeric") || lowerName.contains("כורכום") {
             category = .recovery
         } else {
             category = .general

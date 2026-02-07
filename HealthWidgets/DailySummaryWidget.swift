@@ -124,7 +124,7 @@ struct LargeDailySummaryView: View {
                         }
                         .frame(width: 50, height: 50)
                     }
-                    .padding(.top, 4)  // הורדת הציון קצת למטה
+                    .padding(.top, 4)  // Move the score down slightly
                 }
 
                 Divider()

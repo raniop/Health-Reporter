@@ -2,14 +2,14 @@
 //  MetricModels.swift
 //  Health Reporter
 //
-//  מודלים עבור כל המדדים המחושבים - Daily, Weekly, Monthly
+//  Models for all computed metrics - Daily, Weekly, Monthly
 //
 
 import Foundation
 
 // MARK: - Metric Protocol
 
-/// פרוטוקול בסיסי לכל מדד
+/// Base protocol for all metrics
 protocol InsightMetric {
     var id: String { get }
     var nameKey: String { get }
@@ -22,7 +22,7 @@ protocol InsightMetric {
 
 // MARK: - Enums
 
-/// קטגוריות מדדים
+/// Metric categories
 enum MetricCategory: String, CaseIterable {
     case recovery
     case sleep
@@ -54,7 +54,7 @@ enum MetricCategory: String, CaseIterable {
     }
 }
 
-/// מגמת מדד
+/// Metric trend
 enum MetricTrend: String {
     case improving = "improving"
     case stable = "stable"
@@ -73,7 +73,7 @@ enum MetricTrend: String {
     }
 }
 
-/// אמינות נתונים
+/// Data reliability
 enum DataReliability: String {
     case high = "high"       // 14+ days of data
     case medium = "medium"   // 7-13 days
@@ -94,7 +94,7 @@ enum DataReliability: String {
     }
 }
 
-/// רמת מוכנות לאימון
+/// Workout readiness level
 enum WorkoutReadinessLevel: String, CaseIterable {
     case skip = "skip"
     case light = "light"
@@ -127,7 +127,7 @@ enum WorkoutReadinessLevel: String, CaseIterable {
     }
 }
 
-/// רמת טווח (Low/Medium/High)
+/// Range level (Low/Medium/High)
 enum RangeLevel: String {
     case veryLow = "very_low"
     case low = "low"
@@ -153,7 +153,7 @@ enum RangeLevel: String {
 
 // MARK: - Daily Metrics (15)
 
-/// 1. איזון מערכת העצבים
+/// 1. Nervous system balance
 struct NervousSystemBalance: InsightMetric {
     let id = "nervous_system_balance"
     let nameKey = "metric.nervous_system_balance"
@@ -180,7 +180,7 @@ struct NervousSystemBalance: InsightMetric {
     }
 }
 
-/// 2. מוכנות להתאוששות
+/// 2. Recovery readiness
 struct RecoveryReadiness: InsightMetric {
     let id = "recovery_readiness"
     let nameKey = "metric.recovery_readiness"
@@ -205,7 +205,7 @@ struct RecoveryReadiness: InsightMetric {
     }
 }
 
-/// 3. חוב התאוששות
+/// 3. Recovery debt
 struct RecoveryDebt: InsightMetric {
     let id = "recovery_debt"
     let nameKey = "metric.recovery_debt"
@@ -234,7 +234,7 @@ struct RecoveryDebt: InsightMetric {
     }
 }
 
-/// 4. מדד עומס לחץ
+/// 4. Stress load index
 struct StressLoadIndex: InsightMetric {
     let id = "stress_load_index"
     let nameKey = "metric.stress_load_index"
@@ -259,7 +259,7 @@ struct StressLoadIndex: InsightMetric {
     }
 }
 
-/// 5. רעננות בוקר
+/// 5. Morning freshness
 struct MorningFreshness: InsightMetric {
     let id = "morning_freshness"
     let nameKey = "metric.morning_freshness"
@@ -279,7 +279,7 @@ struct MorningFreshness: InsightMetric {
     }
 }
 
-/// 6. איכות שינה
+/// 6. Sleep quality
 struct SleepQuality: InsightMetric {
     let id = "sleep_quality"
     let nameKey = "metric.sleep_quality"
@@ -304,7 +304,7 @@ struct SleepQuality: InsightMetric {
     }
 }
 
-/// 7. עקביות שינה
+/// 7. Sleep consistency
 struct SleepConsistency: InsightMetric {
     let id = "sleep_consistency"
     let nameKey = "metric.sleep_consistency"
@@ -323,19 +323,19 @@ struct SleepConsistency: InsightMetric {
     }
 }
 
-/// 8. דגש שינה (בסגנון אפל)
+/// 8. Sleep highlight (Apple-style)
 struct SleepHighlight: InsightMetric {
     let id = "sleep_highlight"
     let nameKey = "metric.sleep_highlight"
-    let value: Double? // ממוצע שעות השינה
+    let value: Double? // Average sleep hours
     let category: MetricCategory = .sleep
     let reliability: DataReliability
     let trend: MetricTrend?
 
-    /// נתוני שינה יומיים לגרף (7 ימים אחרונים)
+    /// Daily sleep data for chart (last 7 days)
     let dailySleepData: [DailySleepEntry]
 
-    /// יעד שינה (ברירת מחדל 7.5 שעות)
+    /// Sleep target (default 7.5 hours)
     let targetHours: Double
 
     var displayValue: String {
@@ -345,38 +345,38 @@ struct SleepHighlight: InsightMetric {
         return "\(hours)h \(minutes)m"
     }
 
-    /// פורמט תצוגה עברי: "X שע׳ Y דק׳"
+    /// Hebrew display format: "X hr Y min"
     var displayValueHebrew: String {
         guard let v = value else { return "--" }
         let hours = Int(v)
         let minutes = Int((v - Double(hours)) * 60)
-        return "\(hours) שע׳ \(minutes) דק׳"
+        return "\(hours)h \(minutes)m"
     }
 
-    /// האם הממוצע מתחת ליעד
+    /// Whether the average is below the target
     var isBelowTarget: Bool {
         guard let v = value else { return false }
         return v < targetHours
     }
 }
 
-/// נתון שינה יומי לגרף
+/// Daily sleep data point for chart
 struct DailySleepEntry {
     let date: Date
     let hours: Double
-    let dayOfWeekShort: String // א׳, ב׳, ג׳... או Mon, Tue...
+    let dayOfWeekShort: String // Mon, Tue, Wed... or localized equivalent
 
-    /// גובה יחסי לגרף (0-1)
+    /// Relative height for chart (0-1)
     func relativeHeight(maxHours: Double) -> CGFloat {
         guard maxHours > 0 else { return 0 }
         return CGFloat(min(hours / maxHours, 1.0))
     }
 }
 
-// שמירה לתאימות לאחור
+// Kept for backward compatibility
 typealias SleepDebt = SleepHighlight
 
-/// 9. עומס אימון
+/// 9. Training strain
 struct InsightTrainingStrain: InsightMetric {
     let id = "training_strain"
     let nameKey = "metric.training_strain"
@@ -396,7 +396,7 @@ struct InsightTrainingStrain: InsightMetric {
     }
 }
 
-/// 10. איזון עומסים (ACWR)
+/// 10. Load balance (ACWR)
 struct LoadBalance: InsightMetric {
     let id = "load_balance"
     let nameKey = "metric.load_balance"
@@ -436,7 +436,7 @@ struct LoadBalance: InsightMetric {
     }
 }
 
-/// 11. תחזית אנרגיה
+/// 11. Energy forecast
 struct EnergyForecast: InsightMetric {
     let id = "energy_forecast"
     let nameKey = "metric.energy_forecast"
@@ -465,7 +465,7 @@ struct EnergyForecast: InsightMetric {
     }
 }
 
-/// 12. מוכנות לאימון
+/// 12. Workout readiness
 struct WorkoutReadiness: InsightMetric {
     let id = "workout_readiness"
     let nameKey = "metric.workout_readiness"
@@ -488,7 +488,7 @@ struct WorkoutReadiness: InsightMetric {
     }
 }
 
-/// 13. ציון פעילות
+/// 13. Activity score
 struct ActivityScore: InsightMetric {
     let id = "activity_score"
     let nameKey = "metric.activity_score"
@@ -506,7 +506,7 @@ struct ActivityScore: InsightMetric {
     }
 }
 
-/// 14. יעדים יומיים
+/// 14. Daily goals
 struct DailyGoals: InsightMetric {
     let id = "daily_goals"
     let nameKey = "metric.daily_goals"
@@ -525,7 +525,7 @@ struct DailyGoals: InsightMetric {
     }
 }
 
-/// 15. מגמת כושר לב-ריאה
+/// 15. Cardio fitness trend
 struct CardioFitnessTrend: InsightMetric {
     let id = "cardio_fitness_trend"
     let nameKey = "metric.cardio_fitness_trend"
@@ -546,7 +546,7 @@ struct CardioFitnessTrend: InsightMetric {
 
 // MARK: - Star Metrics Container
 
-/// 5 מדדי כוכב שמייחדים את האפליקציה
+/// 5 star metrics that differentiate the app
 struct StarMetrics {
     let nervousSystemBalance: NervousSystemBalance
     let recoveryDebt: RecoveryDebt
@@ -586,7 +586,7 @@ struct DailyMetrics {
     let cardioFitnessTrend: CardioFitnessTrend
 
     /// Main health score for the day (composite)
-    /// מחזיר nil אם אין מספיק נתונים אמיתיים (לפחות 3 מדדים)
+    /// Returns nil if there is not enough real data (at least 3 metrics required)
     var mainScore: Double? {
         let weights: [(Double?, Double)] = [
             (recoveryReadiness.value, 0.25),
@@ -609,7 +609,7 @@ struct DailyMetrics {
             }
         }
 
-        // צריך לפחות 3 מדדים אמיתיים כדי להציג ציון
+        // Need at least 3 real metrics to display a score
         guard validMetricsCount >= 3, totalWeight > 0 else { return nil }
         return weightedSum / totalWeight
     }
@@ -630,7 +630,7 @@ struct DailyMetrics {
 /// One day's computed metric scores (for 7-day bar charts in detail sheets)
 struct DailyScoreEntry {
     let date: Date
-    let dayOfWeekShort: String  // Single letter: M, T, W... or א, ב, ג...
+    let dayOfWeekShort: String  // Single letter: M, T, W... or localized equivalent
 
     // Hero Scores
     let mainScore: Double?

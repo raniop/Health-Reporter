@@ -20,3 +20,24 @@
 "period.day" = "היום";
 "period.week" = "שבוע";
 "period.month" = "חודש";
+"watch.period.title" = "תקופה";
+
+/* Home View */
+"watch.home.dataStale" = "נתונים לא מעודכנים";
+
+/* Metrics Detail View */
+"watch.metrics.heartRate" = "דופק";
+"watch.metrics.restingHeartRate" = "דופק מנוחה";
+"watch.metrics.sectionHeart" = "לב";
+"watch.metrics.sleep" = "שינה";
+"watch.metrics.sectionSleep" = "שינה";
+"watch.metrics.steps" = "צעדים";
+"watch.metrics.calories" = "קלוריות";
+"watch.metrics.exercise" = "אימון";
+"watch.metrics.exerciseUnit" = "דק׳";
+"watch.metrics.standing" = "עמידה";
+"watch.metrics.standingUnit" = "שע׳";
+"watch.metrics.sectionActivity" = "פעילות";
+"watch.metrics.healthScore" = "ציון בריאות";
+"watch.metrics.reliability" = "אמינות";
+"watch.metrics.sectionScore" = "ציון";

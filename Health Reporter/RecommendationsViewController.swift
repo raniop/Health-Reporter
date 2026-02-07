@@ -2,7 +2,7 @@
 //  RecommendationsViewController.swift
 //  Health Reporter
 //
-//  עמוד המלצות – עיצוב מחדש. Pro Lab, כרטיסים מעוצבים, גרדיאנטים.
+//  Recommendations page – redesign. Pro Lab, styled cards, gradients.
 //
 
 import UIKit
@@ -90,15 +90,15 @@ class RecommendationsViewController: UIViewController {
         super.viewWillAppear(animated)
         if isTabMode {
             navigationController?.setNavigationBarHidden(false, animated: animated)
-            // נשתמש בפרסר החדש לחילוץ המלצות מתשובת Gemini
+            // Use the new parser to extract recommendations from Gemini's response
             if recommendationsText.isEmpty, let insights = AnalysisCache.loadLatest(), !insights.isEmpty {
                 let parsed = CarAnalysisParser.parse(insights)
-                // בנינו מחדש את המלצות מהסקשנים הרלוונטיים
+                // Rebuild recommendations from the relevant sections
                 var recs: [String] = []
-                if !parsed.habitToAdd.isEmpty { recs.append("להוסיף: \(parsed.habitToAdd)") }
-                if !parsed.habitToRemove.isEmpty { recs.append("להסיר: \(parsed.habitToRemove)") }
-                if !parsed.trainingAdjustments.isEmpty { recs.append("אימון: \(parsed.trainingAdjustments)") }
-                if !parsed.recoveryChanges.isEmpty { recs.append("התאוששות: \(parsed.recoveryChanges)") }
+                if !parsed.habitToAdd.isEmpty { recs.append("Add: \(parsed.habitToAdd)") }
+                if !parsed.habitToRemove.isEmpty { recs.append("Remove: \(parsed.habitToRemove)") }
+                if !parsed.trainingAdjustments.isEmpty { recs.append("Training: \(parsed.trainingAdjustments)") }
+                if !parsed.recoveryChanges.isEmpty { recs.append("Recovery: \(parsed.recoveryChanges)") }
                 recs.append(contentsOf: parsed.upgrades)
                 if !recs.isEmpty {
                     recommendationsText = recs.joined(separator: "\n\n")
@@ -238,7 +238,7 @@ class RecommendationsViewController: UIViewController {
     }
 }
 
-// MARK: - כרטיס המלצה מעוצב
+// MARK: - Styled recommendation card
 
 private final class RecCardView: UIView {
     init(index: Int, title: String, body: String, iconName: String) {
@@ -311,7 +311,7 @@ private final class RecCardView: UIView {
     required init?(coder: NSCoder) { nil }
 }
 
-// MARK: - מצב ריק
+// MARK: - Empty state
 
 private final class RecEmptyView: UIView {
     init() {

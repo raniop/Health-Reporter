@@ -2,7 +2,7 @@
 //  MorningNotificationManager.swift
 //  Health Reporter
 //
-//  מנהל התראות בוקר יומיות עם מידע בריאותי מותאם אישית.
+//  Manages daily morning notifications with personalized health information.
 //
 
 import Foundation
@@ -108,13 +108,13 @@ final class MorningNotificationManager {
         set { UserDefaults.standard.set(newValue, forKey: Keys.includeAchievements) }
     }
 
-    /// הציון האחרון שנשמר (לחישוב טרנד)
+    /// Last saved score (for trend calculation)
     private var lastHealthScore: Int {
         get { UserDefaults.standard.integer(forKey: Keys.lastHealthScore) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.lastHealthScore) }
     }
 
-    /// streak של צעדים
+    /// Steps streak
     private var stepStreak: Int {
         get { UserDefaults.standard.integer(forKey: Keys.stepStreak) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.stepStreak) }
@@ -330,12 +330,12 @@ final class MorningNotificationManager {
         }
     }
 
-    /// תאריך הריענון הבא (15 דקות לפני זמן ההתראה)
+    /// Next refresh date (15 minutes before notification time)
     private func nextRefreshDate() -> Date? {
         let calendar = Calendar.current
         var components = DateComponents()
         components.hour = notificationHour
-        components.minute = max(0, notificationMinute - 15) // 15 דקות לפני
+        components.minute = max(0, notificationMinute - 15) // 15 minutes before
 
         guard let todayTarget = calendar.nextDate(
             after: Date(),
@@ -343,7 +343,7 @@ final class MorningNotificationManager {
             matchingPolicy: .nextTime
         ) else { return nil }
 
-        // אם הזמן כבר עבר היום, תזמן למחר
+        // If the time has already passed today, schedule for tomorrow
         if todayTarget <= Date() {
             return calendar.date(byAdding: .day, value: 1, to: todayTarget)
         }
@@ -351,7 +351,7 @@ final class MorningNotificationManager {
         return todayTarget
     }
 
-    /// תאריך ההתראה הבא
+    /// Next notification date
     private func nextNotificationDate() -> Date? {
         let calendar = Calendar.current
         var components = DateComponents()
@@ -414,8 +414,8 @@ final class MorningNotificationManager {
             let yesterdayData = self.getYesterdayData(from: entries)
 
             // CRITICAL: Use mainScore (daily score) NOT widgetData.healthScore (90-day average)!
-            // mainScore = הציון היומי שהמשתמש רואה (54)
-            // widgetData.healthScore = ציון ממוצע 90 יום (70)
+            // mainScore = the daily score the user sees (54)
+            // widgetData.healthScore = 90-day average score (70)
             let healthScore = AnalysisCache.loadMainScore() ?? widgetData?.healthScore ?? 0
             let sleepHours = widgetData?.sleepHours ?? todayData.sleep
 
@@ -519,7 +519,7 @@ final class MorningNotificationManager {
         } else {
             // Send generic notification
             let content = UNMutableNotificationContent()
-            content.title = "morning.notification.title".localized
+            content.title = "morning.notification.title.noname".localized
             content.body = "morning.notification.generic".localized
             content.sound = .default
             content.userInfo = ["type": "morning_health"]
@@ -807,7 +807,7 @@ final class MorningNotificationManager {
     /// Schedule notification directly without background refresh (fallback)
     private func scheduleNotificationDirectly() {
         let content = UNMutableNotificationContent()
-        content.title = "morning.notification.title".localized
+        content.title = "morning.notification.title.noname".localized
         content.body = "morning.notification.checkin".localized
         content.sound = .default
         content.userInfo = ["type": "morning_health"]

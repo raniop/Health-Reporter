@@ -21,7 +21,7 @@ final class UserProfileViewController: UIViewController {
         case unknown
         case notFollowing
         case following
-        case followRequestSent
+        case followRequestSent(requestId: String)
         case followRequestReceived(requestId: String)
     }
 
@@ -138,7 +138,7 @@ final class UserProfileViewController: UIViewController {
     private let aboutCard = UIView()
     private let aboutTitleLabel: UILabel = {
         let l = UILabel()
-        l.text = "social.about".localized
+        l.text = "About"
         l.font = .systemFont(ofSize: 14, weight: .bold)
         l.textColor = AIONDesign.textPrimary
         l.textAlignment = LocalizationManager.shared.textAlignment
@@ -151,7 +151,7 @@ final class UserProfileViewController: UIViewController {
         l.textColor = AIONDesign.textSecondary
         l.textAlignment = LocalizationManager.shared.textAlignment
         l.numberOfLines = 0
-        l.text = "social.activeUser".localized
+        l.text = "Active user on Health Reporter"
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -272,7 +272,7 @@ final class UserProfileViewController: UIViewController {
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
             // Content stack
-            contentStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 90),
+            contentStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 110),
             contentStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: hPad),
             contentStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -hPad),
             contentStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
@@ -389,11 +389,11 @@ final class UserProfileViewController: UIViewController {
         let isRTL = LocalizationManager.shared.currentLanguage.isRTL
 
         let scoreCol = makeStatColumn(value: scoreStatValue, label: scoreStatLabel,
-                                       labelText: "social.healthScore".localized, action: nil)
+                                       labelText: "Health Score", action: nil)
         let followersCol = makeStatColumn(value: followersStatValue, label: followersStatLabel,
-                                           labelText: "social.followers".localized, action: #selector(followersTapped))
+                                           labelText: "Followers", action: #selector(followersTapped))
         let followingCol = makeStatColumn(value: followingStatValue, label: followingStatLabel,
-                                           labelText: "social.following".localized, action: #selector(followingTapped))
+                                           labelText: "Following", action: #selector(followingTapped))
 
         let stack = UIStackView()
         stack.axis = .horizontal
@@ -494,7 +494,7 @@ final class UserProfileViewController: UIViewController {
         scoreCard.addSubview(circularProgress)
 
         // Score title
-        scoreTitleLabel.text = "dashboard.healthScore".localized
+        scoreTitleLabel.text = "Health Score"
         scoreTitleLabel.font = .systemFont(ofSize: 12, weight: .bold)
         scoreTitleLabel.textColor = AIONDesign.textTertiary
         scoreTitleLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -634,7 +634,7 @@ final class UserProfileViewController: UIViewController {
 
         // Tier label
         let tierDescLabel = UILabel()
-        tierDescLabel.text = tierLabel.localized
+        tierDescLabel.text = tierLabel
         tierDescLabel.font = .systemFont(ofSize: 13, weight: .medium)
         tierDescLabel.textColor = tierColor
         tierDescLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -719,7 +719,7 @@ final class UserProfileViewController: UIViewController {
                let healthScore = data["healthScore"] as? Int,
                let carTierIndex = data["carTierIndex"] as? Int {
 
-                let displayName = data["displayName"] as? String ?? "social.unknownUser".localized
+                let displayName = data["displayName"] as? String ?? "Unknown User"
                 let carTierName = data["carTierName"] as? String
                     ?? CarTierEngine.tiers[safe: carTierIndex]?.tierLabel
                     ?? ""
@@ -818,8 +818,8 @@ final class UserProfileViewController: UIViewController {
             .getDocuments { [weak self] snapshot, _ in
                 guard let self = self else { return }
 
-                if snapshot?.documents.first != nil {
-                    self.friendshipStatus = .followRequestSent
+                if let doc = snapshot?.documents.first {
+                    self.friendshipStatus = .followRequestSent(requestId: doc.documentID)
                     completion()
                     return
                 }
@@ -845,7 +845,7 @@ final class UserProfileViewController: UIViewController {
 
     private func applyData() {
         guard let data = userData else {
-            nameLabel.text = "social.unknownUser".localized
+            nameLabel.text = "Unknown User"
             scoreCard.isHidden = true
             carTierCard.isHidden = true
             aboutCard.isHidden = true
@@ -931,7 +931,7 @@ final class UserProfileViewController: UIViewController {
 
             // About - show generic text
             aboutCard.isHidden = false
-            aboutBodyLabel.text = "social.activeUser".localized
+            aboutBodyLabel.text = "Active user on Health Reporter"
         }
 
         // Buttons
@@ -941,16 +941,16 @@ final class UserProfileViewController: UIViewController {
     private func applyScoreDescription(healthScore: Int) {
         switch healthScore {
         case 80...:
-            scoreDescLabel.text = "social.aboutExcellent".localized
+            scoreDescLabel.text = "Excellent health habits!"
             scoreDescLabel.textColor = AIONDesign.accentSuccess
         case 60..<80:
-            scoreDescLabel.text = "social.aboutGood".localized
+            scoreDescLabel.text = "Good health progress"
             scoreDescLabel.textColor = AIONDesign.accentSecondary
         case 40..<60:
-            scoreDescLabel.text = "social.aboutProgress".localized
+            scoreDescLabel.text = "Making progress"
             scoreDescLabel.textColor = AIONDesign.accentPrimary
         default:
-            scoreDescLabel.text = "social.aboutStarting".localized
+            scoreDescLabel.text = "Just getting started"
             scoreDescLabel.textColor = AIONDesign.accentWarning
         }
     }
@@ -958,13 +958,13 @@ final class UserProfileViewController: UIViewController {
     private func applyAboutText(healthScore: Int) {
         switch healthScore {
         case 80...:
-            aboutBodyLabel.text = "social.aboutExcellent".localized
+            aboutBodyLabel.text = "Excellent health habits!"
         case 60..<80:
-            aboutBodyLabel.text = "social.aboutGood".localized
+            aboutBodyLabel.text = "Good health progress"
         case 40..<60:
-            aboutBodyLabel.text = "social.aboutProgress".localized
+            aboutBodyLabel.text = "Making progress"
         default:
-            aboutBodyLabel.text = "social.aboutStarting".localized
+            aboutBodyLabel.text = "Just getting started"
         }
     }
 
@@ -979,7 +979,7 @@ final class UserProfileViewController: UIViewController {
         case .notFollowing:
             primaryButton.isHidden = false
             primaryButton.isEnabled = true
-            primaryButton.setTitle("social.follow".localized, for: .normal)
+            primaryButton.setTitle("Follow", for: .normal)
             primaryButton.backgroundColor = AIONDesign.accentPrimary
             primaryButton.setTitleColor(.white, for: .normal)
             secondaryButton.isHidden = true
@@ -987,7 +987,7 @@ final class UserProfileViewController: UIViewController {
         case .following:
             primaryButton.isHidden = false
             primaryButton.isEnabled = true
-            primaryButton.setTitle("social.unfollow".localized, for: .normal)
+            primaryButton.setTitle("Unfollow", for: .normal)
             primaryButton.backgroundColor = .clear
             primaryButton.setTitleColor(AIONDesign.textPrimary, for: .normal)
             primaryButton.layer.borderWidth = 1
@@ -996,23 +996,24 @@ final class UserProfileViewController: UIViewController {
 
         case .followRequestSent:
             primaryButton.isHidden = false
-            primaryButton.isEnabled = false
-            primaryButton.setTitle("social.followRequestSent".localized, for: .normal)
-            primaryButton.backgroundColor = AIONDesign.surfaceElevated
-            primaryButton.setTitleColor(AIONDesign.textTertiary, for: .normal)
-            primaryButton.layer.borderWidth = 0
+            primaryButton.isEnabled = true
+            primaryButton.setTitle("Cancel Request", for: .normal)
+            primaryButton.backgroundColor = .clear
+            primaryButton.setTitleColor(AIONDesign.accentDanger, for: .normal)
+            primaryButton.layer.borderWidth = 1
+            primaryButton.layer.borderColor = AIONDesign.accentDanger.withAlphaComponent(0.4).cgColor
             secondaryButton.isHidden = true
 
         case .followRequestReceived:
             primaryButton.isHidden = false
             primaryButton.isEnabled = true
-            primaryButton.setTitle("social.accept".localized, for: .normal)
+            primaryButton.setTitle("Accept", for: .normal)
             primaryButton.backgroundColor = AIONDesign.accentSuccess
             primaryButton.setTitleColor(.white, for: .normal)
             primaryButton.layer.borderWidth = 0
 
             secondaryButton.isHidden = false
-            secondaryButton.setTitle("social.decline".localized, for: .normal)
+            secondaryButton.setTitle("Decline", for: .normal)
             secondaryButton.setTitleColor(AIONDesign.accentDanger, for: .normal)
             secondaryButton.backgroundColor = .clear
             secondaryButton.layer.borderColor = AIONDesign.accentDanger.withAlphaComponent(0.4).cgColor
@@ -1069,6 +1070,8 @@ final class UserProfileViewController: UIViewController {
             performFollow()
         case .following:
             confirmUnfollow()
+        case .followRequestSent(let rid):
+            performCancelRequest(requestId: rid)
         case .followRequestReceived(let rid):
             performAccept(requestId: rid)
         default:
@@ -1099,16 +1102,38 @@ final class UserProfileViewController: UIViewController {
         }
     }
 
+    // MARK: - Cancel Follow Request
+
+    private func performCancelRequest(requestId: String) {
+        setButtonsLoading(true)
+
+        FollowFirestoreSync.cancelFollowRequest(requestId: requestId) { [weak self] error in
+            guard let self = self else { return }
+            self.setButtonsLoading(false)
+
+            if let error = error {
+                self.presentError(error.localizedDescription)
+                return
+            }
+
+            self.friendshipStatus = .notFollowing
+            DispatchQueue.main.async {
+                self.applyButtonStates()
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+        }
+    }
+
     // MARK: - Unfollow
 
     private func confirmUnfollow() {
         let alert = UIAlertController(
-            title: "social.unfollow".localized,
-            message: String(format: "social.unfollowConfirm".localized, userData?.displayName ?? ""),
+            title: "Unfollow",
+            message: "Are you sure you want to unfollow \(userData?.displayName ?? "")?",
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
-        alert.addAction(UIAlertAction(title: "social.unfollow".localized, style: .destructive) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Unfollow", style: .destructive) { [weak self] _ in
             self?.performUnfollow()
         })
         present(alert, animated: true)
@@ -1181,11 +1206,11 @@ final class UserProfileViewController: UIViewController {
 
     private func presentError(_ message: String) {
         let alert = UIAlertController(
-            title: "error".localized,
+            title: "Error",
             message: message,
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
 

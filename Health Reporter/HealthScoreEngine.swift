@@ -2,20 +2,20 @@
 //  HealthScoreEngine.swift
 //  Health Reporter
 //
-//  מנוע חישוב ציוני בריאות מקומי (ללא LLM).
-//  מחשב HealthScore (0-100) ו-ReliabilityScore (0-100).
+//  Local health score calculation engine (no LLM).
+//  Calculates HealthScore (0-100) and ReliabilityScore (0-100).
 //
 
 import Foundation
 
 // MARK: - Enums
 
-/// סטטוס כיסוי נתונים
+/// Data coverage status
 enum CoverageStatus: String, Codable {
-    case unavailable    // < 5 ימים תקינים
-    case limited        // 5-13 ימים (משקל × 0.6)
-    case good           // 14-29 ימים (משקל × 1.0)
-    case highCoverage   // >= 30 ימים (משקל × 1.05)
+    case unavailable    // < 5 valid days
+    case limited        // 5-13 days (weight x 0.6)
+    case good           // 14-29 days (weight x 1.0)
+    case highCoverage   // >= 30 days (weight x 1.05)
 
     var weightMultiplier: Double {
         switch self {
@@ -36,7 +36,7 @@ enum CoverageStatus: String, Codable {
     }
 }
 
-/// דומיינים של בריאות
+/// Health domains
 enum HealthDomain: String, CaseIterable, Codable {
     case recovery       // HRV, RHR, readiness, stress
     case sleep          // sleepHours
@@ -65,7 +65,7 @@ enum HealthDomain: String, CaseIterable, Codable {
     }
 }
 
-/// מדדי בריאות
+/// Health metrics
 enum HealthMetric: String, CaseIterable, Codable {
     case sleepHours
     case hrvMs

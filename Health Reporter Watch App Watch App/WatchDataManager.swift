@@ -148,12 +148,12 @@ class WatchDataManager: ObservableObject {
 
     /// Requests data refresh from iPhone, with fallback to local HealthKit
     func requestRefresh() {
-        // בדיקה אם ה-iPhone זמין
+        // Check if iPhone is reachable
         if WatchConnectivityManager.shared.isReachable {
-            // iPhone זמין - מבקשים נתונים ממנו
+            // iPhone is reachable - request data from it
             WatchConnectivityManager.shared.requestDataFromPhone()
         } else {
-            // iPhone לא זמין - שולפים נתונים מקומיים מ-HealthKit בשעון
+            // iPhone not reachable - fetch local data from HealthKit on Watch
             print("⌚️ WatchDataManager: iPhone not reachable, fetching local HealthKit data")
             fetchLocalHealthKitData()
         }

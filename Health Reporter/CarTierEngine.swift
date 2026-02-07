@@ -2,8 +2,8 @@
 //  CarTierEngine.swift
 //  Health Reporter
 //
-//  מנוע דרגות רכב דטרמיניסטי – ממפה ציון בריאות מחושב לרכב קבוע.
-//  הרכב משתנה רק כשהדרגה משתנה, לא בכל ריפרש.
+//  Deterministic car tier engine – maps a calculated health score to a fixed car.
+//  The car changes only when the tier changes, not on every refresh.
 //
 
 import UIKit
@@ -31,8 +31,8 @@ enum CarTierEngine {
         ]
     }
 
-    /// חישוב ציון בריאות מרוכב (0-100) ממדדים זמינים.
-    /// משקולות: readiness 40%, sleep 25%, HRV 20%, strain balance 15%.
+    /// Calculate composite health score (0-100) from available metrics.
+    /// Weights: readiness 40%, sleep 25%, HRV 20%, strain balance 15%.
     static func computeHealthScore(
         readinessAvg: Double?,
         sleepHoursAvg: Double?,
@@ -77,7 +77,7 @@ enum CarTierEngine {
         return Int(round(max(0, min(100, score))))
     }
 
-    /// מיפוי ציון לדרגה
+    /// Map score to tier
     static func tierForScore(_ score: Int) -> CarTier {
         switch score {
         case 0..<25:  return tiers[0]
@@ -88,12 +88,12 @@ enum CarTierEngine {
         }
     }
 
-    /// Hash לזיהוי שינוי דרגה (לצורך cache invalidation)
+    /// Hash for detecting tier changes (for cache invalidation)
     static func tierHash(score: Int) -> String {
         "tier_\(tierForScore(score).tierIndex)"
     }
 
-    /// חישוב ציון + דרגה מנתוני גרפים. מחזיר nil אם אין נתונים אמיתיים.
+    /// Calculate score + tier from chart data. Returns nil if no real data exists.
     static func evaluate(bundle: AIONChartDataBundle) -> (score: Int, tier: CarTier)? {
         guard bundle.hasRealData else { return nil }
 
@@ -125,8 +125,8 @@ enum CarTierEngine {
 
     // MARK: - New Engine Integration
 
-    /// חישוב ציון + דרגה באמצעות HealthScoreEngine החדש.
-    /// מחזיר גם את התוצאה המפורטת לדיבוג/UI.
+    /// Calculate score + tier using the new HealthScoreEngine.
+    /// Also returns the detailed result for debugging/UI.
     static func evaluateWithNewEngine(entries: [RawDailyHealthEntry]) -> (score: Int, tier: CarTier, result: HealthScoringResult)? {
         guard !entries.isEmpty else { return nil }
 

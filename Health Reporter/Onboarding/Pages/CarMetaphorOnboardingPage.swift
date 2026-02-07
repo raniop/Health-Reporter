@@ -2,7 +2,7 @@
 //  CarMetaphorOnboardingPage.swift
 //  Health Reporter
 //
-//  מסך הסבר על מטאפורת המכונית
+//  Car metaphor explanation screen
 //
 
 import UIKit

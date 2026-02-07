@@ -164,69 +164,64 @@ final class ScoreDetailWithGraphViewController: UIViewController {
         sectionTitle.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(sectionTitle)
 
-        // Chart content: average on leading side, bars on trailing
-        let chartRow = UIStackView()
-        chartRow.axis = .horizontal
-        chartRow.spacing = 12
-        chartRow.alignment = .bottom
-        chartRow.semanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
-        chartRow.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(chartRow)
-
-        // Average display
-        let avgView = createAverageDisplay(isRTL: isRTL)
-        avgView.setContentHuggingPriority(.required, for: .horizontal)
-        chartRow.addArrangedSubview(avgView)
+        // Average below title: "Average" label + large number
+        let avgView = createAverageBelow(isRTL: isRTL)
+        avgView.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(avgView)
 
         // Bar chart
         let barChart = createBarChart(isRTL: isRTL)
-        chartRow.addArrangedSubview(barChart)
+        barChart.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(barChart)
 
         NSLayoutConstraint.activate([
             sectionTitle.topAnchor.constraint(equalTo: container.topAnchor),
             sectionTitle.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             sectionTitle.trailingAnchor.constraint(equalTo: container.trailingAnchor),
 
-            chartRow.topAnchor.constraint(equalTo: sectionTitle.bottomAnchor, constant: 10),
-            chartRow.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            chartRow.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            chartRow.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            avgView.topAnchor.constraint(equalTo: sectionTitle.bottomAnchor, constant: 4),
+            isRTL
+                ? avgView.trailingAnchor.constraint(equalTo: container.trailingAnchor)
+                : avgView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+
+            barChart.topAnchor.constraint(equalTo: avgView.bottomAnchor, constant: 12),
+            barChart.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            barChart.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            barChart.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
 
         return container
     }
 
-    // MARK: - Average Display
+    // MARK: - Average Display (Below "7 days" title)
 
-    private func createAverageDisplay(isRTL: Bool) -> UIView {
+    private func createAverageBelow(isRTL: Bool) -> UIView {
         let stack = UIStackView()
-        stack.axis = .vertical
-        stack.alignment = .leading
-        stack.spacing = 2
+        stack.axis = .horizontal
+        stack.alignment = .lastBaseline
+        stack.spacing = 6
+        stack.semanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
 
         let titleLabel = UILabel()
         titleLabel.text = config.averageLabel ?? "chart.average".localized
-        titleLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
         titleLabel.textColor = AIONDesign.textSecondary
-        stack.addArrangedSubview(titleLabel)
 
         let validValues = config.history.map(\.value).filter { $0 > 0 }
         let avg = config.averageValue ?? (validValues.isEmpty ? nil : validValues.reduce(0, +) / Double(validValues.count))
 
+        let valueLabel = UILabel()
         if let avg = avg {
             let formatter = config.valueFormatter ?? { "\(Int($0))" }
-            let valueLabel = UILabel()
             valueLabel.text = formatter(avg)
-            valueLabel.font = .systemFont(ofSize: 28, weight: .bold)
-            valueLabel.textColor = AIONDesign.textPrimary
-            stack.addArrangedSubview(valueLabel)
         } else {
-            let noData = UILabel()
-            noData.text = "--"
-            noData.font = .systemFont(ofSize: 28, weight: .bold)
-            noData.textColor = AIONDesign.textTertiary
-            stack.addArrangedSubview(noData)
+            valueLabel.text = "--"
         }
+        valueLabel.font = .systemFont(ofSize: 28, weight: .bold)
+        valueLabel.textColor = AIONDesign.textPrimary
+
+        stack.addArrangedSubview(titleLabel)
+        stack.addArrangedSubview(valueLabel)
 
         return stack
     }

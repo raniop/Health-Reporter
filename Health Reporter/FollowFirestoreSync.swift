@@ -2,7 +2,7 @@
 //  FollowFirestoreSync.swift
 //  Health Reporter
 //
-//  ניהול עוקבים ובקשות מעקב ב-Firestore.
+//  Managing followers and follow requests in Firestore.
 //
 
 import Foundation
@@ -26,7 +26,7 @@ enum FollowFirestoreSync {
               let currentUid = currentUser.uid as String?,
               !currentUid.isEmpty else {
             completion?(NSError(domain: "FollowFirestoreSync", code: -1,
-                                userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
+                                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]))
             return
         }
 
@@ -45,13 +45,20 @@ enum FollowFirestoreSync {
             }
 
             let data = snapshot?.data()
-            let privacyStr = data?["followPrivacy"] as? String ?? FollowPrivacy.approval.rawValue
-            let privacy = FollowPrivacy(rawValue: privacyStr) ?? .approval
+            let privacyStr = data?["followPrivacy"] as? String ?? FollowPrivacy.open.rawValue
+            let privacy = FollowPrivacy(rawValue: privacyStr) ?? .open
+
+            // Extract target user's profile for storing in following subcollection
+            let targetDisplayName = data?["displayName"] as? String
+            let targetPhotoURL = data?["photoURL"] as? String
 
             if privacy == .open {
                 // Direct follow — add to both subcollections and increment counts
                 performDirectFollow(currentUser: currentUser, currentUid: currentUid,
-                                    targetUid: targetUid, completion: completion)
+                                    targetUid: targetUid,
+                                    targetDisplayName: targetDisplayName,
+                                    targetPhotoURL: targetPhotoURL,
+                                    completion: completion)
             } else {
                 // Requires approval — create a follow request
                 createFollowRequest(currentUser: currentUser, currentUid: currentUid,
@@ -61,8 +68,11 @@ enum FollowFirestoreSync {
     }
 
     private static func performDirectFollow(currentUser: User, currentUid: String,
-                                             targetUid: String, completion: ((Error?) -> Void)?) {
-        let displayName = currentUser.displayName ?? "social.unknownUser".localized
+                                             targetUid: String,
+                                             targetDisplayName: String? = nil,
+                                             targetPhotoURL: String? = nil,
+                                             completion: ((Error?) -> Void)?) {
+        let displayName = currentUser.displayName ?? "Unknown User"
         let photoURL = currentUser.photoURL?.absoluteString
         let batch = db.batch()
 
@@ -71,6 +81,8 @@ enum FollowFirestoreSync {
             .collection(followingSubcollection).document(targetUid)
         batch.setData([
             "uid": targetUid,
+            "displayName": targetDisplayName ?? "Unknown User",
+            "photoURL": targetPhotoURL as Any,
             "followedAt": FieldValue.serverTimestamp()
         ], forDocument: myFollowingRef)
 
@@ -81,7 +93,8 @@ enum FollowFirestoreSync {
             "uid": currentUid,
             "displayName": displayName,
             "photoURL": photoURL as Any,
-            "followedAt": FieldValue.serverTimestamp()
+            "followedAt": FieldValue.serverTimestamp(),
+            "source": "direct"
         ], forDocument: theirFollowerRef)
 
         // Increment my followingCount
@@ -103,7 +116,7 @@ enum FollowFirestoreSync {
 
     private static func createFollowRequest(currentUser: User, currentUid: String,
                                              targetUid: String, completion: ((Error?) -> Void)?) {
-        let displayName = currentUser.displayName ?? "social.unknownUser".localized
+        let displayName = currentUser.displayName ?? "Unknown User"
         let photoURL = currentUser.photoURL?.absoluteString
 
         let requestData: [String: Any] = [
@@ -126,7 +139,7 @@ enum FollowFirestoreSync {
     static func acceptFollowRequest(requestId: String, completion: ((Error?) -> Void)? = nil) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
             completion?(NSError(domain: "FollowFirestoreSync", code: -1,
-                                userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
+                                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]))
             return
         }
 
@@ -161,7 +174,8 @@ enum FollowFirestoreSync {
                 "uid": fromUid,
                 "displayName": fromDisplayName,
                 "photoURL": fromPhotoURL as Any,
-                "followedAt": FieldValue.serverTimestamp()
+                "followedAt": FieldValue.serverTimestamp(),
+                "source": "request"
             ], forDocument: followerRef)
 
             // Add target (current user) to requester's following subcollection
@@ -170,7 +184,7 @@ enum FollowFirestoreSync {
                     .collection(followingSubcollection).document(toUid)
                 batch.setData([
                     "uid": toUid,
-                    "displayName": myName ?? "social.unknownUser".localized,
+                    "displayName": myName ?? "Unknown User",
                     "photoURL": myPhoto as Any,
                     "followedAt": FieldValue.serverTimestamp()
                 ], forDocument: followingRef)
@@ -199,7 +213,7 @@ enum FollowFirestoreSync {
     static func declineFollowRequest(requestId: String, completion: ((Error?) -> Void)? = nil) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
             completion?(NSError(domain: "FollowFirestoreSync", code: -1,
-                                userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
+                                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]))
             return
         }
 
@@ -211,41 +225,60 @@ enum FollowFirestoreSync {
         }
     }
 
+    // MARK: - Cancel Follow Request (withdraw sent request)
+
+    static func cancelFollowRequest(requestId: String, completion: ((Error?) -> Void)? = nil) {
+        db.collection(followRequestsCollection).document(requestId).delete { error in
+            DispatchQueue.main.async { completion?(error) }
+        }
+    }
+
     // MARK: - Unfollow User
 
     static func unfollowUser(targetUid: String, completion: ((Error?) -> Void)? = nil) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
             completion?(NSError(domain: "FollowFirestoreSync", code: -1,
-                                userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
+                                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]))
             return
         }
 
-        let batch = db.batch()
-
-        // Remove target from my following
+        // Check if the follow document actually exists before decrementing counters
         let myFollowingRef = db.collection(usersCollection).document(currentUid)
             .collection(followingSubcollection).document(targetUid)
-        batch.deleteDocument(myFollowingRef)
 
-        // Remove me from target's followers
-        let theirFollowerRef = db.collection(usersCollection).document(targetUid)
-            .collection(followersSubcollection).document(currentUid)
-        batch.deleteDocument(theirFollowerRef)
+        myFollowingRef.getDocument { snapshot, error in
+            guard snapshot?.exists == true else {
+                // Document doesn't exist — nothing to unfollow, fix counters
+                recalculateCounts(for: currentUid)
+                DispatchQueue.main.async { completion?(nil) }
+                return
+            }
 
-        // Decrement my followingCount
-        let myUserRef = db.collection(usersCollection).document(currentUid)
-        batch.updateData([
-            "followingCount": FieldValue.increment(Int64(-1))
-        ], forDocument: myUserRef)
+            let batch = db.batch()
 
-        // Decrement target's followersCount
-        let theirUserRef = db.collection(usersCollection).document(targetUid)
-        batch.updateData([
-            "followersCount": FieldValue.increment(Int64(-1))
-        ], forDocument: theirUserRef)
+            // Remove target from my following
+            batch.deleteDocument(myFollowingRef)
 
-        batch.commit { error in
-            DispatchQueue.main.async { completion?(error) }
+            // Remove me from target's followers
+            let theirFollowerRef = db.collection(usersCollection).document(targetUid)
+                .collection(followersSubcollection).document(currentUid)
+            batch.deleteDocument(theirFollowerRef)
+
+            // Decrement my followingCount
+            let myUserRef = db.collection(usersCollection).document(currentUid)
+            batch.updateData([
+                "followingCount": FieldValue.increment(Int64(-1))
+            ], forDocument: myUserRef)
+
+            // Decrement target's followersCount
+            let theirUserRef = db.collection(usersCollection).document(targetUid)
+            batch.updateData([
+                "followersCount": FieldValue.increment(Int64(-1))
+            ], forDocument: theirUserRef)
+
+            batch.commit { error in
+                DispatchQueue.main.async { completion?(error) }
+            }
         }
     }
 
@@ -254,36 +287,47 @@ enum FollowFirestoreSync {
     static func removeFollower(followerUid: String, completion: ((Error?) -> Void)? = nil) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
             completion?(NSError(domain: "FollowFirestoreSync", code: -1,
-                                userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
+                                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]))
             return
         }
 
-        let batch = db.batch()
-
-        // Remove follower from my followers
+        // Check if the follower document actually exists before decrementing counters
         let myFollowerRef = db.collection(usersCollection).document(currentUid)
             .collection(followersSubcollection).document(followerUid)
-        batch.deleteDocument(myFollowerRef)
 
-        // Remove me from follower's following
-        let theirFollowingRef = db.collection(usersCollection).document(followerUid)
-            .collection(followingSubcollection).document(currentUid)
-        batch.deleteDocument(theirFollowingRef)
+        myFollowerRef.getDocument { snapshot, error in
+            guard snapshot?.exists == true else {
+                // Document doesn't exist — nothing to remove, fix counters
+                recalculateCounts(for: currentUid)
+                DispatchQueue.main.async { completion?(nil) }
+                return
+            }
 
-        // Decrement my followersCount
-        let myUserRef = db.collection(usersCollection).document(currentUid)
-        batch.updateData([
-            "followersCount": FieldValue.increment(Int64(-1))
-        ], forDocument: myUserRef)
+            let batch = db.batch()
 
-        // Decrement follower's followingCount
-        let theirUserRef = db.collection(usersCollection).document(followerUid)
-        batch.updateData([
-            "followingCount": FieldValue.increment(Int64(-1))
-        ], forDocument: theirUserRef)
+            // Remove follower from my followers
+            batch.deleteDocument(myFollowerRef)
 
-        batch.commit { error in
-            DispatchQueue.main.async { completion?(error) }
+            // Remove me from follower's following
+            let theirFollowingRef = db.collection(usersCollection).document(followerUid)
+                .collection(followingSubcollection).document(currentUid)
+            batch.deleteDocument(theirFollowingRef)
+
+            // Decrement my followersCount
+            let myUserRef = db.collection(usersCollection).document(currentUid)
+            batch.updateData([
+                "followersCount": FieldValue.increment(Int64(-1))
+            ], forDocument: myUserRef)
+
+            // Decrement follower's followingCount
+            let theirUserRef = db.collection(usersCollection).document(followerUid)
+            batch.updateData([
+                "followingCount": FieldValue.increment(Int64(-1))
+            ], forDocument: theirUserRef)
+
+            batch.commit { error in
+                DispatchQueue.main.async { completion?(error) }
+            }
         }
     }
 
@@ -308,7 +352,7 @@ enum FollowFirestoreSync {
                 var relations: [FollowRelation] = docs.compactMap { doc in
                     let data = doc.data()
                     let uid = data["uid"] as? String ?? doc.documentID
-                    let displayName = data["displayName"] as? String ?? "social.unknownUser".localized
+                    let displayName = data["displayName"] as? String ?? "Unknown User"
                     let followedAt = (data["followedAt"] as? Timestamp)?.dateValue() ?? Date()
 
                     return FollowRelation(
@@ -327,6 +371,7 @@ enum FollowFirestoreSync {
                             relations[i].carTierIndex = scoreData.tierIndex
                             relations[i].carTierName = scoreData.tierName
                             relations[i].healthScore = scoreData.score
+                            relations[i].lastUpdated = scoreData.lastUpdated
                             // Use photoURL from publicScores as fallback
                             if relations[i].photoURL == nil || relations[i].photoURL?.isEmpty == true {
                                 relations[i].photoURL = scoreData.photoURL
@@ -361,7 +406,7 @@ enum FollowFirestoreSync {
                 var relations: [FollowRelation] = docs.compactMap { doc in
                     let data = doc.data()
                     let uid = data["uid"] as? String ?? doc.documentID
-                    let displayName = data["displayName"] as? String ?? "social.unknownUser".localized
+                    let displayName = data["displayName"] as? String ?? "Unknown User"
                     let followedAt = (data["followedAt"] as? Timestamp)?.dateValue() ?? Date()
 
                     return FollowRelation(
@@ -400,10 +445,16 @@ enum FollowFirestoreSync {
             return
         }
 
-        db.collection(usersCollection).document(uid).getDocument { snapshot, _ in
-            let count = snapshot?.data()?["followersCount"] as? Int ?? 0
-            DispatchQueue.main.async { completion(count) }
-        }
+        // Count from actual subcollection for accuracy, then sync the cached counter
+        db.collection(usersCollection).document(uid)
+            .collection(followersSubcollection).getDocuments { snapshot, _ in
+                let actual = snapshot?.documents.count ?? 0
+                // Sync the cached counter field
+                db.collection(usersCollection).document(uid).updateData([
+                    "followersCount": actual
+                ])
+                DispatchQueue.main.async { completion(actual) }
+            }
     }
 
     // MARK: - Fetch Following Count
@@ -414,10 +465,16 @@ enum FollowFirestoreSync {
             return
         }
 
-        db.collection(usersCollection).document(uid).getDocument { snapshot, _ in
-            let count = snapshot?.data()?["followingCount"] as? Int ?? 0
-            DispatchQueue.main.async { completion(count) }
-        }
+        // Count from actual subcollection for accuracy, then sync the cached counter
+        db.collection(usersCollection).document(uid)
+            .collection(followingSubcollection).getDocuments { snapshot, _ in
+                let actual = snapshot?.documents.count ?? 0
+                // Sync the cached counter field
+                db.collection(usersCollection).document(uid).updateData([
+                    "followingCount": actual
+                ])
+                DispatchQueue.main.async { completion(actual) }
+            }
     }
 
     // MARK: - Fetch Pending Follow Requests (incoming)
@@ -530,13 +587,13 @@ enum FollowFirestoreSync {
 
     static func getFollowPrivacy(completion: @escaping (FollowPrivacy) -> Void) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
-            DispatchQueue.main.async { completion(.approval) }
+            DispatchQueue.main.async { completion(.open) }
             return
         }
 
         db.collection(usersCollection).document(currentUid).getDocument { snapshot, _ in
-            let privacyStr = snapshot?.data()?["followPrivacy"] as? String ?? FollowPrivacy.approval.rawValue
-            let privacy = FollowPrivacy(rawValue: privacyStr) ?? .approval
+            let privacyStr = snapshot?.data()?["followPrivacy"] as? String ?? FollowPrivacy.open.rawValue
+            let privacy = FollowPrivacy(rawValue: privacyStr) ?? .open
             DispatchQueue.main.async { completion(privacy) }
         }
     }
@@ -544,7 +601,7 @@ enum FollowFirestoreSync {
     static func setFollowPrivacy(_ privacy: FollowPrivacy, completion: ((Error?) -> Void)? = nil) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
             completion?(NSError(domain: "FollowFirestoreSync", code: -1,
-                                userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
+                                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]))
             return
         }
 
@@ -604,7 +661,7 @@ enum FollowFirestoreSync {
             guard doc.documentID != currentUid else { return nil }
 
             let data = doc.data()
-            let displayName = data["displayName"] as? String ?? "social.unknownUser".localized
+            let displayName = data["displayName"] as? String ?? "Unknown User"
 
             return UserSearchResult(
                 uid: doc.documentID,
@@ -615,6 +672,24 @@ enum FollowFirestoreSync {
     }
 
     // MARK: - Helpers
+
+    /// Recalculate followersCount and followingCount from actual subcollection documents.
+    /// Fixes counters that went negative due to double-deletions.
+    static func recalculateCounts(for uid: String) {
+        let userRef = db.collection(usersCollection).document(uid)
+
+        // Count actual followers
+        userRef.collection(followersSubcollection).getDocuments { snapshot, _ in
+            let actualFollowers = snapshot?.documents.count ?? 0
+            userRef.updateData(["followersCount": actualFollowers])
+        }
+
+        // Count actual following
+        userRef.collection(followingSubcollection).getDocuments { snapshot, _ in
+            let actualFollowing = snapshot?.documents.count ?? 0
+            userRef.updateData(["followingCount": actualFollowing])
+        }
+    }
 
     private static func fetchCurrentUserProfile(completion: @escaping (String?, String?) -> Void) {
         guard let currentUid = Auth.auth().currentUser?.uid else {
@@ -713,7 +788,7 @@ enum FollowFirestoreSync {
         }
     }
 
-    private static func fetchScoresForUsers(uids: [String], completion: @escaping ([String: (score: Int, tierIndex: Int, tierName: String, photoURL: String?)]) -> Void) {
+    private static func fetchScoresForUsers(uids: [String], completion: @escaping ([String: (score: Int, tierIndex: Int, tierName: String, photoURL: String?, lastUpdated: Date?)]) -> Void) {
         guard !uids.isEmpty else {
             completion([:])
             return
@@ -724,7 +799,7 @@ enum FollowFirestoreSync {
             Array(uids[$0..<min($0 + 10, uids.count)])
         }
 
-        var scoresMap: [String: (score: Int, tierIndex: Int, tierName: String, photoURL: String?)] = [:]
+        var scoresMap: [String: (score: Int, tierIndex: Int, tierName: String, photoURL: String?, lastUpdated: Date?)] = [:]
         let group = DispatchGroup()
 
         for chunk in chunkedUids {
@@ -738,7 +813,8 @@ enum FollowFirestoreSync {
                            let tierIndex = data["carTierIndex"] as? Int,
                            let tierName = data["carTierName"] as? String {
                             let photoURL = data["photoURL"] as? String
-                            scoresMap[doc.documentID] = (score, tierIndex, tierName, photoURL)
+                            let lastUpdated = (data["lastUpdated"] as? Timestamp)?.dateValue()
+                            scoresMap[doc.documentID] = (score, tierIndex, tierName, photoURL, lastUpdated)
                         }
                     }
                     group.leave()

@@ -2,7 +2,7 @@
 //  StarMetricsCalculator.swift
 //  Health Reporter
 //
-//  חישוב 5 מדדי הכוכב המייחדים את האפליקציה
+//  Calculate the 5 star metrics that make the app unique
 //
 
 import Foundation
@@ -13,7 +13,7 @@ final class StarMetricsCalculator {
     static let shared = StarMetricsCalculator()
     private init() {}
 
-    /// מחשב את 5 מדדי הכוכב מתוך המדדים היומיים
+    /// Calculate the 5 star metrics from the daily metrics
     func calculateStarMetrics(from dailyMetrics: DailyMetrics, monthlyConsistency: Double? = nil) -> StarMetrics {
         return StarMetrics(
             nervousSystemBalance: dailyMetrics.nervousSystemBalance,
@@ -26,7 +26,7 @@ final class StarMetricsCalculator {
 
     // MARK: - Star Metric Descriptions
 
-    /// תיאור קצר למה המדד חשוב
+    /// Short description of why the metric matters
     static func whyItMatters(for metricId: String) -> String {
         switch metricId {
         case "nervous_system_balance":
@@ -44,7 +44,7 @@ final class StarMetricsCalculator {
         }
     }
 
-    /// המלצת פעולה בהתבסס על ערך המדד
+    /// Action recommendation based on metric value
     static func actionAdvice(for metric: any InsightMetric) -> String {
         switch metric.id {
         case "nervous_system_balance":
@@ -94,7 +94,7 @@ final class StarMetricsCalculator {
 
     // MARK: - Visual Helpers
 
-    /// צבע עבור ערך המדד
+    /// Color for metric value
     static func color(for metric: any InsightMetric) -> UIColor {
         guard let value = metric.value else { return AIONDesign.textSecondary }
 
@@ -114,7 +114,7 @@ final class StarMetricsCalculator {
         }
     }
 
-    /// אייקון עבור המדד
+    /// Icon for the metric
     static func icon(for metricId: String) -> String {
         switch metricId {
         case "nervous_system_balance": return "waveform.path.ecg"

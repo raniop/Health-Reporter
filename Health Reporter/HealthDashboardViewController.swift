@@ -2,7 +2,7 @@
 //  HealthDashboardViewController.swift
 //  Health Reporter
 //
-//  AION Dashboard – Hero Score Card, מגמת התאוששות, BIO, דגשים, הנחיות AI.
+//  AION Dashboard – Hero Score Card, recovery trend, BIO, highlights, AI guidelines.
 //
 
 import UIKit
@@ -16,7 +16,7 @@ class HealthDashboardViewController: UIViewController {
     private var selectedRange: DataRange = .week
     private var chartBundle: AIONChartDataBundle?
 
-    /// גישה ציבורית ל-chartBundle לצורך בדיקת שינויים משמעותיים
+    /// Public access to chartBundle for checking significant changes
     var currentChartBundle: AIONChartDataBundle? { chartBundle }
     private var healthData: HealthDataModel?
     private var insightsText: String = ""
@@ -125,7 +125,7 @@ class HealthDashboardViewController: UIViewController {
     }
 
     @objc private func appWillEnterForeground() {
-        // רענון הציון כשהאפליקציה חוזרת מרקע (נתונים חדשים עשויים להיות זמינים)
+        // Refresh score when app returns from background (new data may be available)
         loadData(silent: true)
     }
 
@@ -148,22 +148,22 @@ class HealthDashboardViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
-        // טעינה ראשונית או שימוש ב-cache
+        // Initial load or use cache
         if !hasLoadedInitialData {
-            // פעם ראשונה - טען נתונים
+            // First time - load data
             if HealthDataCache.shared.isLoaded {
-                // יש cache מ-Splash - עדכן UI בלבד
+                // Cache from Splash exists - update UI only
                 updateUIFromCache()
                 hasLoadedInitialData = true
-                // סנכרון ציון ל-Firestore גם כשמשתמשים ב-cache
+                // Sync score to Firestore even when using cache
                 syncScoreFromCache()
             } else {
-                // אין cache - טען מ-HealthKit
+                // No cache - load from HealthKit
                 loadData(silent: true)
                 hasLoadedInitialData = true
             }
         }
-        // אם כבר נטענו נתונים - לא עושים כלום (חוסך קריאות כפולות)
+        // If data is already loaded - do nothing (saves duplicate calls)
     }
 
     // MARK: - Setup UI
@@ -228,12 +228,12 @@ class HealthDashboardViewController: UIViewController {
         heroCard.translatesAutoresizingMaskIntoConstraints = false
         heroCard.configurePlaceholder()
 
-        // Tooltip callback - להסבר על הציון
+        // Tooltip callback - for explaining the score
         heroCard.onInfoTapped = { [weak self] in
             self?.showScoreExplanation()
         }
 
-        // Callbacks להסברים על Mini KPIs
+        // Callbacks for Mini KPI explanations
         heroCard.onSleepTapped = { [weak self] in
             self?.showMiniKPIExplanation(
                 title: "metric.sleep".localized,
@@ -257,11 +257,11 @@ class HealthDashboardViewController: UIViewController {
     private func showScoreExplanation() {
         let explanation = AnalysisCache.generateScoreExplanation()
         let alert = UIAlertController(
-            title: "איך הציון מחושב?",
+            title: "How is the score calculated?",
             message: explanation,
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "הבנתי", style: .default))
+        alert.addAction(UIAlertAction(title: "Got it", style: .default))
         present(alert, animated: true)
     }
 
@@ -538,15 +538,15 @@ class HealthDashboardViewController: UIViewController {
         AnalyticsService.shared.logDashboardRefresh(period: selectedRange.rawValue)
     }
 
-    /// נקרא מעמוד תובנות – מריץ ניתוח (תובנות + המלצות) בלי overlay בדשבורד.
-    /// forceAnalysis=true יקרא ל-Gemini גם אם יש cache (עם התשובה הקודמת כהקשר)
+    /// Called from insights page – runs analysis (insights + recommendations) without overlay in dashboard.
+    /// forceAnalysis=true will call Gemini even if there's cache (with previous response as context)
     func runAnalysisForInsights(forceAnalysis: Bool = false) {
         loadData(forceAnalysis: forceAnalysis, useRefreshControl: false, silent: true)
     }
 
     // MARK: - Sleep Score
 
-    /// ציון שינה 0–100 (בדומה לאפל): משך + איכות שלבי שינה (deep+REM).
+    /// Sleep score 0-100 (similar to Apple): duration + quality of sleep stages (deep+REM).
     private static func sleepScore(totalHours: Double, deepHours: Double?, remHours: Double?) -> Int {
         let h = totalHours
         let deep = deepHours ?? 0
@@ -574,12 +574,12 @@ class HealthDashboardViewController: UIViewController {
         let rhrTake = Array(bundle.rhrTrend.points.suffix(n))
         let sleepTake = Array(bundle.sleep.points.suffix(n)).filter { ($0.totalHours ?? 0) > 0 }
 
-        // Compute CarTier score - משתמשים בציון מ-HealthScoreEngine
-        // אם אין ציון שמור או שאין מספיק נתונים, מציגים placeholder
+        // Compute CarTier score - using score from HealthScoreEngine
+        // If there's no saved score or not enough data, show placeholder
         let healthResult = AnalysisCache.loadHealthScoreResult()
         let hasValidScore = healthResult != nil && healthResult!.reliabilityScoreInt > 0
         let score = hasValidScore ? (AnalysisCache.loadHealthScore() ?? 0) : 0
-        let tier = CarTierEngine.tierForScore(max(1, score)) // min 1 למניעת crash
+        let tier = CarTierEngine.tierForScore(max(1, score)) // min 1 to prevent crash
 
         // Sleep text
         let sleepText: String
@@ -639,7 +639,7 @@ class HealthDashboardViewController: UIViewController {
             AnalyticsService.shared.setHealthScoreRange(score: score)
         }
 
-        // Bio Sleep Card - גרף מגמה ל-7/30 ימים, ערך בודד ליום אחד
+        // Bio Sleep Card - trend chart for 7/30 days, single value for one day
         if !sleepTake.isEmpty {
             let scores = sleepTake.map { Self.sleepScore(totalHours: $0.totalHours ?? 0, deepHours: $0.deepHours, remHours: $0.remHours) }
             let scoreAvg = scores.reduce(0, +) / scores.count
@@ -647,11 +647,11 @@ class HealthDashboardViewController: UIViewController {
             let subtitle = deepHours > 0 ? "\("dashboard.deepSleep".localized): \(String(format: "%.1f", deepHours)) \("unit.hours".localized)" : nil
 
             if selectedRange == .day {
-                // יום אחד - ערך בודד עם progress bar
+                // One day - single value with progress bar
                 let progress = CGFloat(scoreAvg) / 100
                 bioSleep?.configure(icon: "bed.double.fill", title: "dashboard.sleepQuality".localized, value: "\(scoreAvg)", progress: progress, subtitle: subtitle)
             } else {
-                // 7/30 ימים - גרף מגמה
+                // 7/30 days - trend chart
                 let trendData = scores.map { Double($0) }
                 bioSleep?.configureTrend(
                     icon: "bed.double.fill",
@@ -659,23 +659,23 @@ class HealthDashboardViewController: UIViewController {
                     value: "\("dashboard.avgLabel".localized): \(scoreAvg)",
                     subtitle: subtitle,
                     dataPoints: trendData,
-                    isPositiveTrendGood: true  // ציון שינה גבוה = טוב יותר
+                    isPositiveTrendGood: true  // High sleep score = better
                 )
             }
         }
 
-        // Bio Temp / RHR Card - גרף מגמה ל-7/30 ימים
+        // Bio Temp / RHR Card - trend chart for 7/30 days
         if let s = sleepTake.last, let b = s.bbt, b != 0 {
             bioTemp?.configure(icon: "thermometer.medium", title: "dashboard.restingHR".localized, value: String(format: "%+.1f°C", b), progress: nil)
         } else if !rhrTake.isEmpty {
             let rhrAvg = rhrTake.map(\.value).reduce(0, +) / Double(rhrTake.count)
 
             if selectedRange == .day {
-                // יום אחד - ערך בודד עם progress bar
+                // One day - single value with progress bar
                 let rhrProgress = CGFloat(max(0, min(1, (100 - rhrAvg) / 60)))
                 bioTemp?.configure(icon: "heart.fill", title: "dashboard.restingHR".localized, value: String(format: "%.0f bpm", rhrAvg), progress: rhrProgress, subtitle: nil)
             } else {
-                // 7/30 ימים - גרף מגמה
+                // 7/30 days - trend chart
                 let trendData = rhrTake.map(\.value)
                 let minRhr = trendData.min() ?? rhrAvg
                 let maxRhr = trendData.max() ?? rhrAvg
@@ -686,7 +686,7 @@ class HealthDashboardViewController: UIViewController {
                     value: String(format: "\("dashboard.avgLabel".localized): %.0f bpm", rhrAvg),
                     subtitle: subtitle,
                     dataPoints: trendData,
-                    isPositiveTrendGood: false  // דופק נמוך = טוב יותר
+                    isPositiveTrendGood: false  // Low heart rate = better
                 )
             }
         } else {
@@ -771,16 +771,16 @@ class HealthDashboardViewController: UIViewController {
     // MARK: - Test User Support
 
     #if DEBUG
-    /// עדכון UI עם נתוני בריאות מדומים ליוזר טסט
+    /// Update UI with mock health data for test user
     private func updateUIWithMockData(_ mockData: HealthDataModel) {
         print("🧪 [Dashboard] Updating UI with mock data")
         print("🧪 [Dashboard] Mock data: steps=\(mockData.steps ?? 0), hrv=\(mockData.heartRateVariability ?? 0), sleep=\(mockData.sleepHours ?? 0)")
 
-        // עדכון ישיר מה-cache - לא הולכים ל-HealthKit!
+        // Direct update from cache - not going to HealthKit!
         self.healthData = mockData
         self.chartBundle = HealthDataCache.shared.chartBundle
 
-        // עדכון UI מ-chartBundle אם קיים
+        // Update UI from chartBundle if available
         if let bundle = self.chartBundle {
             print("🧪 [Dashboard] Using mock chartBundle for UI update")
             let score = self.updateReadinessAndMetrics(from: bundle)
@@ -789,7 +789,7 @@ class HealthDashboardViewController: UIViewController {
             print("🧪 [Dashboard] No chartBundle - using healthData only")
         }
 
-        // עדכון Widget ו-Watch
+        // Update Widget and Watch
         updateWidgetData()
     }
     #endif
@@ -800,7 +800,7 @@ class HealthDashboardViewController: UIViewController {
         guard let data = healthData else { return }
 
         // Get current score, status and car tier from chartBundle
-        // אם אין נתוני Gemini - להשתמש ב-0 (שיציג "--" במקום ציון פיקטיבי)
+        // If no Gemini data - use 0 (will display "--" instead of a fictitious score)
         var score = 0
         var tier: CarTier = CarTierEngine.tierForScore(1) // Minimum tier for no data
         if let bundle = chartBundle {
@@ -834,15 +834,15 @@ class HealthDashboardViewController: UIViewController {
         let userName = Auth.auth().currentUser?.displayName ?? ""
 
         // Update widget with real data from app
-        // Use score description (e.g., "קח את זה בקלות") not car tier label
+        // Use score description (e.g., "Take it easy") not car tier label
         let scoreLevel = RangeLevel.from(score: Double(score))
         let healthStatus = "score.description.\(scoreLevel.rawValue)".localized
 
         print("📊 updateWidgetData: score=\(score), status=\(healthStatus), steps=\(Int(data.steps ?? 0)), sleep=\(sleepHours), rhr=\(rhr), range=\(selectedRange)")
 
-        // שליחה לשעון רק כשנתונים הם יומיים
+        // Send to watch only when data is daily
         if selectedRange == .day {
-            // קריאת פירוט הציונים מ-AnalysisCache (נשמר ע"י InsightsDashboard)
+            // Read score breakdown from AnalysisCache (saved by InsightsDashboard)
             let breakdown = AnalysisCache.loadScoreBreakdown()
 
             WidgetDataManager.shared.updateFromDashboard(
@@ -857,7 +857,7 @@ class HealthDashboardViewController: UIViewController {
                 sleepHours: sleepHours > 0 ? sleepHours : nil,
                 carTier: tier,
                 userName: userName,
-                // Score breakdown לשעון
+                // Score breakdown for watch
                 recoveryScore: breakdown.recovery,
                 sleepScore: breakdown.sleep,
                 nervousSystemScore: breakdown.nervousSystem,
@@ -867,7 +867,7 @@ class HealthDashboardViewController: UIViewController {
             )
         }
 
-        // Save daily activity for InsightsTab to use (רק כשזה יום)
+        // Save daily activity for InsightsTab to use (only when it's one day)
         guard selectedRange == .day else { return }
         AnalysisCache.saveDailyActivity(
             steps: Int(data.steps ?? 0),
@@ -987,7 +987,7 @@ class HealthDashboardViewController: UIViewController {
     // MARK: - Directives
 
     private func updateDirectivesCard() {
-        // שימוש בפרסר החדש
+        // Use the new parser
         let parsed = CarAnalysisParser.parse(insightsText)
         if !parsed.directiveStop.isEmpty || !parsed.directiveStart.isEmpty || !parsed.directiveWatch.isEmpty {
             directivesCard.configure(stop: parsed.directiveStop, start: parsed.directiveStart, watch: parsed.directiveWatch)
@@ -998,7 +998,7 @@ class HealthDashboardViewController: UIViewController {
 
     // MARK: - HealthKit Authorization & Data Loading
 
-    /// עדכון UI מנתונים שכבר נטענו ל-cache (ללא קריאה חדשה ל-HealthKit)
+    /// Update UI from data already loaded to cache (without a new HealthKit call)
     private func updateUIFromCache() {
         self.healthData = HealthDataCache.shared.healthData
         self.chartBundle = HealthDataCache.shared.chartBundle
@@ -1008,7 +1008,7 @@ class HealthDashboardViewController: UIViewController {
             AnalysisCache.saveWeeklyStats(from: bundle, score: score)
         }
 
-        // טעינת תובנות מה-cache
+        // Load insights from cache
         if let cachedInsights = AnalysisCache.loadLatest() {
             self.insightsText = cachedInsights
             self.updateDirectivesCard()
@@ -1020,17 +1020,17 @@ class HealthDashboardViewController: UIViewController {
 
     private func checkHealthKitAuthorization() {
         #if DEBUG
-        // יוזר טסט - משתמשים בנתונים מדומים מה-cache
+        // Test user - use mock data from cache
         if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email),
            let mockData = HealthDataCache.shared.healthData {
             print("🧪 [Dashboard] Test user - using mock health data")
             self.healthData = mockData
             self.chartBundle = HealthDataCache.shared.chartBundle // might be nil, that's ok
 
-            // עדכון UI עם הנתונים המדומים
+            // Update UI with mock data
             updateUIWithMockData(mockData)
 
-            // טעינת תובנות מה-cache אם יש
+            // Load insights from cache if available
             if let cachedInsights = AnalysisCache.loadLatest() {
                 self.insightsText = cachedInsights
                 self.updateDirectivesCard()
@@ -1040,7 +1040,7 @@ class HealthDashboardViewController: UIViewController {
         }
         #endif
 
-        // בדוק אם יש נתונים ב-cache מה-Splash Screen
+        // Check if there's data in cache from the Splash Screen
         if HealthDataCache.shared.isLoaded {
             self.healthData = HealthDataCache.shared.healthData
             self.chartBundle = HealthDataCache.shared.chartBundle
@@ -1048,8 +1048,8 @@ class HealthDashboardViewController: UIViewController {
                 let score = self.updateReadinessAndMetrics(from: bundle)
                 AnalysisCache.saveWeeklyStats(from: bundle, score: score)
             }
-            // טעינת תובנות מה-cache - הניתוח כבר רץ ברקע מה-Splash
-            // הנוטיפיקציה analysisDidCompleteNotification תעדכן את ה-UI כשהניתוח יסתיים
+            // Load insights from cache - analysis already ran in background from Splash
+            // The analysisDidCompleteNotification will update the UI when analysis completes
             if let cachedInsights = AnalysisCache.loadLatest() {
                 self.insightsText = cachedInsights
                 self.updateDirectivesCard()
@@ -1059,7 +1059,7 @@ class HealthDashboardViewController: UIViewController {
             return
         }
 
-        // Fallback: אם אין cache, טען מ-HealthKit
+        // Fallback: if no cache, load from HealthKit
         guard HealthKitManager.shared.isHealthDataAvailable() else {
             showAlert(title: "error".localized, message: "dashboard.healthKitError".localized)
             return
@@ -1072,12 +1072,12 @@ class HealthDashboardViewController: UIViewController {
         }
     }
 
-    /// סנכרון ציון ל-Firestore מה-cache (כשלא טוענים נתונים חדשים)
+    /// Sync score to Firestore from cache (when not loading new data)
     private func syncScoreFromCache() {
         if let healthResult = AnalysisCache.loadHealthScoreResult() {
             let score = healthResult.healthScoreInt
             let tier = CarTierEngine.tierForScore(score)
-            // שימוש בשם הרכב מ-Gemini אם קיים במטמון
+            // Use car name from Gemini if available in cache
             let cachedCarName = AnalysisCache.loadSelectedCar()?.name
             print("🚗 [Dashboard.syncScoreFromCache] Syncing with cachedCarName: \(cachedCarName ?? "nil")")
             LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
@@ -1091,23 +1091,23 @@ class HealthDashboardViewController: UIViewController {
         if forceAnalysis { GeminiService.shared.cancelCurrentRequest() }
         if !silent && !useRefreshControl { showLoading("dashboard.loadingData".localized) }
 
-        // === חישוב HealthScore מקומי - מחכים לתוצאה לפני שממשיכים ===
+        // === Local HealthScore calculation - wait for result before continuing ===
         HealthKitManager.shared.fetchDailyHealthData(days: 90) { [weak self] dailyEntries in
             guard let self = self else { return }
 
             #if DEBUG
-            // Test user - לא לדרוס את הציון שכבר חושב ב-Onboarding
+            // Test user - don't overwrite the score already calculated in Onboarding
             if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email) {
                 print("🧪 [Dashboard.loadData] Test user - skipping score calculation to preserve mock score")
-                // לא קוראים ל-saveHealthScoreResult - משאירים את הציון שחושב ב-Onboarding
+                // Don't call saveHealthScoreResult - keep the score calculated in Onboarding
             } else {
                 let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
                 AnalysisCache.saveHealthScoreResult(healthResult)
 
-                // סנכרון הציון ללידרבורד
+                // Sync score to leaderboard
                 let score = healthResult.healthScoreInt
                 let tier = CarTierEngine.tierForScore(score)
-                // שימוש בשם הרכב מ-Gemini אם קיים במטמון
+                // Use car name from Gemini if available in cache
                 let cachedCarName = AnalysisCache.loadSelectedCar()?.name
                 print("🚗 [Dashboard.loadData] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
                 LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
@@ -1116,16 +1116,16 @@ class HealthDashboardViewController: UIViewController {
             let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
             AnalysisCache.saveHealthScoreResult(healthResult)
 
-            // סנכרון הציון ללידרבורד
+            // Sync score to leaderboard
             let score = healthResult.healthScoreInt
             let tier = CarTierEngine.tierForScore(score)
-            // שימוש בשם הרכב מ-Gemini אם קיים במטמון
+            // Use car name from Gemini if available in cache
             let cachedCarName = AnalysisCache.loadSelectedCar()?.name
             print("🚗 [Dashboard.loadData] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
             LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
             #endif
 
-            // ממשיכים לטעון את שאר הנתונים רק אחרי שהציון חושב
+            // Continue loading the rest of the data only after the score is calculated
             HealthKitManager.shared.fetchAllHealthData(for: self.selectedRange) { [weak self] data, err in
             guard let self = self else { return }
             if let err = err {
@@ -1144,7 +1144,7 @@ class HealthDashboardViewController: UIViewController {
                     self.chartBundle = bundle
                     if let b = bundle {
                         let score = self.updateReadinessAndMetrics(from: b)
-                        // שמירת סטטיסטיקות שבועיות + ציון לעמוד התובנות
+                        // Save weekly statistics + score for insights page
                         AnalysisCache.saveWeeklyStats(from: b, score: score)
                     }
                     self.endRefreshingIfNeeded()
@@ -1161,10 +1161,10 @@ class HealthDashboardViewController: UIViewController {
         refreshControl.endRefreshing()
     }
 
-    /// קובע מקור לניתוח: Firestore (משתמש מחובר), מטמון מקומי, או הרצת Gemini.
-    /// המערכת החדשה: אם נתוני הבריאות לא השתנו (hash זהה), לא קוראים ל-Gemini מחדש.
+    /// Determines analysis source: Firestore (logged-in user), local cache, or running Gemini.
+    /// The new system: if health data hasn't changed (same hash), don't call Gemini again.
     private func resolveAnalysisSource(forceAnalysis: Bool, loadId: Int, chartBundle: AIONChartDataBundle?) {
-        // יצירת hash מנתוני הבריאות הנוכחיים
+        // Create hash from current health data
         let currentHealthDataHash: String
         if let bundle = chartBundle {
             currentHealthDataHash = AnalysisCache.generateHealthDataHash(from: bundle)
@@ -1182,12 +1182,12 @@ class HealthDashboardViewController: UIViewController {
             self.hideLoading()
         }
 
-        // בדיקה אם צריך להריץ ניתוח חדש
-        // משתמשים ב-hasSignificantChange שדורש 3 ימים + 10% שינוי HRV
-        // זה מונע החלפת רכב תכופה מדי
+        // Check if a new analysis is needed
+        // Using hasSignificantChange which requires 3 days + 10% HRV change
+        // This prevents too-frequent car changes
         if !forceAnalysis {
             if let bundle = chartBundle {
-                // יש chartBundle - בודקים שינוי משמעותי (3 ימים + 10% HRV)
+                // Has chartBundle - check for significant change (3 days + 10% HRV)
                 if !AnalysisCache.hasSignificantChange(currentBundle: bundle) {
                     if let cached = AnalysisCache.loadLatest() {
                         finishWithCache(cached)
@@ -1195,7 +1195,7 @@ class HealthDashboardViewController: UIViewController {
                     }
                 }
             } else {
-                // אין chartBundle - בודקים רק hash (fallback)
+                // No chartBundle - check only hash (fallback)
                 if !AnalysisCache.shouldRunAnalysis(forceAnalysis: false, currentHealthDataHash: currentHealthDataHash) {
                     if let cached = AnalysisCache.loadLatest() {
                         finishWithCache(cached)
@@ -1205,7 +1205,7 @@ class HealthDashboardViewController: UIViewController {
             }
         }
 
-        // בדיקת Firestore למשתמש מחובר
+        // Check Firestore for logged-in user
         if Auth.auth().currentUser != nil && !forceAnalysis {
             AnalysisFirestoreSync.fetch(timeout: 2.5) { [weak self] result in
                 guard let self = self, self.loadId == loadId else { return }
@@ -1269,7 +1269,7 @@ class HealthDashboardViewController: UIViewController {
             NotificationCenter.default.post(name: HealthDashboardViewController.analysisDidCompleteNotification, object: nil)
             return
         }
-        // Gemini בוחר את הרכב בעצמו - לא מעבירים carName
+        // Gemini chooses the car by itself - not passing carName
         GeminiService.shared.analyzeHealthDataWithWeeklyComparison(data, currentWeek: current, previousWeek: previous, chartBundle: chartBundle) { [weak self] insights, recs, risks, err in
             DispatchQueue.main.async {
                 guard let self = self, self.loadId == loadId else { return }
@@ -1296,13 +1296,13 @@ class HealthDashboardViewController: UIViewController {
     }
 
     private func applyAnalysis(insights: String?, recs: [String]?, risks: [String]?, healthDataHash: String) {
-        // שמירת התשובה המקורית של Gemini בלבד, ללא הוספות
+        // Save only the original Gemini response, without additions
         let originalInsights = insights ?? ""
 
-        // שמירת התשובה המקורית בלבד
+        // Save only the original response
         insightsText = originalInsights
 
-        // שמירה במטמון עם ה-hash של נתוני הבריאות
+        // Save to cache with the health data hash
         AnalysisCache.save(insights: insightsText, healthDataHash: healthDataHash)
         AnalysisFirestoreSync.saveIfLoggedIn(insights: insightsText, recommendations: "")
 

@@ -2,7 +2,7 @@
 //  HeroScoreCardView.swift
 //  Health Reporter
 //
-//  כרטיס Hero ראשי – טבעת ציון אנימטיבית, תמונת רכב, 3 mini-KPIs.
+//  Main Hero card – animated score ring, car image, 3 mini-KPIs.
 //
 
 import UIKit
@@ -47,11 +47,11 @@ final class HeroScoreCardView: UIView {
     private var animStartTime: CFTimeInterval = 0
     private var targetScore: Int = 0
     private var currentAnimScore: Int = 0
-    private let animDuration: CFTimeInterval = 2.0  // משך איטי יותר לאפקט יפה
-    private var lastHapticValue: Int = -10  // לעקוב אחר הפטיק כל 10 נקודות
+    private let animDuration: CFTimeInterval = 2.0  // Slower duration for a nice effect
+    private var lastHapticValue: Int = -10  // Track haptic every 10 points
     private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
-    private var isAnimating: Bool = false  // מניעת הפעלה כפולה של אנימציה
-    private var lastAnimatedScore: Int = -1  // לזכור איזה ציון כבר הונפש
+    private var isAnimating: Bool = false  // Prevent double animation trigger
+    private var lastAnimatedScore: Int = -1  // Remember which score was already animated
 
     // Ring dimensions
     private let ringDiameter: CGFloat = 160
@@ -106,7 +106,7 @@ final class HeroScoreCardView: UIView {
         tierLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(tierLabel)
 
-        // Info button (i) - להסבר על הציון
+        // Info button (i) - for score explanation
         let cfg = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
         infoButton.setImage(UIImage(systemName: "info.circle", withConfiguration: cfg), for: .normal)
         infoButton.tintColor = AIONDesign.textTertiary
@@ -200,7 +200,7 @@ final class HeroScoreCardView: UIView {
         stack.addArrangedSubview(valueLabel)
         stack.addArrangedSubview(titleLabel)
 
-        // הוספת לחיצה
+        // Add tap gesture
         let tap = UITapGestureRecognizer(target: self, action: #selector(miniKPITapped(_:)))
         stack.addGestureRecognizer(tap)
 
@@ -327,7 +327,7 @@ final class HeroScoreCardView: UIView {
         hrvValueLabel.text = hrvText
         strainValueLabel.text = strainText
 
-        // אם אין ציון (0), מציגים placeholder
+        // If no score (0), show placeholder
         if score <= 0 {
             scoreLabel.text = "—"
             tierLabel.text = "dashboard.noData".localized
@@ -340,7 +340,7 @@ final class HeroScoreCardView: UIView {
         tierLabel.textColor = tier.color
 
         // Score + Ring animation
-        // לא מפעילים אנימציה אם כבר רצה אחת לאותו ציון או שכבר באמצע אנימציה
+        // Don't start animation if one already ran for the same score or already animating
         if animated && !isAnimating && lastAnimatedScore != score {
             animateScoreCounter(to: score)
             animateRing(to: CGFloat(score) / 100.0)
@@ -381,7 +381,7 @@ final class HeroScoreCardView: UIView {
     }
 
     func animateScoreCounter(to target: Int) {
-        // מניעת הפעלה כפולה
+        // Prevent double trigger
         guard !isAnimating else { return }
 
         isAnimating = true
@@ -397,7 +397,7 @@ final class HeroScoreCardView: UIView {
         displayLink?.add(to: .main, forMode: .common)
     }
 
-    /// איפוס מצב האנימציה (לקריאה מבחוץ לפני רענון)
+    /// Reset animation state (called externally before refresh)
     func resetAnimationState() {
         lastAnimatedScore = -1
     }
@@ -406,30 +406,30 @@ final class HeroScoreCardView: UIView {
         let elapsed = CACurrentMediaTime() - animStartTime
         let progress = min(1.0, elapsed / animDuration)
 
-        // עקומת easing דרמטית - מהירה בהתחלה, איטית מאוד לקראת הסוף
-        // שילוב של ease-out חזק עם האטה לוגריתמית
+        // Dramatic easing curve - fast at start, very slow towards the end
+        // Combination of strong ease-out with logarithmic deceleration
         let eased: Double
         if progress < 0.7 {
-            // 70% מהזמן מגיעים ל-90% מהערך (מהיר)
+            // 70% of time reaches 90% of value (fast)
             let normalizedProgress = progress / 0.7
             eased = 0.9 * (1 - pow(1 - normalizedProgress, 2))
         } else {
-            // 30% האחרונים לעשות את ה-10% הנותרים (איטי מאוד)
+            // Last 30% to do the remaining 10% (very slow)
             let normalizedProgress = (progress - 0.7) / 0.3
-            let slowEased = pow(normalizedProgress, 2.5)  // חזקה גבוהה = האטה חזקה
+            let slowEased = pow(normalizedProgress, 2.5)  // high exponent = strong deceleration
             eased = 0.9 + 0.1 * slowEased
         }
 
         let current = Int(round(Double(targetScore) * eased))
 
-        // הפטיק קל כל 10 נקודות (רק אם הציון גבוה מספיק)
+        // Light haptic every 10 points (only if score is high enough)
         if targetScore >= 20 && current >= lastHapticValue + 10 && current < targetScore {
             lastHapticValue = (current / 10) * 10
             lightHaptic.impactOccurred(intensity: 0.3)
         }
 
-        // אנימציית scale קלה בזמן הספירה
-        let scaleProgress = sin(progress * .pi)  // עולה ויורד
+        // Light scale animation during counting
+        let scaleProgress = sin(progress * .pi)  // rises and falls
         let scale = 1.0 + 0.02 * scaleProgress
         scoreLabel.transform = CGAffineTransform(scaleX: scale, y: scale)
 
@@ -442,12 +442,12 @@ final class HeroScoreCardView: UIView {
             isAnimating = false
             lastAnimatedScore = targetScore
 
-            // הפטיק חזק בסיום
+            // Strong haptic on completion
             let gen = UIImpactFeedbackGenerator(style: .medium)
             gen.prepare()
             gen.impactOccurred()
 
-            // Bounce גמר מרשים
+            // Impressive finish bounce
             UIView.animate(withDuration: 0.2, delay: 0, usingSpringWithDamping: 0.5, initialSpringVelocity: 0.8, options: []) {
                 self.scoreLabel.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
             } completion: { _ in

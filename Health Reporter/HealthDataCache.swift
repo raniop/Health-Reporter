@@ -1,24 +1,24 @@
 import Foundation
 
-/// Cache לשמירת נתוני בריאות שנטענו ב-Splash Screen
-/// כך ה-Dashboard יכול להשתמש בהם מיידית בלי לטעון שוב
+/// Cache for storing health data loaded in Splash Screen
+/// So the Dashboard can use them immediately without loading again
 class HealthDataCache {
     static let shared = HealthDataCache()
 
     private init() {}
 
-    /// נתוני הבריאות הכלליים
+    /// General health data
     var healthData: HealthDataModel?
 
-    /// נתוני הגרפים והניתוחים
+    /// Charts and analysis data
     var chartBundle: AIONChartDataBundle?
 
-    /// האם הנתונים נטענו בהצלחה
+    /// Whether data was loaded successfully
     var isLoaded: Bool {
         healthData != nil && chartBundle != nil
     }
 
-    /// ניקוי ה-cache (למשל בעת logout)
+    /// Clear the cache (e.g. on logout)
     func clear() {
         healthData = nil
         chartBundle = nil

@@ -2,8 +2,8 @@
 //  AnalysisCache.swift
 //  Health Reporter
 //
-//  מטמון נתוני ניתוח AION – שומר תוצאות ומונע קריאות מיותרות ל-Gemini
-//  אם לא השתנו נתוני הבריאות, לא קוראים ל-Gemini מחדש.
+//  AION analysis data cache – saves results and prevents unnecessary Gemini API calls.
+//  If health data hasn't changed, Gemini is not called again.
 //
 
 import Foundation
@@ -23,34 +23,34 @@ enum AnalysisCache {
     static let keyAvgHRV = "AION.WeeklyStats.AvgHRV"
     static let keyHealthScore = "AION.WeeklyStats.HealthScore"
 
-    // Selected Car Keys (שמירת הרכב שנבחר ע"י Gemini)
+    // Selected Car Keys (saving the car selected by Gemini)
     static let keyLastCarName = "AION.SelectedCar.Name"
     static let keyLastCarWikiName = "AION.SelectedCar.WikiName"
     static let keyLastCarExplanation = "AION.SelectedCar.Explanation"
 
-    // Pending Car Reveal Keys (כשרכב חדש ממתין לחשיפה)
+    // Pending Car Reveal Keys (when a new car is waiting to be revealed)
     static let keyPendingCarReveal = "AION.PendingCarReveal"
     static let keyNewCarName = "AION.NewCar.Name"
     static let keyNewCarWikiName = "AION.NewCar.WikiName"
     static let keyNewCarExplanation = "AION.NewCar.Explanation"
     static let keyPreviousCarName = "AION.PreviousCar.Name"
 
-    // Daily Activity Keys (לשיתוף עם ווידג'ט)
+    // Daily Activity Keys (for sharing with widget)
     static let keyDailySteps = "AION.DailyActivity.Steps"
     static let keyDailyCalories = "AION.DailyActivity.Calories"
     static let keyDailyExercise = "AION.DailyActivity.ExerciseMinutes"
     static let keyDailyStandHours = "AION.DailyActivity.StandHours"
     static let keyDailyRestingHR = "AION.DailyActivity.RestingHR"
 
-    // Yesterday Activity Keys (להתראת בוקר)
+    // Yesterday Activity Keys (for morning notification)
     static let keyYesterdaySteps = "AION.YesterdayActivity.Steps"
     static let keyYesterdayCalories = "AION.YesterdayActivity.Calories"
 
-    // Main Score (הציון הראשי היומי - מ-InsightsMetrics)
+    // Main Score (the daily main score - from InsightsMetrics)
     static let keyMainScore = "AION.MainScore"
     static let keyMainScoreStatus = "AION.MainScoreStatus"
 
-    // Score Breakdown Keys (לשליחה לשעון)
+    // Score Breakdown Keys (for sending to the watch)
     static let keyRecoveryScore = "AION.ScoreBreakdown.Recovery"
     static let keySleepScore = "AION.ScoreBreakdown.Sleep"
     static let keyNervousSystemScore = "AION.ScoreBreakdown.NervousSystem"
@@ -62,7 +62,7 @@ enum AnalysisCache {
     static let keyUserNotes = "AION.UserPersonalNotes"
 
     // MARK: - Cache Duration
-    /// מטמון תקף ל-24 שעות (לא נקרא ל-Gemini שוב גם אם יש שינוי)
+    /// Cache is valid for 24 hours (Gemini is not called again even if there is a change)
     static let maxAgeSeconds: TimeInterval = 24 * 3600
 
     // MARK: - Storage Directory
@@ -77,16 +77,16 @@ enum AnalysisCache {
 
     // MARK: - Save
 
-    /// שומר את תשובת Gemini + hash של נתוני הבריאות
+    /// Saves the Gemini response + hash of the health data
     static func save(insights: String, healthDataHash: String) {
         let now = Date()
 
-        // שמירה ב-UserDefaults
+        // Save to UserDefaults
         UserDefaults.standard.set(insights, forKey: keyInsights)
         UserDefaults.standard.set(now, forKey: keyLastDate)
         UserDefaults.standard.set(healthDataHash, forKey: keyHealthDataHash)
 
-        // שמירה בקובץ
+        // Save to file
         guard let url = fileURL else { return }
         let payload: [String: Any] = [
             "insights": insights,
@@ -97,7 +97,7 @@ enum AnalysisCache {
         try? data.write(to: url)
     }
 
-    /// שומר סטטיסטיקות שבועיות (נגזרות מ-chartBundle) + ציון הבריאות
+    /// Saves weekly statistics (derived from chartBundle) + health score
     static func saveWeeklyStats(from bundle: AIONChartDataBundle, score: Int? = nil) {
         // Calculate average sleep
         let sleepValues = bundle.sleep.points.compactMap { $0.totalHours }
@@ -120,20 +120,20 @@ enum AnalysisCache {
         UserDefaults.standard.set(avgStrain, forKey: keyAvgStrain)
         UserDefaults.standard.set(avgHRV, forKey: keyAvgHRV)
 
-        // שמירת הציון עצמו (לא חישוב מחדש ב-Insights)
+        // Save the score itself (no recalculation in Insights)
         if let s = score {
             UserDefaults.standard.set(s, forKey: keyHealthScore)
         }
     }
 
-    /// מחזיר את הסטטיסטיקות השבועיות השמורות
+    /// Returns the saved weekly statistics
     static func loadWeeklyStats() -> (sleepHours: Double, readiness: Double, strain: Double, hrv: Double)? {
         let sleep = UserDefaults.standard.double(forKey: keyAvgSleepHours)
         let readiness = UserDefaults.standard.double(forKey: keyAvgReadiness)
         let strain = UserDefaults.standard.double(forKey: keyAvgStrain)
         let hrv = UserDefaults.standard.double(forKey: keyAvgHRV)
 
-        // אם כל הערכים 0, כנראה אין נתונים
+        // If all values are 0, there is probably no data
         if sleep == 0 && readiness == 0 && strain == 0 && hrv == 0 {
             return nil
         }
@@ -141,49 +141,49 @@ enum AnalysisCache {
         return (sleep, readiness, strain, hrv)
     }
 
-    /// מחזיר את ציון הבריאות השמור (שחושב ב-Dashboard)
+    /// Returns the saved health score (calculated in Dashboard)
     static func loadHealthScore() -> Int? {
         let score = UserDefaults.standard.integer(forKey: keyHealthScore)
-        // אם 0, זה יכול להיות שלא נשמר או שבאמת 0
-        // אבל ציון 0 אמיתי לא צפוי, אז נחזיר nil
+        // If 0, it could mean it was never saved or it is actually 0
+        // But a real score of 0 is not expected, so we return nil
         return score > 0 ? score : nil
     }
 
-    /// שומר את ציון הבריאות (מחושב ע"י HealthScoreEngine)
+    /// Saves the health score (calculated by HealthScoreEngine)
     static func saveHealthScore(_ score: Int) {
         UserDefaults.standard.set(score, forKey: keyHealthScore)
         UserDefaults.standard.synchronize()
     }
 
-    // MARK: - Main Score (הציון הראשי היומי)
+    // MARK: - Main Score (the daily main score)
 
-    /// שומר את הציון הראשי היומי (מ-InsightsMetrics.mainScore) עם ה-status
+    /// Saves the daily main score (from InsightsMetrics.mainScore) with the status
     static func saveMainScore(_ score: Int, status: String? = nil) {
         UserDefaults.standard.set(score, forKey: keyMainScore)
         if let status = status {
             UserDefaults.standard.set(status, forKey: keyMainScoreStatus)
         } else {
-            // חישוב אוטומטי של ה-status מהציון
+            // Automatic calculation of the status from the score
             let level = RangeLevel.from(score: Double(score))
             let computedStatus = "score.description.\(level.rawValue)".localized
             UserDefaults.standard.set(computedStatus, forKey: keyMainScoreStatus)
         }
     }
 
-    /// טוען את הציון הראשי היומי
+    /// Loads the daily main score
     static func loadMainScore() -> Int? {
         let score = UserDefaults.standard.integer(forKey: keyMainScore)
         return score > 0 ? score : nil
     }
 
-    /// טוען את ה-status של הציון הראשי
+    /// Loads the status of the main score
     static func loadMainScoreStatus() -> String? {
         return UserDefaults.standard.string(forKey: keyMainScoreStatus)
     }
 
-    // MARK: - Score Breakdown (לשליחה לשעון)
+    // MARK: - Score Breakdown (for sending to the watch)
 
-    /// שומר את פירוט הציונים מ-DailyMetrics
+    /// Saves the score breakdown from DailyMetrics
     static func saveScoreBreakdown(
         recovery: Int?,
         sleep: Int?,
@@ -200,7 +200,7 @@ enum AnalysisCache {
         if let v = loadBalance { UserDefaults.standard.set(v, forKey: keyLoadBalanceScore) }
     }
 
-    /// טוען את פירוט הציונים
+    /// Loads the score breakdown
     static func loadScoreBreakdown() -> (recovery: Int?, sleep: Int?, nervousSystem: Int?, energy: Int?, activity: Int?, loadBalance: Int?) {
         let recovery = UserDefaults.standard.integer(forKey: keyRecoveryScore)
         let sleep = UserDefaults.standard.integer(forKey: keySleepScore)
@@ -219,15 +219,15 @@ enum AnalysisCache {
         )
     }
 
-    // MARK: - Health Score Result (עם Breakdown)
+    // MARK: - Health Score Result (with Breakdown)
 
     private static let keyHealthScoreResult = "AION.HealthScoreResult"
 
-    /// שומר את תוצאת HealthScoreEngine המלאה (כולל breakdown)
+    /// Saves the full HealthScoreEngine result (including breakdown)
     static func saveHealthScoreResult(_ result: HealthScoringResult) {
         UserDefaults.standard.set(result.healthScoreInt, forKey: keyHealthScore)
 
-        // שמירת הפירוט כ-JSON
+        // Save the breakdown as JSON
         if let data = try? JSONEncoder().encode(result) {
             UserDefaults.standard.set(data, forKey: keyHealthScoreResult)
         }
@@ -236,71 +236,52 @@ enum AnalysisCache {
         UserDefaults.standard.synchronize()
     }
 
-    /// טוען את תוצאת HealthScoreEngine המלאה
+    /// Loads the full HealthScoreEngine result
     static func loadHealthScoreResult() -> HealthScoringResult? {
         guard let data = UserDefaults.standard.data(forKey: keyHealthScoreResult) else { return nil }
         return try? JSONDecoder().decode(HealthScoringResult.self, from: data)
     }
 
-    /// מייצר הסבר קצר לציון (לתצוגה ב-Tooltip)
+    /// Generates a short explanation for the score (for display in Tooltip)
     static func generateScoreExplanation() -> String {
         guard let result = loadHealthScoreResult() else {
-            return "אין מספיק נתונים לחישוב"
+            return "Not enough data to calculate"
         }
 
         var parts: [String] = []
 
-        // הסבר כללי
-        parts.append("הציון מבוסס על שילוב של התאוששות, שינה, כושר, עומס אימונים ורמת פעילות ב־3 החודשים האחרונים, עם דגש על השבועיים האחרונים.")
+        // General explanation
+        parts.append("The score is based on a combination of recovery, sleep, fitness, training load, and activity level over the last 3 months, with emphasis on the last two weeks.")
         parts.append("")
-        parts.append("נתונים שלא נמדדו לא נכנסים לחישוב, ולכן לא \"מענישים\" על חוסר מדידה.")
+        parts.append("Unmeasured data is excluded from the calculation, so you're not penalized for missing measurements.")
         parts.append("")
 
-        // הוספת הדומיינים שנכללו בחישוב
-        parts.append("פירוט:")
+        // Add included domains
+        parts.append("Breakdown:")
         for domain in result.includedDomains {
             let scoreInt = Int(round(domain.domainScore))
             let weightPercent = Int(round(domain.normalizedWeight * 100))
 
-            let domainHebrew: String
-            switch domain.domainName {
-            case "Recovery": domainHebrew = "התאוששות"
-            case "Sleep": domainHebrew = "שינה"
-            case "Fitness": domainHebrew = "כושר"
-            case "Load Balance": domainHebrew = "איזון עומס"
-            case "Activity": domainHebrew = "פעילות"
-            default: domainHebrew = domain.domainName
-            }
-
-            parts.append("• \(domainHebrew): \(scoreInt) (\(weightPercent)%)")
+            parts.append("• \(domain.domainName): \(scoreInt) (\(weightPercent)%)")
         }
 
-        // הוספת הדומיינים שלא נכללו
+        // Add excluded domains
         if !result.excludedDomains.isEmpty {
-            let excludedHebrew = result.excludedDomains.map { domain -> String in
-                switch domain {
-                case "Recovery": return "התאוששות"
-                case "Sleep": return "שינה"
-                case "Fitness": return "כושר"
-                case "Load Balance": return "איזון עומס"
-                case "Activity": return "פעילות"
-                default: return domain
-                }
-            }.joined(separator: ", ")
+            let excludedNames = result.excludedDomains.joined(separator: ", ")
             parts.append("")
-            parts.append("לא נמדד: \(excludedHebrew)")
+            parts.append("Not measured: \(excludedNames)")
         }
 
-        // הוספת אמינות
+        // Add reliability
         parts.append("")
-        parts.append("ציון האמינות מציין כמה הנתונים שלך מלאים: \(result.reliabilityScoreInt)%")
+        parts.append("Reliability score indicates how complete your data is: \(result.reliabilityScoreInt)%")
 
         return parts.joined(separator: "\n")
     }
 
-    // MARK: - Daily Activity (לשיתוף עם ווידג'ט)
+    // MARK: - Daily Activity (for sharing with widget)
 
-    /// שומר נתוני פעילות יומית מה-Dashboard
+    /// Saves daily activity data from the Dashboard
     static func saveDailyActivity(steps: Int, calories: Int, exerciseMinutes: Int, standHours: Int, restingHR: Int?) {
         UserDefaults.standard.set(steps, forKey: keyDailySteps)
         UserDefaults.standard.set(calories, forKey: keyDailyCalories)
@@ -311,7 +292,7 @@ enum AnalysisCache {
         }
     }
 
-    /// טוען נתוני פעילות יומית
+    /// Loads daily activity data
     static func loadDailyActivity() -> (steps: Int, calories: Int, exerciseMinutes: Int, standHours: Int, restingHR: Int)? {
         let steps = UserDefaults.standard.integer(forKey: keyDailySteps)
         let calories = UserDefaults.standard.integer(forKey: keyDailyCalories)
@@ -327,28 +308,28 @@ enum AnalysisCache {
         return (steps, calories, exerciseMinutes, standHours, restingHR)
     }
 
-    /// שומר נתוני פעילות של אתמול (להתראת בוקר)
+    /// Saves yesterday's activity data (for morning notification)
     static func saveYesterdayActivity(steps: Int, calories: Int) {
         UserDefaults.standard.set(steps, forKey: keyYesterdaySteps)
         UserDefaults.standard.set(calories, forKey: keyYesterdayCalories)
     }
 
-    /// טוען נתוני פעילות של אתמול
+    /// Loads yesterday's activity data
     static func loadYesterdaySteps() -> Int? {
         let steps = UserDefaults.standard.integer(forKey: keyYesterdaySteps)
         return steps > 0 ? steps : nil
     }
 
-    // MARK: - Selected Car (שמירת הרכב מ-Gemini)
+    // MARK: - Selected Car (saving the car from Gemini)
 
-    /// שומר את הרכב שנבחר ע"י Gemini
+    /// Saves the car selected by Gemini
     static func saveSelectedCar(name: String, wikiName: String, explanation: String) {
         UserDefaults.standard.set(name, forKey: keyLastCarName)
         UserDefaults.standard.set(wikiName, forKey: keyLastCarWikiName)
         UserDefaults.standard.set(explanation, forKey: keyLastCarExplanation)
     }
 
-    /// טוען את הרכב השמור
+    /// Loads the saved car
     static func loadSelectedCar() -> (name: String, wikiName: String, explanation: String)? {
         guard let name = UserDefaults.standard.string(forKey: keyLastCarName),
               !name.isEmpty else { return nil }
@@ -359,25 +340,25 @@ enum AnalysisCache {
 
     // MARK: - Car Name Normalization
 
-    /// מנרמל שם רכב להשוואה - מסיר רווחים, הופך ל-lowercase, מסיר סוגריים
-    /// זה מונע false positives כשהרכב זהה אבל השם שונה במעט (רווחים, case, סוגריים)
+    /// Normalizes a car name for comparison - trims whitespace, converts to lowercase, removes parentheses
+    /// This prevents false positives when the car is the same but the name differs slightly (spaces, case, parentheses)
     private static func normalizeCarName(_ name: String) -> String {
         var normalized = name
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
 
-        // הסרת תוכן בסוגריים (לדוגמה: "Porsche Taycan (2024)" → "porsche taycan")
+        // Remove content in parentheses (e.g.: "Porsche Taycan (2024)" -> "porsche taycan")
         if let parenIndex = normalized.firstIndex(of: "(") {
             normalized = String(normalized[..<parenIndex])
                 .trimmingCharacters(in: .whitespaces)
         }
 
-        // הסרת תווים מיוחדים
+        // Remove special characters
         normalized = normalized
             .replacingOccurrences(of: "-", with: " ")
             .replacingOccurrences(of: "_", with: " ")
 
-        // הסרת רווחים כפולים
+        // Remove double spaces
         while normalized.contains("  ") {
             normalized = normalized.replacingOccurrences(of: "  ", with: " ")
         }
@@ -385,34 +366,34 @@ enum AnalysisCache {
         return normalized
     }
 
-    // MARK: - Pending Car Reveal (רכב חדש ממתין לחשיפה)
+    // MARK: - Pending Car Reveal (new car waiting to be revealed)
 
-    /// בודק אם הרכב השתנה ושומר כ-pending reveal אם כן
-    /// משתמש בהשוואה מנורמלת + wikiName כדי למנוע false positives
+    /// Checks if the car has changed and saves as pending reveal if so
+    /// Uses normalized comparison + wikiName to prevent false positives
     static func checkAndSetCarChange(newCarName: String, newWikiName: String, newExplanation: String) {
-        // אם כבר יש pending reveal לאותו רכב - לא לעשות כלום
+        // If there is already a pending reveal for the same car - do nothing
         if hasPendingCarReveal() {
             if let pending = getPendingCar() {
-                // השוואה מנורמלת
+                // Normalized comparison
                 if normalizeCarName(pending.name) == normalizeCarName(newCarName) {
                     return
                 }
             }
         }
 
-        // טוען את הרכב הנוכחי (לא את ה-pending)
+        // Load the current car (not the pending one)
         if let currentCar = loadSelectedCar() {
-            // השוואה מנורמלת של השמות
+            // Normalized comparison of names
             let normalizedCurrent = normalizeCarName(currentCar.name)
             let normalizedNew = normalizeCarName(newCarName)
 
-            // בדיקה נוספת: אם ה-wikiName זהה - זה אותו רכב!
-            // wikiName תמיד באנגלית ולא מושפע משינוי שפה
+            // Additional check: if the wikiName is identical - it's the same car!
+            // wikiName is always in English and is not affected by language changes
             let wikiMatch = !currentCar.wikiName.isEmpty &&
                             !newWikiName.isEmpty &&
                             normalizeCarName(currentCar.wikiName) == normalizeCarName(newWikiName)
 
-            // רק אם השמות שונים וגם ה-wikiName שונה - אז זה באמת רכב חדש
+            // Only if the names are different AND the wikiName is different - then it's truly a new car
             if normalizedCurrent != normalizedNew && !wikiMatch {
                 UserDefaults.standard.set(true, forKey: keyPendingCarReveal)
                 UserDefaults.standard.set(newCarName, forKey: keyNewCarName)
@@ -422,24 +403,24 @@ enum AnalysisCache {
                 return
             }
         }
-        // אם אין שינוי או אין רכב קודם - פשוט שומר
+        // If there is no change or no previous car - just save
         saveSelectedCar(name: newCarName, wikiName: newWikiName, explanation: newExplanation)
     }
 
-    /// בודק אם יש רכב חדש ממתין לחשיפה
+    /// Checks if there is a new car waiting to be revealed
     static func hasPendingCarReveal() -> Bool {
         UserDefaults.standard.bool(forKey: keyPendingCarReveal)
     }
 
-    /// מחזיר את פרטי הרכב החדש הממתין לחשיפה
+    /// Returns the details of the new car waiting to be revealed
     static func getPendingCar() -> (name: String, wikiName: String, explanation: String, previousName: String)? {
         guard hasPendingCarReveal(),
               let name = UserDefaults.standard.string(forKey: keyNewCarName) else { return nil }
         let wikiName = UserDefaults.standard.string(forKey: keyNewCarWikiName) ?? ""
         let explanation = UserDefaults.standard.string(forKey: keyNewCarExplanation) ?? ""
 
-        // עדיפות 1: הרכב מהשאילתא הקודמת בהיסטוריה (הכי מדויק)
-        // עדיפות 2: הרכב השמור ב-keyPreviousCarName (fallback)
+        // Priority 1: the car from the previous query in history (most accurate)
+        // Priority 2: the car saved in keyPreviousCarName (fallback)
         let previousName: String
         if let historyPrevious = GeminiDebugStore.getPreviousCarFromHistory(), !historyPrevious.isEmpty {
             previousName = historyPrevious
@@ -450,13 +431,13 @@ enum AnalysisCache {
         return (name, wikiName, explanation, previousName)
     }
 
-    /// מנקה את ה-pending reveal ושומר את הרכב החדש כנוכחי
+    /// Clears the pending reveal and saves the new car as the current one
     static func clearPendingCarReveal() {
-        // שומר את הרכב החדש כרכב הנוכחי
+        // Save the new car as the current car
         if let pending = getPendingCar() {
             saveSelectedCar(name: pending.name, wikiName: pending.wikiName, explanation: pending.explanation)
         }
-        // מנקה את ה-pending
+        // Clear the pending
         UserDefaults.standard.removeObject(forKey: keyPendingCarReveal)
         UserDefaults.standard.removeObject(forKey: keyNewCarName)
         UserDefaults.standard.removeObject(forKey: keyNewCarWikiName)
@@ -464,26 +445,26 @@ enum AnalysisCache {
         UserDefaults.standard.removeObject(forKey: keyPreviousCarName)
     }
 
-    /// בודק אם יש שינוי משמעותי בנתונים שמצדיק קריאה חדשה ל-Gemini
-    /// שינוי משמעותי = שני התנאים יחד:
-    /// 1. עברו לפחות 3 ימים מהניתוח האחרון
-    /// 2. שינוי ב-HRV של לפחות 10% (לטובה או לרעה)
+    /// Checks if there is a significant change in the data that justifies a new Gemini call
+    /// Significant change = both conditions together:
+    /// 1. At least 3 days have passed since the last analysis
+    /// 2. HRV change of at least 10% (for better or worse)
     static func hasSignificantChange(currentBundle: AIONChartDataBundle) -> Bool {
         guard let stats = loadWeeklyStats() else {
-            return true // אין נתונים קודמים - צריך ניתוח ראשון
+            return true // No previous data - need first analysis
         }
 
-        // בדיקת זמן - האם עברו לפחות 3 ימים?
+        // Time check - have at least 3 days passed?
         guard let lastDate = lastUpdateDate() else {
             return true
         }
 
         let daysSince = Date().timeIntervalSince(lastDate) / (24 * 3600)
         guard daysSince >= 3 else {
-            return false // לא עברו 3 ימים - לא משנים
+            return false // 3 days have not passed - no change
         }
 
-        // חישוב שינוי ב-HRV
+        // Calculate HRV change
         let hrvValues = currentBundle.hrvTrend.points.map(\.value)
         let currentHRV = hrvValues.isEmpty ? 0 : hrvValues.reduce(0, +) / Double(hrvValues.count)
 
@@ -494,7 +475,7 @@ enum AnalysisCache {
 
     // MARK: - Load
 
-    /// טוען את המטמון אם תקף (תוך 24 שעות)
+    /// Loads the cache if valid (within 24 hours)
     static func load() -> String? {
         if let fromUD = loadFromUserDefaults(), fromUD.isValid {
             return fromUD.insights
@@ -505,38 +486,38 @@ enum AnalysisCache {
         return nil
     }
 
-    /// טוען את המטמון האחרון גם אם עברו 24 שעות (לצפייה בעמוד תובנות)
+    /// Loads the latest cache even if 24 hours have passed (for viewing the insights page)
     static func loadLatest() -> String? {
         if let fromUD = loadFromUserDefaults() { return fromUD.insights }
         if let fromFile = loadFromFile() { return fromFile.insights }
         return nil
     }
 
-    /// בודק אם צריך להריץ ניתוח חדש
-    /// מחזיר true אם:
+    /// Checks if a new analysis needs to be run
+    /// Returns true if:
     /// 1. forceAnalysis = true
-    /// 2. אין מטמון
-    /// 3. ה-hash של נתוני הבריאות השתנה
-    /// הערה: אם ה-hash זהה (הנתונים לא השתנו), לא קוראים ל-Gemini גם אם עבר זמן רב!
-    /// זה מונע שינוי רכב כשהנתונים לא השתנו.
+    /// 2. There is no cache
+    /// 3. The health data hash has changed
+    /// Note: If the hash is identical (data hasn't changed), Gemini is not called even if a long time has passed!
+    /// This prevents car changes when the data hasn't changed.
     static func shouldRunAnalysis(forceAnalysis: Bool, currentHealthDataHash: String) -> Bool {
         if forceAnalysis {
             return true
         }
 
-        // בדיקה מ-UserDefaults - קודם כל בודקים hash!
+        // Check from UserDefaults - first check the hash!
         if let cached = loadFromUserDefaults() {
-            // אם ה-hash זהה - הנתונים לא השתנו - לא צריך לקרוא ל-Gemini!
+            // If the hash is identical - data hasn't changed - no need to call Gemini!
             if cached.healthDataHash == currentHealthDataHash {
                 return false
             }
-            // רק אם ה-hash שונה - צריך ניתוח חדש
+            // Only if the hash is different - need a new analysis
             return true
         }
 
-        // בדיקה מקובץ
+        // Check from file
         if let cached = loadFromFile() {
-            // אם ה-hash זהה - לא צריך לקרוא ל-Gemini!
+            // If the hash is identical - no need to call Gemini!
             if cached.healthDataHash == currentHealthDataHash {
                 return false
             }
@@ -546,7 +527,7 @@ enum AnalysisCache {
         return true
     }
 
-    /// תאריך עדכון אחרון
+    /// Last update date
     static func lastUpdateDate() -> Date? {
         if let last = UserDefaults.standard.object(forKey: keyLastDate) as? Date { return last }
         guard let url = fileURL, let data = try? Data(contentsOf: url),
@@ -557,7 +538,7 @@ enum AnalysisCache {
         return d
     }
 
-    /// מנקה את כל הנתונים השמורים במטמון
+    /// Clears all cached data
     static func clear() {
         UserDefaults.standard.removeObject(forKey: keyInsights)
         UserDefaults.standard.removeObject(forKey: keyLastDate)
@@ -617,7 +598,7 @@ enum AnalysisCache {
 
         let isValid = Date().timeIntervalSince(last) < maxAgeSeconds
 
-        // סנכרון עם UserDefaults
+        // Sync with UserDefaults
         UserDefaults.standard.set(insights, forKey: keyInsights)
         UserDefaults.standard.set(last, forKey: keyLastDate)
         UserDefaults.standard.set(hash, forKey: keyHealthDataHash)
@@ -630,28 +611,28 @@ enum AnalysisCache {
 
 extension AnalysisCache {
 
-    /// יוצר hash מנתוני הבריאות - אם ה-hash זהה, אין סיבה לקרוא ל-Gemini שוב
-    /// משתמש בתאריך (יום) במקום timestamp מדויק כדי למנוע שינויים מיותרים
+    /// Generates a hash from the health data - if the hash is identical, there is no reason to call Gemini again
+    /// Uses date (day) instead of exact timestamp to prevent unnecessary changes
     static func generateHealthDataHash(from bundle: AIONChartDataBundle) -> String {
         var components: [String] = []
 
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
 
-        // Readiness data - מעוגל ליום
+        // Readiness data - rounded to day
         let readinessValues = bundle.readiness.points.map {
             "\(dateFormatter.string(from: $0.date)):\(Int($0.recovery)):\(String(format: "%.1f", $0.strain))"
         }
         components.append(contentsOf: readinessValues)
 
-        // Sleep data - מעוגל לשעות
+        // Sleep data - rounded to hours
         let sleepValues = bundle.sleep.points.compactMap { point -> String? in
             guard let hours = point.totalHours else { return nil }
             return "\(dateFormatter.string(from: point.date)):\(String(format: "%.1f", hours))"
         }
         components.append(contentsOf: sleepValues)
 
-        // HRV data - ממוצע יומי מעוגל
+        // HRV data - rounded daily average
         let hrvByDay = Dictionary(grouping: bundle.hrvTrend.points) { dateFormatter.string(from: $0.date) }
         let hrvValues = hrvByDay.map { day, points in
             let avg = points.map(\.value).reduce(0, +) / Double(points.count)
@@ -659,7 +640,7 @@ extension AnalysisCache {
         }.sorted()
         components.append(contentsOf: hrvValues)
 
-        // RHR data - ממוצע יומי מעוגל
+        // RHR data - rounded daily average
         let rhrByDay = Dictionary(grouping: bundle.rhrTrend.points) { dateFormatter.string(from: $0.date) }
         let rhrValues = rhrByDay.map { day, points in
             let avg = points.map(\.value).reduce(0, +) / Double(points.count)
@@ -667,7 +648,7 @@ extension AnalysisCache {
         }.sorted()
         components.append(contentsOf: rhrValues)
 
-        // Steps data - סכום יומי
+        // Steps data - daily total
         let stepsByDay = Dictionary(grouping: bundle.steps.points) { dateFormatter.string(from: $0.date) }
         let stepsValues = stepsByDay.map { day, points in
             let total = points.map(\.steps).reduce(0, +)
@@ -675,7 +656,7 @@ extension AnalysisCache {
         }.sorted()
         components.append(contentsOf: stepsValues)
 
-        // Active energy - סכום יומי מעוגל
+        // Active energy - rounded daily total
         let energyByDay = Dictionary(grouping: bundle.glucoseEnergy.points) { dateFormatter.string(from: $0.date) }
         let energyValues = energyByDay.compactMap { day, points -> String? in
             let total = points.compactMap(\.activeEnergy).reduce(0, +)
@@ -684,18 +665,18 @@ extension AnalysisCache {
         }.sorted()
         components.append(contentsOf: energyValues)
 
-        // שילוב הערות אישיות ב-hash כדי לאלץ ניתוח מחדש כשההערות משתנות
+        // Include personal notes in hash to force re-analysis when notes change
         if let notes = loadUserNotes(), !notes.isEmpty {
             components.append("notes:\(notes)")
         }
 
-        // יצירת string אחד וה-hash שלו
+        // Create a single string and its hash
         let combined = components.joined(separator: "|")
         let hash = SHA256.hash(data: Data(combined.utf8))
         return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
 
-    /// יוצר hash מנתוני HealthDataModel (פשוט יותר)
+    /// Generates a hash from HealthDataModel data (simpler)
     static func generateHealthDataHash(from model: HealthDataModel) -> String {
         var components: [String] = []
 
@@ -707,7 +688,7 @@ extension AnalysisCache {
         if let vo2 = model.vo2Max { components.append("vo2:\(vo2)") }
         if let bmi = model.bodyMassIndex { components.append("bmi:\(bmi)") }
 
-        // שילוב הערות אישיות ב-hash כדי לאלץ ניתוח מחדש כשההערות משתנות
+        // Include personal notes in hash to force re-analysis when notes change
         if let notes = loadUserNotes(), !notes.isEmpty {
             components.append("notes:\(notes)")
         }
@@ -719,7 +700,7 @@ extension AnalysisCache {
 
     // MARK: - User Personal Notes
 
-    /// שמירת הערות אישיות שיצורפו לניתוח Gemini
+    /// Saves personal notes that will be attached to the Gemini analysis
     static func saveUserNotes(_ notes: String) {
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
@@ -729,12 +710,12 @@ extension AnalysisCache {
         }
     }
 
-    /// טעינת הערות אישיות
+    /// Loads personal notes
     static func loadUserNotes() -> String? {
         return UserDefaults.standard.string(forKey: keyUserNotes)
     }
 
-    /// מחיקת הערות אישיות
+    /// Deletes personal notes
     static func clearUserNotes() {
         UserDefaults.standard.removeObject(forKey: keyUserNotes)
     }

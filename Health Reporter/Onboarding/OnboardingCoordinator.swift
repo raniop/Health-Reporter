@@ -2,7 +2,7 @@
 //  OnboardingCoordinator.swift
 //  Health Reporter
 //
-//  מנהל את הניתוח ברקע במהלך ה-Onboarding
+//  Manages background analysis during Onboarding
 //
 
 import Foundation
@@ -53,7 +53,7 @@ final class OnboardingCoordinator {
 
     // MARK: - Public API
 
-    /// מתחיל ניתוח ברקע אחרי שהמשתמש אישר HealthKit
+    /// Starts background analysis after the user approved HealthKit
     func startBackgroundAnalysis() {
         guard analysisState == .idle else {
             print("⚠️ [Onboarding] Analysis already running, state: \(analysisState)")
@@ -66,17 +66,17 @@ final class OnboardingCoordinator {
         }
     }
 
-    /// בודק אם הניתוח כבר הסתיים
+    /// Checks if the analysis has already completed
     var isAnalysisComplete: Bool {
         return analysisState == .completed
     }
 
-    /// מסמן ש-HealthKit אושר (גם אם דילגו - יקרא עם false)
+    /// Marks that HealthKit was approved (even if skipped - called with false)
     func setHealthKitGranted(_ granted: Bool) {
         healthKitGranted = granted
     }
 
-    /// מאפס את ה-coordinator למצב התחלתי
+    /// Resets the coordinator to initial state
     func reset() {
         analysisTask?.cancel()
         analysisTask = nil
@@ -97,8 +97,8 @@ final class OnboardingCoordinator {
             return
         }
 
-        // אם ההרשאה כבר ניתנה - ממשיכים
-        // אחרת מבקשים שוב (למקרה שדילגו על המסך אבל עכשיו רוצים)
+        // If permission already granted - continue
+        // Otherwise request again (in case they skipped the screen but now want to)
         let authSuccess: Bool
         if healthKitGranted {
             authSuccess = true
@@ -124,17 +124,17 @@ final class OnboardingCoordinator {
         postProgress(step: "onboarding.progress.syncing".localized, progress: 0.3)
 
         #if DEBUG
-        // DEBUG: בדיקה מה המצב
+        // DEBUG: Check current state
         let currentEmail = Auth.auth().currentUser?.email
         let isTestUser = DebugTestHelper.isTestUser(email: currentEmail)
         let hasMockData = HealthDataCache.shared.healthData != nil
         print("🧪 [Onboarding] DEBUG: email=\(currentEmail ?? "nil"), isTestUser=\(isTestUser), hasMockData=\(hasMockData)")
 
-        // אם זה יוזר טסט ויש נתונים מדומים ב-cache - משתמשים בהם
+        // If this is a test user and there's mock data in cache - use it
         if isTestUser, let mockData = HealthDataCache.shared.healthData {
             print("🧪 [Onboarding] Test user - using mock health data from cache")
             print("🧪 [Onboarding] Mock data: steps=\(mockData.steps ?? 0), hrv=\(mockData.heartRateVariability ?? 0)")
-            // ממשיכים עם הנתונים המדומים
+            // Continue with mock data
             await fetchChartDataAndAnalyze(healthData: mockData)
             return
         }
@@ -257,7 +257,7 @@ final class OnboardingCoordinator {
                     AnalysisFirestoreSync.saveIfLoggedIn(insights: insights, recommendations: "")
                     print("✅ [Onboarding] Gemini analysis saved to cache")
 
-                    // שמירת הרכב ב-cache כדי למנוע reveal כפול ב-Insights
+                    // Save car to cache to prevent duplicate reveal in Insights
                     let parsed = CarAnalysisParser.parse(insights)
                     let geminiCar = parsed.carModel.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !geminiCar.isEmpty && geminiCar.count > 3 && geminiCar.count < 40 {
@@ -291,7 +291,7 @@ final class OnboardingCoordinator {
     // MARK: - Test User Support
 
     #if DEBUG
-    /// פונקציה מיוחדת ליוזר טסט - ממשיכה עם נתוני בריאות מדומים ושולחת ל-Gemini
+    /// Special function for test user - continues with mock health data and sends to Gemini
     private func fetchChartDataAndAnalyze(healthData: HealthDataModel) async {
         print("🧪 [Onboarding] Test user flow - running Gemini analysis with mock data")
 
@@ -321,7 +321,7 @@ final class OnboardingCoordinator {
         print("✅ [Onboarding] Test user analysis completed - Gemini received mock health data")
     }
 
-    /// פונקציה מיוחדת ל-Test User - לא קוראת ל-HealthKit
+    /// Special function for Test User - does not call HealthKit
     private func runTestUserGeminiAnalysis(healthData: HealthDataModel, dailyEntries: [RawDailyHealthEntry]) async {
         let calendar = Calendar.current
         let now = Date()
@@ -363,7 +363,7 @@ final class OnboardingCoordinator {
                     AnalysisFirestoreSync.saveIfLoggedIn(insights: insights, recommendations: "")
                     print("✅ [Onboarding] Gemini analysis saved to cache")
 
-                    // שמירת הרכב ב-cache
+                    // Save car to cache
                     let parsed = CarAnalysisParser.parse(insights)
                     let geminiCar = parsed.carModel.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !geminiCar.isEmpty && geminiCar.count > 3 && geminiCar.count < 40 {
@@ -395,7 +395,7 @@ final class OnboardingCoordinator {
         LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: carName)
     }
 
-    /// יוצר mock weekly snapshots מנתוני היומיים המדומים
+    /// Creates mock weekly snapshots from mock daily entries
     private func createMockWeeklySnapshots(from entries: [RawDailyHealthEntry], curStart: Date, curEnd: Date, prevStart: Date, prevEnd: Date) -> (WeeklyHealthSnapshot?, WeeklyHealthSnapshot?) {
         // Filter entries for current week
         let currentWeekEntries = entries.filter { entry in
@@ -441,16 +441,16 @@ final class OnboardingCoordinator {
         return snapshot
     }
 
-    /// יוצר נתוני יומיים מדומים מה-HealthDataModel המדומה
+    /// Creates mock daily entries from the mock HealthDataModel
     private func createMockDailyEntries(from healthData: HealthDataModel) -> [RawDailyHealthEntry] {
         var entries: [RawDailyHealthEntry] = []
         let calendar = Calendar.current
 
-        // יוצר 90 ימים של נתונים מדומים מבוססים על הנתונים שהכנסנו
+        // Creates 90 days of mock data based on the data we injected
         for dayOffset in 0..<90 {
             guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: Date()) else { continue }
 
-            // מוסיף קצת וריאציה אקראית לנתונים
+            // Adds some random variation to the data
             let variation = Double.random(in: 0.8...1.2)
 
             var entry = RawDailyHealthEntry(date: date)

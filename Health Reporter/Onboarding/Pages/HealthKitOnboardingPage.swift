@@ -2,7 +2,7 @@
 //  HealthKitOnboardingPage.swift
 //  Health Reporter
 //
-//  מסך בקשת הרשאה ל-HealthKit - מתחיל ניתוח ברקע!
+//  HealthKit permission request screen - starts background analysis!
 //
 
 import UIKit
@@ -227,7 +227,7 @@ final class HealthKitOnboardingPage: UIViewController {
     }
 
     @objc private func skipTapped() {
-        // מסמנים שלא אושר HealthKit
+        // Mark that HealthKit was not approved
         OnboardingCoordinator.shared.setHealthKitGranted(false)
         delegate?.onboardingDidRequestNext()
     }

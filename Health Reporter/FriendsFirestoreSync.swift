@@ -2,12 +2,13 @@
 //  FriendsFirestoreSync.swift
 //  Health Reporter
 //
-//  ניהול חברים ובקשות חברות ב-Firestore.
+//  Managing friends and friend requests in Firestore.
 //
 
 import Foundation
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseMessaging
 
 enum FriendsFirestoreSync {
 
@@ -500,6 +501,23 @@ enum FriendsFirestoreSync {
 
     // MARK: - FCM Token Management
 
+    /// Fetches the current FCM token and saves it to Firestore.
+    /// Call this after login and on each app launch to ensure the token is always fresh.
+    static func refreshAndSaveFCMToken() {
+        Messaging.messaging().token { token, error in
+            if let error = error {
+                print("[FCM] Failed to fetch token: \(error)")
+                return
+            }
+            guard let token = token else {
+                print("[FCM] Token is nil")
+                return
+            }
+            print("[FCM] Refreshed token: \(token)")
+            saveFCMToken(token)
+        }
+    }
+
     /// Saves the FCM token to Firestore for push notifications
     static func saveFCMToken(_ token: String, completion: ((Error?) -> Void)? = nil) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
@@ -508,9 +526,11 @@ enum FriendsFirestoreSync {
             return
         }
 
+        let lang = LocalizationManager.shared.currentLanguage.rawValue
         db.collection(usersCollection).document(currentUid).setData([
             "fcmToken": token,
-            "fcmTokenUpdatedAt": FieldValue.serverTimestamp()
+            "fcmTokenUpdatedAt": FieldValue.serverTimestamp(),
+            "language": lang
         ], merge: true) { error in
             DispatchQueue.main.async { completion?(error) }
         }

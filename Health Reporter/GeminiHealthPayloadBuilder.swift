@@ -2,13 +2,13 @@
 //  GeminiHealthPayloadBuilder.swift
 //  Health Reporter
 //
-//  Builder לעיבוד נתוני בריאות לפני שליחה ל-Gemini.
-//  מטפל בערכים חסרים, outliers, וחישוב coverage.
+//  Builder for processing health data before sending to Gemini.
+//  Handles missing values, outliers, and coverage calculation.
 //
 
 import Foundation
 
-// MARK: - Daily Payload (14 ימים אחרונים)
+// MARK: - Daily Payload (last 14 days)
 
 struct GeminiDayPayload: Codable {
     let date: String
@@ -28,10 +28,10 @@ struct GeminiDayPayload: Codable {
     let outlierFields: [String]
 }
 
-// MARK: - Weekly Payload (13 שבועות)
+// MARK: - Weekly Payload (13 weeks)
 
 struct GeminiWeekPayload: Codable {
-    let weekNumber: Int  // 1 = שבוע אחרון, 13 = לפני 3 חודשים
+    let weekNumber: Int  // 1 = last week, 13 = 3 months ago
     let startDate: String
     let endDate: String
     let avgSleepHours: Double?
@@ -45,7 +45,7 @@ struct GeminiWeekPayload: Codable {
     let avgReadinessScore: Double?
     let avgVO2max: Double?
     let workoutCount: Int?
-    let validDaysCount: Int  // כמה ימים עם נתונים בשבוע
+    let validDaysCount: Int  // how many days with data in the week
 }
 
 // MARK: - Main Payload
@@ -54,10 +54,10 @@ struct GeminiHealthPayload: Codable {
     let dateRange: DateRangeInfo
     let units: [String: String]
 
-    // 13 שבועות למגמות
+    // 13 weeks for trends
     let weeklySummary: [GeminiWeekPayload]
 
-    // 14 ימים למצב נוכחי
+    // 14 days for current state
     let dailyLast14: [GeminiDayPayload]
 
     // Metadata
@@ -103,7 +103,7 @@ struct RawDailyHealthEntry {
 
 final class GeminiHealthPayloadBuilder {
 
-    // MARK: - טווחים סבירים (Outlier detection)
+    // MARK: - Reasonable Ranges (Outlier detection)
 
     private let ranges: [String: ClosedRange<Double>] = [
         "sleepHours": 2.0...14.0,
@@ -131,7 +131,7 @@ final class GeminiHealthPayloadBuilder {
 
     // MARK: - Normalize Missing Values
 
-    /// המרה: 0/nil/NaN → nil (כלומר "אין מדידה")
+    /// Convert: 0/nil/NaN → nil (meaning "no measurement")
     private func normalizeMissing(_ value: Double?) -> Double? {
         guard let v = value else { return nil }
         if v == 0 { return nil }
@@ -452,7 +452,7 @@ final class GeminiHealthPayloadBuilder {
             } else {
                 consecutiveMissing += 1
                 if consecutiveMissing == 5 {
-                    flags.append("DATA_GAP_WARNING: יותר מ-5 ימים רצופים ללא נתונים")
+                    flags.append("DATA_GAP_WARNING: More than 5 consecutive days without data")
                 }
             }
         }
@@ -460,7 +460,7 @@ final class GeminiHealthPayloadBuilder {
         // Check for insufficient data metrics
         for (metric, count) in coverage {
             if count < 5 {
-                flags.append("INSUFFICIENT_DATA: \(metric) (\(count)/90 ימים)")
+                flags.append("INSUFFICIENT_DATA: \(metric) (\(count)/90 days)")
             }
         }
 
@@ -476,7 +476,7 @@ final class GeminiHealthPayloadBuilder {
                 let change = abs(currHRV - prevHRV) / prevHRV
                 if change > 0.4 {
                     let dateStr = dateFormatter.string(from: curr.date)
-                    flags.append("POTENTIAL_SENSOR_ERROR: HRV שינוי של \(Int(change * 100))% ב-\(dateStr)")
+                    flags.append("POTENTIAL_SENSOR_ERROR: HRV change of \(Int(change * 100))% on \(dateStr)")
                 }
             }
 
@@ -487,7 +487,7 @@ final class GeminiHealthPayloadBuilder {
                 let change = abs(currRHR - prevRHR) / prevRHR
                 if change > 0.3 {
                     let dateStr = dateFormatter.string(from: curr.date)
-                    flags.append("POTENTIAL_SENSOR_ERROR: RHR שינוי של \(Int(change * 100))% ב-\(dateStr)")
+                    flags.append("POTENTIAL_SENSOR_ERROR: RHR change of \(Int(change * 100))% on \(dateStr)")
                 }
             }
         }

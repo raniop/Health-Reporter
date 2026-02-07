@@ -2,7 +2,7 @@
 //  FriendModels.swift
 //  Health Reporter
 //
-//  מודלים לניהול עוקבים, בקשות מעקב ולידרבורד.
+//  Models for managing followers, follow requests and leaderboard.
 //
 
 import Foundation
@@ -19,6 +19,7 @@ struct FollowRelation: Codable {
     var healthScore: Int?
     var carTierIndex: Int?
     var carTierName: String?
+    var lastUpdated: Date?
 }
 
 /// Backward compatibility alias

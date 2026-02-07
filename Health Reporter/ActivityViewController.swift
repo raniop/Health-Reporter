@@ -2,7 +2,7 @@
 //  ActivityViewController.swift
 //  Health Reporter
 //
-//  עמוד פעילות – רק מדדים רלוונטיים, גרפים, עיצוב Pro Lab. נבנה מחדש מאפס.
+//  Activity page – only relevant metrics, graphs, Pro Lab design. Built from scratch.
 //
 
 import UIKit

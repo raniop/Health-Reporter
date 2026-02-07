@@ -2,7 +2,7 @@
 //  InsightsViewController.swift
 //  Health Reporter
 //
-//  מציג את מלוא התובנות – ללא סינון – RTL, קריא.
+//  Displays all insights – unfiltered – RTL, readable.
 //
 
 import UIKit
@@ -132,7 +132,7 @@ class InsightsViewController: UIViewController {
         contentView = full
     }
 
-    /// מסיר **, ## ומקפים בתחילת שורות – מחליף - ב־•.
+    /// Removes **, ## and dashes at the start of lines – replaces - with bullet.
     static func stripMarkdownForDisplay(_ s: String) -> String {
         var t = s
         while let r = t.range(of: "**") { t.removeSubrange(r) }
@@ -148,7 +148,7 @@ class InsightsViewController: UIViewController {
     }
 }
 
-// MARK: - תוכן מלא (כל התובנות, RTL)
+// MARK: - Full content (all insights, RTL)
 
 private final class InsightFullContentView: UIView {
     init(text: String) {

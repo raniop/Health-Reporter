@@ -2,7 +2,7 @@
 //  OnboardingButton.swift
 //  Health Reporter
 //
-//  כפתורים מעוצבים ל-Onboarding
+//  Styled buttons for Onboarding
 //
 
 import UIKit

@@ -20,3 +20,24 @@
 "period.day" = "Today";
 "period.week" = "Week";
 "period.month" = "Month";
+"watch.period.title" = "Period";
+
+/* Home View */
+"watch.home.dataStale" = "Data not updated";
+
+/* Metrics Detail View */
+"watch.metrics.heartRate" = "Heart Rate";
+"watch.metrics.restingHeartRate" = "Resting HR";
+"watch.metrics.sectionHeart" = "Heart";
+"watch.metrics.sleep" = "Sleep";
+"watch.metrics.sectionSleep" = "Sleep";
+"watch.metrics.steps" = "Steps";
+"watch.metrics.calories" = "Calories";
+"watch.metrics.exercise" = "Exercise";
+"watch.metrics.exerciseUnit" = "min";
+"watch.metrics.standing" = "Standing";
+"watch.metrics.standingUnit" = "hrs";
+"watch.metrics.sectionActivity" = "Activity";
+"watch.metrics.healthScore" = "Health Score";
+"watch.metrics.reliability" = "Reliability";
+"watch.metrics.sectionScore" = "Score";

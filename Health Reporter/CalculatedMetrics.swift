@@ -2,9 +2,9 @@
 //  CalculatedMetrics.swift
 //  Health Reporter
 //
-//  מנוע חישוב מדדים שמכשירי Garmin/Oura לא מסנכרנים לאפל הלט':
-//  - Readiness Score (דומה ל-Oura/WHOOP)
-//  - Training Strain (עומס אימון)
+//  Calculated metrics engine for metrics that Garmin/Oura devices don't sync to Apple Health:
+//  - Readiness Score (similar to Oura/WHOOP)
+//  - Training Strain
 //  - Sleep Efficiency
 //
 
@@ -13,46 +13,46 @@ import HealthKit
 
 // MARK: - Readiness Score
 
-/// ציון מוכנות מחושב (0-100)
+/// Calculated readiness score (0-100)
 struct ReadinessScore {
     let score: Int                      // 0-100
     let components: ReadinessComponents
     let dataSource: HealthDataSource
     let calculatedAt: Date
-    let isCalculated: Bool              // true = מחושב, false = מהמכשיר
+    let isCalculated: Bool              // true = calculated, false = from device
 
-    /// תיאור הציון
+    /// Score description
     var description: String {
         switch score {
-        case 85...100: return "מעולה"
-        case 70..<85: return "טוב"
-        case 50..<70: return "בינוני"
-        case 30..<50: return "נמוך"
-        default: return "נמוך מאוד"
+        case 85...100: return "Excellent"
+        case 70..<85: return "Good"
+        case 50..<70: return "Moderate"
+        case 30..<50: return "Low"
+        default: return "Very Low"
         }
     }
 
-    /// צבע לפי ציון
+    /// Color by score
     var colorHex: String {
         switch score {
-        case 85...100: return "#34C759"  // ירוק
-        case 70..<85: return "#30D158"   // ירוק בהיר
-        case 50..<70: return "#FFD60A"   // צהוב
-        case 30..<50: return "#FF9F0A"   // כתום
-        default: return "#FF453A"        // אדום
+        case 85...100: return "#34C759"  // green
+        case 70..<85: return "#30D158"   // light green
+        case 50..<70: return "#FFD60A"   // yellow
+        case 30..<50: return "#FF9F0A"   // orange
+        default: return "#FF453A"        // red
         }
     }
 }
 
-/// רכיבי ציון מוכנות
+/// Readiness score components
 struct ReadinessComponents {
-    let hrvScore: Double?           // ציון HRV (0-100)
-    let rhrScore: Double?           // ציון דופק מנוחה (0-100)
-    let sleepScore: Double?         // ציון שינה (0-100)
-    let recoveryTrend: Double?      // מגמת התאוששות (-1 עד +1)
-    let previousDayStrain: Double?  // עומס יום קודם (0-10)
+    let hrvScore: Double?           // HRV score (0-100)
+    let rhrScore: Double?           // Resting heart rate score (0-100)
+    let sleepScore: Double?         // Sleep score (0-100)
+    let recoveryTrend: Double?      // Recovery trend (-1 to +1)
+    let previousDayStrain: Double?  // Previous day strain (0-10)
 
-    /// משקלות הרכיבים
+    /// Component weights
     static let hrvWeight: Double = 0.35
     static let rhrWeight: Double = 0.25
     static let sleepWeight: Double = 0.30
@@ -61,40 +61,42 @@ struct ReadinessComponents {
 
 // MARK: - Training Strain
 
-/// עומס אימון מחושב
+/// Calculated training strain
 struct TrainingStrain {
-    let score: Double                           // 0-10 (או 0-21 בסגנון WHOOP)
-    let heartRateZones: [Int: TimeInterval]     // אזור -> זמן בשניות
+    let score: Double                           // 0-10 (or 0-21 in WHOOP style)
+    let heartRateZones: [Int: TimeInterval]     // zone -> time in seconds
     let peakHR: Double?
     let avgHR: Double?
     let duration: TimeInterval
     let trainingEffect: TrainingEffect
     let calculatedAt: Date
 
-    /// ציון מנורמל ל-0-10
+    /// Normalized score to 0-10
     var normalizedScore: Double {
         min(10, score)
     }
 
-    /// תיאור העומס
+    /// Strain description
     var description: String {
         switch normalizedScore {
-        case 8...10: return "עומס גבוה מאוד"
-        case 6..<8: return "עומס גבוה"
-        case 4..<6: return "עומס בינוני"
-        case 2..<4: return "עומס קל"
-        default: return "התאוששות"
+        case 8...10: return "Very High Load"
+        case 6..<8: return "High Load"
+        case 4..<6: return "Moderate Load"
+        case 2..<4: return "Light Load"
+        default: return "Recovery"
         }
     }
 }
 
-/// אפקט האימון
+/// Training effect
+/// NOTE: These raw values were previously Hebrew strings. Changing them breaks deserialization
+/// of any previously persisted/encoded TrainingEffect values. A data migration may be needed.
 enum TrainingEffect: String, Codable {
-    case recovery = "התאוששות"
-    case maintaining = "שמירה"
-    case improving = "שיפור"
-    case highlyImproving = "שיפור משמעותי"
-    case overreaching = "עומס יתר"
+    case recovery = "Recovery"
+    case maintaining = "Maintaining"
+    case improving = "Improving"
+    case highlyImproving = "Highly Improving"
+    case overreaching = "Overreaching"
 
     var colorHex: String {
         switch self {
@@ -109,7 +111,7 @@ enum TrainingEffect: String, Codable {
 
 // MARK: - Sleep Metrics
 
-/// יעילות שינה
+/// Sleep efficiency
 struct SleepEfficiency {
     let percentage: Double          // 0-100
     let totalSleepTime: TimeInterval
@@ -118,16 +120,16 @@ struct SleepEfficiency {
 
     var description: String {
         switch percentage {
-        case 90...100: return "מעולה"
-        case 85..<90: return "טובה מאוד"
-        case 80..<85: return "טובה"
-        case 70..<80: return "בינונית"
-        default: return "נמוכה"
+        case 90...100: return "Excellent"
+        case 85..<90: return "Very Good"
+        case 80..<85: return "Good"
+        case 70..<80: return "Moderate"
+        default: return "Low"
         }
     }
 }
 
-/// שלבי שינה מפורטים
+/// Detailed sleep stages
 struct DetailedSleepStages {
     let deepSleep: TimeInterval
     let remSleep: TimeInterval
@@ -136,12 +138,12 @@ struct DetailedSleepStages {
     let totalSleep: TimeInterval
     let timeInBed: TimeInterval
 
-    /// אחוזי שלבים
+    /// Stage percentages
     var deepPercent: Double { totalSleep > 0 ? (deepSleep / totalSleep) * 100 : 0 }
     var remPercent: Double { totalSleep > 0 ? (remSleep / totalSleep) * 100 : 0 }
     var lightPercent: Double { totalSleep > 0 ? (lightSleep / totalSleep) * 100 : 0 }
 
-    /// האם השלבים תקינים
+    /// Whether stages are within healthy range
     var isHealthy: Bool {
         // Deep: 13-23%, REM: 20-25%
         return deepPercent >= 13 && remPercent >= 20
@@ -150,7 +152,7 @@ struct DetailedSleepStages {
 
 // MARK: - Calculated Metrics Engine
 
-/// מנוע חישוב מדדים
+/// Calculated metrics engine
 final class CalculatedMetricsEngine {
     static let shared = CalculatedMetricsEngine()
 
@@ -158,7 +160,7 @@ final class CalculatedMetricsEngine {
 
     // MARK: - Readiness Score
 
-    /// חישוב ציון מוכנות
+    /// Calculate readiness score
     func calculateReadinessScore(
         hrv: Double?,
         hrvBaseline7Day: Double?,
@@ -183,7 +185,7 @@ final class CalculatedMetricsEngine {
 
         // 1. HRV Score (35%)
         if let hrv = hrv, let baseline = hrvBaseline7Day, baseline > 0 {
-            // HRV גבוה יותר מהבסיס = טוב יותר
+            // Higher HRV relative to baseline = better
             let ratio = hrv / baseline
             let hrvScore = min(100, max(0, ratio * 100))
             components = ReadinessComponents(
@@ -199,7 +201,7 @@ final class CalculatedMetricsEngine {
 
         // 2. RHR Score (25%)
         if let rhr = rhr, let baseline = rhrBaseline7Day, baseline > 0 {
-            // RHR נמוך יותר מהבסיס = טוב יותר
+            // Lower RHR relative to baseline = better
             let deviation = (baseline - rhr) / baseline
             let rhrScore = min(100, max(0, 85 + deviation * 50))
             components = ReadinessComponents(
@@ -215,7 +217,7 @@ final class CalculatedMetricsEngine {
 
         // 3. Sleep Score (30%)
         if let hours = sleepHours {
-            // 7-9 שעות = מצוין, פחות או יותר = פחות טוב
+            // 7-9 hours = excellent, less or more = less optimal
             var sleepScore: Double
             if hours >= 7 && hours <= 9 {
                 sleepScore = 100
@@ -229,7 +231,7 @@ final class CalculatedMetricsEngine {
                 sleepScore = max(20, 40 + hours * 5)
             }
 
-            // בונוס ליעילות שינה
+            // Bonus for sleep efficiency
             if let efficiency = sleepEfficiency, efficiency > 85 {
                 sleepScore = min(100, sleepScore + 5)
             }
@@ -247,7 +249,7 @@ final class CalculatedMetricsEngine {
 
         // 4. Recovery from previous strain (10%)
         if let strain = previousDayStrain {
-            // עומס גבוה ביום הקודם מוריד את המוכנות
+            // High strain on previous day reduces readiness
             let recoveryPenalty = max(0, (strain - 5) * 5)
             let recoveryScore = max(50, 100 - recoveryPenalty)
             components = ReadinessComponents(
@@ -261,7 +263,7 @@ final class CalculatedMetricsEngine {
             totalWeight += ReadinessComponents.recoveryWeight
         }
 
-        // נרמול לפי משקלות בפועל
+        // Normalize by actual weights
         let finalScore: Int
         if totalWeight > 0 {
             finalScore = Int(round(totalScore / totalWeight))
@@ -280,7 +282,7 @@ final class CalculatedMetricsEngine {
 
     // MARK: - Training Strain
 
-    /// חישוב עומס אימון מדגימות דופק
+    /// Calculate training strain from heart rate samples
     func calculateTrainingStrain(
         heartRateSamples: [(value: Double, date: Date)],
         maxHR: Double,
@@ -304,7 +306,7 @@ final class CalculatedMetricsEngine {
         var peakHR: Double = 0
         var totalDuration: TimeInterval = 0
 
-        // חלוקה לאזורים
+        // Distribute into zones
         let sortedSamples = heartRateSamples.sorted { $0.date < $1.date }
 
         for i in 0..<sortedSamples.count {
@@ -312,19 +314,19 @@ final class CalculatedMetricsEngine {
             totalHR += hr
             peakHR = max(peakHR, hr)
 
-            // חישוב זמן עד הדגימה הבאה
+            // Calculate time until next sample
             let duration: TimeInterval
             if i < sortedSamples.count - 1 {
                 duration = sortedSamples[i + 1].date.timeIntervalSince(sortedSamples[i].date)
             } else {
-                duration = 60 // דגימה אחרונה - 1 דקה
+                duration = 60 // last sample - 1 minute
             }
 
-            // הגבלת duration סביר (עד 5 דקות)
+            // Cap duration to reasonable limit (up to 5 minutes)
             let cappedDuration = min(duration, 300)
             totalDuration += cappedDuration
 
-            // קביעת אזור לפי אחוז מדופק מקסימלי
+            // Determine zone by percentage of max heart rate
             let hrPercent = (hr - restingHR) / (maxHR - restingHR) * 100
             let zone: Int
             switch hrPercent {
@@ -338,8 +340,8 @@ final class CalculatedMetricsEngine {
             zones[zone, default: 0] += cappedDuration
         }
 
-        // חישוב TRIMP (Training Impulse)
-        // משקלות: Zone 1=1, Zone 2=2, Zone 3=4, Zone 4=7, Zone 5=10
+        // Calculate TRIMP (Training Impulse)
+        // Weights: Zone 1=1, Zone 2=2, Zone 3=4, Zone 4=7, Zone 5=10
         let zoneMultipliers: [Int: Double] = [1: 1, 2: 2, 3: 4, 4: 7, 5: 10]
         var trimp: Double = 0
 
@@ -348,10 +350,10 @@ final class CalculatedMetricsEngine {
             trimp += hours * (zoneMultipliers[zone] ?? 1)
         }
 
-        // נרמול ל-0-10
+        // Normalize to 0-10
         let normalizedScore = min(10, trimp)
 
-        // קביעת אפקט אימון
+        // Determine training effect
         let effect: TrainingEffect
         switch normalizedScore {
         case 0..<2: effect = .recovery
@@ -376,7 +378,7 @@ final class CalculatedMetricsEngine {
 
     // MARK: - Sleep Efficiency
 
-    /// חישוב יעילות שינה
+    /// Calculate sleep efficiency
     func calculateSleepEfficiency(
         totalSleepTime: TimeInterval,
         timeInBed: TimeInterval
@@ -403,48 +405,48 @@ final class CalculatedMetricsEngine {
 
     // MARK: - HRV Trend
 
-    /// חישוב מגמת HRV
+    /// Calculate HRV trend
     func calculateHRVTrend(
-        recentHRV: [Double],        // 7 ימים אחרונים
-        baselineHRV: Double         // ממוצע 30 יום
+        recentHRV: [Double],        // last 7 days
+        baselineHRV: Double         // 30-day average
     ) -> Double {
         guard !recentHRV.isEmpty, baselineHRV > 0 else { return 0 }
 
         let recentAvg = recentHRV.reduce(0, +) / Double(recentHRV.count)
         let deviation = (recentAvg - baselineHRV) / baselineHRV
 
-        // מוגבל ל--1 עד +1
+        // Clamped to -1 to +1
         return min(1, max(-1, deviation))
     }
 
     // MARK: - Max Heart Rate Estimation
 
-    /// הערכת דופק מקסימלי לפי גיל
+    /// Estimate max heart rate by age
     func estimateMaxHeartRate(age: Int) -> Double {
-        // נוסחת Tanaka: 208 - 0.7 * age
+        // Tanaka formula: 208 - 0.7 * age
         return 208 - 0.7 * Double(age)
     }
 
-    /// הערכת גיל מדופק מקסימלי נצפה
+    /// Estimate age from observed max heart rate
     func estimateAgeFromMaxHR(observedMaxHR: Double) -> Int {
-        // הפוך של נוסחת Tanaka
+        // Inverse of Tanaka formula
         return Int((208 - observedMaxHR) / 0.7)
     }
 
     // MARK: - Sleep Score (Oura-like)
 
-    /// ציון שינה בסגנון Oura
+    /// Oura-style sleep score
     func calculateSleepScore(
         totalHours: Double,
         deepHours: Double?,
         remHours: Double?,
         efficiency: Double?,
-        latency: TimeInterval? = nil     // זמן להירדמות
+        latency: TimeInterval? = nil     // time to fall asleep
     ) -> Int {
         var score: Double = 0
         var weight: Double = 0
 
-        // 1. משך שינה (40%)
+        // 1. Sleep duration (40%)
         let durationScore: Double
         switch totalHours {
         case 7...9: durationScore = 100
@@ -456,7 +458,7 @@ final class CalculatedMetricsEngine {
         score += durationScore * 0.4
         weight += 0.4
 
-        // 2. שינה עמוקה (25%) - מטרה: 1.5-2 שעות
+        // 2. Deep sleep (25%) - target: 1.5-2 hours
         if let deep = deepHours {
             let deepScore: Double
             switch deep {
@@ -469,7 +471,7 @@ final class CalculatedMetricsEngine {
             weight += 0.25
         }
 
-        // 3. REM (20%) - מטרה: 1.5-2.5 שעות
+        // 3. REM (20%) - target: 1.5-2.5 hours
         if let rem = remHours {
             let remScore: Double
             switch rem {
@@ -482,7 +484,7 @@ final class CalculatedMetricsEngine {
             weight += 0.2
         }
 
-        // 4. יעילות (15%)
+        // 4. Efficiency (15%)
         if let eff = efficiency {
             let effScore: Double
             switch eff {
@@ -495,7 +497,7 @@ final class CalculatedMetricsEngine {
             weight += 0.15
         }
 
-        // נרמול
+        // Normalize
         let finalScore = weight > 0 ? score / weight : 50
         return Int(round(min(100, max(0, finalScore))))
     }

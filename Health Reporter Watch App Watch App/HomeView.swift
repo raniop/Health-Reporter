@@ -103,7 +103,7 @@ struct HomeView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption2)
-                    Text("נתונים לא מעודכנים")
+                    Text("watch.home.dataStale".localized)
                         .font(.caption2)
                 }
                 .foregroundColor(.orange)
@@ -159,7 +159,7 @@ struct PeriodPickerView: View {
                 }
             }
         }
-        .navigationTitle("תקופה")
+        .navigationTitle("watch.period.title".localized)
     }
 }
 

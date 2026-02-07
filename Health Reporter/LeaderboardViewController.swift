@@ -2,7 +2,7 @@
 //  LeaderboardViewController.swift
 //  Health Reporter
 //
-//  מסך לידרבורד מעוצב - עם פודיום לשלושת הראשונים, אנימציות ו-Glass Morphism.
+//  Styled leaderboard screen - with podium for top three, animations and Glass Morphism.
 //
 
 import UIKit

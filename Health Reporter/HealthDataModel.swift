@@ -8,12 +8,12 @@
 import Foundation
 import HealthKit
 
-/// מודל נתונים לנתוני בריאות
+/// Health data model
 struct HealthDataModel {
-    // תאריך (אופציונלי - לשימוש בהיסטוריה)
+    // Date (optional - for use in history)
     var date: Date?
 
-    // נתונים פיזיים
+    // Physical data
     var steps: Double?
     var distance: Double?
     var activeEnergy: Double?
@@ -22,79 +22,79 @@ struct HealthDataModel {
     var walkingHeartRateAverage: Double?
 
     // MARK: - Activity Rings Data (Apple Activity App)
-    /// דקות אימון (Exercise Ring - ירוק)
+    /// Exercise minutes (Exercise Ring - green)
     var exerciseMinutes: Double?
-    /// שעות עמידה (Stand Ring - כחול)
+    /// Stand hours (Stand Ring - blue)
     var standHours: Double?
-    /// דקות תנועה כללית
+    /// General movement minutes
     var moveTimeMinutes: Double?
-    /// קומות שנטפסו
+    /// Flights climbed
     var flightsClimbed: Double?
-    /// אנרגיה בסיסית (BMR)
+    /// Basal energy (BMR)
     var basalEnergy: Double?
-    /// סה"כ קלוריות (פעילות + בסיסית)
+    /// Total calories (active + basal)
     var totalEnergy: Double?
 
     // MARK: - Workout Data
-    /// מספר אימונים בטווח
+    /// Number of workouts in range
     var workoutCount: Int?
-    /// סה"כ דקות אימון
+    /// Total workout minutes
     var totalWorkoutMinutes: Double?
-    /// סה"כ קלוריות באימונים
+    /// Total workout calories
     var totalWorkoutCalories: Double?
-    /// סוגי אימונים (ריצה, הליכה, וכו')
+    /// Workout types (running, walking, etc.)
     var workoutTypes: [String]?
-    /// אימון אחרון
+    /// Last workout
     var lastWorkout: WorkoutData?
-    /// כל האימונים בטווח (מפורט!)
+    /// All workouts in range (detailed!)
     var recentWorkouts: [WorkoutData]?
 
     // MARK: - Walking Metrics (Apple)
-    /// מהירות הליכה (קמ"ש)
+    /// Walking speed (km/h)
     var walkingSpeed: Double?
-    /// אורך צעד (מטר)
+    /// Step length (meters)
     var walkingStepLength: Double?
-    /// אסימטריית הליכה (%)
+    /// Walking asymmetry (%)
     var walkingAsymmetry: Double?
-    /// יציבות הליכה (%)
+    /// Walking steadiness (%)
     var walkingSteadiness: Double?
-    /// מרחק מבחן 6 דקות הליכה
+    /// Six-minute walk test distance
     var sixMinuteWalkDistance: Double?
-    /// Heart Rate Recovery (1 דקה אחרי אימון)
+    /// Heart Rate Recovery (1 minute after workout)
     var heartRateRecovery: Double?
     
-    // נתונים קרדיווסקולריים
+    // Cardiovascular data
     var bloodPressureSystolic: Double?
     var bloodPressureDiastolic: Double?
     var oxygenSaturation: Double?
     var heartRateVariability: Double? // HRV (ms)
     
-    // נתונים מטבוליים
+    // Metabolic data
     var bodyMass: Double?
     var bodyMassIndex: Double?
     var bodyFatPercentage: Double?
     var leanBodyMass: Double?
     
-    // נתונים נשימתיים
+    // Respiratory data
     var respiratoryRate: Double?
     var forcedVitalCapacity: Double?
     
-    // נתונים תזונתיים
+    // Nutritional data
     var dietaryEnergy: Double?
     var dietaryProtein: Double?
     var dietaryCarbohydrates: Double?
     var dietaryFat: Double?
     
-    // נתונים שינה
+    // Sleep data
     var sleepHours: Double?
     var sleepAnalysis: [SleepData]?
     
-    // נתונים נוספים
+    // Additional data
     var bloodGlucose: Double?
     var bodyTemperature: Double?
     var vo2Max: Double?
 
-    // תובנות מ-Gemini
+    // Insights from Gemini
     var insights: String?
     var recommendations: [String]?
     var riskFactors: [String]?
@@ -102,48 +102,48 @@ struct HealthDataModel {
     var lastUpdated: Date?
 
     // MARK: - Data Source Tracking
-    /// מקור הנתונים העיקרי (Apple Watch, Garmin, Oura)
+    /// Primary data source (Apple Watch, Garmin, Oura)
     var primaryDataSource: HealthDataSource?
-    /// כל המקורות שזוהו
+    /// All detected sources
     var detectedSources: Set<HealthDataSource>?
 
     // MARK: - Enhanced Sleep Data (Garmin/Oura)
-    /// שעות שינה עמוקה
+    /// Deep sleep hours
     var sleepDeepHours: Double?
-    /// שעות שינה REM
+    /// REM sleep hours
     var sleepRemHours: Double?
-    /// שעות שינה קלה
+    /// Light sleep hours
     var sleepLightHours: Double?
-    /// דקות ערות בזמן שינה
+    /// Awake minutes during sleep
     var sleepAwakeMinutes: Double?
-    /// יעילות שינה (0-100%)
+    /// Sleep efficiency (0-100%)
     var sleepEfficiency: Double?
-    /// זמן במיטה (שעות)
+    /// Time in bed (hours)
     var timeInBedHours: Double?
 
     // MARK: - Calculated Metrics
-    /// ציון מוכנות מחושב (0-100) - דומה ל-Oura/WHOOP
+    /// Calculated readiness score (0-100) - similar to Oura/WHOOP
     var calculatedReadinessScore: Double?
-    /// עומס אימון מחושב (0-10)
+    /// Calculated training strain (0-10)
     var calculatedTrainingStrain: Double?
-    /// האם ציון המוכנות מחושב (true) או מהמכשיר (false)
+    /// Whether readiness score is calculated (true) or from device (false)
     var isReadinessCalculated: Bool?
 
     // MARK: - Oura-Specific Data
-    /// סטיית טמפרטורת גוף מהבסיס (°C)
+    /// Body temperature deviation from baseline (°C)
     var bodyTemperatureDeviation: Double?
-    /// רמת חמצן בדם (%)
+    /// Blood oxygen level (%)
     var spO2: Double?
-    /// קצב נשימה ממוצע (נשימות לדקה)
+    /// Average respiratory rate (breaths per minute)
     var respiratoryRateAvg: Double?
 
     // MARK: - HRV Enhanced
-    /// HRV ממוצע 7 ימים (baseline)
+    /// HRV 7-day average (baseline)
     var hrv7DayBaseline: Double?
-    /// מגמת HRV (-1 עד +1)
+    /// HRV trend (-1 to +1)
     var hrvTrend: Double?
 
-    /// האם יש נתוני בריאות אמיתיים (לפחות ערך אחד שאינו nil/0)
+    /// Whether there is real health data (at least one non-nil/0 value)
     var hasRealData: Bool {
         let all: [Double?] = [
             steps, distance, activeEnergy, heartRate, restingHeartRate,
@@ -163,17 +163,17 @@ struct SleepData {
     var value: HKCategoryValueSleepAnalysis
 }
 
-/// מודל נתוני אימון
+/// Workout data model
 struct WorkoutData: Codable {
-    var type: String // סוג האימון (Running, Walking, Cycling, etc.)
+    var type: String // Workout type (Running, Walking, Cycling, etc.)
     var startDate: Date
     var endDate: Date
     var durationMinutes: Double
     var totalCalories: Double?
-    var totalDistance: Double? // מטרים
+    var totalDistance: Double? // meters
     var averageHeartRate: Double?
     var maxHeartRate: Double?
-    var elevationGain: Double? // מטרים
+    var elevationGain: Double? // meters
 
     func toJSON() -> [String: Any] {
         var json: [String: Any] = [
@@ -191,17 +191,17 @@ struct WorkoutData: Codable {
     }
 }
 
-/// נתוני בריאות שבועיים (Weekly Snapshot)
+/// Weekly health data (Weekly Snapshot)
 struct WeeklyHealthSnapshot: Codable {
     var weekStartDate: Date
     var weekEndDate: Date
     var restingHeartRate: Double?
-    var heartRateVariability: Double? // HRV - אם זמין
-    var hrv7DayAverage: Double? // ממוצע HRV של 7 ימים
+    var heartRateVariability: Double? // HRV - if available
+    var hrv7DayAverage: Double? // 7-day HRV average
     var sleepDurationHours: Double?
-    var sleepEfficiency: Double? // יעילות שינה
-    var remSleepHours: Double? // שעות REM
-    var deepSleepHours: Double? // שעות שינה עמוקה
+    var sleepEfficiency: Double? // Sleep efficiency
+    var remSleepHours: Double? // REM hours
+    var deepSleepHours: Double? // Deep sleep hours
     var activeCalories: Double?
     var vo2Max: Double?
     var steps: Double?
@@ -214,39 +214,39 @@ struct WeeklyHealthSnapshot: Codable {
     var bloodPressureDiastolic: Double?
     var oxygenSaturation: Double?
     var dietaryEnergy: Double?
-    var basalBodyTemperature: Double? // טמפרטורת גוף בסיסית
-    var trainingStrain: Double? // עומס אימון (1-10)
-    var recoveryScore: Double? // ציון התאוששות (0-100%)
-    var efficiencyFactor: Double? // גורם יעילות (Pace/HR)
+    var basalBodyTemperature: Double? // Basal body temperature
+    var trainingStrain: Double? // Training strain (1-10)
+    var recoveryScore: Double? // Recovery score (0-100%)
+    var efficiencyFactor: Double? // Efficiency factor (Pace/HR)
 
     // MARK: - Activity Rings
-    var exerciseMinutes: Double? // דקות אימון (ירוק)
-    var standHours: Double? // שעות עמידה (כחול)
-    var flightsClimbed: Double? // קומות
+    var exerciseMinutes: Double? // Exercise minutes (green)
+    var standHours: Double? // Stand hours (blue)
+    var flightsClimbed: Double? // Flights
 
     // MARK: - Workouts
-    var workoutCount: Int? // מספר אימונים
-    var totalWorkoutMinutes: Double? // סה"כ דקות אימון
-    var workoutTypes: [String]? // סוגי אימונים
+    var workoutCount: Int? // Number of workouts
+    var totalWorkoutMinutes: Double? // Total workout minutes
+    var workoutTypes: [String]? // Workout types
 
     // MARK: - Walking Metrics
-    var walkingSpeed: Double? // מהירות הליכה (קמ"ש)
+    var walkingSpeed: Double? // Walking speed (km/h)
     var heartRateRecovery: Double? // Heart Rate Recovery
 
     // MARK: - Data Source Info
     var primaryDataSource: String? // "Garmin", "Oura", "Apple Watch"
 
     // MARK: - Enhanced Sleep (Garmin/Oura)
-    var lightSleepHours: Double? // שינה קלה
-    var awakeMinutes: Double? // דקות ערות
+    var lightSleepHours: Double? // Light sleep
+    var awakeMinutes: Double? // Awake minutes
 
     // MARK: - Calculated Scores
-    var calculatedReadinessScore: Double? // ציון מוכנות מחושב (0-100)
-    var isReadinessCalculated: Bool? // האם מחושב או מהמכשיר
+    var calculatedReadinessScore: Double? // Calculated readiness score (0-100)
+    var isReadinessCalculated: Bool? // Whether calculated or from device
 
     // MARK: - Oura-Specific
-    var bodyTemperatureDeviation: Double? // סטיית טמפ' מבסיס
-    var spO2Average: Double? // חמצן ממוצע
+    var bodyTemperatureDeviation: Double? // Temperature deviation from baseline
+    var spO2Average: Double? // Average oxygen
 
     func toJSON() -> [String: Any] {
         var json: [String: Any] = [:]
@@ -295,7 +295,7 @@ struct WeeklyHealthSnapshot: Codable {
         if let tempDev = bodyTemperatureDeviation { json["body_temp_deviation_c"] = tempDev }
         if let spo2 = spO2Average { json["spo2_average_percent"] = spo2 }
 
-        // חישוב Recovery-to-Strain Ratio
+        // Calculate Recovery-to-Strain Ratio
         if let strain = trainingStrain, let recovery = recoveryScore, strain > 0 {
             json["recovery_to_strain_ratio"] = recovery / (strain * 10)
         }

@@ -78,7 +78,7 @@ final class CarNameUITests: XCTestCase {
         // Note: Tab name might be different based on localization
         let tabBar = app.tabBars.firstMatch
         if tabBar.waitForExistence(timeout: 5) {
-            // Look for Insights tab - might be called "תובנות" in Hebrew
+            // Look for Insights tab - might be called "Insights" in the UI
             let insightsTab = tabBar.buttons.element(boundBy: 2) // Usually the 3rd tab
             if insightsTab.exists {
                 insightsTab.tap()

@@ -21,7 +21,24 @@
       "Bash(swift build:*)",
       "Bash(xcrun simctl:*)",
       "Bash(git restore:*)",
-      "Bash(firebase:*)"
+      "Bash(firebase:*)",
+      "Bash(tree:*)",
+      "Bash(while read file)",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(gcloud services list:*)",
+      "Bash(gcloud services enable:*)",
+      "Bash(npx firebase-tools projects:list:*)",
+      "Bash(npm install:*)",
+      "Bash(gcloud projects get-iam-policy:*)",
+      "Bash(brew list:*)",
+      "Bash(npx google-auth-library:*)",
+      "Bash(node -e \"\nconst {execSync} = require\\(''child_process''\\);\n// Firebase stores the refresh token in a config file\nconst os = require\\(''os''\\);\nconst fs = require\\(''fs''\\);\nconst path = require\\(''path''\\);\n\n// Check common locations for firebase token\nconst configDir = path.join\\(os.homedir\\(\\), ''.config'', ''configstore''\\);\nconst files = fs.readdirSync\\(configDir\\).filter\\(f => f.includes\\(''firebase''\\)\\);\nconsole.log\\(''Firebase config files:'', files\\);\n\")",
+      "Bash(node -e:*)",
+      "Bash(gcloud projects describe:*)",
+      "Bash(brew install:*)",
+      "WebFetch(domain:stackoverflow.com)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

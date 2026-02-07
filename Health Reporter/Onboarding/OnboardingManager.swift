@@ -2,7 +2,7 @@
 //  OnboardingManager.swift
 //  Health Reporter
 //
-//  מנהל מצב ה-Onboarding - בודק אם להציג ושומר סטטוס סיום
+//  Manages Onboarding state - checks if should display and saves completion status
 //
 
 import Foundation
@@ -18,18 +18,18 @@ enum OnboardingManager {
     private static let keyOnboardingVersion = "AION.Onboarding.Version"
     private static let keyCurrentStep = "AION.Onboarding.CurrentStep"
 
-    /// גרסת ה-onboarding הנוכחית - הגדל כדי להציג מחדש לכל המשתמשים
+    /// Current onboarding version - increment to re-show to all users
     static let currentOnboardingVersion = 1
 
     // MARK: - Public API
 
-    /// בודק אם צריך להציג onboarding למשתמש
+    /// Checks if onboarding should be shown to the user
     /// - Parameters:
-    ///   - isSignUp: האם המשתמש עושה הרשמה (לא התחברות)
-    ///   - additionalUserInfo: מידע נוסף מ-Firebase (לבדיקת isNewUser ב-OAuth)
-    /// - Returns: true אם צריך להציג onboarding
+    ///   - isSignUp: Whether the user is signing up (not logging in)
+    ///   - additionalUserInfo: Additional info from Firebase (to check isNewUser in OAuth)
+    /// - Returns: true if onboarding should be shown
     static func shouldShowOnboarding(isSignUp: Bool, additionalUserInfo: AdditionalUserInfo?) -> Bool {
-        // אם כבר השלים onboarding בגרסה הנוכחית - לא מציגים
+        // If already completed onboarding in current version - don't show
         if hasCompletedOnboarding() {
             return false
         }
@@ -44,50 +44,50 @@ enum OnboardingManager {
             return true
         }
 
-        // Case 3: Returning user logging in - לא מציגים
+        // Case 3: Returning user logging in - don't show
         return false
     }
 
-    /// בודק אם המשתמש כבר סיים onboarding
+    /// Checks if the user has already completed onboarding
     static func hasCompletedOnboarding() -> Bool {
         let completed = UserDefaults.standard.bool(forKey: keyOnboardingCompleted)
         let version = UserDefaults.standard.integer(forKey: keyOnboardingVersion)
         return completed && version >= currentOnboardingVersion
     }
 
-    /// מסמן שה-onboarding הושלם
+    /// Marks the onboarding as completed
     static func markOnboardingComplete() {
         UserDefaults.standard.set(true, forKey: keyOnboardingCompleted)
         UserDefaults.standard.set(Date(), forKey: keyOnboardingCompletedDate)
         UserDefaults.standard.set(currentOnboardingVersion, forKey: keyOnboardingVersion)
 
-        // גם שומר ב-Firestore לסנכרון בין מכשירים
+        // Also save to Firestore for cross-device sync
         saveToFirestore()
 
-        // מנקה את השלב הנוכחי
+        // Clear current step
         clearCurrentStep()
     }
 
-    // MARK: - Step Tracking (למקרה שהאפליקציה נסגרת באמצע)
+    // MARK: - Step Tracking (in case the app closes mid-onboarding)
 
-    /// שומר את השלב הנוכחי ב-Onboarding
+    /// Saves the current onboarding step
     static func saveCurrentStep(_ step: Int) {
         UserDefaults.standard.set(step, forKey: keyCurrentStep)
     }
 
-    /// מחזיר את השלב האחרון שנשמר (או 0 אם אין)
+    /// Returns the last saved step (or 0 if none)
     static func getSavedStep() -> Int {
         return UserDefaults.standard.integer(forKey: keyCurrentStep)
     }
 
-    /// מנקה את השלב השמור
+    /// Clears the saved step
     static func clearCurrentStep() {
         UserDefaults.standard.removeObject(forKey: keyCurrentStep)
     }
 
     // MARK: - Reset (for testing)
 
-    /// מאפס את מצב ה-Onboarding (לצורך בדיקות)
+    /// Resets the Onboarding state (for testing)
     static func resetOnboarding() {
         UserDefaults.standard.removeObject(forKey: keyOnboardingCompleted)
         UserDefaults.standard.removeObject(forKey: keyOnboardingCompletedDate)

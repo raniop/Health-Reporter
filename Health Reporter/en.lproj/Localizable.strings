@@ -681,6 +681,7 @@
 "social.noFollowers" = "No followers yet";
 "social.noFollowing" = "Not following anyone yet";
 "social.followRequestSent" = "Request Sent";
+"social.cancelRequest" = "Cancel Request";
 "social.requested" = "Requested";
 "social.unfollowConfirm" = "Are you sure you want to unfollow %@?";
 "social.removeFollowerConfirm" = "Are you sure you want to remove %@ from your followers?";

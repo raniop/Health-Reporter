@@ -2,7 +2,7 @@
 //  NutritionViewController.swift
 //  Health Reporter
 //
-//  מסך המלצות תזונה ותוספים - מבוסס על ניתוח נתוני בריאות
+//  Nutrition and supplement recommendations screen - based on health data analysis
 //
 
 import UIKit
@@ -13,7 +13,7 @@ final class NutritionViewController: UIViewController {
 
     var supplements: [SupplementRecommendation] = []
 
-    // MARK: - UI Colors (דינמי לפי רקע בהיר/כהה)
+    // MARK: - UI Colors (dynamic based on light/dark background)
 
     private var bgColor: UIColor { AIONDesign.background }
     private var cardBgColor: UIColor { AIONDesign.surface }
@@ -83,22 +83,22 @@ final class NutritionViewController: UIViewController {
         // Header
         addHeader()
 
-        // אם אין תוספים
+        // If no supplements
         if supplements.isEmpty {
             addEmptyState()
             return
         }
 
-        // קיבוץ לפי קטגוריה
+        // Group by category
         let groupedSupplements = Dictionary(grouping: supplements) { $0.category }
 
         for category in SupplementCategory.allCases {
             guard let categorySupplements = groupedSupplements[category], !categorySupplements.isEmpty else { continue }
 
-            // כותרת קטגוריה
+            // Category title
             addCategoryHeader(category)
 
-            // כרטיסי תוספים
+            // Supplement cards
             for supplement in categorySupplements {
                 addSupplementCard(supplement)
             }
@@ -116,7 +116,7 @@ final class NutritionViewController: UIViewController {
         headerStack.spacing = 8
         headerStack.alignment = .center
 
-        // אייקון
+        // Icon
         let iconLabel = UILabel()
         iconLabel.text = "💊"
         iconLabel.font = .systemFont(ofSize: 50)
@@ -183,13 +183,13 @@ final class NutritionViewController: UIViewController {
         card.layer.borderColor = accentGreen.withAlphaComponent(0.2).cgColor
         card.translatesAutoresizingMaskIntoConstraints = false
 
-        // אייקון גלולה
+        // Pill icon
         let pillIcon = UILabel()
         pillIcon.text = "💊"
         pillIcon.font = .systemFont(ofSize: 24)
         pillIcon.translatesAutoresizingMaskIntoConstraints = false
 
-        // שם התוסף
+        // Supplement name
         let nameLabel = UILabel()
         nameLabel.text = supplement.name
         nameLabel.font = .systemFont(ofSize: 17, weight: .bold)
@@ -198,7 +198,7 @@ final class NutritionViewController: UIViewController {
         nameLabel.numberOfLines = 0
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // מינון - בתוך badge
+        // Dosage - inside badge
         let dosageBadge = UIView()
         dosageBadge.backgroundColor = accentGreen.withAlphaComponent(0.15)
         dosageBadge.layer.cornerRadius = 8
@@ -219,7 +219,7 @@ final class NutritionViewController: UIViewController {
             dosageLabel.bottomAnchor.constraint(equalTo: dosageBadge.bottomAnchor, constant: -6),
         ])
 
-        // קו הפרדה
+        // Separator line
         let separator = UIView()
         separator.backgroundColor = AIONDesign.separator
         separator.translatesAutoresizingMaskIntoConstraints = false
@@ -240,7 +240,7 @@ final class NutritionViewController: UIViewController {
         reasonLabel.numberOfLines = 0
         reasonLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // הוספה לכרטיס
+        // Add to card
         card.addSubview(pillIcon)
         card.addSubview(nameLabel)
         card.addSubview(dosageBadge)
@@ -258,18 +258,18 @@ final class NutritionViewController: UIViewController {
 
             dosageBadge.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 10),
 
-            // קו הפרדה
+            // Separator line
             separator.topAnchor.constraint(equalTo: dosageBadge.bottomAnchor, constant: 12),
             separator.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
             separator.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
             separator.heightAnchor.constraint(equalToConstant: 1),
 
-            // כותרת סיבה
+            // Reason title
             reasonTitleLabel.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 12),
             reasonTitleLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
             reasonTitleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
 
-            // טקסט סיבה
+            // Reason text
             reasonLabel.topAnchor.constraint(equalTo: reasonTitleLabel.bottomAnchor, constant: 6),
             reasonLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
             reasonLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),

@@ -2,7 +2,7 @@
 //  LoginViewController.swift
 //  Health Reporter
 //
-//  מסך התחברות: אימייל/סיסמה או התחברות עם Google. RTL, עיצוב AION.
+//  Login screen: email/password or Google sign-in. RTL, AION design.
 //
 
 import UIKit
@@ -243,7 +243,7 @@ final class LoginViewController: UIViewController {
                 let changeRequest = result?.user.createProfileChangeRequest()
                 changeRequest?.displayName = displayName
                 changeRequest?.commitChanges { _ in
-                    // שמירת השם גם ב-Firestore לצורך חיפוש
+                    // Save name to Firestore as well for search
                     if !displayName.isEmpty {
                         ProfileFirestoreSync.saveDisplayName(displayName)
                     }
@@ -302,8 +302,11 @@ final class LoginViewController: UIViewController {
 
     private func proceedToApp(authResult: AuthDataResult? = nil) {
         showLoading()
-        // סנכרון שם המשתמש ל-Firestore (לצורך חיפוש)
+        // Sync user display name to Firestore (for search)
         syncUserDisplayNameToFirestore()
+
+        // Refresh and save FCM token now that user is logged in
+        FriendsFirestoreSync.refreshAndSaveFCMToken()
 
         // Analytics: Log successful login/signup and set user ID
         if let userId = Auth.auth().currentUser?.uid {
@@ -316,7 +319,7 @@ final class LoginViewController: UIViewController {
         }
 
         #if DEBUG
-        // בדיקה אם זה יוזר הטסט - אם כן, מאפסים ומכניסים נתונים מדומים
+        // Check if this is the test user - if so, reset and inject mock data
         let userEmail = Auth.auth().currentUser?.email
         if DebugTestHelper.isTestUser(email: userEmail) {
             DebugTestHelper.shared.setupTestUserData()
@@ -329,8 +332,8 @@ final class LoginViewController: UIViewController {
                   let sd = scene.delegate as? SceneDelegate else { return }
 
             #if DEBUG
-            // יוזר טסט תמיד מתחיל מ-Splash כדי לראות את כל ה-flow המלא
-            // Splash → Onboarding → HealthKit → Gemini API (אמיתי!) → Car Reveal
+            // Test user always starts from Splash to see the full flow
+            // Splash → Onboarding → HealthKit → Gemini API (real!) → Car Reveal
             if DebugTestHelper.isTestUser(email: Auth.auth().currentUser?.email) {
                 let splashVC = SplashViewController()
                 sd.window?.rootViewController = splashVC
@@ -339,21 +342,21 @@ final class LoginViewController: UIViewController {
             }
             #endif
 
-            // בדיקה אם להציג Onboarding
+            // Check if Onboarding should be shown
             let additionalUserInfo = authResult?.additionalUserInfo
             if OnboardingManager.shouldShowOnboarding(isSignUp: self.isSignUp, additionalUserInfo: additionalUserInfo) {
-                // משתמש חדש - הצג Onboarding
+                // New user - show Onboarding
                 let onboardingVC = OnboardingPageViewController()
                 sd.window?.rootViewController = onboardingVC
             } else {
-                // משתמש קיים - ישר לאפליקציה
+                // Existing user - go straight to app
                 sd.window?.rootViewController = MainTabBarController()
             }
             UIView.transition(with: sd.window!, duration: 0.3, options: .transitionCrossDissolve, animations: nil)
         }
     }
 
-    /// מסנכרן את שם המשתמש מ-Firebase Auth ל-Firestore (כדי שניתן יהיה לחפש אותו).
+    /// Syncs the user display name from Firebase Auth to Firestore (so it can be searched).
     private func syncUserDisplayNameToFirestore() {
         guard let displayName = Auth.auth().currentUser?.displayName, !displayName.isEmpty else { return }
         ProfileFirestoreSync.saveDisplayName(displayName)

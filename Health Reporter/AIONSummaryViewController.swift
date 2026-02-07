@@ -2,7 +2,7 @@
 //  AIONSummaryViewController.swift
 //  Health Reporter
 //
-//  מסך נפרד לסיכום AION (החלק התחתון מהתובנות). RTL.
+//  Separate screen for AION summary (the bottom section of insights). RTL.
 //
 
 import UIKit

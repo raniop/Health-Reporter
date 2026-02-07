@@ -1,370 +1,239 @@
 /**
  * Firebase Cloud Functions for Health Reporter
- * Push Notifications for Friend Requests
- * Using 2nd Generation Functions
+ * Push Notifications
+ * Gen 1 Functions
  */
 
-const {onDocumentCreated, onDocumentUpdated, onDocumentWritten} = require("firebase-functions/v2/firestore");
-const {onSchedule} = require("firebase-functions/v2/scheduler");
+const functions = require("firebase-functions");
 const {initializeApp} = require("firebase-admin/app");
-const {getFirestore} = require("firebase-admin/firestore");
+const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {getMessaging} = require("firebase-admin/messaging");
 
 initializeApp();
 const db = getFirestore();
+const messaging = getMessaging();
+
+// ─── Helper: send FCM and handle invalid tokens ───
+
+async function sendFCM(fcmToken, message, recipientUid, tag) {
+  try {
+    const msgId = await messaging.send(message);
+    console.log(`${tag} Sent OK, messageId=${msgId}`);
+    return {success: true, messageId: msgId};
+  } catch (err) {
+    console.error(`${tag} SEND FAILED:`, err.code, err.message);
+    if (
+      err.code === "messaging/invalid-registration-token" ||
+      err.code === "messaging/registration-token-not-registered"
+    ) {
+      await db.collection("users").doc(recipientUid).update({
+        fcmToken: FieldValue.delete(),
+      });
+      console.log(`${tag} Removed stale token for ${recipientUid}`);
+    }
+    return {success: false, error: err.message};
+  }
+}
+
+async function getToken(uid, tag) {
+  const snap = await db.collection("users").doc(uid).get();
+  if (!snap.exists) {
+    console.error(`${tag} User doc missing: ${uid}`);
+    return null;
+  }
+  const token = snap.data()?.fcmToken;
+  if (!token) {
+    console.error(`${tag} No fcmToken for ${uid}`);
+    return null;
+  }
+  return token;
+}
 
 // ============================================================================
-// FRIEND REQUEST NOTIFICATIONS
+// 1) FOLLOW REQUEST CREATED
 // ============================================================================
 
-/**
- * Trigger: When a new friend request is created
- * Action: Send push notification to the recipient
- */
-exports.onFollowRequestCreated = onDocumentCreated(
-    "followRequests/{requestId}",
-    async (event) => {
-      const snapshot = event.data;
-      if (!snapshot) {
-        console.log("No data associated with the event");
-        return;
-      }
+exports.onFollowRequestCreated = functions.firestore
+    .document("followRequests/{requestId}")
+    .onCreate(async (snap, context) => {
+      const TAG = "[FollowReqCreated]";
+      const d = snap.data();
+      const toUid = d.toUid;
+      const fromName = d.fromDisplayName || "Someone";
+      console.log(`${TAG} ${fromName} -> ${toUid}`);
 
-      const requestData = snapshot.data();
-      const toUid = requestData.toUid;
-      const fromDisplayName = requestData.fromDisplayName || "מישהו";
+      const token = await getToken(toUid, TAG);
+      if (!token) return null;
 
-      console.log(`New friend request from ${fromDisplayName} to ${toUid}`);
-
-      // Get recipient's FCM token
-      const recipientDoc = await db.collection("users").doc(toUid).get();
-      const fcmToken = recipientDoc.data()?.fcmToken;
-
-      if (!fcmToken) {
-        console.log(`No FCM token for user ${toUid}`);
-        return null;
-      }
-
-      // Send notification
-      const message = {
-        token: fcmToken,
+      return sendFCM(token, {
+        token,
         notification: {
-          title: "בקשת מעקב חדשה",
-          body: `${fromDisplayName} רוצה לעקוב אחריך`,
+          title: "New follow request",
+          body: `${fromName} wants to follow you`,
         },
         data: {
           type: "follow_request_received",
-          requestId: event.params.requestId,
-          fromUid: requestData.fromUid,
-          fromDisplayName: fromDisplayName,
+          requestId: context.params.requestId,
+          fromUid: d.fromUid || "",
+          fromDisplayName: fromName,
         },
-        apns: {
-          payload: {
-            aps: {
-              badge: 1,
-              sound: "default",
-            },
-          },
-        },
-      };
-
-      try {
-        await getMessaging().send(message);
-        console.log(`Notification sent to ${toUid}`);
-        return {success: true};
-      } catch (error) {
-        console.error(`Error sending notification: ${error}`);
-        // If token is invalid, remove it
-        if (error.code === "messaging/invalid-registration-token" ||
-            error.code === "messaging/registration-token-not-registered") {
-          const {FieldValue} = require("firebase-admin/firestore");
-          await db.collection("users").doc(toUid).update({
-            fcmToken: FieldValue.delete(),
-          });
-          console.log(`Removed invalid FCM token for user ${toUid}`);
-        }
-        return {success: false, error: error.message};
-      }
-    },
-);
+        apns: {payload: {aps: {badge: 1, sound: "default"}}},
+      }, toUid, TAG);
+    });
 
 // ============================================================================
-// MORNING NOTIFICATION FUNCTIONS
+// 2) FOLLOW REQUEST ACCEPTED
 // ============================================================================
 
-/**
- * Scheduled job: Runs every minute to check for users who need morning notifications
- * Sends silent push notifications to wake up their apps for fresh health data
- */
-exports.sendMorningNotifications = onSchedule(
-    {
-      schedule: "* * * * *", // Every minute
-      timeZone: "Asia/Jerusalem", // Israel timezone
-      retryCount: 0, // Don't retry failed runs
-    },
-    async () => {
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
+exports.onFollowRequestAccepted = functions.firestore
+    .document("followRequests/{requestId}")
+    .onUpdate(async (change, context) => {
+      const TAG = "[FollowReqAccepted]";
+      const before = change.before.data();
+      const after = change.after.data();
+      if (!before || !after) return;
+      if (before.status === "accepted" || after.status !== "accepted") return;
 
-      console.log(`🔔 Morning notification check: ${currentHour}:${currentMinute}`);
+      const fromUid = after.fromUid;
+      const toUid = after.toUid;
+      console.log(`${TAG} ${toUid} accepted ${fromUid}`);
 
-      // Query users who have morning notifications enabled for this exact time
-      const usersSnapshot = await db.collection("users")
-          .where("morningNotification.enabled", "==", true)
-          .where("morningNotification.hour", "==", currentHour)
-          .where("morningNotification.minute", "==", currentMinute)
-          .get();
+      const acceptorSnap = await db.collection("users").doc(toUid).get();
+      const acceptorName = acceptorSnap.data()?.displayName || "Someone";
 
-      if (usersSnapshot.empty) {
-        console.log("No users scheduled for this time");
-        return;
-      }
+      const token = await getToken(fromUid, TAG);
+      if (!token) return null;
 
-      console.log(`Found ${usersSnapshot.docs.length} users for morning notification`);
-
-      const sendPromises = usersSnapshot.docs.map(async (userDoc) => {
-        const userData = userDoc.data();
-        const fcmToken = userData.fcmToken;
-        const userId = userDoc.id;
-
-        if (!fcmToken) {
-          console.log(`No FCM token for user ${userId}`);
-          return;
-        }
-
-        // Send silent push to wake the app
-        const message = {
-          token: fcmToken,
-          data: {
-            type: "morning_health_trigger",
-            userId: userId,
-            timestamp: now.toISOString(),
-          },
-          apns: {
-            payload: {
-              aps: {
-                "content-available": 1, // Silent push for iOS
-              },
-            },
-            headers: {
-              "apns-priority": "5", // Low priority for silent push
-              "apns-push-type": "background",
-            },
-          },
-        };
-
-        try {
-          await getMessaging().send(message);
-          console.log(`✅ Silent push sent to user ${userId}`);
-
-          // Update last notification time
-          await db.collection("users").doc(userId).update({
-            "morningNotification.lastSent": now,
-          });
-
-          return {userId, success: true};
-        } catch (error) {
-          console.error(`❌ Failed to send to user ${userId}: ${error}`);
-
-          // Handle invalid tokens
-          if (error.code === "messaging/invalid-registration-token" ||
-              error.code === "messaging/registration-token-not-registered") {
-            const {FieldValue} = require("firebase-admin/firestore");
-            await db.collection("users").doc(userId).update({
-              fcmToken: FieldValue.delete(),
-            });
-            console.log(`Removed invalid FCM token for user ${userId}`);
-          }
-
-          return {userId, success: false, error: error.message};
-        }
-      });
-
-      const results = await Promise.allSettled(sendPromises);
-      const successful = results.filter((r) => r.status === "fulfilled" && r.value?.success).length;
-      console.log(`Morning notifications sent: ${successful}/${usersSnapshot.docs.length}`);
-    },
-);
-
-/**
- * Trigger: When user updates their morning notification settings
- * Action: Log the change for debugging
- */
-exports.onMorningNotificationSettingsChanged = onDocumentWritten(
-    "users/{userId}",
-    async (event) => {
-      const beforeData = event.data?.before?.data();
-      const afterData = event.data?.after?.data();
-
-      if (!afterData) return; // Document deleted
-
-      const beforeSettings = beforeData?.morningNotification;
-      const afterSettings = afterData?.morningNotification;
-
-      // Check if morning notification settings changed
-      if (JSON.stringify(beforeSettings) !== JSON.stringify(afterSettings)) {
-        console.log(`🔔 User ${event.params.userId} updated morning notification settings:`, {
-          enabled: afterSettings?.enabled,
-          hour: afterSettings?.hour,
-          minute: afterSettings?.minute,
-        });
-      }
-    },
-);
-
-// ============================================================================
-// NEW FOLLOWER NOTIFICATION (direct follow — open privacy)
-// ============================================================================
-
-/**
- * Trigger: When a new follower document is created in a user's followers subcollection
- * Action: Send push notification to the user who was followed
- */
-exports.onNewFollower = onDocumentCreated(
-    "users/{userId}/followers/{followerId}",
-    async (event) => {
-      const userId = event.params.userId; // Who got followed
-      const followerId = event.params.followerId; // Who started following
-
-      console.log(`New follower: ${followerId} started following ${userId}`);
-
-      // Get follower's display name
-      const followerDoc = await db.collection("users").doc(followerId).get();
-      const followerName = followerDoc.data()?.displayName || "מישהו";
-
-      // Get recipient's FCM token
-      const recipientDoc = await db.collection("users").doc(userId).get();
-      const fcmToken = recipientDoc.data()?.fcmToken;
-
-      if (!fcmToken) {
-        console.log(`No FCM token for user ${userId}`);
-        return null;
-      }
-
-      // Send notification
-      const message = {
-        token: fcmToken,
+      return sendFCM(token, {
+        token,
         notification: {
-          title: "עוקב חדש! 🎉",
-          body: `${followerName} התחיל/ה לעקוב אחריך`,
+          title: "Follow request accepted!",
+          body: `${acceptorName} accepted your follow request`,
+        },
+        data: {
+          type: "follow_request_accepted",
+          requestId: context.params.requestId,
+          acceptedByUid: toUid,
+          acceptedByDisplayName: acceptorName,
+        },
+        apns: {payload: {aps: {badge: 0, sound: "default"}}},
+      }, fromUid, TAG);
+    });
+
+// ============================================================================
+// 3) NEW FOLLOWER (direct / open privacy)
+// ============================================================================
+
+exports.onNewFollower = functions.firestore
+    .document("users/{userId}/followers/{followerId}")
+    .onCreate(async (snap, context) => {
+      const TAG = "[NewFollower]";
+      const userId = context.params.userId;
+      const followerId = context.params.followerId;
+      console.log(`${TAG} ${followerId} -> ${userId}`);
+
+      const followerSnap = await db.collection("users").doc(followerId).get();
+      const followerName = followerSnap.data()?.displayName || "Someone";
+
+      const token = await getToken(userId, TAG);
+      if (!token) return null;
+
+      return sendFCM(token, {
+        token,
+        notification: {
+          title: "New follower!",
+          body: `${followerName} started following you`,
         },
         data: {
           type: "new_follower",
           followerUid: followerId,
           followerDisplayName: followerName,
         },
-        apns: {
-          payload: {
-            aps: {
-              badge: 1,
-              sound: "default",
-            },
-          },
-        },
-      };
-
-      try {
-        await getMessaging().send(message);
-        console.log(`New follower notification sent to ${userId}`);
-        return {success: true};
-      } catch (error) {
-        console.error(`Error sending notification: ${error}`);
-        if (error.code === "messaging/invalid-registration-token" ||
-            error.code === "messaging/registration-token-not-registered") {
-          const {FieldValue} = require("firebase-admin/firestore");
-          await db.collection("users").doc(userId).update({
-            fcmToken: FieldValue.delete(),
-          });
-          console.log(`Removed invalid FCM token for user ${userId}`);
-        }
-        return {success: false, error: error.message};
-      }
-    },
-);
+        apns: {payload: {aps: {badge: 1, sound: "default"}}},
+      }, userId, TAG);
+    });
 
 // ============================================================================
-// FOLLOW REQUEST ACCEPTED NOTIFICATION
+// 4) MORNING NOTIFICATIONS (scheduled every minute)
 // ============================================================================
 
-/**
- * Trigger: When a follow request status changes to "accepted"
- * Action: Send push notification to the original sender
- */
-exports.onFollowRequestAccepted = onDocumentUpdated(
-    "followRequests/{requestId}",
-    async (event) => {
-      const beforeData = event.data?.before?.data();
-      const afterData = event.data?.after?.data();
+exports.sendMorningNotifications = functions.pubsub
+    .schedule("* * * * *")
+    .timeZone("Asia/Jerusalem")
+    .onRun(async () => {
+      const TAG = "[MorningNotif]";
+      const now = new Date();
+      const h = now.getHours();
+      const m = now.getMinutes();
+      console.log(`${TAG} Check ${h}:${String(m).padStart(2, "0")}`);
 
-      if (!beforeData || !afterData) {
-        console.log("No data associated with the event");
-        return;
-      }
+      const snap = await db.collection("users")
+          .where("morningNotification.enabled", "==", true)
+          .where("morningNotification.hour", "==", h)
+          .where("morningNotification.minute", "==", m)
+          .get();
 
-      // Only trigger when status changes to "accepted"
-      if (beforeData.status === "accepted" || afterData.status !== "accepted") {
+      if (snap.empty) {
+        console.log(`${TAG} No users at this time`);
         return null;
       }
 
-      const fromUid = afterData.fromUid;
-      const toUid = afterData.toUid;
+      console.log(`${TAG} ${snap.docs.length} user(s) matched`);
 
-      console.log(`Friend request accepted by ${toUid} for ${fromUid}`);
+      const results = await Promise.allSettled(
+          snap.docs.map(async (doc) => {
+            const uid = doc.id;
+            const token = doc.data().fcmToken;
+            if (!token) {
+              console.log(`${TAG} ${uid}: no token`);
+              return {uid, success: false};
+            }
 
-      // Get the accepting user's display name
-      const acceptingUserDoc = await db.collection("users").doc(toUid).get();
-      const acceptingDisplayName =
-        acceptingUserDoc.data()?.displayName || "מישהו";
+            const res = await sendFCM(token, {
+              token,
+              data: {
+                type: "morning_health_trigger",
+                userId: uid,
+                timestamp: now.toISOString(),
+              },
+              apns: {
+                payload: {aps: {"content-available": 1}},
+                headers: {
+                  "apns-priority": "5",
+                  "apns-push-type": "background",
+                },
+              },
+            }, uid, TAG);
 
-      // Get sender's FCM token
-      const senderDoc = await db.collection("users").doc(fromUid).get();
-      const fcmToken = senderDoc.data()?.fcmToken;
+            if (res.success) {
+              await db.collection("users").doc(uid).update({
+                "morningNotification.lastSent": now,
+              });
+            }
+            return {uid, ...res};
+          }),
+      );
 
-      if (!fcmToken) {
-        console.log(`No FCM token for user ${fromUid}`);
-        return null;
+      const ok = results.filter((r) => r.status === "fulfilled" && r.value?.success).length;
+      console.log(`${TAG} Done: ${ok}/${snap.docs.length} sent`);
+      return null;
+    });
+
+// ============================================================================
+// 5) SETTINGS CHANGE LOGGER
+// ============================================================================
+
+exports.onSettingsChanged = functions.firestore
+    .document("users/{userId}")
+    .onWrite(async (change, context) => {
+      const TAG = "[SettingsChanged]";
+      const before = change.before.data();
+      const after = change.after.data();
+      if (!after) return;
+
+      const bSettings = before?.morningNotification;
+      const aSettings = after?.morningNotification;
+      if (JSON.stringify(bSettings) !== JSON.stringify(aSettings)) {
+        console.log(`${TAG} ${context.params.userId}: ${JSON.stringify(aSettings)}`);
       }
-
-      // Send notification
-      const message = {
-        token: fcmToken,
-        notification: {
-          title: "בקשת המעקב אושרה!",
-          body: `${acceptingDisplayName} אישר/ה את בקשת המעקב שלך`,
-        },
-        data: {
-          type: "follow_request_accepted",
-          requestId: event.params.requestId,
-          acceptedByUid: toUid,
-          acceptedByDisplayName: acceptingDisplayName,
-        },
-        apns: {
-          payload: {
-            aps: {
-              badge: 0,
-              sound: "default",
-            },
-          },
-        },
-      };
-
-      try {
-        await getMessaging().send(message);
-        console.log(`Acceptance notification sent to ${fromUid}`);
-        return {success: true};
-      } catch (error) {
-        console.error(`Error sending notification: ${error}`);
-        // If token is invalid, remove it
-        if (error.code === "messaging/invalid-registration-token" ||
-            error.code === "messaging/registration-token-not-registered") {
-          const {FieldValue} = require("firebase-admin/firestore");
-          await db.collection("users").doc(fromUid).update({
-            fcmToken: FieldValue.delete(),
-          });
-          console.log(`Removed invalid FCM token for user ${fromUid}`);
-        }
-        return {success: false, error: error.message};
-      }
-    },
-);
+    });

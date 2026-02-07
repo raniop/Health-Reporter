@@ -2,7 +2,7 @@
 //  MainTabBarController.swift
 //  Health Reporter
 //
-//  טאב בר ראשי – מסך ראשי חדש (InsightsDashboard), ביצועים (סיכום+פעילות+מגמות), Insights, Social, Profile.
+//  Main tab bar – new main screen (InsightsDashboard), Performance (summary+activity+trends), Insights, Social, Profile.
 //
 
 import UIKit
@@ -203,7 +203,7 @@ final class MainTabBarController: UITabBarController {
         navBar.barStyle = AIONDesign.navBarStyle
     }
 
-    /// עיצוב Liquid Glass ל־tab bar (iOS 26): רקע ברירת מחדל, שקיפות, ללא דריסה של רקע מלא.
+    /// Liquid Glass styling for tab bar (iOS 26): default background, transparency, no full background override.
     private func configureLiquidGlassTabBar() {
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
@@ -212,39 +212,39 @@ final class MainTabBarController: UITabBarController {
         tabBar.isTranslucent = true
     }
 
-    /// הגדרת כיוון סמנטי (RTL/LTR) לפי שפת המערכת
+    /// Set semantic direction (RTL/LTR) based on system language
     private func configureSemanticContentAttribute() {
         let isRTL = UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft
         let semanticAttribute: UISemanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
 
-        // הגדרת כיוון לטאב בר
+        // Set direction for tab bar
         tabBar.semanticContentAttribute = semanticAttribute
         view.semanticContentAttribute = semanticAttribute
 
-        // הגדרת כיוון לכל ה-navigation controllers
+        // Set direction for all navigation controllers
         for nav in viewControllers as? [UINavigationController] ?? [] {
             nav.view.semanticContentAttribute = semanticAttribute
             nav.navigationBar.semanticContentAttribute = semanticAttribute
         }
     }
 
-    /// מבקש הרשאות HealthKit להכל מראש – שינה, טמפרטורה, פעילות, תזונה, לב, נשימה וכו׳.
+    /// Requests all HealthKit permissions upfront – sleep, temperature, activity, nutrition, heart, respiration, etc.
     private func requestHealthKitAuthorizationUpfront() {
         guard HKHealthStore.isHealthDataAvailable() else { return }
         HealthKitManager.shared.requestAuthorization { _, _ in }
     }
 
-    /// מסנכרן את פרטי המשתמש ל-Firestore (כדי שניתן יהיה לחפש אותו ולהציג תמונה).
-    /// רץ פעם אחת בכל פתיחת אפליקציה למשתמשים מחוברים.
+    /// Syncs the user's details to Firestore (so they can be searched and their photo displayed).
+    /// Runs once per app launch for logged-in users.
     private func syncCurrentUserProfile() {
         guard let user = Auth.auth().currentUser else { return }
 
-        // סנכרון שם
+        // Sync name
         if let displayName = user.displayName, !displayName.isEmpty {
             ProfileFirestoreSync.saveDisplayName(displayName)
         }
 
-        // סנכרון תמונת פרופיל
+        // Sync profile photo
         if let photoURL = user.photoURL?.absoluteString {
             ProfileFirestoreSync.savePhotoURL(photoURL)
         }

@@ -2,7 +2,7 @@
 //  UnifiedTrendsActivityViewController.swift
 //  Health Reporter
 //
-//  מסך משולב פעילות + מגמות עם החלפה ב-Segment Control.
+//  Combined activity + trends screen with Segment Control switching.
 //
 
 import UIKit
@@ -39,7 +39,7 @@ final class UnifiedTrendsActivityViewController: UIViewController {
 
     // MARK: - Children (lazy)
 
-    /// מסך הסיכום (הדשבורד הראשי הישן) – קטגוריה ראשונה בביצועים
+    /// Summary screen (the old main dashboard) – first category in Performance
     private lazy var summaryVC: HealthDashboardViewController = {
         let vc = HealthDashboardViewController()
         return vc
@@ -140,12 +140,12 @@ final class UnifiedTrendsActivityViewController: UIViewController {
         }
     }
 
-    /// הדשבורד המוטמע (סיכום) – לשימוש מ־InsightsTabViewController
+    /// The embedded dashboard (summary) – for use from InsightsTabViewController
     var healthDashboardViewController: HealthDashboardViewController? {
         summaryVC
     }
 
-    /// הפעלת ניתוח עבור עמוד התובנות (מעביר ל־HealthDashboardViewController המוטמע)
+    /// Run analysis for the insights page (delegates to the embedded HealthDashboardViewController)
     func runAnalysisForInsights(forceAnalysis: Bool = false) {
         summaryVC.runAnalysisForInsights(forceAnalysis: forceAnalysis)
     }

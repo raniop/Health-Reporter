@@ -2,8 +2,8 @@
 //  DataRange.swift
 //  Health Reporter
 //
-//  טווח נתונים: יום / שבוע / חודש.
-//  מספק תיאור ברור למשתמש: "נתוני יום | 24 בינואר 2026".
+//  Data range: day / week / month.
+//  Provides a clear description to the user: "Day data | January 24, 2026".
 //
 
 import Foundation
@@ -23,7 +23,7 @@ enum DataRange: String, CaseIterable {
 
     var shortTitle: String { title }
 
-    /// תאריך התחלה וסיום לטווח הנוכחי (יחסית ליום הזה)
+    /// Start and end dates for the current range (relative to today)
     func interval(relativeTo date: Date = Date()) -> (start: Date, end: Date) {
         let cal = Calendar.current
         let endOfToday = date
@@ -44,7 +44,7 @@ enum DataRange: String, CaseIterable {
         return (start, end)
     }
 
-    /// מספר ימים בטווח (כולל)
+    /// Number of days in the range (inclusive)
     var dayCount: Int {
         switch self {
         case .day: return 1
@@ -53,7 +53,7 @@ enum DataRange: String, CaseIterable {
         }
     }
 
-    /// טקסט להצגה: "נתוני [יום|שבוע|חודש] | [תאריכים]"
+    /// Display text: "[day|week|month] data | [dates]"
     func displayLabel(relativeTo date: Date = Date()) -> String {
         let (start, end) = interval(relativeTo: date)
         let fmt = DateFormatter()

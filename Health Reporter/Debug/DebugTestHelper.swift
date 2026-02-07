@@ -2,16 +2,16 @@
 //  DebugTestHelper.swift
 //  Health Reporter
 //
-//  מחלקת עזר לבדיקות ידניות - מאפשרת לדמות מצבים שונים
-//  שים לב: להשתמש רק ב-DEBUG mode!
+//  Helper class for manual testing - allows simulating various states
+//  Note: Use only in DEBUG mode!
 //
 
 import Foundation
 
 #if DEBUG
 
-/// כלי עזר לבדיקות ידניות
-/// כדי להשתמש: הוסף כפתור נסתר או קרא לפונקציות מ-lldb
+/// Helper tool for manual testing
+/// To use: add a hidden button or call functions from lldb
 final class DebugTestHelper {
 
     static let shared = DebugTestHelper()
@@ -19,34 +19,34 @@ final class DebugTestHelper {
 
     // MARK: - Test User Configuration
 
-    /// המייל של יוזר הטסט - כשמתחברים עם המייל הזה, הנתונים מאופסים ומוכנסים נתונים מדומים
+    /// Test user email - when logging in with this email, data is reset and mock data is injected
     static let testUserEmail = "rani@ophirins.co.il"
 
-    /// בודק אם המייל הוא של יוזר הטסט
+    /// Checks if the email belongs to the test user
     static func isTestUser(email: String?) -> Bool {
         return email?.lowercased() == testUserEmail.lowercased()
     }
 
-    /// מופעל אוטומטית כשיוזר הטסט מתחבר - מאפס ומכניס נתוני בריאות מדומים
-    /// שים לב: לא מכניסים נתוני Gemini מדומים! הנתונים נשלחים ל-Gemini האמיתי
+    /// Triggered automatically when test user logs in - resets and injects mock health data
+    /// Note: Does NOT inject mock Gemini data! Data is sent to the real Gemini API
     func setupTestUserData() {
         print("🧪 [TEST USER] ========================================")
         print("🧪 [TEST USER] Detected test user login!")
         print("🧪 [TEST USER] Resetting all data...")
         print("🧪 [TEST USER] ========================================")
 
-        // איפוס כל הנתונים (כולל Gemini cache)
+        // Reset all data (including Gemini cache)
         resetAllData()
 
-        // הכנסת נתוני בריאות מדומים בלבד
-        // הנתונים האלה יישלחו ל-Gemini האמיתי בזמן ה-onboarding
+        // Inject mock health data only
+        // This data will be sent to the real Gemini API during onboarding
         injectMockHealthData()
 
-        // לא מכניסים נתוני Gemini מדומים!
-        // Gemini יקבל את נתוני הבריאות המדומים ויחזיר רכב אמיתי
-        // injectMockGeminiData() - הוסר בכוונה!
+        // NOT injecting mock Gemini data!
+        // Gemini will receive the mock health data and return a real car
+        // injectMockGeminiData() - intentionally removed!
 
-        // סימון שצריך להציג onboarding (יתחיל מ-Splash ויעבור את כל ה-flow)
+        // Mark that onboarding should be shown (starts from Splash and goes through the full flow)
         markAsNewUser()
 
         print("🧪 [TEST USER] ✅ Setup complete!")
@@ -80,22 +80,22 @@ final class DebugTestHelper {
     private func resetAllData() {
         print("🧪 [TEST USER] Clearing all cached data...")
 
-        // ניקוי AnalysisCache (כולל נתוני Gemini)
+        // Clear AnalysisCache (including Gemini data)
         AnalysisCache.clear()
 
-        // ניקוי נתוני רכב
+        // Clear car data
         UserDefaults.standard.removeObject(forKey: "AION.SelectedCar.Name")
         UserDefaults.standard.removeObject(forKey: "AION.SelectedCar.WikiName")
         UserDefaults.standard.removeObject(forKey: "AION.SelectedCar.Explanation")
 
-        // ניקוי pending car reveal
+        // Clear pending car reveal
         UserDefaults.standard.removeObject(forKey: "AION.PendingCarReveal")
         UserDefaults.standard.removeObject(forKey: "AION.NewCar.Name")
         UserDefaults.standard.removeObject(forKey: "AION.NewCar.WikiName")
         UserDefaults.standard.removeObject(forKey: "AION.NewCar.Explanation")
         UserDefaults.standard.removeObject(forKey: "AION.PreviousCar.Name")
 
-        // ניקוי onboarding status - משתמשים ב-OnboardingManager
+        // Clear onboarding status - using OnboardingManager
         OnboardingManager.resetOnboarding()
 
         UserDefaults.standard.synchronize()
@@ -106,7 +106,7 @@ final class DebugTestHelper {
     private func injectMockHealthData() {
         print("🧪 [TEST USER] Injecting mock health data...")
 
-        // יצירת נתוני בריאות מדומים מלאים ושמירתם ב-cache
+        // Create comprehensive mock health data and save to cache
         var mockData = HealthDataModel()
 
         // MARK: - Activity & Movement
@@ -162,7 +162,7 @@ final class DebugTestHelper {
         mockData.walkingSteadiness = 92
         mockData.sixMinuteWalkDistance = 520
 
-        // MARK: - Nutrition (דוגמה)
+        // MARK: - Nutrition (example)
         mockData.dietaryEnergy = 2200
         mockData.dietaryProtein = 120
         mockData.dietaryCarbohydrates = 250
@@ -182,11 +182,11 @@ final class DebugTestHelper {
         mockData.totalWorkoutCalories = 680
         mockData.workoutTypes = ["Running", "Strength Training", "Walking"]
 
-        // יצירת אימון אחרון לדוגמה
+        // Create an example last workout
         let lastWorkout = WorkoutData(
             type: "Running",
-            startDate: Date().addingTimeInterval(-3600 * 4), // לפני 4 שעות
-            endDate: Date().addingTimeInterval(-3600 * 3.5), // לפני 3.5 שעות
+            startDate: Date().addingTimeInterval(-3600 * 4), // 4 hours ago
+            endDate: Date().addingTimeInterval(-3600 * 3.5), // 3.5 hours ago
             durationMinutes: 32,
             totalCalories: 320,
             totalDistance: 5200,
@@ -196,7 +196,7 @@ final class DebugTestHelper {
         )
         mockData.lastWorkout = lastWorkout
 
-        // רשימת אימונים אחרונים
+        // Recent workouts list
         let workouts = [
             lastWorkout,
             WorkoutData(
@@ -228,15 +228,15 @@ final class DebugTestHelper {
         mockData.primaryDataSource = .appleWatch
         mockData.detectedSources = [.appleWatch]
 
-        // שמירה ב-HealthDataCache
+        // Save to HealthDataCache
         HealthDataCache.shared.healthData = mockData
 
-        // יצירת chartBundle מדומה עם 7 ימים של נתונים
+        // Create mock chartBundle with 7 days of data
         let mockBundle = createMockChartBundle()
         HealthDataCache.shared.chartBundle = mockBundle
-        // isLoaded יחושב אוטומטית כי יש healthData ו-chartBundle
+        // isLoaded is calculated automatically since healthData and chartBundle exist
 
-        // אימות שהנתונים נשמרו
+        // Verify data was saved
         if let saved = HealthDataCache.shared.healthData {
             print("🧪 [TEST USER] ✅ Mock data saved to cache: steps=\(saved.steps ?? 0), hrv=\(saved.heartRateVariability ?? 0)")
         } else {
@@ -248,7 +248,7 @@ final class DebugTestHelper {
         }
     }
 
-    /// יצירת chartBundle מדומה עם 7 ימים של נתונים
+    /// Create mock chartBundle with 7 days of data
     private func createMockChartBundle() -> AIONChartDataBundle {
         let today = Date()
         var stepsPoints: [StepsDataPoint] = []
@@ -260,15 +260,15 @@ final class DebugTestHelper {
         var readinessPoints: [ReadinessDataPoint] = []
         var nutritionPoints: [NutritionDayPoint] = []
 
-        // 7 ימים של נתונים מדומים
+        // 7 days of mock data
         for dayOffset in (0..<7).reversed() {
             let date = Calendar.current.date(byAdding: .day, value: -dayOffset, to: today)!
 
-            // Steps - וריאציות סביב 8500
+            // Steps - variations around 8500
             let stepsVariation = Double.random(in: -1500...1500)
             stepsPoints.append(StepsDataPoint(date: date, steps: 8500 + stepsVariation))
 
-            // Sleep - וריאציות סביב 7.2 שעות
+            // Sleep - variations around 7.2 hours
             let sleepVariation = Double.random(in: -1.0...1.0)
             sleepPoints.append(SleepDayPoint(
                 date: date,
@@ -282,11 +282,11 @@ final class DebugTestHelper {
                 respiratoryMax: nil
             ))
 
-            // HRV - וריאציות סביב 45
+            // HRV - variations around 45
             let hrvVariation = Double.random(in: -8...8)
             hrvPoints.append(TrendDataPoint(date: date, value: 45 + hrvVariation))
 
-            // RHR - וריאציות סביב 62
+            // RHR - variations around 62
             let rhrVariation = Double.random(in: -4...4)
             rhrPoints.append(TrendDataPoint(date: date, value: 62 + rhrVariation))
 
@@ -354,23 +354,23 @@ final class DebugTestHelper {
         let wikiName = "Lexus_LC"
         let healthScore = 78
 
-        // שמירת נתוני רכב
+        // Save car data
         AnalysisCache.saveSelectedCar(
             name: carName,
             wikiName: wikiName,
             explanation: "Your biometric data shows excellent recovery patterns and consistent sleep quality, reflecting a vehicle that balances luxury with performance."
         )
 
-        // שמירת ציון
+        // Save score
         AnalysisCache.saveHealthScore(healthScore)
 
-        // שמירת weekly stats ישירות ל-UserDefaults (כי אין לנו bundle אמיתי)
+        // Save weekly stats directly to UserDefaults (since we don't have a real bundle)
         UserDefaults.standard.set(7.2, forKey: "AION.AvgSleepHours")
         UserDefaults.standard.set(75.0, forKey: "AION.AvgReadiness")
         UserDefaults.standard.set(65.0, forKey: "AION.AvgStrain")
         UserDefaults.standard.set(45.0, forKey: "AION.AvgHRV")
 
-        // שמירת insights מלאים
+        // Save full insights
         let insights = """
         ## Body Condition Score: \(healthScore)/100
 
@@ -413,7 +413,7 @@ final class DebugTestHelper {
 
         AnalysisCache.save(insights: insights, healthDataHash: "test_user_\(Date().timeIntervalSince1970)")
 
-        // Pre-fetch תמונת הרכב
+        // Pre-fetch the car image
         WidgetDataManager.shared.prefetchCarImage(wikiName: wikiName) { success in
             print("🧪 [TEST USER] Car image prefetch: \(success ? "✅ Success" : "❌ Failed")")
         }
@@ -423,14 +423,14 @@ final class DebugTestHelper {
 
     private func markAsNewUser() {
         print("🧪 [TEST USER] Marking as new user (will show onboarding)...")
-        // שימוש ב-OnboardingManager.resetOnboarding() כדי לאפס את המפתחות הנכונים
+        // Using OnboardingManager.resetOnboarding() to reset the correct keys
         OnboardingManager.resetOnboarding()
         UserDefaults.standard.synchronize()
     }
 
     // MARK: - Car Name Testing (Original Methods)
 
-    /// מדמה מצב של יוזר חדש ללא נתוני Gemini
+    /// Simulates a new user state with no Gemini data
     func simulateNewUserNoGeminiData() {
         print("🧪 [DEBUG] Simulating new user with NO Gemini data...")
 
@@ -445,7 +445,7 @@ final class DebugTestHelper {
         print("🧪 [DEBUG] Expected: NO car name should appear anywhere (no Porsche, BMW, etc.)")
     }
 
-    /// מדמה מצב של יוזר עם נתוני Gemini שמורים
+    /// Simulates a user state with saved Gemini data
     func simulateUserWithGeminiData(
         carName: String = "Lexus LC 500",
         wikiName: String = "Lexus_LC",
@@ -476,7 +476,7 @@ final class DebugTestHelper {
         print("🧪 [DEBUG] Expected: Car name '\(carName)' should appear, NOT generic names")
     }
 
-    /// מדמה מצב של גילוי רכב חדש (pending car reveal)
+    /// Simulates a new car discovery state (pending car reveal)
     func simulatePendingCarReveal(
         newCarName: String = "Porsche Taycan",
         newWikiName: String = "Porsche_Taycan",

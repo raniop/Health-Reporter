@@ -2,14 +2,14 @@
 //  SocialComponents.swift
 //  Health Reporter
 //
-//  קומפוננטים מעוצבים למסכי Social Hub ו-Leaderboard
+//  Styled components for Social Hub and Leaderboard screens
 //
 
 import UIKit
 
 // MARK: - GlassMorphismView
 
-/// קומפוננט עם אפקט זכוכית מטושטשת (Glass Morphism)
+/// Component with frosted glass effect (Glass Morphism)
 class GlassMorphismView: UIView {
 
     private let blurView: UIVisualEffectView = {
@@ -94,7 +94,7 @@ class GlassMorphismView: UIView {
 
 // MARK: - GradientButton
 
-/// כפתור עם gradient ואפקטי לחיצה
+/// Button with gradient and press effects
 final class GradientButton: UIButton {
 
     private let gradientLayer = CAGradientLayer()
@@ -163,7 +163,7 @@ final class GradientButton: UIButton {
 
 // MARK: - AvatarRingView
 
-/// תמונת פרופיל עם טבעת זוהרת מסביב
+/// Profile image with a glowing ring around it
 final class AvatarRingView: UIView {
 
     private let imageView: UIImageView = {
@@ -287,7 +287,7 @@ final class AvatarRingView: UIView {
 
 // MARK: - PulsingStatusIndicator
 
-/// אינדיקטור סטטוס עם אנימציית pulse
+/// Status indicator with pulse animation
 final class PulsingStatusIndicator: UIView {
 
     var isOnline: Bool = true {
@@ -375,7 +375,7 @@ final class PulsingStatusIndicator: UIView {
 
 // MARK: - AnimatedTabBarControl
 
-/// Tab bar מותאם אישית עם אנימציות
+/// Custom tab bar with animations
 final class AnimatedTabBarControl: UIView {
 
     struct TabItem {
@@ -568,7 +568,7 @@ final class AnimatedTabBarControl: UIView {
 
 // MARK: - RankBadgeView
 
-/// תג דירוג עם עיצוב מדליה לשלושת הראשונים
+/// Rank badge with medal design for top three
 final class RankBadgeView: UIView {
 
     enum Style {
@@ -703,7 +703,7 @@ final class RankBadgeView: UIView {
 
 // MARK: - ProgressToNextRankView
 
-/// פס התקדמות לדירוג הבא
+/// Progress bar to next rank
 final class ProgressToNextRankView: UIView {
 
     private let progressTrack: UIView = {
@@ -811,7 +811,7 @@ final class ProgressToNextRankView: UIView {
 
 // MARK: - PodiumView
 
-/// פודיום לשלושת הראשונים ב-Leaderboard
+/// Podium for top three in Leaderboard
 final class PodiumView: UIView {
 
     struct Entry {
@@ -1066,7 +1066,7 @@ private final class PodiumPlaceView: UIView {
 
 // MARK: - Confetti Burst
 
-/// אנימציית קונפטי לחגיגות
+/// Confetti animation for celebrations
 final class ConfettiBurstView: UIView {
 
     private let emitterLayer = CAEmitterLayer()
@@ -1139,7 +1139,7 @@ final class ConfettiBurstView: UIView {
 
 // MARK: - RivalComparisonCard
 
-/// כרטיס השוואה בין המשתמש ליריב (חבר עם ניקוד דומה)
+/// Comparison card between user and rival (friend with similar score)
 final class RivalComparisonCard: UIView {
 
     var onTapped: (() -> Void)?
@@ -1325,7 +1325,7 @@ final class RivalComparisonCard: UIView {
 
 // MARK: - WeeklyBarChart
 
-/// גרף עמודות שבועי - 7 עמודות ליום בשבוע
+/// Weekly bar chart - 7 bars for each day of the week
 final class WeeklyBarChart: UIView {
 
     var barHeight: CGFloat = 60
@@ -1458,7 +1458,7 @@ final class WeeklyBarChart: UIView {
 
 // MARK: - CircularProgressView
 
-/// טבעת התקדמות מעגלית עם ציון 0-100
+/// Circular progress ring with score 0-100
 final class CircularProgressView: UIView {
 
     var score: Int = 0 {

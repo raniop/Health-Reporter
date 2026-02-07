@@ -2,7 +2,7 @@
 //  DataSourceSettingsViewController.swift
 //  Health Reporter
 //
-//  מסך הגדרות לבחירת מקור נתונים (Apple Watch / Garmin / Oura)
+//  Settings screen for data source selection (Apple Watch / Garmin / Oura)
 //
 
 import UIKit
@@ -271,7 +271,7 @@ final class DataSourceSettingsViewController: UIViewController {
         DataSourceManager.shared.preferredSource = selected
         updateStrengthsCard()
 
-        // הודעה לדשבורד לטעון מחדש
+        // Notify dashboard to reload
         NotificationCenter.default.post(name: .dataSourceChanged, object: selected)
     }
 

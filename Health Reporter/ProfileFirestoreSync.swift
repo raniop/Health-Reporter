@@ -2,7 +2,7 @@
 //  ProfileFirestoreSync.swift
 //  Health Reporter
 //
-//  שמירה/טעינה של תמונת פרופיל ב-Firestore + Storage.
+//  Save/load profile photo in Firestore + Storage.
 //
 
 import Foundation
@@ -18,7 +18,7 @@ enum ProfileFirestoreSync {
     private static let fieldDisplayName = "displayName"
     private static let fieldDisplayNameLower = "displayNameLower"
 
-    /// שומר שם תצוגה ב-Firestore (כולל גרסה קטנה לחיפוש).
+    /// Saves display name in Firestore (including lowercase version for search).
     static func saveDisplayName(_ name: String, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
             completion?(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
@@ -33,7 +33,7 @@ enum ProfileFirestoreSync {
         }
     }
 
-    /// טוען שם תצוגה מ-Firestore.
+    /// Loads display name from Firestore.
     static func fetchDisplayName(completion: @escaping (String?) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
             DispatchQueue.main.async { completion(nil) }
@@ -46,7 +46,7 @@ enum ProfileFirestoreSync {
         }
     }
 
-    /// שומר URL תמונת פרופיל ב-Firestore (מתאים ל-users/{uid}).
+    /// Saves profile photo URL in Firestore (for users/{uid}).
     static func savePhotoURL(_ url: String, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
             completion?(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
@@ -58,7 +58,7 @@ enum ProfileFirestoreSync {
         }
     }
 
-    /// טוען URL תמונת פרופיל מ-Firestore.
+    /// Loads profile photo URL from Firestore.
     static func fetchPhotoURL(completion: @escaping (String?) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
             DispatchQueue.main.async { completion(nil) }
@@ -74,7 +74,7 @@ enum ProfileFirestoreSync {
         }
     }
 
-    /// מעלה תמונה ל-Storage, מחזיר download URL. path: profile_photos/{uid}.jpg
+    /// Uploads image to Storage, returns download URL. path: profile_photos/{uid}.jpg
     static func uploadProfileImage(_ image: UIImage, completion: @escaping (Result<String, Error>) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
             completion(.failure(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized])))

@@ -4,17 +4,17 @@ service cloud.firestore {
 
     // ─── Users ───
     match /users/{userId} {
-      // כל משתמש מאומת יכול לקרוא פרופילים (חיפוש, לידרבורד, צפייה בפרופיל)
+      // Any authenticated user can read profiles (search, leaderboard, view profile)
       allow read: if request.auth != null;
-      // רק הבעלים יכול ליצור/למחוק את המסמך שלו
+      // Only the owner can create/delete their own document
       allow create, delete: if request.auth != null && request.auth.uid == userId;
-      // עדכון פתוח למשתמשים מאומתים (נדרש לעדכון followersCount/followingCount)
+      // Update open to authenticated users (required for updating followersCount/followingCount)
       allow update: if request.auth != null;
 
       // Followers subcollection
       match /followers/{followerUid} {
         allow read: if request.auth != null;
-        // העוקב יכול להוסיף/להסיר את עצמו, או הבעלים יכול לנהל
+        // The follower can add/remove themselves, or the owner can manage
         allow write: if request.auth != null &&
                      (request.auth.uid == userId || request.auth.uid == followerUid);
       }
@@ -22,12 +22,12 @@ service cloud.firestore {
       // Following subcollection
       match /following/{followingUid} {
         allow read: if request.auth != null;
-        // הבעלים יכול לנהל את מי שהוא עוקב, או שהנעקב יכול להסיר את עצמו (removeFollower)
+        // The owner can manage who they follow, or the followed user can remove themselves (removeFollower)
         allow write: if request.auth != null &&
                      (request.auth.uid == userId || request.auth.uid == followingUid);
       }
 
-      // Legacy friends subcollection (תאימות לאחור)
+      // Legacy friends subcollection (backward compatibility)
       match /friends/{friendUid} {
         allow read: if request.auth != null && request.auth.uid == userId;
         allow write: if request.auth != null &&
@@ -37,25 +37,33 @@ service cloud.firestore {
 
     // ─── Follow Requests ───
     match /followRequests/{requestId} {
-      // כל משתמש מאומת יכול ליצור בקשת מעקב
+      // Any authenticated user can create a follow request
       allow create: if request.auth != null;
 
-      // קריאה רק לבקשות נכנסות/יוצאות שלי
+      // Read only my incoming/outgoing requests
       allow read: if request.auth != null &&
                   (request.auth.uid == resource.data.toUid ||
                    request.auth.uid == resource.data.fromUid);
 
-      // עדכון רק לבקשות שנשלחו אליי (אישור/דחייה)
+      // Update only requests sent to me (approve/reject)
       allow update: if request.auth != null &&
                     request.auth.uid == resource.data.toUid;
 
-      // מחיקה - השולח או המקבל יכולים למחוק
+      // Delete - the sender or recipient can delete
       allow delete: if request.auth != null &&
                     (request.auth.uid == resource.data.toUid ||
                      request.auth.uid == resource.data.fromUid);
     }
 
-    // ─── Legacy Friend Requests (תאימות לאחור) ───
+    // ─── Public Scores (leaderboard) ───
+    match /publicScores/{userId} {
+      // Any authenticated user can read public scores (leaderboard, profiles, search)
+      allow read: if request.auth != null;
+      // Only the owner can write their own score document
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ─── Legacy Friend Requests (backward compatibility) ───
     match /friendRequests/{requestId} {
       allow create: if request.auth != null;
       allow read: if request.auth != null &&

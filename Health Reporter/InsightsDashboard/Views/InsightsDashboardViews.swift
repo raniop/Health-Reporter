@@ -2,7 +2,7 @@
 //  InsightsDashboardViews.swift
 //  Health Reporter
 //
-//  כל ה-Views עבור מסך ה-Insights Dashboard
+//  All Views for the Insights Dashboard screen
 //
 
 import UIKit
@@ -24,7 +24,7 @@ private extension AIONDesign {
 // MARK: - RTL Helper
 
 private var isRTL: Bool {
-    // בודק את השפה הנוכחית של האפליקציה, לא של המערכת
+    // Checks the current app language, not the system language
     LocalizationManager.shared.currentLanguage == .hebrew
 }
 
@@ -38,7 +38,7 @@ private var textAlignment: NSTextAlignment {
 
 // MARK: - Tappable Metric Card
 
-/// כרטיס מדד לחיץ שמציג הסבר ב-bottom sheet (עם גרף אופציונלי)
+/// Tappable metric card that shows an explanation in a bottom sheet (with optional graph)
 final class TappableMetricCard: UIView {
 
     private let metricTitle: String
@@ -209,7 +209,7 @@ final class InsightsDashboardHeaderView: UIView {
     }
 
     func configure() {
-        // מחק את ה-subviews הקודמים ובנה מחדש לפי השפה הנוכחית
+        // Remove previous subviews and rebuild according to current language
         subviews.forEach { $0.removeFromSuperview() }
 
         let currentIsRTL = LocalizationManager.shared.currentLanguage == .hebrew
@@ -355,7 +355,7 @@ final class HeroScoreSection: UIView {
     private weak var parentVC: UIViewController?
     private var currentEnergyForecast: EnergyForecast?
 
-    // שמירת הציונים הנוכחיים עבור ה-bottom sheets
+    // Storing current scores for the bottom sheets
     private var currentHealthScore: Int?
     private var currentCarScore: Int?
     private var currentCarName: String?
@@ -388,10 +388,10 @@ final class HeroScoreSection: UIView {
 
     // MARK: - Energy Forecast Card
     private let energyCard = UIView()
-    private let energyGradientLayer = CAGradientLayer()  // גרדיאנט רקע
-    private let energyIconView = UIImageView()  // אייקון ברק
-    private let energyScoreLabel = UILabel()    // ציון אנרגיה גדול
-    private let energyLevelLabel = UILabel()    // רמה (גבוה/בינוני/נמוך)
+    private let energyGradientLayer = CAGradientLayer()  // Background gradient
+    private let energyIconView = UIImageView()  // Lightning bolt icon
+    private let energyScoreLabel = UILabel()    // Large energy score
+    private let energyLevelLabel = UILabel()    // Level (high/medium/low)
     private let energyTitleLabel = UILabel()
     private let energyTextLabel = UILabel()
 
@@ -558,7 +558,7 @@ final class HeroScoreSection: UIView {
         energyCard.addGestureRecognizer(tap)
         energyCard.isUserInteractionEnabled = true
 
-        // === גרדיאנט רקע עדין ===
+        // === Subtle background gradient ===
         energyGradientLayer.colors = [
             UIColor.systemOrange.withAlphaComponent(0.15).cgColor,
             UIColor.systemYellow.withAlphaComponent(0.05).cgColor
@@ -567,22 +567,22 @@ final class HeroScoreSection: UIView {
         energyGradientLayer.endPoint = CGPoint(x: 1, y: 1)
         energyCard.layer.insertSublayer(energyGradientLayer, at: 0)
 
-        // === שורה עליונה: ציון + רמה (ממורכז) ===
-        // ציון אנרגיה גדול ובולט
+        // === Top row: score + level (centered) ===
+        // Large and prominent energy score
         energyScoreLabel.font = .systemFont(ofSize: 48, weight: .heavy)
         energyScoreLabel.textColor = AIONDesign.textPrimary
         energyScoreLabel.textAlignment = .center
         energyScoreLabel.translatesAutoresizingMaskIntoConstraints = false
         energyCard.addSubview(energyScoreLabel)
 
-        // רמת אנרגיה (גבוה/בינוני/נמוך) - בולטת יותר
+        // Energy level (high/medium/low) - more prominent
         energyLevelLabel.font = .systemFont(ofSize: 20, weight: .bold)
         energyLevelLabel.textColor = AIONDesign.accentWarning
         energyLevelLabel.textAlignment = .center
         energyLevelLabel.translatesAutoresizingMaskIntoConstraints = false
         energyCard.addSubview(energyLevelLabel)
 
-        // אייקון ברק קטן ליד הרמה
+        // Small lightning bolt icon next to the level
         let iconCfg = UIImage.SymbolConfiguration(pointSize: 18, weight: .bold)
         energyIconView.image = UIImage(systemName: "bolt.fill", withConfiguration: iconCfg)
         energyIconView.tintColor = AIONDesign.accentWarning
@@ -590,7 +590,7 @@ final class HeroScoreSection: UIView {
         energyIconView.translatesAutoresizingMaskIntoConstraints = false
         energyCard.addSubview(energyIconView)
 
-        // === שורה תחתונה: הסבר (ממורכז) ===
+        // === Bottom row: explanation (centered) ===
         energyTextLabel.font = .systemFont(ofSize: 14, weight: .medium)
         energyTextLabel.textColor = AIONDesign.textSecondary
         energyTextLabel.textAlignment = .center
@@ -598,7 +598,7 @@ final class HeroScoreSection: UIView {
         energyTextLabel.translatesAutoresizingMaskIntoConstraints = false
         energyCard.addSubview(energyTextLabel)
 
-        // כותרת קטנה למעלה
+        // Small title at top
         energyTitleLabel.text = "dashboard.energyForecast".localized
         energyTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         energyTitleLabel.textColor = AIONDesign.textSecondary
@@ -613,25 +613,25 @@ final class HeroScoreSection: UIView {
         energyCard.addSubview(energyLoadingIndicator)
 
         NSLayoutConstraint.activate([
-            // כותרת קטנה למעלה
+            // Small title at top
             energyTitleLabel.topAnchor.constraint(equalTo: energyCard.topAnchor, constant: 12),
             energyTitleLabel.centerXAnchor.constraint(equalTo: energyCard.centerXAnchor),
 
-            // ציון במרכז
+            // Score in center
             energyScoreLabel.topAnchor.constraint(equalTo: energyTitleLabel.bottomAnchor, constant: 4),
             energyScoreLabel.centerXAnchor.constraint(equalTo: energyCard.centerXAnchor),
 
-            // אייקון ברק ליד הרמה
+            // Lightning bolt icon next to level
             energyIconView.centerYAnchor.constraint(equalTo: energyLevelLabel.centerYAnchor),
             energyIconView.trailingAnchor.constraint(equalTo: energyLevelLabel.leadingAnchor, constant: -4),
             energyIconView.widthAnchor.constraint(equalToConstant: 18),
             energyIconView.heightAnchor.constraint(equalToConstant: 18),
 
-            // רמה מתחת לציון
+            // Level below score
             energyLevelLabel.topAnchor.constraint(equalTo: energyScoreLabel.bottomAnchor, constant: -2),
             energyLevelLabel.centerXAnchor.constraint(equalTo: energyCard.centerXAnchor, constant: 10),
 
-            // הסבר בתחתית
+            // Explanation at bottom
             energyTextLabel.topAnchor.constraint(equalTo: energyLevelLabel.bottomAnchor, constant: 8),
             energyTextLabel.leadingAnchor.constraint(equalTo: energyCard.leadingAnchor, constant: 16),
             energyTextLabel.trailingAnchor.constraint(equalTo: energyCard.trailingAnchor, constant: -16),
@@ -644,7 +644,7 @@ final class HeroScoreSection: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        // עדכון גודל הגרדיאנט
+        // Update gradient size
         energyGradientLayer.frame = energyCard.bounds
     }
 
@@ -807,7 +807,7 @@ final class HeroScoreSection: UIView {
         self.currentEnergyForecast = energyForecast
         self.scoreHistory = scoreHistory
 
-        // שמירת הציונים עבור ה-bottom sheets
+        // Save scores for the bottom sheets
         self.currentHealthScore = healthScore
         self.currentCarScore = carScore
         self.currentCarName = carName
@@ -908,35 +908,35 @@ final class HeroScoreSection: UIView {
             energyTextLabel.isHidden = false
             energyTitleLabel.isHidden = false
 
-            // הצגת ציון האנרגיה
+            // Display the energy score
             energyScoreLabel.text = "\(Int(energy))"
 
-            // צבע ורמה לפי האנרגיה
+            // Color and level based on energy
             let color: UIColor
             let levelText: String
             if energy >= 70 {
-                color = AIONDesign.accentSuccess  // ירוק - אנרגיה גבוהה
+                color = AIONDesign.accentSuccess  // Green - high energy
                 levelText = "energy.level.high".localized
             } else if energy >= 40 {
-                color = AIONDesign.accentWarning  // כתום - אנרגיה בינונית
+                color = AIONDesign.accentWarning  // Orange - medium energy
                 levelText = "energy.level.medium".localized
             } else {
-                color = AIONDesign.accentDanger   // אדום - אנרגיה נמוכה
+                color = AIONDesign.accentDanger   // Red - low energy
                 levelText = "energy.level.low".localized
             }
 
             energyLevelLabel.text = levelText
             energyLevelLabel.textColor = color
-            energyIconView.tintColor = color  // צבע האייקון
-            energyScoreLabel.textColor = color  // גם הציון בצבע
+            energyIconView.tintColor = color  // Icon color
+            energyScoreLabel.textColor = color  // Score also in color
 
-            // עדכון גרדיאנט לפי הצבע - יותר בולט
+            // Update gradient by color - more prominent
             energyGradientLayer.colors = [
                 color.withAlphaComponent(0.20).cgColor,
                 color.withAlphaComponent(0.05).cgColor
             ]
 
-            // טקסט הסבר
+            // Explanation text
             energyTextLabel.text = forecast.explanationKey.localized
         } else if isLoading {
             energyScoreLabel.isHidden = true
@@ -1354,7 +1354,7 @@ final class RecoverySectionView: UIView {
         self.parentVC = parentVC
         self.scoreHistory = scoreHistory
 
-        // עדכון יישור לפי שפה נוכחית
+        // Update alignment based on current language
         titleLabel.textAlignment = textAlignment
 
         metricsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -1445,7 +1445,7 @@ final class RecoverySectionView: UIView {
     }
 }
 
-// MARK: - Tappable Sleep Bar (לחיצה על יום בגרף)
+// MARK: - Tappable Sleep Bar (tap on a day in the chart)
 
 final class TappableSleepBar: UIView {
 
@@ -1471,35 +1471,35 @@ final class TappableSleepBar: UIView {
     @objc private func handleTap() {
         guard entry.hours > 0 else { return }
 
-        // פורמט התאריך
+        // Date format
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: isRTL ? "he_IL" : "en_US")
-        dateFormatter.dateFormat = isRTL ? "EEEE, d בMMMM" : "EEEE, MMMM d"
+        dateFormatter.dateFormat = "EEEE, MMMM d"
         let dateStr = dateFormatter.string(from: entry.date)
 
-        // פורמט שעות - עם עיגול נכון
+        // Hours format - with proper rounding
         let hours = Int(entry.hours)
         let minutes = Int(round((entry.hours - Double(hours)) * 60))
-        let timeStr = isRTL ? "\(hours) שע׳ \(minutes) דק׳" : "\(hours)h \(minutes)m"
+        let timeStr = "\(hours)h \(minutes)m"
 
-        // יצירת tooltip צף (כמו באפל)
+        // Create a floating tooltip (Apple style)
         showTooltip(dateStr: dateStr, timeStr: timeStr)
     }
 
     private func showTooltip(dateStr: String, timeStr: String) {
         guard let window = window else { return }
 
-        // הסרת tooltip קודם אם קיים
+        // Remove previous tooltip if exists
         window.subviews.filter { $0.tag == 9999 }.forEach { $0.removeFromSuperview() }
 
-        // יצירת tooltip view
+        // Create tooltip view
         let tooltip = UIView()
         tooltip.tag = 9999
         tooltip.backgroundColor = UIColor.black.withAlphaComponent(0.85)
         tooltip.layer.cornerRadius = 10
         tooltip.translatesAutoresizingMaskIntoConstraints = false
 
-        // תוכן ה-tooltip
+        // Tooltip content
         let contentStack = UIStackView()
         contentStack.axis = .vertical
         contentStack.spacing = 4
@@ -1522,7 +1522,7 @@ final class TappableSleepBar: UIView {
         contentStack.addArrangedSubview(dateLabel)
         contentStack.addArrangedSubview(timeLabel)
 
-        // חץ קטן למטה
+        // Small downward arrow
         let arrow = UIView()
         arrow.backgroundColor = UIColor.black.withAlphaComponent(0.85)
         arrow.translatesAutoresizingMaskIntoConstraints = false
@@ -1531,25 +1531,25 @@ final class TappableSleepBar: UIView {
 
         window.addSubview(tooltip)
 
-        // מיקום ה-tooltip מעל הבר - עם תיקון לגבולות המסך
+        // Position tooltip above the bar - with screen bounds correction
         let barFrame = convert(bounds, to: window)
-        let tooltipWidth: CGFloat = 150 // רוחב משוער של ה-tooltip
+        let tooltipWidth: CGFloat = 150 // Estimated tooltip width
         let screenWidth = window.bounds.width
         let padding: CGFloat = 12
 
-        // חישוב מיקום X - וידוא שלא יוצא מהמסך
+        // Calculate X position - ensure it doesn't go off screen
         var tooltipCenterX = barFrame.midX
 
-        // אם יוצא מימין - הזז שמאלה
+        // If goes off right - shift left
         if tooltipCenterX + tooltipWidth / 2 > screenWidth - padding {
             tooltipCenterX = screenWidth - padding - tooltipWidth / 2
         }
-        // אם יוצא משמאל - הזז ימינה
+        // If goes off left - shift right
         if tooltipCenterX - tooltipWidth / 2 < padding {
             tooltipCenterX = padding + tooltipWidth / 2
         }
 
-        // חישוב offset של החץ ביחס למרכז ה-tooltip
+        // Calculate arrow offset relative to tooltip center
         let arrowOffsetX = barFrame.midX - tooltipCenterX
 
         NSLayoutConstraint.activate([
@@ -1567,7 +1567,7 @@ final class TappableSleepBar: UIView {
             tooltip.bottomAnchor.constraint(equalTo: window.topAnchor, constant: barFrame.minY - 8)
         ])
 
-        // אנימציה
+        // Animation
         tooltip.alpha = 0
         tooltip.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
         UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseOut) {
@@ -1575,7 +1575,7 @@ final class TappableSleepBar: UIView {
             tooltip.transform = .identity
         }
 
-        // הסתרה אוטומטית אחרי 2 שניות
+        // Auto-hide after 2 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             UIView.animate(withDuration: 0.2, animations: {
                 tooltip.alpha = 0
@@ -1594,10 +1594,10 @@ final class SleepSectionView: UIView {
     private let mainStack = UIStackView()
     private weak var parentVC: UIViewController?
 
-    // צבעים בסגנון אפל
-    private let sleepPurple = UIColor(red: 0.55, green: 0.45, blue: 0.95, alpha: 1.0) // סגול בהיר כמו באפל
+    // Apple-style colors
+    private let sleepPurple = UIColor(red: 0.55, green: 0.45, blue: 0.95, alpha: 1.0) // Light purple like Apple
     private let sleepPurpleLight = UIColor(red: 0.55, green: 0.45, blue: 0.95, alpha: 0.3)
-    private let targetLineColor = UIColor(red: 0.4, green: 0.75, blue: 0.95, alpha: 1.0) // כחול בהיר לקו הממוצע
+    private let targetLineColor = UIColor(red: 0.4, green: 0.75, blue: 0.95, alpha: 1.0) // Light blue for the average line
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -1631,18 +1631,18 @@ final class SleepSectionView: UIView {
 
         let currentIsRTL = LocalizationManager.shared.currentLanguage == .hebrew
 
-        // === כרטיס איכות שינה ===
+        // === Sleep quality card ===
         let qualityCard = createQualityCard(quality: quality, isRTL: currentIsRTL)
         mainStack.addArrangedSubview(qualityCard)
 
-        // === קו מפריד דק ===
+        // === Thin separator line ===
         let separator = UIView()
         separator.backgroundColor = AIONDesign.textTertiary.withAlphaComponent(0.2)
         separator.translatesAutoresizingMaskIntoConstraints = false
         separator.heightAnchor.constraint(equalToConstant: 1).isActive = true
         mainStack.addArrangedSubview(separator)
 
-        // === כרטיס דגש שינה (בסגנון אפל) ===
+        // === Sleep highlight card (Apple style) ===
         let highlightCard = createSleepHighlightCard(highlight: debt, isRTL: currentIsRTL)
         mainStack.addArrangedSubview(highlightCard)
     }
@@ -1652,7 +1652,7 @@ final class SleepSectionView: UIView {
     private func createQualityCard(quality: SleepQuality, isRTL: Bool) -> UIView {
         let container = UIView()
 
-        // כותרת עם אייקון
+        // Title with icon
         let headerStack = UIStackView()
         headerStack.axis = .horizontal
         headerStack.spacing = 8
@@ -1680,7 +1680,7 @@ final class SleepSectionView: UIView {
             headerStack.addArrangedSubview(titleLabel)
         }
 
-        // ציון ופרטים
+        // Score and details
         let scoreLabel = UILabel()
         scoreLabel.text = quality.displayValue
         scoreLabel.font = .systemFont(ofSize: 34, weight: .bold)
@@ -1729,7 +1729,7 @@ final class SleepSectionView: UIView {
     private func createSleepHighlightCard(highlight: SleepHighlight, isRTL: Bool) -> UIView {
         let container = UIView()
 
-        // כותרת עם אייקון
+        // Title with icon
         let headerStack = UIStackView()
         headerStack.axis = .horizontal
         headerStack.spacing = 8
@@ -1757,7 +1757,7 @@ final class SleepSectionView: UIView {
             headerStack.addArrangedSubview(titleLabel)
         }
 
-        // טקסט תיאור (בסגנון אפל)
+        // Description text (Apple style)
         let descLabel = UILabel()
         descLabel.numberOfLines = 0
         descLabel.textAlignment = isRTL ? .right : .left
@@ -1765,14 +1765,10 @@ final class SleepSectionView: UIView {
         if let avgHours = highlight.value {
             let hours = Int(avgHours)
             let minutes = Int(round((avgHours - Double(hours)) * 60))
-            let timeStr = isRTL ? "\(hours) שע׳ \(minutes) דק׳" : "\(hours)h \(minutes)m"
+            let timeStr = "\(hours)h \(minutes)m"
             let daysCount = highlight.dailySleepData.filter { $0.hours > 0 }.count
 
-            if isRTL {
-                descLabel.text = "ב-\(daysCount) הימים האחרונים, ממוצע שעות השינה שלך היה \(timeStr)."
-            } else {
-                descLabel.text = "In the last \(daysCount) days, your average sleep was \(timeStr)."
-            }
+            descLabel.text = "In the last \(daysCount) days, your average sleep was \(timeStr)."
         } else {
             descLabel.text = "sleep.highlight.no_data".localized
         }
@@ -1781,37 +1777,37 @@ final class SleepSectionView: UIView {
         descLabel.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(descLabel)
 
-        // גרף בר-צ'ארט בסגנון אפל
+        // Apple-style bar chart
         let chartContainer = createBarChart(highlight: highlight, isRTL: isRTL)
         chartContainer.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(chartContainer)
 
-        // ממוצע וציון מספרי בצד
+        // Average and numeric score on the side
         let avgStack = createAverageDisplay(highlight: highlight, isRTL: isRTL)
         avgStack.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(avgStack)
 
-        // מיקום - גרף בצד ימין, ממוצע בצד שמאל (תמיד - כי ככה נראה טוב יותר בעברית)
+        // Layout - chart on the right side, average on the left side
         print("📊 [SleepHighlightCard] isRTL=\(isRTL)")
 
         NSLayoutConstraint.activate([
-            // כותרת - תמיד בצד ימין
+            // Title - always on the right side
             headerStack.topAnchor.constraint(equalTo: container.topAnchor),
             headerStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
 
-            // תיאור - מלא רוחב
+            // Description - full width
             descLabel.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 12),
             descLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             descLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
 
-            // גרף - על כל הרוחב כדי שהקו יגיע מקצה לקצה
+            // Chart - full width so the line reaches edge to edge
             chartContainer.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 16),
             chartContainer.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             chartContainer.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             chartContainer.heightAnchor.constraint(equalToConstant: 120),
             chartContainer.bottomAnchor.constraint(equalTo: container.bottomAnchor),
 
-            // ממוצע - בצד שמאל, מעל הגרף
+            // Average - on the left side, above the chart
             avgStack.topAnchor.constraint(equalTo: chartContainer.topAnchor),
             avgStack.leadingAnchor.constraint(equalTo: container.leadingAnchor)
         ])
@@ -1824,29 +1820,29 @@ final class SleepSectionView: UIView {
     private func createBarChart(highlight: SleepHighlight, isRTL: Bool) -> UIView {
         let container = UIView()
 
-        // Apple Style: גובה גרף וממדים
+        // Apple Style: chart height and dimensions
         let chartHeight: CGFloat = 100
         let barWidth: CGFloat = 28
         let barSpacing: CGFloat = 6
 
-        // חישוב טווח הנתונים לזום אין
+        // Calculate data range for zoom in
         let entries = highlight.dailySleepData
         let validHours = entries.map { $0.hours }.filter { $0 > 0 }
         let actualAvg = highlight.value ?? highlight.targetHours
 
-        // מציאת מינימום ומקסימום עם padding
+        // Find minimum and maximum with padding
         let minDataHours = validHours.min() ?? 0
         let maxDataHours = validHours.max() ?? 8
 
-        // הגדרת טווח התצוגה - הממוצע יהיה בערך באמצע הגרף
-        let range = max(maxDataHours - minDataHours, 2.0) // לפחות 2 שעות טווח
+        // Define display range - the average will be roughly in the middle of the chart
+        let range = max(maxDataHours - minDataHours, 2.0) // At least 2 hours range
         let displayMin = max(0, minDataHours - range * 0.3)
         let displayMax = maxDataHours + range * 0.3
 
-        // לוג לדיבוג
+        // Debug log
         print("📊 [BarChart Apple] actualAvg=\(actualAvg), range=[\(displayMin)-\(displayMax)]")
 
-        // Stack לעמודות
+        // Stack for bars
         let barsStack = UIStackView()
         barsStack.axis = .horizontal
         barsStack.spacing = barSpacing
@@ -1855,7 +1851,7 @@ final class SleepSectionView: UIView {
         barsStack.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(barsStack)
 
-        // Stack לימים
+        // Stack for days
         let daysStack = UIStackView()
         daysStack.axis = .horizontal
         daysStack.spacing = barSpacing
@@ -1865,7 +1861,7 @@ final class SleepSectionView: UIView {
         container.addSubview(daysStack)
 
         for entry in entries {
-            // עמודה לחיצה
+            // Tappable bar
             let barContainer = TappableSleepBar(entry: entry, isRTL: isRTL, parentVC: parentVC)
             barContainer.translatesAutoresizingMaskIntoConstraints = false
 
@@ -1876,7 +1872,7 @@ final class SleepSectionView: UIView {
             bar.isUserInteractionEnabled = false
             barContainer.addSubview(bar)
 
-            // חישוב גובה יחסי עם זום אין
+            // Calculate relative height with zoom in
             var barHeight: CGFloat = 4
             if entry.hours > 0 {
                 let normalizedValue = (entry.hours - displayMin) / (displayMax - displayMin)
@@ -1896,7 +1892,7 @@ final class SleepSectionView: UIView {
 
             barsStack.addArrangedSubview(barContainer)
 
-            // תווית יום
+            // Day label
             let dayLabel = UILabel()
             dayLabel.text = entry.dayOfWeekShort
             dayLabel.font = .systemFont(ofSize: 11, weight: .medium)
@@ -1907,7 +1903,7 @@ final class SleepSectionView: UIView {
             daysStack.addArrangedSubview(dayLabel)
         }
 
-        // קו הממוצע האופקי - Apple Style (עובר על כל הרוחב)
+        // Horizontal average line - Apple Style (spans full width)
         let avgNormalized = (actualAvg - displayMin) / (displayMax - displayMin)
         let avgLineY = CGFloat(avgNormalized) * chartHeight
         print("📊 [BarChart Apple] avgLineY=\(avgLineY)px")
@@ -1917,7 +1913,7 @@ final class SleepSectionView: UIView {
         avgLine.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(avgLine)
 
-        // יישור - הגרף בצד ימין, הקו עובר מקצה לקצה
+        // Alignment - chart on the right, line spans edge to edge
         NSLayoutConstraint.activate([
             barsStack.topAnchor.constraint(equalTo: container.topAnchor),
             barsStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -1927,7 +1923,7 @@ final class SleepSectionView: UIView {
             daysStack.leadingAnchor.constraint(equalTo: barsStack.leadingAnchor),
             daysStack.trailingAnchor.constraint(equalTo: barsStack.trailingAnchor),
 
-            // הקו עובר על כל רוחב הקונטיינר - כמו באפל
+            // Line spans the full container width - like Apple
             avgLine.bottomAnchor.constraint(equalTo: barsStack.bottomAnchor, constant: -avgLineY),
             avgLine.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             avgLine.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -1942,7 +1938,7 @@ final class SleepSectionView: UIView {
     private func createAverageDisplay(highlight: SleepHighlight, isRTL: Bool) -> UIView {
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.alignment = .leading  // תמיד שמאל כי הממוצע בצד שמאל
+        stack.alignment = .leading  // Always left since the average is on the left side
         stack.spacing = 2
 
         let titleLabel = UILabel()
@@ -1964,7 +1960,7 @@ final class SleepSectionView: UIView {
                 .font: UIFont.systemFont(ofSize: 28, weight: .bold),
                 .foregroundColor: AIONDesign.textPrimary
             ]))
-            attrString.append(NSAttributedString(string: isRTL ? "שע׳ " : "h ", attributes: [
+            attrString.append(NSAttributedString(string: "h ", attributes: [
                 .font: UIFont.systemFont(ofSize: 14, weight: .medium),
                 .foregroundColor: AIONDesign.textSecondary
             ]))
@@ -1972,7 +1968,7 @@ final class SleepSectionView: UIView {
                 .font: UIFont.systemFont(ofSize: 28, weight: .bold),
                 .foregroundColor: AIONDesign.textPrimary
             ]))
-            attrString.append(NSAttributedString(string: isRTL ? "דק׳" : "m", attributes: [
+            attrString.append(NSAttributedString(string: "m", attributes: [
                 .font: UIFont.systemFont(ofSize: 14, weight: .medium),
                 .foregroundColor: AIONDesign.textSecondary
             ]))
@@ -2000,19 +1996,11 @@ final class SleepSectionView: UIView {
             let totalMins = Int(round(hours * 60))
             let h = totalMins / 60
             let m = totalMins % 60
-            if currentIsRTL {
-                parts.append("\(h) שע׳ \(m) דק׳")
-            } else {
-                parts.append("\(h)h \(m)m")
-            }
+            parts.append("\(h)h \(m)m")
         }
 
         if let deep = quality.deepPercent {
-            if currentIsRTL {
-                parts.append("עמוקה \(Int(deep))%")
-            } else {
-                parts.append("Deep \(Int(deep))%")
-            }
+            parts.append("Deep \(Int(deep))%")
         }
 
         if let rem = quality.remPercent {
@@ -2078,7 +2066,7 @@ final class TrainingSectionView: UIView {
         self.parentVC = parentVC
         self.scoreHistory = scoreHistory
 
-        // עדכון יישור לפי שפה נוכחית
+        // Update alignment based on current language
         titleLabel.textAlignment = textAlignment
 
         metricsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -2213,7 +2201,7 @@ final class ActivitySectionCompact: UIView {
         self.parentVC = parentVC
         self.scoreHistory = scoreHistory
 
-        // עדכון יישור לפי שפה נוכחית
+        // Update alignment based on current language
         titleLabel.textAlignment = textAlignment
 
         ringsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }

@@ -2,14 +2,14 @@
 //  AIONChartViews.swift
 //  Health Reporter
 //
-//  גרפים בסגנון Biological Correlations – רקע כהה, קו גרדיאנט ציאן→ליים.
+//  Charts in Biological Correlations style – dark background, cyan-to-lime gradient line.
 //
 
 import SwiftUI
 import Charts
 
-// MARK: - Chart colors (ציאן / טורקיז / ליים – בהתאמה ללוגו)
-// צבעי surface ו-text דינמיים לפי רקע בהיר/כהה
+// MARK: - Chart colors (cyan / turquoise / lime – matching the logo)
+// Dynamic surface and text colors based on light/dark background
 private enum ChartColors {
     static let primary = Color(uiColor: AIONDesign.accentPrimary)
     static let secondary = Color(uiColor: AIONDesign.accentSecondary)
@@ -36,7 +36,7 @@ private struct ChartDarkBackground: ViewModifier {
     }
 }
 
-/// כמו chartDarkStyle אבל עם padding אופקי – מונע חיתוך תוויות ציר Y.
+/// Like chartDarkStyle but with horizontal padding – prevents Y-axis label clipping.
 private struct ChartDarkBackgroundPadded: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -48,11 +48,11 @@ private struct ChartDarkBackgroundPadded: ViewModifier {
 
 private extension View {
     func chartDarkStyle() -> some View { modifier(ChartDarkBackground()) }
-    /// לשימוש בעמוד פעילות – ציר Y לא נחתך.
+    /// For use in the activity page – Y-axis is not clipped.
     func chartDarkStylePadded() -> some View { modifier(ChartDarkBackgroundPadded()) }
 }
 
-// MARK: - 1. מטריצת מוכנות (התאוששות vs עומס)
+// MARK: - 1. Readiness matrix (recovery vs strain)
 struct ReadinessChartView: View {
     let data: ReadinessGraphData
     private var hasData: Bool { !data.points.isEmpty }
@@ -78,7 +78,7 @@ struct ReadinessChartView: View {
     }
 }
 
-// MARK: - 2. יעילות קרדיו (דופק vs מרחק)
+// MARK: - 2. Cardio efficiency (heart rate vs distance)
 struct EfficiencyChartView: View {
     let data: EfficiencyGraphData
     private var hasHR: Bool { data.points.contains { $0.avgHeartRate != nil } }
@@ -109,7 +109,7 @@ struct EfficiencyChartView: View {
     }
 }
 
-// MARK: - 3. ארכיטקטורת שינה
+// MARK: - 3. Sleep architecture
 struct SleepArchitectureChartView: View {
     let data: SleepArchitectureGraphData
     private var visiblePoints: [SleepDayPoint] { data.points.filter { ($0.totalHours ?? 0) > 0 } }
@@ -133,7 +133,7 @@ struct SleepArchitectureChartView: View {
     }
 }
 
-// MARK: - 4. גלוקוז ואנרגיה
+// MARK: - 4. Glucose and energy
 struct GlucoseEnergyChartView: View {
     let data: GlucoseEnergyGraphData
     private var hasGlucose: Bool { data.points.contains { $0.glucose != nil } }
@@ -164,7 +164,7 @@ struct GlucoseEnergyChartView: View {
     }
 }
 
-// MARK: - 5. איזון אוטונומי
+// MARK: - 5. Autonomic balance
 struct AutonomicRadarChartView: View {
     let data: AutonomicRadarData
     private var hasAny: Bool { data.rhr != nil || data.hrv != nil || data.respiratory != nil }
@@ -193,7 +193,7 @@ struct AutonomicRadarChartView: View {
     }
 }
 
-// MARK: - 6. תזונה vs יעדים
+// MARK: - 6. Nutrition vs goals
 struct NutritionChartView: View {
     let data: NutritionGraphData
     private var hasData: Bool {
@@ -229,7 +229,7 @@ struct NutritionChartView: View {
     }
 }
 
-// MARK: - Placeholder (סגנון כהה – כמו התמונה)
+// MARK: - Placeholder (dark style – like the image)
 struct ChartPlaceholderView: View {
     let message: String
     let icon: String
@@ -249,7 +249,7 @@ struct ChartPlaceholderView: View {
     }
 }
 
-// MARK: - חלופות לגרפים ריקים (אותו סגנון – גרדיאנט, רקע כהה)
+// MARK: - Alternatives for empty charts (same style – gradient, dark background)
 
 struct DistanceChartView: View {
     let data: EfficiencyGraphData
@@ -355,7 +355,7 @@ struct AvgHeartRateTrendChartView: View {
     }
 }
 
-// MARK: - גרף יעילות שבועי (בר־צ׳ארט Mon–Sun) – דשבורד ראשי
+// MARK: - Weekly efficiency chart (bar chart Mon-Sun) – main dashboard
 struct DashboardEfficiencyBarChartView: View {
     let data: ReadinessGraphData
     private var points: [(day: String, value: Double)] {

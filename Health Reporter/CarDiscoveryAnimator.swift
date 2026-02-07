@@ -2,7 +2,7 @@
 //  CarDiscoveryAnimator.swift
 //  Health Reporter
 //
-//  אנימציות לחווית גילוי הרכב - confetti, typing, counting ועוד
+//  Animations for the car discovery experience - confetti, typing, counting and more
 //
 
 import UIKit
@@ -26,7 +26,7 @@ final class ConfettiEmitter {
         emitter.emitterSize = CGSize(width: containerView.bounds.width, height: 1)
         emitter.emitterShape = .line
 
-        // יצירת חלקיקים בצבעים שונים
+        // Create particles in different colors
         let colors: [UIColor] = [
             UIColor(red: 0.0, green: 0.85, blue: 0.95, alpha: 1.0),  // Cyan
             UIColor(red: 0.6, green: 0.4, blue: 1.0, alpha: 1.0),   // Purple
@@ -52,7 +52,7 @@ final class ConfettiEmitter {
             cell.color = color.cgColor
             cell.alphaSpeed = -0.3
 
-            // יצירת תמונת חלקיק עגול
+            // Create round particle image
             cell.contents = createConfettiImage(size: CGSize(width: 12, height: 12))?.cgImage
 
             cells.append(cell)
@@ -62,7 +62,7 @@ final class ConfettiEmitter {
         containerView.layer.addSublayer(emitter)
         self.emitterLayer = emitter
 
-        // עצירה אחרי 3 שניות
+        // Stop after 3 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
             self?.stop()
         }
@@ -71,7 +71,7 @@ final class ConfettiEmitter {
     func stop() {
         emitterLayer?.birthRate = 0
 
-        // הסרה מלאה אחרי שכל החלקיקים נעלמו
+        // Full removal after all particles have disappeared
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
             self?.emitterLayer?.removeFromSuperlayer()
             self?.emitterLayer = nil
@@ -115,7 +115,7 @@ final class ParticleBackground {
         cell.lifetime = 8.0
         cell.velocity = 50
         cell.velocityRange = 20
-        cell.emissionLongitude = -.pi / 2  // כלפי מעלה
+        cell.emissionLongitude = -.pi / 2  // upward
         cell.emissionRange = .pi / 8
         cell.scale = 0.03
         cell.scaleRange = 0.02
@@ -188,7 +188,7 @@ final class TypingAnimator {
         label?.text = String(fullText[...index])
         currentIndex += 1
 
-        // אפקט קול קליק (haptic feedback)
+        // Click sound effect (haptic feedback)
         if currentIndex % 3 == 0 {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }

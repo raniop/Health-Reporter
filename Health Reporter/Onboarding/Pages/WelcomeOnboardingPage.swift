@@ -2,7 +2,7 @@
 //  WelcomeOnboardingPage.swift
 //  Health Reporter
 //
-//  מסך פתיחה - ברוכים הבאים ל-AION
+//  Welcome screen - Welcome to AION
 //
 
 import UIKit

@@ -2,7 +2,7 @@
 //  LeaderboardEntryView.swift
 //  Health Reporter
 //
-//  תצוגת שורה בלידרבורד - מציגה דירוג, אווטר, שם, ציון ורכב.
+//  Leaderboard row view - displays rank, avatar, name, score and car.
 //
 
 import UIKit

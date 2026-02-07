@@ -2,7 +2,7 @@
 //  AnalysisFirestoreSync.swift
 //  Health Reporter
 //
-//  סנכרון נתוני ניתוח AION ל-Firestore – זמין מכל מכשיר לפי משתמש מחובר.
+//  Sync AION analysis data to Firestore – available from any device per logged-in user.
 //
 
 import Foundation
@@ -17,7 +17,7 @@ enum AnalysisFirestoreSync {
     private static let fieldLastAnalysisDate = "lastAnalysisDate"
     private static let maxAgeSeconds: TimeInterval = 24 * 3600
 
-    /// שומר נתוני ניתוח ל-Firestore. קורא רק כאשר יש משתמש מחובר.
+    /// Save analysis data to Firestore. Only called when a user is logged in.
     static func saveIfLoggedIn(insights: String, recommendations: String) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else { return }
         let db = Firestore.firestore()
@@ -30,8 +30,8 @@ enum AnalysisFirestoreSync {
         ], merge: true) { _ in }
     }
 
-    /// טוען נתוני ניתוח מ-Firestore. מחזיר nil אם אין משתמש או אין נתונים.
-    /// ייתכן שהנתונים ישנים (>24h) – ה־caller יחליט אם להשתמש.
+    /// Load analysis data from Firestore. Returns nil if no user or no data.
+    /// Data may be stale (>24h) – the caller decides whether to use it.
     static func fetch(
         timeout: TimeInterval = 2.5,
         completion: @escaping ((insights: String, recommendations: String, date: Date)?) -> Void
@@ -76,12 +76,12 @@ enum AnalysisFirestoreSync {
         }
     }
 
-    /// האם הנתונים עדיין "תקפים" לשימוש כקאש (פחות מ-24h).
+    /// Whether the data is still "valid" for use as cache (less than 24h).
     static func isValidCache(date: Date) -> Bool {
         Date().timeIntervalSince(date) < maxAgeSeconds
     }
     
-    /// מנקה את כל הנתונים השמורים ב-Firestore (אם יש משתמש מחובר)
+    /// Clear all saved data in Firestore (if a user is logged in)
     static func clear() {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else { return }
         let db = Firestore.firestore()

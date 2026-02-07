@@ -2,7 +2,7 @@
 //  CarRevealOnboardingPage.swift
 //  Health Reporter
 //
-//  מסך גילוי הרכב - מוצג רק אם יש נתוני Gemini
+//  Car reveal screen - shown only if Gemini data is available
 //
 
 import UIKit

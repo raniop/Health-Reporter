@@ -2,7 +2,7 @@
 //  TrendsViewController.swift
 //  Health Reporter
 //
-//  מגמות / קורלציות ביולוגיות – סגנון Biological Correlations.
+//  Trends / biological correlations – Biological Correlations style.
 //
 
 import UIKit
@@ -551,7 +551,7 @@ final class TrendsViewController: UIViewController {
         let sampleCount = r.count
         sampleSizeLabel?.text = "\(sampleCount) pts"
 
-        // חישוב קורלציה בסיסית בין recovery ל-strain
+        // Calculate basic correlation between recovery and strain
         guard sampleCount >= 3 else {
             correlationValLabel?.text = "—"
             correlationImpLabel?.text = "trends.need3Days".localized

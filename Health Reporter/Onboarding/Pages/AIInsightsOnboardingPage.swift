@@ -2,7 +2,7 @@
 //  AIInsightsOnboardingPage.swift
 //  Health Reporter
 //
-//  מסך הסבר על תובנות AI ומגמות
+//  AI insights and trends explanation screen
 //
 
 import UIKit

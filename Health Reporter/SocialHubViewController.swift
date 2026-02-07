@@ -377,8 +377,11 @@ final class SocialHubViewController: UIViewController {
             stack.addArrangedSubview(myStory)
         }
 
-        // Following users
-        for relation in followingRelations {
+        // Following users — sorted by most recently active first
+        let sortedRelations = followingRelations.sorted {
+            ($0.lastUpdated ?? $0.followedAt) > ($1.lastUpdated ?? $1.followedAt)
+        }
+        for relation in sortedRelations {
             let firstName = relation.displayName.components(separatedBy: " ").first ?? relation.displayName
             let story = makeStoryCircle(
                 name: firstName,
@@ -396,7 +399,7 @@ final class SocialHubViewController: UIViewController {
             stack.trailingAnchor.constraint(equalTo: carousel.contentLayoutGuide.trailingAnchor),
             stack.bottomAnchor.constraint(equalTo: carousel.contentLayoutGuide.bottomAnchor),
             stack.heightAnchor.constraint(equalTo: carousel.frameLayoutGuide.heightAnchor),
-            carousel.heightAnchor.constraint(equalToConstant: 90),
+            carousel.heightAnchor.constraint(equalToConstant: 104),
         ])
 
         contentStack.addArrangedSubview(carousel)
@@ -407,10 +410,10 @@ final class SocialHubViewController: UIViewController {
         container.translatesAutoresizingMaskIntoConstraints = false
         container.isUserInteractionEnabled = true
 
-        let avatarSize: CGFloat = 56
+        let avatarSize: CGFloat = 68
         let avatar = AvatarRingView(size: avatarSize)
         avatar.translatesAutoresizingMaskIntoConstraints = false
-        avatar.ringWidth = 2.5
+        avatar.ringWidth = 3
 
         // Ring colors from tier
         let tier = CarTierEngine.tiers[safe: tierIndex]
@@ -435,7 +438,7 @@ final class SocialHubViewController: UIViewController {
         container.addSubview(nameLabel)
 
         NSLayoutConstraint.activate([
-            container.widthAnchor.constraint(equalToConstant: 68),
+            container.widthAnchor.constraint(equalToConstant: 80),
 
             avatar.topAnchor.constraint(equalTo: container.topAnchor, constant: 4),
             avatar.centerXAnchor.constraint(equalTo: container.centerXAnchor),
@@ -831,7 +834,51 @@ final class SocialHubViewController: UIViewController {
 
         contentStack.addArrangedSubview(headerContainer)
 
-        // Compact strip
+        // Podium view for top 3
+        let podium = PodiumView()
+        podium.translatesAutoresizingMaskIntoConstraints = false
+
+        let entries = Array(top3)
+        let currentUid = Auth.auth().currentUser?.uid ?? ""
+
+        let first: PodiumView.Entry? = entries.count > 0 ? PodiumView.Entry(
+            uid: entries[0].uid,
+            rank: 1,
+            name: entries[0].displayName.components(separatedBy: " ").first ?? entries[0].displayName,
+            photoURL: entries[0].photoURL,
+            score: entries[0].healthScore,
+            isCurrentUser: entries[0].uid == currentUid
+        ) : nil
+
+        let second: PodiumView.Entry? = entries.count > 1 ? PodiumView.Entry(
+            uid: entries[1].uid,
+            rank: 2,
+            name: entries[1].displayName.components(separatedBy: " ").first ?? entries[1].displayName,
+            photoURL: entries[1].photoURL,
+            score: entries[1].healthScore,
+            isCurrentUser: entries[1].uid == currentUid
+        ) : nil
+
+        let third: PodiumView.Entry? = entries.count > 2 ? PodiumView.Entry(
+            uid: entries[2].uid,
+            rank: 3,
+            name: entries[2].displayName.components(separatedBy: " ").first ?? entries[2].displayName,
+            photoURL: entries[2].photoURL,
+            score: entries[2].healthScore,
+            isCurrentUser: entries[2].uid == currentUid
+        ) : nil
+
+        podium.configure(first: first, second: second, third: third)
+        podium.onUserTapped = { [weak self] uid in
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            self?.pushUserProfile(uid: uid)
+        }
+
+        podium.heightAnchor.constraint(equalToConstant: 185).isActive = true
+        contentStack.addArrangedSubview(podium)
+        podium.animateEntrance()
+
+        // Compact strip below podium
         let strip = UIStackView()
         strip.axis = .horizontal
         strip.spacing = 10
@@ -1255,19 +1302,49 @@ final class SocialHubViewController: UIViewController {
         guard let card = searchResultsStack.arrangedSubviews[safe: cardIndex] as? UserCardView else { return }
         card.setLoading(true)
 
-        FollowFirestoreSync.followUser(targetUid: user.uid) { [weak self] error in
-            guard let self = self else { return }
-            card.setLoading(false)
+        if user.isFollowing {
+            // Unfollow
+            FollowFirestoreSync.unfollowUser(targetUid: user.uid) { [weak self] error in
+                guard let self = self else { return }
+                card.setLoading(false)
 
-            if error != nil {
-                UINotificationFeedbackGenerator().notificationOccurred(.error)
-            } else {
-                if cardIndex < self.searchResults.count {
-                    self.searchResults[cardIndex].hasPendingRequest = true
-                    self.searchResults[cardIndex].requestSentByMe = true
-                    card.configure(with: self.searchResults[cardIndex])
+                if error != nil {
+                    UINotificationFeedbackGenerator().notificationOccurred(.error)
+                } else {
+                    if cardIndex < self.searchResults.count {
+                        self.searchResults[cardIndex].isFollowing = false
+                        card.configure(with: self.searchResults[cardIndex])
+                    }
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    self.loadArenaData()
                 }
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+        } else {
+            // Follow
+            FollowFirestoreSync.followUser(targetUid: user.uid) { [weak self] error in
+                guard let self = self else { return }
+                card.setLoading(false)
+
+                if error != nil {
+                    UINotificationFeedbackGenerator().notificationOccurred(.error)
+                } else {
+                    // Re-check actual state: if now in following list, it was a direct follow;
+                    // otherwise it was a pending request
+                    FollowFirestoreSync.fetchFollowing { [weak self] following in
+                        guard let self = self, cardIndex < self.searchResults.count else { return }
+                        let isNowFollowing = following.contains { $0.uid == user.uid }
+                        if isNowFollowing {
+                            self.searchResults[cardIndex].isFollowing = true
+                            self.searchResults[cardIndex].hasPendingRequest = false
+                        } else {
+                            self.searchResults[cardIndex].hasPendingRequest = true
+                            self.searchResults[cardIndex].requestSentByMe = true
+                        }
+                        card.configure(with: self.searchResults[cardIndex])
+                    }
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    self.loadArenaData()
+                }
             }
         }
     }

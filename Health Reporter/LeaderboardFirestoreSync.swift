@@ -2,7 +2,7 @@
 //  LeaderboardFirestoreSync.swift
 //  Health Reporter
 //
-//  סנכרון ציונים ושליפת לידרבורד מ-Firestore.
+//  Score syncing and leaderboard fetching from Firestore.
 //
 
 import Foundation
@@ -18,7 +18,7 @@ enum LeaderboardFirestoreSync {
 
     // MARK: - Privacy Settings
 
-    /// קבלת הגדרת פרטיות - האם המשתמש מופיע בלידרבורד הגלובלי
+    /// Get privacy setting - whether the user appears in the global leaderboard
     static func getLeaderboardOptIn(completion: @escaping (Bool) -> Void) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
             DispatchQueue.main.async { completion(false) }
@@ -31,7 +31,7 @@ enum LeaderboardFirestoreSync {
         }
     }
 
-    /// עדכון הגדרת פרטיות
+    /// Update privacy setting
     static func setLeaderboardOptIn(_ optIn: Bool, completion: ((Error?) -> Void)? = nil) {
         guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
             completion?(NSError(domain: "LeaderboardFirestoreSync", code: -1,
@@ -56,11 +56,11 @@ enum LeaderboardFirestoreSync {
 
     // MARK: - Score Syncing
 
-    /// סנכרון ציון ללידרבורד - נקרא אחרי חישוב ציון חדש
+    /// Sync score to leaderboard - called after calculating a new score
     /// - Parameters:
-    ///   - score: ציון הבריאות
-    ///   - tier: ה-tier מהמערך הקבוע (לצורך tierIndex ו-tierLabel)
-    ///   - geminiCarName: שם הרכב האמיתי מ-Gemini (אופציונלי)
+    ///   - score: Health score
+    ///   - tier: The tier from the fixed array (for tierIndex and tierLabel)
+    ///   - geminiCarName: The real car name from Gemini (optional)
     static func syncScore(score: Int, tier: CarTier, geminiCarName: String? = nil, completion: ((Error?) -> Void)? = nil) {
         guard let currentUser = Auth.auth().currentUser,
               let currentUid = currentUser.uid as String?,

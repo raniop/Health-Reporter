@@ -2,7 +2,7 @@
 //  NotificationsOnboardingPage.swift
 //  Health Reporter
 //
-//  מסך בקשת הרשאה לנוטיפיקציות
+//  Notifications permission request screen
 //
 
 import UIKit

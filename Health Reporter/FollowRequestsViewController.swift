@@ -60,7 +60,7 @@ final class FollowRequestsViewController: UIViewController, FriendRequestViewDel
         l.textColor = AIONDesign.textSecondary
         l.textAlignment = .center
         l.numberOfLines = 0
-        l.text = "social.noRequests".localized
+        l.text = "No pending requests"
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -91,7 +91,7 @@ final class FollowRequestsViewController: UIViewController, FriendRequestViewDel
     // MARK: - Setup Navigation
 
     private func setupNavigation() {
-        title = "social.followRequests".localized
+        title = "Follow Requests"
         modalPresentationStyle = .formSheet
 
         let appearance = UINavigationBarAppearance()
@@ -304,11 +304,11 @@ final class FollowRequestsViewController: UIViewController, FriendRequestViewDel
 
     private func showErrorAlert(message: String) {
         let alert = UIAlertController(
-            title: "error".localized,
+            title: "Error",
             message: message,
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
 

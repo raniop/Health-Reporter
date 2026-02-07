@@ -2,8 +2,8 @@ import UIKit
 import HealthKit
 import FirebaseAuth
 
-/// Splash Screen דינמי שטוען נתונים ברקע
-/// מוצג במקום LaunchScreen.storyboard הסטטי ומבצע את טעינת הנתונים
+/// Dynamic Splash Screen that loads data in the background
+/// Displayed instead of the static LaunchScreen.storyboard and performs data loading
 class SplashViewController: UIViewController {
 
     // MARK: - UI Elements
@@ -18,7 +18,7 @@ class SplashViewController: UIViewController {
         let label = UILabel()
         label.text = "AION"
         label.font = .boldSystemFont(ofSize: 30)
-        label.textColor = .white  // תמיד לבן ב-Splash (רקע כהה קבוע)
+        label.textColor = .white  // Always white in Splash (fixed dark background)
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -26,7 +26,7 @@ class SplashViewController: UIViewController {
 
     private let accentBar: UIView = {
         let view = UIView()
-        view.backgroundColor = AIONDesign.accentSecondary  // טורקיז
+        view.backgroundColor = AIONDesign.accentSecondary  // Turquoise
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
@@ -71,10 +71,10 @@ class SplashViewController: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        // רקע כהה כמו ב-LaunchScreen
+        // Dark background like LaunchScreen
         view.backgroundColor = UIColor(red: 0.11, green: 0.11, blue: 0.118, alpha: 1.0)
 
-        // הוספת אלמנטים
+        // Add elements
         view.addSubview(logoImageView)
         view.addSubview(titleLabel)
         view.addSubview(accentBar)
@@ -83,33 +83,33 @@ class SplashViewController: UIViewController {
         view.addSubview(statusLabel)
 
         NSLayoutConstraint.activate([
-            // Logo - מרכז עם offset למעלה
+            // Logo - centered with upward offset
             logoImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             logoImageView.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -80),
             logoImageView.widthAnchor.constraint(equalToConstant: 200),
             logoImageView.heightAnchor.constraint(equalToConstant: 200),
 
-            // Title - מתחת ללוגו
+            // Title - below logo
             titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             titleLabel.topAnchor.constraint(equalTo: logoImageView.bottomAnchor, constant: 16),
 
-            // Accent bar - מתחת לכותרת
+            // Accent bar - below title
             accentBar.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             accentBar.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
             accentBar.widthAnchor.constraint(equalToConstant: 50),
             accentBar.heightAnchor.constraint(equalToConstant: 4),
 
-            // Subtitle - מתחת לפס
+            // Subtitle - below bar
             subtitleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             subtitleLabel.topAnchor.constraint(equalTo: accentBar.bottomAnchor, constant: 16),
             subtitleLabel.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
             subtitleLabel.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
 
-            // Loading indicator - מתחת לכל
+            // Loading indicator - below everything
             loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             loadingIndicator.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 40),
 
-            // Status label - מתחת ל-indicator
+            // Status label - below indicator
             statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             statusLabel.topAnchor.constraint(equalTo: loadingIndicator.bottomAnchor, constant: 12),
         ])
@@ -118,18 +118,18 @@ class SplashViewController: UIViewController {
     // MARK: - Loading
 
     private func startLoading() {
-        // הצג loading
+        // Show loading
         loadingIndicator.startAnimating()
         UIView.animate(withDuration: 0.3) {
             self.statusLabel.alpha = 1
         }
 
         #if DEBUG
-        // אם זה יוזר טסט - מכניסים נתונים מדומים ועוברים ל-Onboarding
-        // ה-Onboarding יבקש הרשאות HealthKit ויקרא ל-Gemini עם הנתונים המדומים
+        // If this is a test user - inject mock data and go to Onboarding
+        // The Onboarding will request HealthKit permissions and call Gemini with mock data
         if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email) {
             print("🧪 [Splash] Test user detected - setting up mock data and going to Onboarding")
-            // חשוב! מכניסים את הנתונים המדומים כאן כי אולי לא עברנו דרך Login
+            // Important! Inject mock data here because we may not have gone through Login
             DebugTestHelper.shared.setupTestUserData()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 self.transitionToMain()
@@ -138,25 +138,25 @@ class SplashViewController: UIViewController {
         }
         #endif
 
-        // בדוק אם HealthKit זמין
+        // Check if HealthKit is available
         guard HealthKitManager.shared.isHealthDataAvailable() else {
             transitionToMain()
             return
         }
 
-        // בקש הרשאות HealthKit
+        // Request HealthKit authorization
         HealthKitManager.shared.requestAuthorization { [weak self] success, _ in
             guard let self = self else { return }
 
             if !success {
-                // אם אין הרשאה - עבור למסך הראשי בכל זאת
+                // If no permission - go to main screen anyway
                 DispatchQueue.main.async {
                     self.transitionToMain()
                 }
                 return
             }
 
-            // טען נתונים
+            // Load data
             self.loadHealthData()
         }
     }
@@ -166,28 +166,28 @@ class SplashViewController: UIViewController {
             self.statusLabel.text = "splash.syncAppleHealth".localized
         }
 
-        // טעינת נתוני בריאות
+        // Load health data
         HealthKitManager.shared.fetchAllHealthData(for: .week) { [weak self] data, _ in
             guard let self = self else { return }
 
-            // שמור ב-cache
+            // Save to cache
             HealthDataCache.shared.healthData = data
 
             DispatchQueue.main.async {
                 self.statusLabel.text = "splash.processingData".localized
             }
 
-            // חישוב HealthScore וסנכרון ל-Firestore ברקע
+            // Calculate HealthScore and sync to Firestore in background
             self.calculateAndSyncHealthScore()
 
-            // טעינת נתוני גרפים
+            // Load chart data
             HealthKitManager.shared.fetchChartData(for: .week) { [weak self] bundle in
                 guard let self = self else { return }
 
-                // שמור ב-cache
+                // Save to cache
                 HealthDataCache.shared.chartBundle = bundle
 
-                // הפעלת ניתוח ג'מיני ברקע (לא חוסם UI)
+                // Trigger Gemini analysis in background (non-blocking UI)
                 self.triggerBackgroundGeminiAnalysis(healthData: data, chartBundle: bundle)
 
                 DispatchQueue.main.async {
@@ -197,16 +197,16 @@ class SplashViewController: UIViewController {
         }
     }
 
-    /// חישוב HealthScore מנתוני 90 יום וסנכרון ל-Firestore
+    /// Calculate HealthScore from 90-day data and sync to Firestore
     private func calculateAndSyncHealthScore() {
         HealthKitManager.shared.fetchDailyHealthData(days: 90) { dailyEntries in
             let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
             AnalysisCache.saveHealthScoreResult(healthResult)
 
-            // סנכרון ל-Firestore (לידרבורד וחיפוש חברים)
+            // Sync to Firestore (leaderboard and friend search)
             let score = healthResult.healthScoreInt
             let tier = CarTierEngine.tierForScore(score)
-            // שימוש בשם הרכב מ-Gemini אם קיים במטמון
+            // Use car name from Gemini if available in cache
             let cachedCarName = AnalysisCache.loadSelectedCar()?.name
             print("🚗 [Splash] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
             LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
@@ -222,11 +222,11 @@ class SplashViewController: UIViewController {
                 print("📊 [Splash] Saved YESTERDAY's activity: steps=\(steps), calories=\(calories)")
             }
 
-            // שליחה לשעון - נתוני היום האחרון
-            // עדיפות: mainScore (הציון היומי) > healthScoreInt (ציון 90 יום)
+            // Send to watch - latest day data
+            // Priority: mainScore (daily score) > healthScoreInt (90-day score)
             let todayEntry = dailyEntries.last
             let displayScore = AnalysisCache.loadMainScore() ?? score
-            // עדיפות ל-status השמור (מ-InsightsDashboard), אחרת חשב מהציון
+            // Priority to saved status (from InsightsDashboard), otherwise calculate from score
             let healthStatus: String
             if let savedStatus = AnalysisCache.loadMainScoreStatus() {
                 healthStatus = savedStatus
@@ -245,13 +245,13 @@ class SplashViewController: UIViewController {
                         let exercise = Int(exerciseMinutes ?? 0)
                         let stand = Int(standHours ?? 0)
 
-                        // בדיקה: אם יש נתוני Gemini ב-cache - להשתמש בהם לווידג'ט
+                        // Check: if Gemini data exists in cache - use it for widget
                         let geminiCar = AnalysisCache.loadSelectedCar()
                         let geminiScore = AnalysisCache.loadHealthScore()
                         let userName = Auth.auth().currentUser?.displayName ?? ""
 
                         if let geminiCarName = geminiCar?.name, let geminiScoreValue = geminiScore {
-                            // יש נתוני Gemini - עדכון ווידג'ט עם שם הרכב והציון מ-Gemini
+                            // Has Gemini data - update widget with car name and score from Gemini
                             let geminiTier = CarTierEngine.tierForScore(geminiScoreValue)
 
                             // Prefetch car image for faster loading in Insights tab
@@ -260,7 +260,7 @@ class SplashViewController: UIViewController {
                             }
                             WidgetDataManager.shared.updateFromInsights(
                                 score: geminiScoreValue,
-                                dailyScore: displayScore,  // הציון היומי לתצוגה משנית
+                                dailyScore: displayScore,  // Daily score for secondary display
                                 status: healthStatus,
                                 carName: geminiCarName,
                                 carEmoji: geminiTier.emoji,
@@ -275,7 +275,7 @@ class SplashViewController: UIViewController {
                             )
                             print("📱 [Splash] Widget updated with Gemini data: car=\(geminiCarName), score=\(geminiScoreValue), user=\(userName)")
 
-                            // שליחה לשעון - עם הציון היומי (לא Gemini!) כדי לשמור על עקביות
+                            // Send to watch - with daily score (not Gemini!) to maintain consistency
                             // ALWAYS use Gemini car name - never generic tier names
                             WatchConnectivityManager.shared.sendWidgetDataToWatch(
                                 healthScore: displayScore,
@@ -295,7 +295,7 @@ class SplashViewController: UIViewController {
                                 geminiCarScore: geminiScoreValue
                             )
                         } else {
-                            // אין נתוני Gemini - להשתמש בציון רגיל (מחושב מ-HealthScore)
+                            // No Gemini data - use regular score (calculated from HealthScore)
                             // Note: updateFromDashboard will use empty car name since no Gemini data
                             WidgetDataManager.shared.updateFromDashboard(
                                 score: displayScore,
@@ -325,7 +325,7 @@ class SplashViewController: UIViewController {
         loadingIndicator.stopAnimating()
 
         guard let window = view.window else {
-            // Fallback אם אין window
+            // Fallback if no window
             let nextVC = getNextViewController()
             if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate {
                 sceneDelegate.window?.rootViewController = nextVC
@@ -336,43 +336,43 @@ class SplashViewController: UIViewController {
 
         let nextVC = getNextViewController()
 
-        // אנימציית מעבר חלקה
+        // Smooth transition animation
         UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve, animations: {
             window.rootViewController = nextVC
         }, completion: nil)
     }
 
-    /// מחזיר את ה-ViewController הבא - Onboarding ליוזר חדש, Main ליוזר קיים
+    /// Returns the next ViewController - Onboarding for new user, Main for existing user
     private func getNextViewController() -> UIViewController {
         #if DEBUG
-        // יוזר טסט תמיד עובר ל-Onboarding (כולל בקשת הרשאות HealthKit ו-Gemini)
+        // Test user always goes to Onboarding (including HealthKit permissions and Gemini)
         if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email) {
             print("🧪 [Splash] Test user - forcing OnboardingPageViewController")
             return OnboardingPageViewController()
         }
         #endif
 
-        // בדיקה אם צריך להציג Onboarding (יוזר חדש או יוזר טסט)
+        // Check if Onboarding should be shown (new user or test user)
         if OnboardingManager.shouldShowOnboarding(isSignUp: false, additionalUserInfo: nil) {
             print("🧪 [Splash] User needs onboarding - showing OnboardingPageViewController")
             return OnboardingPageViewController()
         }
 
-        // יוזר קיים - עובר ישר למסך הראשי
+        // Existing user - go straight to main screen
         print("🧪 [Splash] Existing user - showing MainTabBarController")
         return MainTabBarController()
     }
 
     // MARK: - Background Gemini Analysis
 
-    /// מפעיל ניתוח ג'מיני ברקע מיד עם עליית האפליקציה
-    /// הניתוח רץ במקביל למעבר ל-Dashboard ולא חוסם את ה-UI
+    /// Triggers Gemini analysis in the background immediately on app launch
+    /// The analysis runs in parallel with the transition to Dashboard and does not block the UI
     private func triggerBackgroundGeminiAnalysis(healthData: HealthDataModel?, chartBundle: AIONChartDataBundle?) {
         guard let data = healthData, data.hasRealData else {
             return
         }
 
-        // יצירת hash לבדיקת cache
+        // Create hash for cache check
         let healthDataHash: String
         if let bundle = chartBundle {
             healthDataHash = AnalysisCache.generateHealthDataHash(from: bundle)
@@ -380,8 +380,8 @@ class SplashViewController: UIViewController {
             healthDataHash = AnalysisCache.generateHealthDataHash(from: data)
         }
 
-        // בדיקה אם צריך לקרוא ל-Gemini (האם הנתונים השתנו?)
-        // משתמשים ב-hasSignificantChange כמו ב-Dashboard לעקביות
+        // Check if Gemini call is needed (has data changed?)
+        // Using hasSignificantChange like in Dashboard for consistency
         let shouldRun: Bool
         if let bundle = chartBundle {
             shouldRun = AnalysisCache.hasSignificantChange(currentBundle: bundle)
@@ -390,7 +390,7 @@ class SplashViewController: UIViewController {
         }
 
         guard shouldRun else {
-            // שליחת notification לעדכון UI מה-cache
+            // Send notification to update UI from cache
             DispatchQueue.main.async {
                 NotificationCenter.default.post(
                     name: HealthDashboardViewController.analysisDidCompleteNotification,
@@ -400,7 +400,7 @@ class SplashViewController: UIViewController {
             return
         }
 
-        // הרצה ב-background thread
+        // Run on background thread
         DispatchQueue.global(qos: .userInitiated).async {
             let calendar = Calendar.current
             let now = Date()
@@ -448,7 +448,7 @@ class SplashViewController: UIViewController {
                         AnalysisFirestoreSync.saveIfLoggedIn(insights: insights, recommendations: "")
                     }
 
-                    // שליחת נוטיפיקציה לעדכון ה-UI
+                    // Send notification to update the UI
                     DispatchQueue.main.async {
                         NotificationCenter.default.post(
                             name: HealthDashboardViewController.analysisDidCompleteNotification,

@@ -2,7 +2,7 @@
 //  GeminiDebugViewController.swift
 //  Health Reporter
 //
-//  מסך דיבאג להצגת השאילתה והתשובה מ-Gemini
+//  Debug screen for displaying the query and response from Gemini
 //
 
 import UIKit
@@ -70,7 +70,7 @@ class GeminiDebugViewController: UIViewController {
 
     private let forceGeminiButton: UIButton = {
         let btn = UIButton(type: .system)
-        btn.setTitle("🔄 קרא ל-Gemini עכשיו", for: .normal)
+        btn.setTitle("🔄 Call Gemini Now", for: .normal)
         btn.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
         btn.backgroundColor = .systemOrange
         btn.setTitleColor(.white, for: .normal)
@@ -186,9 +186,9 @@ class GeminiDebugViewController: UIViewController {
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "he_IL")
             formatter.dateFormat = "dd/MM/yyyy  HH:mm:ss"
-            timestampLabel.text = "🕐 שאילתה אחרונה: \(formatter.string(from: timestamp))"
+            timestampLabel.text = "🕐 Last query: \(formatter.string(from: timestamp))"
         } else {
-            timestampLabel.text = "🕐 אין שאילתה שמורה"
+            timestampLabel.text = "🕐 No saved query"
         }
 
         // Calculate differences
@@ -208,7 +208,7 @@ class GeminiDebugViewController: UIViewController {
             .font: UIFont.systemFont(ofSize: 16, weight: .bold),
             .foregroundColor: UIColor.label
         ]
-        attributed.append(NSAttributedString(string: "📜 היסטוריה (\(historyEntries.count) רשומות, 7 ימים אחרונים)\n\n", attributes: titleAttrs))
+        attributed.append(NSAttributedString(string: "📜 History (\(historyEntries.count) entries, last 7 days)\n\n", attributes: titleAttrs))
 
         // Current Health Score from HealthScoreEngine
         if let healthResult = AnalysisCache.loadHealthScoreResult() {
@@ -216,8 +216,8 @@ class GeminiDebugViewController: UIViewController {
                 .font: UIFont.systemFont(ofSize: 14, weight: .semibold),
                 .foregroundColor: UIColor.systemGreen
             ]
-            attributed.append(NSAttributedString(string: "💯 ציון נוכחי (HealthScoreEngine): \(healthResult.healthScoreInt)\n", attributes: currentScoreAttrs))
-            attributed.append(NSAttributedString(string: "📊 אמינות: \(healthResult.reliabilityScoreInt)%\n\n", attributes: currentScoreAttrs))
+            attributed.append(NSAttributedString(string: "💯 Current score (HealthScoreEngine): \(healthResult.healthScoreInt)\n", attributes: currentScoreAttrs))
+            attributed.append(NSAttributedString(string: "📊 Reliability: \(healthResult.reliabilityScoreInt)%\n\n", attributes: currentScoreAttrs))
         }
 
         // Current Car from cache
@@ -226,7 +226,7 @@ class GeminiDebugViewController: UIViewController {
                 .font: UIFont.systemFont(ofSize: 14, weight: .semibold),
                 .foregroundColor: UIColor.systemBlue
             ]
-            attributed.append(NSAttributedString(string: "🚗 רכב נוכחי: \(car.name)\n", attributes: carAttrs))
+            attributed.append(NSAttributedString(string: "🚗 Current car: \(car.name)\n", attributes: carAttrs))
             if !car.wikiName.isEmpty && car.wikiName != car.name {
                 let wikiAttrs: [NSAttributedString.Key: Any] = [
                     .font: UIFont.systemFont(ofSize: 11, weight: .regular),
@@ -242,7 +242,7 @@ class GeminiDebugViewController: UIViewController {
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
                 .foregroundColor: UIColor.secondaryLabel
             ]
-            attributed.append(NSAttributedString(string: "אין היסטוריה\n", attributes: noDataAttrs))
+            attributed.append(NSAttributedString(string: "No history\n", attributes: noDataAttrs))
             historyAttributedText = attributed
             return
         }
@@ -260,21 +260,21 @@ class GeminiDebugViewController: UIViewController {
             attributed.append(NSAttributedString(string: "[\(dateFormatter.string(from: entry.timestamp))]\n", attributes: dateAttrs))
 
             // Try to parse car name from JSON response
-            let carName = extractCarNameFromJSON(entry.response) ?? entry.carName ?? "לא זוהה"
+            let carName = extractCarNameFromJSON(entry.response) ?? entry.carName ?? "Not identified"
 
             // Car name
             let carAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13, weight: .medium),
                 .foregroundColor: UIColor.label
             ]
-            attributed.append(NSAttributedString(string: "🚗 רכב: \(carName)\n", attributes: carAttrs))
+            attributed.append(NSAttributedString(string: "🚗 Car: \(carName)\n", attributes: carAttrs))
 
             // Prompt/Response sizes
             let sizeAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 11, weight: .regular),
                 .foregroundColor: UIColor.tertiaryLabel
             ]
-            attributed.append(NSAttributedString(string: "📝 שאילתה: \(entry.prompt.count) תווים | תשובה: \(entry.response.count) תווים\n", attributes: sizeAttrs))
+            attributed.append(NSAttributedString(string: "📝 Query: \(entry.prompt.count) chars | Response: \(entry.response.count) chars\n", attributes: sizeAttrs))
 
             // Separator
             if index < historyEntries.count - 1 {
@@ -292,31 +292,31 @@ class GeminiDebugViewController: UIViewController {
     private func calculateDifferences() {
         let attributed = NSMutableAttributedString()
 
-        // כותרת
+        // Title
         let titleAttrs: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 16, weight: .bold),
             .foregroundColor: UIColor.label
         ]
 
-        // ציון בריאות נוכחי (מקומי)
-        attributed.append(NSAttributedString(string: "💯 ציון בריאות (HealthScoreEngine)\n", attributes: titleAttrs))
+        // Current health score (local)
+        attributed.append(NSAttributedString(string: "💯 Health Score (HealthScoreEngine)\n", attributes: titleAttrs))
 
         if let healthResult = AnalysisCache.loadHealthScoreResult() {
             let scoreAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 14, weight: .semibold),
                 .foregroundColor: UIColor.systemGreen
             ]
-            attributed.append(NSAttributedString(string: "ציון: \(healthResult.healthScoreInt) | אמינות: \(healthResult.reliabilityScoreInt)%\n\n", attributes: scoreAttrs))
+            attributed.append(NSAttributedString(string: "Score: \(healthResult.healthScoreInt) | Reliability: \(healthResult.reliabilityScoreInt)%\n\n", attributes: scoreAttrs))
         } else {
             let noDataAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
                 .foregroundColor: UIColor.secondaryLabel
             ]
-            attributed.append(NSAttributedString(string: "אין נתונים\n\n", attributes: noDataAttrs))
+            attributed.append(NSAttributedString(string: "No data\n\n", attributes: noDataAttrs))
         }
 
-        // רכב נוכחי שמור
-        attributed.append(NSAttributedString(string: "🚗 רכב נוכחי (שמור)\n", attributes: titleAttrs))
+        // Current saved car
+        attributed.append(NSAttributedString(string: "🚗 Current Car (saved)\n", attributes: titleAttrs))
         if let car = AnalysisCache.loadSelectedCar() {
             let carAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13, weight: .medium),
@@ -335,43 +335,43 @@ class GeminiDebugViewController: UIViewController {
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
                 .foregroundColor: UIColor.secondaryLabel
             ]
-            attributed.append(NSAttributedString(string: "לא נבחר רכב\n", attributes: noCarAttrs))
+            attributed.append(NSAttributedString(string: "No car selected\n", attributes: noCarAttrs))
         }
         attributed.append(NSAttributedString(string: "\n", attributes: [:]))
 
-        // השוואת תשובות Gemini - משתמשים בהיסטוריה!
+        // Compare Gemini responses - using history!
         let history = GeminiDebugStore.loadHistory()
         guard history.count >= 2 else {
-            attributed.append(NSAttributedString(string: "📊 השוואת תשובות Gemini\n", attributes: titleAttrs))
+            attributed.append(NSAttributedString(string: "📊 Gemini Response Comparison\n", attributes: titleAttrs))
             let noCompareAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
                 .foregroundColor: UIColor.secondaryLabel
             ]
-            attributed.append(NSAttributedString(string: "אין תשובה קודמת להשוואה (צריך לפחות 2 שאילתות בהיסטוריה)\n", attributes: noCompareAttrs))
+            attributed.append(NSAttributedString(string: "No previous response to compare (need at least 2 queries in history)\n", attributes: noCompareAttrs))
             differencesAttributedText = attributed
             differencesText = attributed.string
             return
         }
 
-        // השאילתא האחרונה (index 0) והשאילתא שלפניה (index 1)
+        // The latest query (index 0) and the previous one (index 1)
         let currentEntry = history[0]
         let previousEntry = history[1]
         let currentResponse = currentEntry.response
         let previousResponse = previousEntry.response
 
-        // סטטיסטיקות בסיסיות
+        // Basic statistics
         let prevLen = previousResponse.count
         let currLen = currentResponse.count
         let lenDiff = currLen - prevLen
 
-        attributed.append(NSAttributedString(string: "📊 השוואת תשובות Gemini\n", attributes: titleAttrs))
+        attributed.append(NSAttributedString(string: "📊 Gemini Response Comparison\n", attributes: titleAttrs))
 
         let statsAttrs: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 13, weight: .regular),
             .foregroundColor: UIColor.secondaryLabel
         ]
-        attributed.append(NSAttributedString(string: "תשובה קודמת: \(prevLen.formatted()) תווים\n", attributes: statsAttrs))
-        attributed.append(NSAttributedString(string: "תשובה נוכחית: \(currLen.formatted()) תווים\n", attributes: statsAttrs))
+        attributed.append(NSAttributedString(string: "Previous response: \(prevLen.formatted()) chars\n", attributes: statsAttrs))
+        attributed.append(NSAttributedString(string: "Current response: \(currLen.formatted()) chars\n", attributes: statsAttrs))
 
         let diffColor: UIColor = lenDiff > 0 ? .systemGreen : (lenDiff < 0 ? .systemRed : .secondaryLabel)
         let diffAttrs: [NSAttributedString.Key: Any] = [
@@ -379,20 +379,20 @@ class GeminiDebugViewController: UIViewController {
             .foregroundColor: diffColor
         ]
         let diffSign = lenDiff > 0 ? "+" : ""
-        attributed.append(NSAttributedString(string: "הפרש: \(diffSign)\(lenDiff) תווים\n\n", attributes: diffAttrs))
+        attributed.append(NSAttributedString(string: "Difference: \(diffSign)\(lenDiff) chars\n\n", attributes: diffAttrs))
 
-        // השוואת רכב - מההיסטוריה!
-        let prevCar = previousEntry.carName ?? "לא זוהה"
-        let currCar = currentEntry.carName ?? "לא זוהה"
+        // Car comparison - from history!
+        let prevCar = previousEntry.carName ?? "Not identified"
+        let currCar = currentEntry.carName ?? "Not identified"
 
-        attributed.append(NSAttributedString(string: "🚗 רכב\n", attributes: titleAttrs))
+        attributed.append(NSAttributedString(string: "🚗 Car\n", attributes: titleAttrs))
 
         if prevCar == currCar {
             let sameAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
                 .foregroundColor: UIColor.secondaryLabel
             ]
-            attributed.append(NSAttributedString(string: "ללא שינוי: \(currCar)\n\n", attributes: sameAttrs))
+            attributed.append(NSAttributedString(string: "No change: \(currCar)\n\n", attributes: sameAttrs))
         } else {
             let oldAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
@@ -407,7 +407,7 @@ class GeminiDebugViewController: UIViewController {
             attributed.append(NSAttributedString(string: "+ \(currCar)\n\n", attributes: newAttrs))
         }
 
-        // השוואת שורות - מציאת הבדלים אמיתיים
+        // Line comparison - finding actual differences
         let prevLines = previousResponse.components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
@@ -421,28 +421,28 @@ class GeminiDebugViewController: UIViewController {
         let removed = prevSet.subtracting(currSet)
         let added = currSet.subtracting(prevSet)
 
-        attributed.append(NSAttributedString(string: "📝 שינויים בתוכן\n", attributes: titleAttrs))
+        attributed.append(NSAttributedString(string: "📝 Content Changes\n", attributes: titleAttrs))
 
         if removed.isEmpty && added.isEmpty {
             let noChangeAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
                 .foregroundColor: UIColor.systemGreen
             ]
-            attributed.append(NSAttributedString(string: "✅ התוכן זהה (רק הבדלי רווחים/שורות)\n\n", attributes: noChangeAttrs))
+            attributed.append(NSAttributedString(string: "✅ Content is identical (only whitespace/line differences)\n\n", attributes: noChangeAttrs))
         } else {
             let summaryAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 12, weight: .regular),
                 .foregroundColor: UIColor.secondaryLabel
             ]
-            attributed.append(NSAttributedString(string: "\(removed.count) שורות נמחקו, \(added.count) שורות נוספו\n\n", attributes: summaryAttrs))
+            attributed.append(NSAttributedString(string: "\(removed.count) lines removed, \(added.count) lines added\n\n", attributes: summaryAttrs))
 
-            // שורות שנמחקו (מקסימום 10)
+            // Removed lines (max 10)
             if !removed.isEmpty {
                 let removedHeaderAttrs: [NSAttributedString.Key: Any] = [
                     .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
                     .foregroundColor: UIColor.systemRed
                 ]
-                attributed.append(NSAttributedString(string: "נמחקו:\n", attributes: removedHeaderAttrs))
+                attributed.append(NSAttributedString(string: "Removed:\n", attributes: removedHeaderAttrs))
 
                 let removedLineAttrs: [NSAttributedString.Key: Any] = [
                     .font: UIFont.monospacedSystemFont(ofSize: 11, weight: .regular),
@@ -452,19 +452,19 @@ class GeminiDebugViewController: UIViewController {
                     let truncated = line.count > 80 ? String(line.prefix(80)) + "..." : line
                     attributed.append(NSAttributedString(string: "- \(truncated)\n", attributes: removedLineAttrs))
                     if index == 9 && removed.count > 10 {
-                        attributed.append(NSAttributedString(string: "  ...ועוד \(removed.count - 10) שורות\n", attributes: summaryAttrs))
+                        attributed.append(NSAttributedString(string: "  ...and \(removed.count - 10) more lines\n", attributes: summaryAttrs))
                     }
                 }
                 attributed.append(NSAttributedString(string: "\n", attributes: [:]))
             }
 
-            // שורות שנוספו (מקסימום 10)
+            // Added lines (max 10)
             if !added.isEmpty {
                 let addedHeaderAttrs: [NSAttributedString.Key: Any] = [
                     .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
                     .foregroundColor: UIColor.systemGreen
                 ]
-                attributed.append(NSAttributedString(string: "נוספו:\n", attributes: addedHeaderAttrs))
+                attributed.append(NSAttributedString(string: "Added:\n", attributes: addedHeaderAttrs))
 
                 let addedLineAttrs: [NSAttributedString.Key: Any] = [
                     .font: UIFont.monospacedSystemFont(ofSize: 11, weight: .regular),
@@ -474,13 +474,13 @@ class GeminiDebugViewController: UIViewController {
                     let truncated = line.count > 80 ? String(line.prefix(80)) + "..." : line
                     attributed.append(NSAttributedString(string: "+ \(truncated)\n", attributes: addedLineAttrs))
                     if index == 9 && added.count > 10 {
-                        attributed.append(NSAttributedString(string: "  ...ועוד \(added.count - 10) שורות\n", attributes: summaryAttrs))
+                        attributed.append(NSAttributedString(string: "  ...and \(added.count - 10) more lines\n", attributes: summaryAttrs))
                     }
                 }
             }
         }
 
-        // Timestamps - מההיסטוריה
+        // Timestamps - from history
         let timestampAttrs: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 11, weight: .regular),
             .foregroundColor: UIColor.tertiaryLabel
@@ -490,18 +490,18 @@ class GeminiDebugViewController: UIViewController {
         formatter.dateFormat = "dd/MM HH:mm"
 
         attributed.append(NSAttributedString(string: "\n", attributes: [:]))
-        attributed.append(NSAttributedString(string: "תשובה קודמת: \(formatter.string(from: previousEntry.timestamp))\n", attributes: timestampAttrs))
-        attributed.append(NSAttributedString(string: "תשובה נוכחית: \(formatter.string(from: currentEntry.timestamp))", attributes: timestampAttrs))
+        attributed.append(NSAttributedString(string: "Previous response: \(formatter.string(from: previousEntry.timestamp))\n", attributes: timestampAttrs))
+        attributed.append(NSAttributedString(string: "Current response: \(formatter.string(from: currentEntry.timestamp))", attributes: timestampAttrs))
 
         differencesAttributedText = attributed
         differencesText = attributed.string
     }
 
     private func parseResponse(_ response: String) -> (carName: String, healthScore: String, healthStatus: String, explanation: String) {
-        var carName = "לא נמצא"
-        var healthScore = "לא נמצא"
-        var healthStatus = "לא נמצא"
-        var explanation = "לא נמצא"
+        var carName = "Not found"
+        var healthScore = "Not found"
+        var healthStatus = "Not found"
+        var explanation = "Not found"
 
         let lines = response.components(separatedBy: .newlines)
 
@@ -568,7 +568,7 @@ class GeminiDebugViewController: UIViewController {
         let selectedIndex = segmentedControl.selectedSegmentIndex
 
         switch selectedIndex {
-        case 0: // שאילתה
+        case 0: // Query
             textView.attributedText = nil
             textView.text = promptText
             textView.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
@@ -577,14 +577,14 @@ class GeminiDebugViewController: UIViewController {
             let wordCount = promptText.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
             statsLabel.text = String(format: "debug.queryStats".localized, charCount.formatted(), wordCount.formatted())
 
-        case 1: // תשובה - פרסור וה JSON והצגה יפה
+        case 1: // Response - parse JSON and display nicely
             textView.attributedText = formatJSONResponse(responseText)
 
             let charCount = responseText.count
             let wordCount = responseText.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
             statsLabel.text = String(format: "debug.responseStats".localized, charCount.formatted(), wordCount.formatted())
 
-        case 2: // הבדלים
+        case 2: // Differences
             if let attributed = differencesAttributedText {
                 textView.attributedText = attributed
             } else {
@@ -594,7 +594,7 @@ class GeminiDebugViewController: UIViewController {
             }
             statsLabel.text = "debug.comparisonStats".localized
 
-        case 3: // היסטוריה
+        case 3: // History
             if let attributed = historyAttributedText {
                 textView.attributedText = attributed
             } else {
@@ -623,18 +623,18 @@ class GeminiDebugViewController: UIViewController {
     }
 
     @objc private func forceGeminiTapped() {
-        // התחלת טעינה
+        // Start loading
         forceGeminiButton.isEnabled = false
         forceGeminiButton.setTitle("debug.callingGemini".localized, for: .normal)
         geminiSpinner.startAnimating()
 
-        // שליחת notification ל-Dashboard לבצע ניתוח
+        // Send notification to Dashboard to perform analysis
         NotificationCenter.default.post(
             name: NSNotification.Name("ForceGeminiAnalysis"),
             object: nil
         )
 
-        // מאזין לתוצאה
+        // Listen for result
         var observer: NSObjectProtocol?
         observer = NotificationCenter.default.addObserver(
             forName: HealthDashboardViewController.analysisDidCompleteNotification,
@@ -648,7 +648,7 @@ class GeminiDebugViewController: UIViewController {
             self.onGeminiComplete()
         }
 
-        // Timeout אחרי 60 שניות
+        // Timeout after 60 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
             guard let self = self, !self.forceGeminiButton.isEnabled else { return }
             if let obs = observer {
@@ -661,13 +661,13 @@ class GeminiDebugViewController: UIViewController {
     private func onGeminiComplete(timeout: Bool = false) {
         geminiSpinner.stopAnimating()
         forceGeminiButton.isEnabled = true
-        forceGeminiButton.setTitle("🔄 קרא ל-Gemini עכשיו", for: .normal)
+        forceGeminiButton.setTitle("🔄 Call Gemini Now", for: .normal)
 
         if timeout {
             showToast("Timeout!")
         } else {
             showToast("debug.completed".localized)
-            // רענון הנתונים
+            // Refresh data
             loadData()
             updateDisplay()
         }
@@ -750,7 +750,7 @@ class GeminiDebugViewController: UIViewController {
 
     // MARK: - JSON Parsing Helpers
 
-    /// חילוץ שם רכב מתשובת JSON
+    /// Extract car name from JSON response
     private func extractCarNameFromJSON(_ response: String) -> String? {
         if let parsed = CarAnalysisParser.parseJSON(response) {
             return parsed.carModel.isEmpty ? nil : parsed.carModel
@@ -759,7 +759,7 @@ class GeminiDebugViewController: UIViewController {
         return GeminiDebugStore.extractCarName(from: response)
     }
 
-    /// פרסור ועיצוב תשובת JSON
+    /// Parse and format JSON response
     private func formatJSONResponse(_ response: String) -> NSAttributedString {
         let attributed = NSMutableAttributedString()
 
@@ -783,8 +783,8 @@ class GeminiDebugViewController: UIViewController {
 
         // Health Score from HealthScoreEngine
         if let healthResult = AnalysisCache.loadHealthScoreResult() {
-            attributed.append(NSAttributedString(string: "═══════ ציון בריאות (מקומי) ═══════\n", attributes: headerAttrs))
-            attributed.append(NSAttributedString(string: "💯 ציון: \(healthResult.healthScoreInt) | אמינות: \(healthResult.reliabilityScoreInt)%\n", attributes: contentAttrs))
+            attributed.append(NSAttributedString(string: "═══════ Health Score (local) ═══════\n", attributes: headerAttrs))
+            attributed.append(NSAttributedString(string: "💯 Score: \(healthResult.healthScoreInt) | Reliability: \(healthResult.reliabilityScoreInt)%\n", attributes: contentAttrs))
 
             for domain in healthResult.includedDomains {
                 let scoreInt = Int(round(domain.domainScore))
@@ -792,18 +792,18 @@ class GeminiDebugViewController: UIViewController {
                 attributed.append(NSAttributedString(string: "  • \(domain.domainName): \(scoreInt) (\(weightPercent)%)\n", attributes: labelAttrs))
             }
             if !healthResult.excludedDomains.isEmpty {
-                attributed.append(NSAttributedString(string: "  ⚠️ לא נמדד: \(healthResult.excludedDomains.joined(separator: ", "))\n", attributes: labelAttrs))
+                attributed.append(NSAttributedString(string: "  ⚠️ Not measured: \(healthResult.excludedDomains.joined(separator: ", "))\n", attributes: labelAttrs))
             }
             attributed.append(NSAttributedString(string: "\n", attributes: [:]))
         }
 
         // Try to parse as JSON
         if let parsed = CarAnalysisParser.parseJSON(response) {
-            attributed.append(NSAttributedString(string: "═══════ תשובת Gemini (JSON) ═══════\n\n", attributes: headerAttrs))
+            attributed.append(NSAttributedString(string: "═══════ Gemini Response (JSON) ═══════\n\n", attributes: headerAttrs))
 
             // Car Identity
-            attributed.append(NSAttributedString(string: "🚗 רכב\n", attributes: titleAttrs))
-            attributed.append(NSAttributedString(string: "שם: ", attributes: labelAttrs))
+            attributed.append(NSAttributedString(string: "🚗 Car\n", attributes: titleAttrs))
+            attributed.append(NSAttributedString(string: "Name: ", attributes: labelAttrs))
             attributed.append(NSAttributedString(string: "\(parsed.carModel)\n", attributes: contentAttrs))
             if !parsed.carWikiName.isEmpty {
                 attributed.append(NSAttributedString(string: "Wiki: ", attributes: labelAttrs))
@@ -815,32 +815,32 @@ class GeminiDebugViewController: UIViewController {
             attributed.append(NSAttributedString(string: "\n", attributes: [:]))
 
             // Performance Review
-            attributed.append(NSAttributedString(string: "📊 סקירת ביצועים\n", attributes: titleAttrs))
+            attributed.append(NSAttributedString(string: "📊 Performance Review\n", attributes: titleAttrs))
             if !parsed.engine.isEmpty {
-                attributed.append(NSAttributedString(string: "מנוע: ", attributes: labelAttrs))
+                attributed.append(NSAttributedString(string: "Engine: ", attributes: labelAttrs))
                 attributed.append(NSAttributedString(string: "\(parsed.engine)\n", attributes: contentAttrs))
             }
             if !parsed.transmission.isEmpty {
-                attributed.append(NSAttributedString(string: "תיבת הילוכים: ", attributes: labelAttrs))
+                attributed.append(NSAttributedString(string: "Transmission: ", attributes: labelAttrs))
                 attributed.append(NSAttributedString(string: "\(parsed.transmission)\n", attributes: contentAttrs))
             }
             if !parsed.suspension.isEmpty {
-                attributed.append(NSAttributedString(string: "מתלים: ", attributes: labelAttrs))
+                attributed.append(NSAttributedString(string: "Suspension: ", attributes: labelAttrs))
                 attributed.append(NSAttributedString(string: "\(parsed.suspension)\n", attributes: contentAttrs))
             }
             if !parsed.fuelEfficiency.isEmpty {
-                attributed.append(NSAttributedString(string: "יעילות דלק: ", attributes: labelAttrs))
+                attributed.append(NSAttributedString(string: "Fuel efficiency: ", attributes: labelAttrs))
                 attributed.append(NSAttributedString(string: "\(parsed.fuelEfficiency)\n", attributes: contentAttrs))
             }
             if !parsed.electronics.isEmpty {
-                attributed.append(NSAttributedString(string: "אלקטרוניקה: ", attributes: labelAttrs))
+                attributed.append(NSAttributedString(string: "Electronics: ", attributes: labelAttrs))
                 attributed.append(NSAttributedString(string: "\(parsed.electronics)\n", attributes: contentAttrs))
             }
             attributed.append(NSAttributedString(string: "\n", attributes: [:]))
 
             // Bottlenecks
             if !parsed.bottlenecks.isEmpty {
-                attributed.append(NSAttributedString(string: "⚠️ צווארי בקבוק\n", attributes: titleAttrs))
+                attributed.append(NSAttributedString(string: "⚠️ Bottlenecks\n", attributes: titleAttrs))
                 for item in parsed.bottlenecks {
                     attributed.append(NSAttributedString(string: "• \(item)\n", attributes: contentAttrs))
                 }
@@ -848,7 +848,7 @@ class GeminiDebugViewController: UIViewController {
             }
 
             // Directives
-            attributed.append(NSAttributedString(string: "📋 הנחיות פעולה\n", attributes: titleAttrs))
+            attributed.append(NSAttributedString(string: "📋 Action Directives\n", attributes: titleAttrs))
             if !parsed.directiveStop.isEmpty {
                 attributed.append(NSAttributedString(string: "🛑 STOP: ", attributes: labelAttrs))
                 attributed.append(NSAttributedString(string: "\(parsed.directiveStop)\n", attributes: contentAttrs))
@@ -865,14 +865,14 @@ class GeminiDebugViewController: UIViewController {
 
             // Summary/Forecast
             if !parsed.summary.isEmpty {
-                attributed.append(NSAttributedString(string: "📝 סיכום\n", attributes: titleAttrs))
+                attributed.append(NSAttributedString(string: "📝 Summary\n", attributes: titleAttrs))
                 attributed.append(NSAttributedString(string: "\(parsed.summary)\n", attributes: contentAttrs))
                 attributed.append(NSAttributedString(string: "\n", attributes: [:]))
             }
 
             // Supplements
             if !parsed.supplements.isEmpty {
-                attributed.append(NSAttributedString(string: "💊 תוספים מומלצים\n", attributes: titleAttrs))
+                attributed.append(NSAttributedString(string: "💊 Recommended Supplements\n", attributes: titleAttrs))
                 for sup in parsed.supplements {
                     attributed.append(NSAttributedString(string: "• \(sup.name) (\(sup.dosage))\n", attributes: contentAttrs))
                     attributed.append(NSAttributedString(string: "  \(sup.reason)\n", attributes: labelAttrs))
@@ -881,7 +881,7 @@ class GeminiDebugViewController: UIViewController {
 
         } else {
             // Fallback - show raw response
-            attributed.append(NSAttributedString(string: "═══════ תשובת Gemini (Raw) ═══════\n\n", attributes: headerAttrs))
+            attributed.append(NSAttributedString(string: "═══════ Gemini Response (Raw) ═══════\n\n", attributes: headerAttrs))
             let rawAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.monospacedSystemFont(ofSize: 11, weight: .regular),
                 .foregroundColor: UIColor.label
@@ -902,7 +902,7 @@ struct DebugLogEntry: Codable {
     let carName: String?
     let healthScore: Int?
 
-    /// מזהה ייחודי לכל entry
+    /// Unique identifier for each entry
     var id: String {
         ISO8601DateFormatter().string(from: timestamp)
     }
@@ -918,9 +918,9 @@ enum GeminiDebugStore {
     private static let previousTimestampKey = "GeminiDebug.PreviousTimestamp"
     private static let historyKey = "GeminiDebug.History"
 
-    /// מקסימום ימים לשמירה
+    /// Maximum days to retain
     private static let maxDays: Int = 7
-    /// מקסימום entries לשמירה
+    /// Maximum entries to retain
     private static let maxEntries: Int = 30
 
     static var lastPrompt: String? {
@@ -950,7 +950,7 @@ enum GeminiDebugStore {
 
     // MARK: - History Management
 
-    /// טוען את כל ההיסטוריה
+    /// Load all history
     static func loadHistory() -> [DebugLogEntry] {
         guard let data = UserDefaults.standard.data(forKey: historyKey) else { return [] }
         do {
@@ -961,7 +961,7 @@ enum GeminiDebugStore {
         }
     }
 
-    /// שומר את ההיסטוריה
+    /// Save history
     private static func saveHistory(_ entries: [DebugLogEntry]) {
         do {
             let data = try JSONEncoder().encode(entries)
@@ -971,18 +971,18 @@ enum GeminiDebugStore {
         }
     }
 
-    /// מוסיף entry חדש להיסטוריה
+    /// Add new entry to history
     private static func addToHistory(_ entry: DebugLogEntry) {
         var history = loadHistory()
 
-        // הוספת ה-entry החדש בתחילת הרשימה
+        // Insert new entry at the beginning of the list
         history.insert(entry, at: 0)
 
-        // הסרת entries ישנים מ-7 ימים
+        // Remove entries older than 7 days
         let cutoffDate = Calendar.current.date(byAdding: .day, value: -maxDays, to: Date()) ?? Date()
         history = history.filter { $0.timestamp > cutoffDate }
 
-        // הגבלה למקסימום entries
+        // Limit to maximum entries
         if history.count > maxEntries {
             history = Array(history.prefix(maxEntries))
         }
@@ -990,19 +990,19 @@ enum GeminiDebugStore {
         saveHistory(history)
     }
 
-    /// מחזיר את הרכב מהשאילתא הקודמת (השנייה בהיסטוריה)
-    /// משמש לקביעת הרכב הקודם האמיתי במקום keyPreviousCarName
+    /// Returns the car from the previous query (second in history)
+    /// Used to determine the actual previous car instead of keyPreviousCarName
     static func getPreviousCarFromHistory() -> String? {
         let history = loadHistory()
-        // ההיסטוריה ממוינת מהחדש לישן, אז index 1 הוא השאילתא הקודמת
+        // History is sorted newest to oldest, so index 1 is the previous query
         guard history.count >= 2 else { return nil }
         return history[1].carName
     }
 
-    /// מחלץ שם רכב מתשובת Gemini
-    /// מחלץ שם רכב מתשובת Gemini (public לשימוש ב-calculateDifferences)
+    /// Extract car name from Gemini response
+    /// Extract car name from Gemini response (public for use in calculateDifferences)
     static func extractCarName(from response: String) -> String? {
-        // 1. חיפוש [CAR_WIKI: ...] - הפורמט העיקרי של Gemini
+        // 1. Search for [CAR_WIKI: ...] - Gemini's main format
         let wikiPatterns = [
             #"\[CAR_WIKI:\s*([^\]\n]+)\]"#,
             #"CAR_WIKI:\s*([^\]\n]+)"#,
@@ -1012,7 +1012,7 @@ enum GeminiDebugStore {
                let match = regex.firstMatch(in: response, options: [], range: NSRange(response.startIndex..., in: response)),
                let range = Range(match.range(at: 1), in: response) {
                 var name = String(response[range]).trimmingCharacters(in: .whitespaces)
-                // הסרת (generation) וכו'
+                // Remove (generation) etc.
                 if let paren = name.firstIndex(of: "(") {
                     name = String(name[..<paren]).trimmingCharacters(in: .whitespaces)
                 }
@@ -1022,13 +1022,13 @@ enum GeminiDebugStore {
             }
         }
 
-        // 2. חיפוש "אתה כרגע כמו X" או "אתה כרגע X"
+        // 2. Search for "You are currently like X" or "You are currently X" (Hebrew patterns)
         let carPatterns = [
             #"אתה כרגע כמו\s+\*\*([^*]+)\*\*"#,
             #"אתה כרגע\s+\*\*([^*]+)\*\*"#,
             #"אתה כרגע כמו\s+([^:,\n]+)"#,
             #"אתה כרגע\s+([A-Za-z][A-Za-z0-9\s\-]+)"#,
-            #"\(([A-Z][a-z]+\s+[A-Za-z0-9\s\-]+)\)"#,  // שם באנגלית בסוגריים
+            #"\(([A-Z][a-z]+\s+[A-Za-z0-9\s\-]+)\)"#,  // English name in parentheses
         ]
         for pattern in carPatterns {
             if let regex = try? NSRegularExpression(pattern: pattern, options: []),
@@ -1037,7 +1037,7 @@ enum GeminiDebugStore {
                 var name = String(response[range])
                     .replacingOccurrences(of: "**", with: "")
                     .trimmingCharacters(in: .whitespaces)
-                // הסרת נקודה או נקודתיים בסוף
+                // Remove trailing period or colon
                 while name.hasSuffix(".") || name.hasSuffix(":") {
                     name = String(name.dropLast()).trimmingCharacters(in: .whitespaces)
                 }
@@ -1047,7 +1047,7 @@ enum GeminiDebugStore {
             }
         }
 
-        // 3. Fallback - חיפוש ישן
+        // 3. Fallback - legacy search
         let lines = response.components(separatedBy: .newlines)
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -1064,7 +1064,7 @@ enum GeminiDebugStore {
         return nil
     }
 
-    /// מחלץ ציון בריאות מתשובת Gemini
+    /// Extract health score from Gemini response
     private static func extractHealthScore(from response: String) -> Int? {
         let lines = response.components(separatedBy: .newlines)
         for line in lines {
@@ -1077,7 +1077,7 @@ enum GeminiDebugStore {
                     .replacingOccurrences(of: "**ציון:**", with: "")
                     .replacingOccurrences(of: "ציון:", with: "")
                     .trimmingCharacters(in: .whitespaces)
-                // מחלץ מספר מהטקסט
+                // Extract number from text
                 let numbers = value.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
                 return Int(numbers)
             }
@@ -1096,16 +1096,16 @@ enum GeminiDebugStore {
         lastResponse = response
         timestamp = Date()
 
-        // שימוש ב-CarAnalysisParser לחילוץ שם הרכב - אותו parser כמו ב-UI
+        // Use CarAnalysisParser to extract car name - same parser as in UI
         let parsed = CarAnalysisParser.parse(response)
         let carName: String?
         if !parsed.carModel.isEmpty && parsed.carModel.count > 3 {
             carName = parsed.carModel
         } else {
-            carName = extractCarName(from: response)  // fallback לשיטה הישנה
+            carName = extractCarName(from: response)  // fallback to legacy method
         }
 
-        // הוספה להיסטוריה
+        // Add to history
         let entry = DebugLogEntry(
             timestamp: Date(),
             prompt: prompt,
@@ -1116,7 +1116,7 @@ enum GeminiDebugStore {
         addToHistory(entry)
     }
 
-    /// מנקה את כל ההיסטוריה
+    /// Clear all history
     static func clearHistory() {
         UserDefaults.standard.removeObject(forKey: historyKey)
     }

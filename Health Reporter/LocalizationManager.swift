@@ -7,6 +7,8 @@
 
 import Foundation
 import UIKit
+import FirebaseAuth
+import FirebaseFirestore
 
 enum AppLanguage: String, CaseIterable {
     case hebrew = "he"
@@ -14,7 +16,7 @@ enum AppLanguage: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .hebrew: return "עברית"
+        case .hebrew: return "Hebrew"
         case .english: return "English"
         }
     }
@@ -48,6 +50,7 @@ final class LocalizationManager {
     func setLanguage(_ language: AppLanguage) {
         UserDefaults.standard.set(true, forKey: manualOverrideKey)
         currentLanguage = language
+        syncLanguageToFirestore()
     }
 
     /// Resets to automatic (device language)
@@ -55,6 +58,15 @@ final class LocalizationManager {
         UserDefaults.standard.set(false, forKey: manualOverrideKey)
         UserDefaults.standard.removeObject(forKey: languageKey)
         currentLanguage = Self.detectDeviceLanguage()
+        syncLanguageToFirestore()
+    }
+
+    /// Syncs the current language to Firestore for localized push notifications
+    private func syncLanguageToFirestore() {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else { return }
+        Firestore.firestore().collection("users").document(uid).setData([
+            "language": currentLanguage.rawValue
+        ], merge: true)
     }
 
     /// Detects the device's preferred language

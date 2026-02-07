@@ -2,7 +2,7 @@
 //  HealthScoreOnboardingPage.swift
 //  Health Reporter
 //
-//  מסך הסבר על ה-Health Score
+//  Health Score explanation screen
 //
 
 import UIKit

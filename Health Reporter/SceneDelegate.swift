@@ -24,7 +24,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func setRootByAuth() {
         let root: UIViewController
         if let user = Auth.auth().currentUser {
-            // משתמש מחובר - הצג Splash Screen שיטען נתונים ואז יעבור ל-Main
+            // User logged in - show Splash Screen that will load data then transition to Main
             root = SplashViewController()
 
             // Analytics: Set user ID and language for returning users

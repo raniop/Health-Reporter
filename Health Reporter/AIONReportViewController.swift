@@ -2,7 +2,7 @@
 //  AIONReportViewController.swift
 //  Health Reporter
 //
-//  מסך נפרד לדוח AION מלא (תובנות + המלצות + גורמי סיכון). RTL.
+//  Separate screen for full AION report (insights + recommendations + risk factors). RTL.
 //
 
 import UIKit
