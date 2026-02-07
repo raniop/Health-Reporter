@@ -91,6 +91,8 @@ final class SocialHubViewController: UIViewController {
     // Bell badge
     private var bellBadgeLabel: UILabel?
     private var hasLoadedOnce = false
+    private var hasAnimatedPodium = false
+    private var lastLoadTime: Date?
 
     // Inline search
     private var searchResults: [UserSearchResult] = []
@@ -113,8 +115,13 @@ final class SocialHubViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadArenaData()
         updateBellBadge()
+
+        // Skip full reload if data was loaded recently (< 30 seconds ago)
+        if let last = lastLoadTime, Date().timeIntervalSince(last) < 30, hasLoadedOnce {
+            return
+        }
+        loadArenaData()
     }
 
     // MARK: - Public (backward compat)
@@ -135,23 +142,18 @@ final class SocialHubViewController: UIViewController {
         navigationItem.standardAppearance = appearance
         navigationItem.scrollEdgeAppearance = appearance
 
-        // Right: Bell with badge (follow requests) — outer container allows badge overflow
-        let bellOuter = UIView(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
-        bellOuter.clipsToBounds = false
+        // Bell button as nav bar item — simple UIButton approach
+        let bellButton = UIButton(type: .custom)
+        bellButton.frame = CGRect(x: 0, y: 0, width: 36, height: 36)
+        bellButton.backgroundColor = AIONDesign.surface
+        bellButton.layer.cornerRadius = 18
 
-        let bellContainer = UIView(frame: CGRect(x: 4, y: 4, width: 36, height: 36))
-        bellContainer.backgroundColor = AIONDesign.surface
-        bellContainer.layer.cornerRadius = 18
-        bellContainer.clipsToBounds = false
-        bellOuter.addSubview(bellContainer)
+        let bellConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        bellButton.setImage(UIImage(systemName: "bell.fill", withConfiguration: bellConfig), for: .normal)
+        bellButton.tintColor = AIONDesign.textPrimary
+        bellButton.addTarget(self, action: #selector(bellTapped), for: .touchUpInside)
 
-        let bellImg = UIImageView(image: UIImage(systemName: "bell.fill",
-                                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)))
-        bellImg.tintColor = AIONDesign.textPrimary
-        bellImg.contentMode = .scaleAspectFit
-        bellImg.frame = CGRect(x: 8, y: 8, width: 20, height: 20)
-        bellContainer.addSubview(bellImg)
-
+        // Badge on the bell button
         let badge = UILabel()
         badge.font = .monospacedDigitSystemFont(ofSize: 9, weight: .black)
         badge.textColor = .white
@@ -161,26 +163,24 @@ final class SocialHubViewController: UIViewController {
         badge.clipsToBounds = true
         badge.frame = CGRect(x: 22, y: -4, width: 16, height: 16)
         badge.isHidden = true
-        bellContainer.addSubview(badge)
+        bellButton.addSubview(badge)
+        bellButton.clipsToBounds = false
         bellBadgeLabel = badge
 
-        let bellTap = UITapGestureRecognizer(target: self, action: #selector(bellTapped))
-        bellOuter.addGestureRecognizer(bellTap)
-        bellOuter.isUserInteractionEnabled = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: bellOuter)
+        let barItem = UIBarButtonItem(customView: bellButton)
+        navigationItem.rightBarButtonItem = barItem
     }
 
     // MARK: - Bell Badge
 
     private func updateBellBadge() {
-        FollowFirestoreSync.fetchPendingFollowRequestsCount { [weak self] count in
+        FriendsFirestoreSync.fetchUnreadNotificationsCount { [weak self] count in
             DispatchQueue.main.async {
                 if count > 0 {
                     self?.bellBadgeLabel?.text = "\(count)"
                     self?.bellBadgeLabel?.isHidden = false
                     let w = max(16, (self?.bellBadgeLabel?.intrinsicContentSize.width ?? 16) + 8)
                     self?.bellBadgeLabel?.frame.size.width = w
-                    self?.bellBadgeLabel?.layer.cornerRadius = 8
                 } else {
                     self?.bellBadgeLabel?.isHidden = true
                 }
@@ -246,7 +246,7 @@ final class SocialHubViewController: UIViewController {
     }
 
     @objc private func bellTapped() {
-        let vc = FollowRequestsViewController()
+        let vc = NotificationsCenterViewController()
         vc.delegate = self
         let nav = UINavigationController(rootViewController: vc)
         nav.modalPresentationStyle = .formSheet
@@ -306,6 +306,7 @@ final class SocialHubViewController: UIViewController {
             guard let self = self else { return }
             self.loadingIndicator.stopAnimating()
             self.refreshControl.endRefreshing()
+            self.lastLoadTime = Date()
 
             if isFirstLoad {
                 self.hasLoadedOnce = true
@@ -349,7 +350,7 @@ final class SocialHubViewController: UIViewController {
 
     private func buildStoriesRow() {
         // Don't show stories row if there's nothing to display
-        guard currentUserEntry != nil || !followingRelations.isEmpty else { return }
+        guard !followingRelations.isEmpty else { return }
 
         let carousel = UIScrollView()
         carousel.translatesAutoresizingMaskIntoConstraints = false
@@ -364,18 +365,6 @@ final class SocialHubViewController: UIViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         carousel.addSubview(stack)
-
-        // First item: current user "My Score"
-        if let me = currentUserEntry {
-            let myStory = makeStoryCircle(
-                name: "social.myScore".localized,
-                photoURL: me.photoURL,
-                tierIndex: me.carTierIndex,
-                uid: nil,
-                isCurrentUser: true
-            )
-            stack.addArrangedSubview(myStory)
-        }
 
         // Following users — sorted by most recently active first
         let sortedRelations = followingRelations.sorted {
@@ -876,7 +865,10 @@ final class SocialHubViewController: UIViewController {
 
         podium.heightAnchor.constraint(equalToConstant: 185).isActive = true
         contentStack.addArrangedSubview(podium)
-        podium.animateEntrance()
+        if !hasAnimatedPodium {
+            podium.animateEntrance()
+            hasAnimatedPodium = true
+        }
 
         // Compact strip below podium
         let strip = UIStackView()
@@ -1444,12 +1436,11 @@ extension SocialHubViewController: UISearchBarDelegate {
     }
 }
 
-// MARK: - FollowRequestsViewControllerDelegate
+// MARK: - NotificationsCenterViewControllerDelegate
 
-extension SocialHubViewController: FollowRequestsViewControllerDelegate {
-    func followRequestsViewControllerDidUpdateRequests(_ controller: FollowRequestsViewController) {
+extension SocialHubViewController: NotificationsCenterViewControllerDelegate {
+    func notificationsCenterDidUpdate(_ controller: NotificationsCenterViewController) {
         updateBellBadge()
-        loadArenaData()
     }
 }
 

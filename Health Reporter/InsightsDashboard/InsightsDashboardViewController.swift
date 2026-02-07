@@ -20,6 +20,7 @@ final class InsightsDashboardViewController: UIViewController {
     private var scoreHistory: [DailyScoreEntry] = []           // 7-day computed score history
     private var isLoading = true
     private var selectedPeriod: TimePeriod = .day
+    private var lastUpdatedTime: Date?
 
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
@@ -215,6 +216,7 @@ final class InsightsDashboardViewController: UIViewController {
                         self.currentPeriodData = periodModel  // Save period data
                         self.dailyMetrics = dailyMetrics
                         self.starMetrics = StarMetricsCalculator.shared.calculateStarMetrics(from: dailyMetrics)
+                        self.lastUpdatedTime = Date()
                         self.updateUI()
                         self.isLoading = false
                         self.loadingIndicator.stopAnimating()
@@ -273,6 +275,7 @@ final class InsightsDashboardViewController: UIViewController {
                 self.currentPeriodData = mockData
                 self.dailyMetrics = dailyMetrics
                 self.starMetrics = StarMetricsCalculator.shared.calculateStarMetrics(from: dailyMetrics)
+                self.lastUpdatedTime = Date()
                 self.updateUI()
                 self.isLoading = false
                 self.loadingIndicator.stopAnimating()
@@ -286,7 +289,7 @@ final class InsightsDashboardViewController: UIViewController {
         guard let metrics = dailyMetrics, let stars = starMetrics else { return }
 
         // Update header
-        headerView.configure()
+        headerView.configure(lastUpdated: lastUpdatedTime)
 
         // Update hero section with correct scores
         heroSection.configure(

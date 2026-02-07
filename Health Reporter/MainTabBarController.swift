@@ -109,7 +109,7 @@ final class MainTabBarController: UITabBarController {
     }
 
     @objc private func dashboardBellTapped() {
-        let vc = FollowRequestsViewController()
+        let vc = NotificationsCenterViewController()
         vc.delegate = self
         let nav = UINavigationController(rootViewController: vc)
         nav.modalPresentationStyle = .formSheet
@@ -140,7 +140,7 @@ final class MainTabBarController: UITabBarController {
 
     /// Update bell button badges on Dashboard and Profile, plus app icon badge
     func updateFollowRequestBadge() {
-        FollowFirestoreSync.fetchPendingFollowRequestsCount { [weak self] count in
+        FriendsFirestoreSync.fetchUnreadNotificationsCount { [weak self] count in
             DispatchQueue.main.async {
                 // Update Dashboard bell badge
                 if count > 0 {
@@ -251,10 +251,10 @@ final class MainTabBarController: UITabBarController {
     }
 }
 
-// MARK: - FollowRequestsViewControllerDelegate
+// MARK: - NotificationsCenterViewControllerDelegate
 
-extension MainTabBarController: FollowRequestsViewControllerDelegate {
-    func followRequestsViewControllerDidUpdateRequests(_ controller: FollowRequestsViewController) {
+extension MainTabBarController: NotificationsCenterViewControllerDelegate {
+    func notificationsCenterDidUpdate(_ controller: NotificationsCenterViewController) {
         updateFollowRequestBadge()
     }
 }

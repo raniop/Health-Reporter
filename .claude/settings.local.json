@@ -38,7 +38,8 @@
       "Bash(gcloud projects describe:*)",
       "Bash(brew install:*)",
       "WebFetch(domain:stackoverflow.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(npx firebase deploy:*)"
     ]
   }
 }

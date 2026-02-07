@@ -196,6 +196,7 @@ final class InsightsDashboardHeaderView: UIView {
 
     private let greetingLabel = UILabel()
     private let dateLabel = UILabel()
+    private let lastUpdatedLabel = UILabel()
     private let avatarImageView = UIImageView()
     private var mainStack: UIStackView?
     private var textStack: UIStackView?
@@ -208,7 +209,7 @@ final class InsightsDashboardHeaderView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure() {
+    func configure(lastUpdated: Date? = nil) {
         // Remove previous subviews and rebuild according to current language
         subviews.forEach { $0.removeFromSuperview() }
 
@@ -223,19 +224,23 @@ final class InsightsDashboardHeaderView: UIView {
         addSubview(stack)
         mainStack = stack
 
-        let tStack = UIStackView(arrangedSubviews: [greetingLabel, dateLabel])
+        let tStack = UIStackView(arrangedSubviews: [greetingLabel, dateLabel, lastUpdatedLabel])
         tStack.axis = .vertical
         tStack.spacing = 4
         tStack.alignment = currentIsRTL ? .trailing : .leading
         textStack = tStack
 
-        greetingLabel.font = AIONDesign.fontTitle2
+        greetingLabel.font = .systemFont(ofSize: 26, weight: .bold)
         greetingLabel.textColor = AIONDesign.textPrimary
         greetingLabel.textAlignment = currentTextAlignment
 
         dateLabel.font = AIONDesign.fontCaption
         dateLabel.textColor = AIONDesign.textSecondary
         dateLabel.textAlignment = currentTextAlignment
+
+        lastUpdatedLabel.font = .systemFont(ofSize: 11, weight: .regular)
+        lastUpdatedLabel.textColor = AIONDesign.textTertiary
+        lastUpdatedLabel.textAlignment = currentTextAlignment
 
         avatarImageView.contentMode = .scaleAspectFill
         avatarImageView.clipsToBounds = true
@@ -287,6 +292,19 @@ final class InsightsDashboardHeaderView: UIView {
         formatter.dateStyle = .long
         formatter.locale = currentIsRTL ? Locale(identifier: "he_IL") : Locale(identifier: "en_US")
         dateLabel.text = formatter.string(from: Date())
+
+        // Last Updated
+        if let updated = lastUpdated {
+            let timeFormatter = DateFormatter()
+            timeFormatter.dateFormat = "HH:mm"
+            timeFormatter.locale = currentIsRTL ? Locale(identifier: "he_IL") : Locale(identifier: "en_US")
+            let timeString = timeFormatter.string(from: updated)
+            let prefix = currentIsRTL ? "עודכן לאחרונה" : "Last updated"
+            lastUpdatedLabel.text = "\(prefix): \(timeString)"
+            lastUpdatedLabel.isHidden = false
+        } else {
+            lastUpdatedLabel.isHidden = true
+        }
 
         // Avatar
         if let user = Auth.auth().currentUser {
@@ -1153,6 +1171,8 @@ final class StarMetricCell: UIView {
 
         valueLabel.font = AIONDesign.fontHeadline
         valueLabel.textColor = AIONDesign.textPrimary
+        valueLabel.adjustsFontSizeToFitWidth = true
+        valueLabel.minimumScaleFactor = 0.6
 
         nameLabel.font = UIFont.systemFont(ofSize: 10, weight: .medium)
         nameLabel.textColor = AIONDesign.textSecondary

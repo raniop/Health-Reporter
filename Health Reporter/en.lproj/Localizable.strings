@@ -22,7 +22,7 @@
 "tab.settings" = "Settings";
 
 /* Legacy Tab Keys (for backwards compatibility) */
-"tab.dashboard" = "Home";
+"tab.dashboard" = "AION";
 "tab.trends" = "Trends";
 "tab.insights" = "Insights";
 "tab.profile" = "Profile";

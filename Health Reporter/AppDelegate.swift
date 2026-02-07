@@ -37,10 +37,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ = WatchConnectivityManager.shared
         print("WatchConnectivity: Initialized in AppDelegate")
 
-        // Refresh FCM token for already-logged-in users on every app launch
+        // Always register for remote notifications to ensure APNS token is available.
+        // This triggers didRegisterForRemoteNotificationsWithDeviceToken which then refreshes the FCM token.
+        // Safe to call multiple times - iOS ignores if already registered.
+        application.registerForRemoteNotifications()
+        print("[FCM] App launch: called registerForRemoteNotifications to ensure APNS token")
+
         if Auth.auth().currentUser != nil {
-            print("[FCM] App launch: user logged in, refreshing FCM token...")
-            FriendsFirestoreSync.refreshAndSaveFCMToken()
+            print("[FCM] App launch: user logged in, FCM token will refresh after APNS token arrives")
         } else {
             print("[FCM] App launch: no user logged in, skipping FCM refresh")
         }
@@ -139,6 +143,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Messaging.messaging().apnsToken = deviceToken
         print("[FCM] ✅ APNs device token received - FCM will now be able to get a token")
+
+        // Now that APNS token is set, safe to request FCM token for logged-in users.
+        // This fixes the "No APNS token specified before fetching FCM Token" (code 505) error.
+        if Auth.auth().currentUser != nil {
+            print("[FCM] APNS token ready + user logged in → refreshing FCM token now")
+            FriendsFirestoreSync.refreshAndSaveFCMToken()
+        }
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {

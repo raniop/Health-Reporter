@@ -502,13 +502,39 @@ enum FriendsFirestoreSync {
     // MARK: - FCM Token Management
 
     /// Fetches the current FCM token and saves it to Firestore.
-    /// Call this after login and on each app launch to ensure the token is always fresh.
-    static func refreshAndSaveFCMToken() {
+    /// Call this after the APNS token is available and user is logged in.
+    /// Retries once after 5s if the APNS token isn't ready yet (code 505).
+    static func refreshAndSaveFCMToken(retryCount: Int = 0) {
         let uid = Auth.auth().currentUser?.uid
-        print("[FCM] refreshAndSaveFCMToken called. Logged in: \(uid != nil), uid suffix: \(uid.map { String($0.suffix(4)) } ?? "none")")
+        print("[FCM] refreshAndSaveFCMToken called (retry=\(retryCount)). Logged in: \(uid != nil), uid suffix: \(uid.map { String($0.suffix(4)) } ?? "none")")
+
+        // Check if APNS token is available before requesting FCM token
+        if Messaging.messaging().apnsToken == nil {
+            print("[FCM] ⚠️ APNS token not yet available")
+            if retryCount < 2 {
+                let delay = Double(retryCount + 1) * 5.0
+                print("[FCM] Will retry in \(Int(delay))s...")
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    refreshAndSaveFCMToken(retryCount: retryCount + 1)
+                }
+            } else {
+                print("[FCM] ❌ APNS token still not available after retries - giving up. Token will be saved when didReceiveRegistrationToken fires.")
+            }
+            return
+        }
+
         Messaging.messaging().token { token, error in
             if let error = error {
-                print("[FCM] ❌ Failed to fetch token: \(error.localizedDescription) (code: \((error as NSError).code))")
+                let code = (error as NSError).code
+                print("[FCM] ❌ Failed to fetch token: \(error.localizedDescription) (code: \(code))")
+                // Code 505 = no APNS token. Retry once.
+                if code == 505, retryCount < 2 {
+                    let delay = Double(retryCount + 1) * 5.0
+                    print("[FCM] Will retry in \(Int(delay))s...")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        refreshAndSaveFCMToken(retryCount: retryCount + 1)
+                    }
+                }
                 return
             }
             guard let token = token, !token.isEmpty else {
@@ -562,6 +588,88 @@ enum FriendsFirestoreSync {
         ]) { error in
             DispatchQueue.main.async { completion?(error) }
         }
+    }
+
+    // MARK: - Notifications Center
+
+    /// Fetches notification history for the current user
+    static func fetchNotifications(limit: Int = 50, completion: @escaping ([NotificationItem]) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
+            completion([])
+            return
+        }
+
+        db.collection(usersCollection).document(uid)
+            .collection("notifications")
+            .order(by: "createdAt", descending: true)
+            .limit(to: limit)
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    print("[Notifications] Fetch error: \(error.localizedDescription)")
+                    completion([])
+                    return
+                }
+
+                let items: [NotificationItem] = snapshot?.documents.compactMap { doc in
+                    let d = doc.data()
+                    guard let typeStr = d["type"] as? String,
+                          let type = NotificationType(rawValue: typeStr),
+                          let title = d["title"] as? String,
+                          let body = d["body"] as? String else { return nil }
+
+                    let createdAt = (d["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                    let read = d["read"] as? Bool ?? false
+                    let data = d["data"] as? [String: Any] ?? [:]
+
+                    return NotificationItem(
+                        id: doc.documentID,
+                        type: type,
+                        title: title,
+                        body: body,
+                        data: data,
+                        read: read,
+                        createdAt: createdAt
+                    )
+                } ?? []
+
+                DispatchQueue.main.async { completion(items) }
+            }
+    }
+
+    /// Marks a single notification as read
+    static func markNotificationAsRead(_ notificationId: String) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else { return }
+        db.collection(usersCollection).document(uid)
+            .collection("notifications").document(notificationId)
+            .updateData(["read": true])
+    }
+
+    /// Marks all notifications as read
+    static func markAllNotificationsAsRead() {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else { return }
+        let ref = db.collection(usersCollection).document(uid).collection("notifications")
+        ref.whereField("read", isEqualTo: false).getDocuments { snapshot, _ in
+            guard let docs = snapshot?.documents else { return }
+            let batch = db.batch()
+            for doc in docs {
+                batch.updateData(["read": true], forDocument: doc.reference)
+            }
+            batch.commit()
+        }
+    }
+
+    /// Returns the count of unread notifications
+    static func fetchUnreadNotificationsCount(completion: @escaping (Int) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
+            completion(0)
+            return
+        }
+        db.collection(usersCollection).document(uid)
+            .collection("notifications")
+            .whereField("read", isEqualTo: false)
+            .getDocuments { snapshot, _ in
+                DispatchQueue.main.async { completion(snapshot?.documents.count ?? 0) }
+            }
     }
 
     // MARK: - Morning Notification Settings

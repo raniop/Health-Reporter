@@ -52,6 +52,25 @@ async function getToken(uid, tag) {
   return token;
 }
 
+// ─── Helper: save notification to Firestore ───
+
+async function saveNotification(recipientUid, type, title, body, data, tag) {
+  try {
+    await db.collection("users").doc(recipientUid)
+        .collection("notifications").add({
+          type,
+          title,
+          body,
+          data: data || {},
+          read: false,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+    console.log(`${tag} Notification saved for ${recipientUid}`);
+  } catch (err) {
+    console.error(`${tag} Failed to save notification:`, err.message);
+  }
+}
+
 // ============================================================================
 // 1) FOLLOW REQUEST CREATED
 // ============================================================================
@@ -63,21 +82,29 @@ exports.onFollowRequestCreated = functions.firestore
       const d = snap.data();
       const toUid = d.toUid;
       const fromName = d.fromDisplayName || "Someone";
+      const fromUid = d.fromUid || "";
       console.log(`${TAG} ${fromName} -> ${toUid}`);
+
+      const title = "New follow request";
+      const body = `${fromName} wants to follow you`;
+
+      // Save to notification history
+      await saveNotification(toUid, "follow_request", title, body, {
+        requestId: context.params.requestId,
+        fromUid,
+        fromDisplayName: fromName,
+      }, TAG);
 
       const token = await getToken(toUid, TAG);
       if (!token) return null;
 
       return sendFCM(token, {
         token,
-        notification: {
-          title: "New follow request",
-          body: `${fromName} wants to follow you`,
-        },
+        notification: {title, body},
         data: {
           type: "follow_request_received",
           requestId: context.params.requestId,
-          fromUid: d.fromUid || "",
+          fromUid,
           fromDisplayName: fromName,
         },
         apns: {payload: {aps: {badge: 1, sound: "default"}}},
@@ -104,15 +131,22 @@ exports.onFollowRequestAccepted = functions.firestore
       const acceptorSnap = await db.collection("users").doc(toUid).get();
       const acceptorName = acceptorSnap.data()?.displayName || "Someone";
 
+      const title = "Follow request accepted!";
+      const body = `${acceptorName} accepted your follow request`;
+
+      // Save to notification history
+      await saveNotification(fromUid, "follow_accepted", title, body, {
+        requestId: context.params.requestId,
+        acceptedByUid: toUid,
+        acceptedByDisplayName: acceptorName,
+      }, TAG);
+
       const token = await getToken(fromUid, TAG);
       if (!token) return null;
 
       return sendFCM(token, {
         token,
-        notification: {
-          title: "Follow request accepted!",
-          body: `${acceptorName} accepted your follow request`,
-        },
+        notification: {title, body},
         data: {
           type: "follow_request_accepted",
           requestId: context.params.requestId,
@@ -138,15 +172,21 @@ exports.onNewFollower = functions.firestore
       const followerSnap = await db.collection("users").doc(followerId).get();
       const followerName = followerSnap.data()?.displayName || "Someone";
 
+      const title = "New follower!";
+      const body = `${followerName} started following you`;
+
+      // Save to notification history
+      await saveNotification(userId, "new_follower", title, body, {
+        followerUid: followerId,
+        followerDisplayName: followerName,
+      }, TAG);
+
       const token = await getToken(userId, TAG);
       if (!token) return null;
 
       return sendFCM(token, {
         token,
-        notification: {
-          title: "New follower!",
-          body: `${followerName} started following you`,
-        },
+        notification: {title, body},
         data: {
           type: "new_follower",
           followerUid: followerId,
@@ -191,6 +231,11 @@ exports.sendMorningNotifications = functions.pubsub
               console.log(`${TAG} ${uid}: no token`);
               return {uid, success: false};
             }
+
+            // Save morning notification to history
+            await saveNotification(uid, "morning_summary",
+                "Good morning!", "Your daily health report is ready",
+                {timestamp: now.toISOString()}, TAG);
 
             const res = await sendFCM(token, {
               token,
