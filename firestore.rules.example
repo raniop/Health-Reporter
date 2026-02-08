@@ -32,6 +32,11 @@ service cloud.firestore {
         allow read, create, update: if request.auth != null && request.auth.uid == userId;
       }
 
+      // AION Memory subcollection (private to owner)
+      match /aionMemory/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
       // Legacy friends subcollection (backward compatibility)
       match /friends/{friendUid} {
         allow read: if request.auth != null && request.auth.uid == userId;

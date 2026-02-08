@@ -165,7 +165,7 @@ final class BedtimeRecommendationService {
     IMPORTANT: All notification text must be bilingual (Hebrew + English).
     Format:
       Title: "Recommended bedtime: HH:MM" (in both languages)
-      Body: "Because: <reason1>, <reason2>. Tip: <one tip>." (in both languages)
+      Body: A natural, friendly 1-2 sentence message explaining why this bedtime was chosen and one actionable tip. Do NOT start with "Because:" or "בגלל:". Write it as a normal sentence a coach would say. Example EN: "You accumulated sleep debt and your deep sleep dropped. Try winding down earlier tonight." Example HE: "צברת חוב שינה ושינה עמוקה ירדה. נסה להירגע מוקדם יותר הערב."
     Reasons should cite metrics like HRV drop, RHR rise, short sleep, late workout.
 
     OUTPUT FORMAT (JSON ONLY)
@@ -189,8 +189,8 @@ final class BedtimeRecommendationService {
       "notification": {
         "title_en": "Recommended bedtime: HH:MM",
         "title_he": "שעת שינה מומלצת: HH:MM",
-        "body_en": "Because: ... Tip: ...",
-        "body_he": "בגלל: ... טיפ: ..."
+        "body_en": "Natural friendly message explaining why and a tip.",
+        "body_he": "הודעה טבעית וידידותית שמסבירה למה ונותנת טיפ."
       },
       "assumptions": [
         "List any assumptions due to missing data"
@@ -207,14 +207,17 @@ final class BedtimeRecommendationService {
     // MARK: - Generate Recommendation
 
     func generateRecommendation(completion: @escaping (BedtimeRecommendation?, Error?) -> Void) {
+        print("🌙 [Bedtime] generateRecommendation() called")
         // Fetch 21 days of health data (enough for baselines + last 48h)
         HealthKitManager.shared.fetchDailyHealthData(days: 21) { [weak self] entries in
+            print("🌙 [Bedtime] HealthKit returned \(entries.count) daily entries")
             guard let self = self else {
                 completion(nil, NSError(domain: "BedtimeService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Service deallocated"]))
                 return
             }
 
             guard !entries.isEmpty else {
+                print("🌙 [Bedtime] ERROR: No health data entries returned from HealthKit")
                 completion(nil, NSError(domain: "BedtimeService", code: -2, userInfo: [NSLocalizedDescriptionKey: "No health data available"]))
                 return
             }
@@ -224,9 +227,12 @@ final class BedtimeRecommendationService {
             let payload = builder.build(from: entries)
 
             guard let payloadJSON = payload.toJSONString() else {
+                print("🌙 [Bedtime] ERROR: Failed to serialize payload to JSON")
                 completion(nil, NSError(domain: "BedtimeService", code: -3, userInfo: [NSLocalizedDescriptionKey: "Failed to build payload JSON"]))
                 return
             }
+
+            print("🌙 [Bedtime] Payload built (\(payloadJSON.count) chars), calling Gemini...")
 
             // Build prompt
             let prompt = Self.promptTemplate.replacingOccurrences(of: "{{PAYLOAD}}", with: payloadJSON)
@@ -234,23 +240,31 @@ final class BedtimeRecommendationService {
             // Call Gemini
             self.callGemini(prompt: prompt, retryCount: 0) { responseText, error in
                 if let error = error {
+                    print("🌙 [Bedtime] ERROR from Gemini call: \(error.localizedDescription)")
                     completion(nil, error)
                     return
                 }
 
                 guard let text = responseText else {
+                    print("🌙 [Bedtime] ERROR: Gemini returned nil responseText")
                     completion(nil, NSError(domain: "BedtimeService", code: -4, userInfo: [NSLocalizedDescriptionKey: "No response from Gemini"]))
                     return
                 }
 
+                print("🌙 [Bedtime] Gemini response received (\(text.count) chars)")
+                print("🌙 [Bedtime] Raw response preview: \(String(text.prefix(300)))")
+
                 // Parse JSON response
                 do {
                     let recommendation = try self.parseResponse(text)
+                    print("🌙 [Bedtime] ✅ Parsed successfully: bedtime=\(recommendation.recommendedBedtimeLocal), sleepNeed=\(recommendation.sleepNeedTonightMinutes)min")
+                    print("🌙 [Bedtime] Notification title_he: \(recommendation.notification.title_he)")
+                    print("🌙 [Bedtime] Notification body_he: \(recommendation.notification.body_he)")
                     // Cache the result
                     AnalysisCache.saveBedtimeRecommendation(recommendation)
                     completion(recommendation, nil)
                 } catch {
-                    print("🌙 [Bedtime] Failed to parse Gemini response: \(error)")
+                    print("🌙 [Bedtime] ❌ Failed to parse Gemini response: \(error)")
                     print("🌙 [Bedtime] Raw response: \(text.prefix(500))")
                     completion(nil, error)
                 }
@@ -303,7 +317,7 @@ final class BedtimeRecommendationService {
             "generationConfig": [
                 "temperature": 0.2,
                 "topP": 0.95,
-                "maxOutputTokens": 4096,
+                "maxOutputTokens": 8192,
                 "responseMimeType": "text/plain"
             ]
         ]
@@ -315,8 +329,13 @@ final class BedtimeRecommendationService {
             return
         }
 
+        print("🌙 [Bedtime] Sending Gemini request (attempt \(retryCount + 1)/\(maxRetries + 1))...")
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
+
+            if let httpResp = response as? HTTPURLResponse {
+                print("🌙 [Bedtime] Gemini HTTP status: \(httpResp.statusCode)")
+            }
 
             if let error = error {
                 let ns = error as NSError

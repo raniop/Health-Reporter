@@ -431,6 +431,7 @@
 "settings.bedtimeNotification.enable" = "Enable Notification";
 "settings.bedtimeNotification.enableDescription" = "Receive a personalized bedtime recommendation every evening";
 "settings.bedtimeNotification.time" = "Notification Time";
+"settings.bedtimeNotification.sleepGoal" = "Sleep Goal";
 "settings.bedtimeNotification.test" = "Send Test Notification";
 "settings.bedtimeNotification.testSent" = "Test Sent";
 "settings.bedtimeNotification.testSentMessage" = "A test notification will appear in a few seconds";
@@ -439,6 +440,8 @@
 "bedtime.notification.title" = "🌙 Good evening, %@!";
 "bedtime.notification.title.noname" = "🌙 Good evening!";
 "bedtime.notification.generic" = "Check your personalized bedtime recommendation";
+"bedtime.detail.recommendedBedtime" = "Recommended Bedtime";
+"bedtime.detail.sleepNeed" = "Sleep Needed";
 
 /* Morning Notification Content */
 "morning.notification.title" = "🌅 Good morning, %@!";

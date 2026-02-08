@@ -192,10 +192,12 @@ final class BedtimePayloadBuilder {
 
         // --- User profile ---
         let wakeTime = buildPreferredWakeTime()
+        let sleepGoal = BedtimeNotificationManager.shared.sleepGoalHours
+        print("🌙 [BedtimePayload] sleepGoal=\(sleepGoal)h, wakeTime=\(wakeTime ?? "nil"), sleepBaseline=\(average(sleepValues) ?? 0)h")
         let userProfile = BedtimeUserProfile(
             timezone: TimeZone.current.identifier,
             preferredWakeTime: wakeTime,
-            typicalSleepNeedHours: average(sleepValues),
+            typicalSleepNeedHours: BedtimeNotificationManager.shared.sleepGoalHours,
             age: nil,
             sex: nil,
             trainingGoal: nil

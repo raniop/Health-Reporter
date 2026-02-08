@@ -16,7 +16,8 @@ class GeminiDebugViewController: UIViewController {
             "debug.query".localized,
             "debug.response".localized,
             "debug.differences".localized,
-            "debug.history".localized
+            "debug.history".localized,
+            "🧠 Memory"
         ])
         sc.selectedSegmentIndex = 0
         sc.translatesAutoresizingMaskIntoConstraints = false
@@ -95,6 +96,7 @@ class GeminiDebugViewController: UIViewController {
     private var differencesAttributedText: NSAttributedString?
     private var historyEntries: [DebugLogEntry] = []
     private var historyAttributedText: NSAttributedString?
+    private var memoryAttributedText: NSAttributedString?
 
     // MARK: - Lifecycle
 
@@ -196,6 +198,9 @@ class GeminiDebugViewController: UIViewController {
 
         // Load history
         loadHistory()
+
+        // Load AION memory
+        loadMemory()
     }
 
     private func loadHistory() {
@@ -287,6 +292,105 @@ class GeminiDebugViewController: UIViewController {
         }
 
         historyAttributedText = attributed
+    }
+
+    private func loadMemory() {
+        let attributed = NSMutableAttributedString()
+
+        let titleAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 16, weight: .bold),
+            .foregroundColor: UIColor.label
+        ]
+        let headerAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 14, weight: .semibold),
+            .foregroundColor: UIColor.systemOrange
+        ]
+        let contentAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 13, weight: .regular),
+            .foregroundColor: UIColor.label
+        ]
+        let labelAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 12, weight: .medium),
+            .foregroundColor: UIColor.secondaryLabel
+        ]
+
+        attributed.append(NSAttributedString(string: "🧠 AION Memory\n\n", attributes: titleAttrs))
+
+        guard let memory = AIONMemoryManager.loadFromCache() else {
+            attributed.append(NSAttributedString(string: "No memory saved yet.\nMemory is created after the first Gemini analysis.\n", attributes: contentAttrs))
+            memoryAttributedText = attributed
+            return
+        }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
+
+        // Meta
+        attributed.append(NSAttributedString(string: "📊 Meta\n", attributes: headerAttrs))
+        attributed.append(NSAttributedString(string: "Interactions: \(memory.interactionCount)\n", attributes: contentAttrs))
+        attributed.append(NSAttributedString(string: "First analysis: \(dateFormatter.string(from: memory.firstAnalysisDate))\n", attributes: contentAttrs))
+        attributed.append(NSAttributedString(string: "Last updated: \(dateFormatter.string(from: memory.lastUpdatedDate))\n", attributes: contentAttrs))
+        attributed.append(NSAttributedString(string: "Schema version: \(memory.schemaVersion)\n\n", attributes: labelAttrs))
+
+        // User Profile
+        let p = memory.userProfile
+        attributed.append(NSAttributedString(string: "👤 User Profile\n", attributes: headerAttrs))
+        if let name = p.displayName { attributed.append(NSAttributedString(string: "Name: \(name)\n", attributes: contentAttrs)) }
+        if let device = p.dataSource { attributed.append(NSAttributedString(string: "Device: \(device)\n", attributes: contentAttrs)) }
+        if let fitness = p.fitnessLevel { attributed.append(NSAttributedString(string: "Fitness: \(fitness)\n", attributes: contentAttrs)) }
+        if let sleep = p.typicalSleepHours { attributed.append(NSAttributedString(string: "Typical sleep: \(sleep)h\n", attributes: contentAttrs)) }
+        if let hrv = p.baselineHRV { attributed.append(NSAttributedString(string: "Baseline HRV: \(Int(hrv)) ms\n", attributes: contentAttrs)) }
+        if let rhr = p.baselineRHR { attributed.append(NSAttributedString(string: "Baseline RHR: \(Int(rhr)) bpm\n", attributes: contentAttrs)) }
+        if let vo2 = p.vo2maxRange { attributed.append(NSAttributedString(string: "VO2max range: \(vo2)\n", attributes: contentAttrs)) }
+        if let car = p.currentCarModel { attributed.append(NSAttributedString(string: "Current car: \(car)\n", attributes: contentAttrs)) }
+        if let history = p.carHistoryBrief { attributed.append(NSAttributedString(string: "Car journey: \(history)\n", attributes: contentAttrs)) }
+        if !p.knownConditions.isEmpty { attributed.append(NSAttributedString(string: "Conditions: \(p.knownConditions.joined(separator: ", "))\n", attributes: contentAttrs)) }
+        attributed.append(NSAttributedString(string: "\n", attributes: [:]))
+
+        // Longitudinal Insights
+        let l = memory.longitudinalInsights
+        attributed.append(NSAttributedString(string: "📈 Longitudinal Insights\n", attributes: headerAttrs))
+        if let sleepTrend = l.sleepTrend { attributed.append(NSAttributedString(string: "Sleep: \(sleepTrend)\n", attributes: contentAttrs)) }
+        if let recovery = l.recoveryPattern { attributed.append(NSAttributedString(string: "Recovery: \(recovery)\n", attributes: contentAttrs)) }
+        if let training = l.trainingPattern { attributed.append(NSAttributedString(string: "Training: \(training)\n", attributes: contentAttrs)) }
+        if !l.keyStrengths.isEmpty { attributed.append(NSAttributedString(string: "Strengths: \(l.keyStrengths.joined(separator: "; "))\n", attributes: contentAttrs)) }
+        if !l.persistentWeaknesses.isEmpty { attributed.append(NSAttributedString(string: "Weaknesses: \(l.persistentWeaknesses.joined(separator: "; "))\n", attributes: contentAttrs)) }
+        if let supplements = l.supplementHistory { attributed.append(NSAttributedString(string: "Supplements: \(supplements)\n", attributes: contentAttrs)) }
+        if !l.notableEvents.isEmpty {
+            attributed.append(NSAttributedString(string: "Events:\n", attributes: labelAttrs))
+            for event in l.notableEvents {
+                attributed.append(NSAttributedString(string: "  • \(event)\n", attributes: contentAttrs))
+            }
+        }
+        attributed.append(NSAttributedString(string: "\n", attributes: [:]))
+
+        // Recent Analyses
+        attributed.append(NSAttributedString(string: "📋 Recent Analyses (\(memory.recentAnalyses.count))\n", attributes: headerAttrs))
+        for (i, analysis) in memory.recentAnalyses.enumerated() {
+            let analysisAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+                .foregroundColor: UIColor.systemBlue
+            ]
+            attributed.append(NSAttributedString(string: "[\(i + 1)] \(dateFormatter.string(from: analysis.date)) | \(analysis.carModel) | Score: \(analysis.healthScore)\n", attributes: analysisAttrs))
+            if !analysis.keyFindings_en.isEmpty {
+                attributed.append(NSAttributedString(string: "    \(analysis.keyFindings_en)\n", attributes: contentAttrs))
+            }
+            if let stop = analysis.directiveStop, !stop.isEmpty {
+                attributed.append(NSAttributedString(string: "    🛑 \(stop)\n", attributes: labelAttrs))
+            }
+            if let start = analysis.directiveStart, !start.isEmpty {
+                attributed.append(NSAttributedString(string: "    ✅ \(start)\n", attributes: labelAttrs))
+            }
+            if let watch = analysis.directiveWatch, !watch.isEmpty {
+                attributed.append(NSAttributedString(string: "    👀 \(watch)\n", attributes: labelAttrs))
+            }
+            if !analysis.supplements.isEmpty {
+                attributed.append(NSAttributedString(string: "    💊 \(analysis.supplements.joined(separator: ", "))\n", attributes: labelAttrs))
+            }
+            attributed.append(NSAttributedString(string: "\n", attributes: [:]))
+        }
+
+        memoryAttributedText = attributed
     }
 
     private func calculateDifferences() {
@@ -604,6 +708,17 @@ class GeminiDebugViewController: UIViewController {
             }
             statsLabel.text = String(format: "debug.entriesInLast7Days".localized, historyEntries.count)
 
+        case 4: // Memory
+            if let attributed = memoryAttributedText {
+                textView.attributedText = attributed
+            } else {
+                textView.attributedText = nil
+                textView.text = "No AION memory saved yet"
+                textView.font = .systemFont(ofSize: 14, weight: .regular)
+            }
+            let memoryCount = AIONMemoryManager.loadFromCache()?.interactionCount ?? 0
+            statsLabel.text = "AION Memory | \(memoryCount) interactions"
+
         default:
             break
         }
@@ -680,6 +795,7 @@ class GeminiDebugViewController: UIViewController {
         case 1: text = responseText
         case 2: text = differencesText
         case 3: text = historyAttributedText?.string ?? "debug.noHistory".localized
+        case 4: text = memoryAttributedText?.string ?? "No AION memory"
         default: text = ""
         }
 
@@ -710,6 +826,9 @@ class GeminiDebugViewController: UIViewController {
         case 3:
             text = historyAttributedText?.string ?? "debug.noHistory".localized
             label = "Gemini History (7 days)"
+        case 4:
+            text = memoryAttributedText?.string ?? "No AION memory"
+            label = "AION Memory"
         default:
             text = ""
             label = ""

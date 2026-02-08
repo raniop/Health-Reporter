@@ -23,6 +23,11 @@ final class BedtimeNotificationSettingsViewController: UIViewController {
     private let timeCard = UIView()
     private let timePicker = UIDatePicker()
 
+    // Sleep goal
+    private let sleepGoalCard = UIView()
+    private let sleepGoalValueLabel = UILabel()
+    private let sleepGoalStepper = UIStepper()
+
     // Test button
     private let testButton = UIButton(type: .system)
 
@@ -72,6 +77,7 @@ final class BedtimeNotificationSettingsViewController: UIViewController {
 
         setupEnableCard()
         setupTimeCard()
+        setupSleepGoalCard()
         setupTestButton()
     }
 
@@ -207,6 +213,76 @@ final class BedtimeNotificationSettingsViewController: UIViewController {
         contentStack.addArrangedSubview(timeCard)
     }
 
+    // MARK: - Sleep Goal Card
+
+    private func setupSleepGoalCard() {
+        sleepGoalCard.backgroundColor = AIONDesign.surface
+        sleepGoalCard.layer.cornerRadius = AIONDesign.cornerRadius
+        sleepGoalCard.translatesAutoresizingMaskIntoConstraints = false
+
+        let iconView = UIImageView(image: UIImage(systemName: "bed.double.fill"))
+        iconView.tintColor = AIONDesign.accentPrimary
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = "settings.bedtimeNotification.sleepGoal".localized
+        titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.textColor = AIONDesign.textPrimary
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        sleepGoalValueLabel.font = .monospacedDigitSystemFont(ofSize: 16, weight: .bold)
+        sleepGoalValueLabel.textColor = AIONDesign.accentPrimary
+        sleepGoalValueLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        sleepGoalStepper.minimumValue = 6.0
+        sleepGoalStepper.maximumValue = 10.0
+        sleepGoalStepper.stepValue = 0.25
+        sleepGoalStepper.tintColor = AIONDesign.accentPrimary
+        sleepGoalStepper.translatesAutoresizingMaskIntoConstraints = false
+        sleepGoalStepper.addTarget(self, action: #selector(sleepGoalStepperChanged), for: .valueChanged)
+
+        let valueStack = UIStackView(arrangedSubviews: [sleepGoalValueLabel, sleepGoalStepper])
+        valueStack.axis = .horizontal
+        valueStack.spacing = 10
+        valueStack.alignment = .center
+        valueStack.translatesAutoresizingMaskIntoConstraints = false
+
+        sleepGoalCard.addSubview(iconView)
+        sleepGoalCard.addSubview(titleLabel)
+        sleepGoalCard.addSubview(valueStack)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        NSLayoutConstraint.activate([
+            sleepGoalCard.heightAnchor.constraint(equalToConstant: 64),
+
+            iconView.centerYAnchor.constraint(equalTo: sleepGoalCard.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 28),
+            iconView.heightAnchor.constraint(equalToConstant: 28),
+
+            titleLabel.centerYAnchor.constraint(equalTo: sleepGoalCard.centerYAnchor),
+
+            valueStack.centerYAnchor.constraint(equalTo: sleepGoalCard.centerYAnchor),
+        ])
+
+        if isRTL {
+            NSLayoutConstraint.activate([
+                iconView.trailingAnchor.constraint(equalTo: sleepGoalCard.trailingAnchor, constant: -AIONDesign.spacing),
+                titleLabel.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -12),
+                valueStack.leadingAnchor.constraint(equalTo: sleepGoalCard.leadingAnchor, constant: AIONDesign.spacing),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                iconView.leadingAnchor.constraint(equalTo: sleepGoalCard.leadingAnchor, constant: AIONDesign.spacing),
+                titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
+                valueStack.trailingAnchor.constraint(equalTo: sleepGoalCard.trailingAnchor, constant: -AIONDesign.spacing),
+            ])
+        }
+
+        contentStack.addArrangedSubview(sleepGoalCard)
+    }
+
     // MARK: - Test Button
 
     private func setupTestButton() {
@@ -237,16 +313,28 @@ final class BedtimeNotificationSettingsViewController: UIViewController {
             timePicker.date = date
         }
 
+        sleepGoalStepper.value = manager.sleepGoalHours
+        updateSleepGoalLabel()
+
         updateUIState()
     }
 
     private func updateUIState() {
         let enabled = enableSwitch.isOn
         timeCard.alpha = enabled ? 1.0 : 0.5
+        sleepGoalCard.alpha = enabled ? 1.0 : 0.5
         testButton.alpha = enabled ? 1.0 : 0.5
 
         timePicker.isEnabled = enabled
+        sleepGoalStepper.isEnabled = enabled
         testButton.isEnabled = enabled
+    }
+
+    private func updateSleepGoalLabel() {
+        let hours = sleepGoalStepper.value
+        let h = Int(hours)
+        let m = Int(round((hours - Double(h)) * 60))
+        sleepGoalValueLabel.text = String(format: "%dh %02dm", h, m)
     }
 
     // MARK: - Actions
@@ -262,6 +350,12 @@ final class BedtimeNotificationSettingsViewController: UIViewController {
         let components = Calendar.current.dateComponents([.hour, .minute], from: timePicker.date)
         manager.notificationHour = components.hour ?? 19
         manager.notificationMinute = components.minute ?? 0
+    }
+
+    @objc private func sleepGoalStepperChanged() {
+        manager.sleepGoalHours = sleepGoalStepper.value
+        updateSleepGoalLabel()
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     @objc private func testButtonTapped() {

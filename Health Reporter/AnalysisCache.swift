@@ -544,6 +544,9 @@ enum AnalysisCache {
 
     /// Clears all cached data
     static func clear() {
+        // Clear AION Memory
+        AIONMemoryManager.clear()
+
         UserDefaults.standard.removeObject(forKey: keyInsights)
         UserDefaults.standard.removeObject(forKey: keyLastDate)
         UserDefaults.standard.removeObject(forKey: keyHealthDataHash)

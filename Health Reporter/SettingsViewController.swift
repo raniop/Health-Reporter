@@ -682,6 +682,7 @@ final class SettingsViewController: UIViewController {
             AnalyticsService.shared.logLogout()
             AnalyticsService.shared.resetAnalyticsData()
             FriendsFirestoreSync.removeFCMToken()
+            AIONMemoryManager.clear()
 
             try Auth.auth().signOut()
             (view.window?.windowScene?.delegate as? SceneDelegate)?.showLogin()

@@ -26,6 +26,7 @@ final class BedtimeNotificationManager {
         static let enabled = "bedtimeNotification.enabled"
         static let hour = "bedtimeNotification.hour"
         static let minute = "bedtimeNotification.minute"
+        static let sleepGoalHours = "bedtimeNotification.sleepGoalHours"
     }
 
     // MARK: - Properties
@@ -73,6 +74,17 @@ final class BedtimeNotificationManager {
         String(format: "%02d:%02d", notificationHour, notificationMinute)
     }
 
+    var sleepGoalHours: Double {
+        get {
+            let val = UserDefaults.standard.double(forKey: Keys.sleepGoalHours)
+            return val > 0 ? val : 7.5 // Default 7.5 hours
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Keys.sleepGoalHours)
+            syncSettingsToFirestore()
+        }
+    }
+
     // MARK: - Background Task Registration
 
     func registerBackgroundTask() {
@@ -107,10 +119,12 @@ final class BedtimeNotificationManager {
 
         // Load cached recommendation for fallback content
         if let cached = AnalysisCache.loadBedtimeRecommendation() {
+            print("🌙 [BedtimeNotification] scheduleRepeating: using CACHED recommendation (bedtime=\(cached.recommendedBedtimeLocal))")
             let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
             content.title = isHebrew ? cached.notification.title_he : cached.notification.title_en
             content.body = isHebrew ? cached.notification.body_he : cached.notification.body_en
         } else {
+            print("🌙 [BedtimeNotification] scheduleRepeating: NO cache found, using GENERIC fallback")
             // Fallback: generic notification
             let userName = getUserFirstName()
             if let name = userName, !name.isEmpty {
@@ -211,13 +225,20 @@ final class BedtimeNotificationManager {
     // MARK: - Send Notification
 
     private func sendImmediateNotification(with recommendation: BedtimeRecommendation) {
+        print("🌙 [BedtimeNotification] sendImmediateNotification() - Gemini succeeded")
+        print("🌙 [BedtimeNotification] Bedtime: \(recommendation.recommendedBedtimeLocal), sleepNeed: \(recommendation.sleepNeedTonightMinutes)min")
         let content = UNMutableNotificationContent()
         content.sound = .default
         content.userInfo = ["type": "bedtime_recommendation"]
 
         let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
-        content.title = isHebrew ? recommendation.notification.title_he : recommendation.notification.title_en
-        content.body = isHebrew ? recommendation.notification.body_he : recommendation.notification.body_en
+        let geminiTitle = isHebrew ? recommendation.notification.title_he : recommendation.notification.title_en
+        let geminiBody = isHebrew ? recommendation.notification.body_he : recommendation.notification.body_en
+
+        content.title = buildGreetingTitle()
+        content.body = geminiBody
+        print("🌙 [BedtimeNotification] Title: \(content.title)")
+        print("🌙 [BedtimeNotification] Body: \(content.body)")
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(
@@ -234,14 +255,14 @@ final class BedtimeNotificationManager {
             }
         }
 
-        // Save to Firestore notification center
+        // Save to Firestore notification center — fullTitle/fullBody include Gemini details
         FriendsFirestoreSync.saveNotificationItem(
             type: "bedtime_recommendation",
             title: content.title,
             body: content.body,
             data: [
-                "fullTitle": content.title,
-                "fullBody": content.body,
+                "fullTitle": geminiTitle,
+                "fullBody": geminiBody,
                 "recommendedBedtime": recommendation.recommendedBedtimeLocal,
                 "sleepNeedMinutes": recommendation.sleepNeedTonightMinutes
             ]
@@ -249,23 +270,24 @@ final class BedtimeNotificationManager {
     }
 
     private func sendNotificationWithCachedData() {
+        print("🌙 [BedtimeNotification] sendNotificationWithCachedData() - Gemini FAILED, using fallback")
         let content = UNMutableNotificationContent()
         content.sound = .default
         content.userInfo = ["type": "bedtime_recommendation"]
 
+        content.title = buildGreetingTitle()
+
         if let cached = AnalysisCache.loadBedtimeRecommendation() {
+            print("🌙 [BedtimeNotification] Found cached recommendation: bedtime=\(cached.recommendedBedtimeLocal)")
             let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
-            content.title = isHebrew ? cached.notification.title_he : cached.notification.title_en
             content.body = isHebrew ? cached.notification.body_he : cached.notification.body_en
         } else {
-            let userName = getUserFirstName()
-            if let name = userName, !name.isEmpty {
-                content.title = String(format: "bedtime.notification.title".localized, name)
-            } else {
-                content.title = "bedtime.notification.title.noname".localized
-            }
+            print("🌙 [BedtimeNotification] ⚠️ No cached recommendation - using GENERIC fallback text")
             content.body = "bedtime.notification.generic".localized
         }
+
+        print("🌙 [BedtimeNotification] Cached/fallback title: \(content.title)")
+        print("🌙 [BedtimeNotification] Cached/fallback body: \(content.body)")
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(
@@ -340,14 +362,17 @@ final class BedtimeNotificationManager {
 
     func sendTestNotification() {
         // Always call Gemini live for fresh recommendation
-        print("🌙 [BedtimeNotification] Generating live recommendation via Gemini...")
+        print("🌙 [BedtimeNotification] ===== TEST NOTIFICATION START =====")
+        print("🌙 [BedtimeNotification] Calling Gemini for fresh recommendation...")
         BedtimeRecommendationService.shared.generateRecommendation { [weak self] recommendation, error in
             guard let self = self else { return }
 
             if let recommendation = recommendation {
+                print("🌙 [BedtimeNotification] ✅ Gemini returned recommendation: \(recommendation.recommendedBedtimeLocal)")
                 self.sendTestWithRecommendation(recommendation)
             } else {
-                print("🌙 [BedtimeNotification] Gemini failed - sending generic: \(error?.localizedDescription ?? "unknown")")
+                print("🌙 [BedtimeNotification] ❌ Gemini FAILED: \(error?.localizedDescription ?? "unknown error")")
+                print("🌙 [BedtimeNotification] Falling back to basic test notification")
                 self.sendBasicTestNotification()
             }
         }
@@ -361,8 +386,11 @@ final class BedtimeNotificationManager {
         content.userInfo = ["type": "bedtime_recommendation"]
 
         let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
-        content.title = isHebrew ? recommendation.notification.title_he : recommendation.notification.title_en
-        content.body = isHebrew ? recommendation.notification.body_he : recommendation.notification.body_en
+        let geminiTitle = isHebrew ? recommendation.notification.title_he : recommendation.notification.title_en
+        let geminiBody = isHebrew ? recommendation.notification.body_he : recommendation.notification.body_en
+
+        content.title = buildGreetingTitle()
+        content.body = geminiBody
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)
         let request = UNNotificationRequest(
@@ -385,8 +413,8 @@ final class BedtimeNotificationManager {
             title: content.title,
             body: content.body,
             data: [
-                "fullTitle": content.title,
-                "fullBody": content.body,
+                "fullTitle": geminiTitle,
+                "fullBody": geminiBody,
                 "recommendedBedtime": recommendation.recommendedBedtimeLocal,
                 "sleepNeedMinutes": recommendation.sleepNeedTonightMinutes
             ]
@@ -434,5 +462,15 @@ final class BedtimeNotificationManager {
     private func getUserFirstName() -> String? {
         guard let displayName = Auth.auth().currentUser?.displayName else { return nil }
         return displayName.components(separatedBy: " ").first
+    }
+
+    /// Builds the greeting title: "🌙 ערב טוב, Rani!" / "🌙 Good evening, Rani!"
+    private func buildGreetingTitle() -> String {
+        let userName = getUserFirstName()
+        if let name = userName, !name.isEmpty {
+            return String(format: "bedtime.notification.title".localized, name)
+        } else {
+            return "bedtime.notification.title.noname".localized
+        }
     }
 }

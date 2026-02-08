@@ -102,19 +102,21 @@ final class NotificationDetailViewController: UIViewController {
             let sleepMin = notification.data["sleepNeedMinutes"] as? Int
 
             if bedtime != nil || sleepMin != nil {
-                var pills: [UIView] = []
+                var labeledPills: [UIView] = []
 
                 if let bedtime = bedtime {
-                    pills.append(makePill(icon: "bed.double.fill", text: bedtime, color: .systemIndigo))
+                    let pill = makePill(icon: "bed.double.fill", text: bedtime, color: .systemIndigo)
+                    labeledPills.append(makeLabeledPill(label: "bedtime.detail.recommendedBedtime".localized, pill: pill))
                 }
                 if let mins = sleepMin {
                     let h = mins / 60
                     let m = mins % 60
                     let txt = m > 0 ? "\(h)h \(m)m" : "\(h)h"
-                    pills.append(makePill(icon: "clock.fill", text: txt, color: AIONDesign.accentPrimary))
+                    let pill = makePill(icon: "clock.fill", text: txt, color: AIONDesign.accentPrimary)
+                    labeledPills.append(makeLabeledPill(label: "bedtime.detail.sleepNeed".localized, pill: pill))
                 }
 
-                let s = UIStackView(arrangedSubviews: pills)
+                let s = UIStackView(arrangedSubviews: labeledPills)
                 s.translatesAutoresizingMaskIntoConstraints = false
                 s.axis = .horizontal
                 s.spacing = 10
@@ -183,6 +185,34 @@ final class NotificationDetailViewController: UIViewController {
     }
 
     // MARK: - Helpers
+
+    private func makeLabeledPill(label: String, pill: UIView) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let lbl = UILabel()
+        lbl.translatesAutoresizingMaskIntoConstraints = false
+        lbl.font = .systemFont(ofSize: 12, weight: .medium)
+        lbl.textColor = AIONDesign.textTertiary
+        lbl.textAlignment = .center
+        lbl.text = label
+
+        container.addSubview(lbl)
+        container.addSubview(pill)
+
+        NSLayoutConstraint.activate([
+            lbl.topAnchor.constraint(equalTo: container.topAnchor),
+            lbl.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            lbl.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+
+            pill.topAnchor.constraint(equalTo: lbl.bottomAnchor, constant: 6),
+            pill.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            pill.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            pill.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        return container
+    }
 
     private func makePill(icon: String, text: String, color: UIColor) -> UIView {
         let pill = UIView()

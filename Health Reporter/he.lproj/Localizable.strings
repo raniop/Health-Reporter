@@ -422,6 +422,7 @@
 "settings.bedtimeNotification.enable" = "הפעל התראה";
 "settings.bedtimeNotification.enableDescription" = "קבל המלצת שעת שינה מותאמת אישית בכל ערב";
 "settings.bedtimeNotification.time" = "שעת התראה";
+"settings.bedtimeNotification.sleepGoal" = "יעד שינה";
 "settings.bedtimeNotification.test" = "שלח התראת בדיקה";
 "settings.bedtimeNotification.testSent" = "נשלחה בדיקה";
 "settings.bedtimeNotification.testSentMessage" = "התראת בדיקה תופיע בעוד מספר שניות";
@@ -430,6 +431,8 @@
 "bedtime.notification.title" = "🌙 ערב טוב, %@!";
 "bedtime.notification.title.noname" = "🌙 ערב טוב!";
 "bedtime.notification.generic" = "בדוק את המלצת שעת השינה המותאמת אישית שלך";
+"bedtime.detail.recommendedBedtime" = "שעת שינה מומלצת";
+"bedtime.detail.sleepNeed" = "זמן שינה נדרש";
 
 /* Morning Notification Content */
 "morning.notification.title" = "🌅 בוקר טוב, %@!";

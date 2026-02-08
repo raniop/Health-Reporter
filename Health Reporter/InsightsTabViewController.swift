@@ -2463,24 +2463,18 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         // CTA button
         let ctaButton = UIButton(type: .system)
         ctaButton.translatesAutoresizingMaskIntoConstraints = false
-
-        // Gradient for button (gold-orange)
-        let buttonGradient = CAGradientLayer()
-        buttonGradient.colors = [
-            UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0).cgColor, // gold
-            UIColor(red: 1.0, green: 0.6, blue: 0.0, alpha: 1.0).cgColor   // orange
-        ]
-        buttonGradient.startPoint = CGPoint(x: 0, y: 0.5)
-        buttonGradient.endPoint = CGPoint(x: 1, y: 0.5)
-        buttonGradient.cornerRadius = 28
-
-        ctaButton.layer.insertSublayer(buttonGradient, at: 0)
+        ctaButton.backgroundColor = UIColor(red: 1.0, green: 0.76, blue: 0.0, alpha: 1.0) // Bright amber/gold
         ctaButton.setTitle("🎁  " + "insights.discoverNewCar".localized, for: .normal)
         ctaButton.setTitleColor(.black, for: .normal)
-        ctaButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .bold)
+        ctaButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .heavy)
         ctaButton.layer.cornerRadius = 28
-        ctaButton.clipsToBounds = true
         ctaButton.addTarget(self, action: #selector(revealNewCarTapped), for: .touchUpInside)
+
+        // Glow shadow
+        ctaButton.layer.shadowColor = UIColor(red: 1.0, green: 0.76, blue: 0.0, alpha: 1.0).cgColor
+        ctaButton.layer.shadowOffset = .zero
+        ctaButton.layer.shadowRadius = 16
+        ctaButton.layer.shadowOpacity = 0.6
 
         // Add to container
         container.addSubview(carImageContainer)
@@ -2520,8 +2514,8 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
             subtitleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
 
             ctaButton.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 28),
-            ctaButton.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            ctaButton.widthAnchor.constraint(equalToConstant: 260),
+            ctaButton.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 32),
+            ctaButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -32),
             ctaButton.heightAnchor.constraint(equalToConstant: 56),
             ctaButton.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -32),
         ])
@@ -2531,7 +2525,6 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         // Update gradient after layout
         DispatchQueue.main.async {
             gradientLayer.frame = gradientView.bounds
-            buttonGradient.frame = ctaButton.bounds
         }
 
         // Animations - glow on the image
@@ -2824,24 +2817,18 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         // CTA button
         let ctaButton = UIButton(type: .system)
         ctaButton.translatesAutoresizingMaskIntoConstraints = false
-
-        // Gradient for button
-        let buttonGradient = CAGradientLayer()
-        buttonGradient.colors = [
-            accentCyan.cgColor,
-            accentPurple.cgColor
-        ]
-        buttonGradient.startPoint = CGPoint(x: 0, y: 0.5)
-        buttonGradient.endPoint = CGPoint(x: 1, y: 0.5)
-        buttonGradient.cornerRadius = 28
-
-        ctaButton.layer.insertSublayer(buttonGradient, at: 0)
+        ctaButton.backgroundColor = accentCyan
         ctaButton.setTitle("🔮  " + "insights.discoverCar".localized, for: .normal)
         ctaButton.setTitleColor(.white, for: .normal)
-        ctaButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .bold)
+        ctaButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .heavy)
         ctaButton.layer.cornerRadius = 28
-        ctaButton.clipsToBounds = true
         ctaButton.addTarget(self, action: #selector(discoverCarTapped), for: .touchUpInside)
+
+        // Glow shadow
+        ctaButton.layer.shadowColor = accentCyan.cgColor
+        ctaButton.layer.shadowOffset = .zero
+        ctaButton.layer.shadowRadius = 16
+        ctaButton.layer.shadowOpacity = 0.6
 
         // Add to container
         container.addSubview(questionLabel)
@@ -2881,8 +2868,8 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
             subtitleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
 
             ctaButton.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 28),
-            ctaButton.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            ctaButton.widthAnchor.constraint(equalToConstant: 260),
+            ctaButton.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 32),
+            ctaButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -32),
             ctaButton.heightAnchor.constraint(equalToConstant: 56),
             ctaButton.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -32),
         ])
@@ -2892,7 +2879,6 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         // Update gradient after layout
         DispatchQueue.main.async {
             gradientLayer.frame = gradientView.bounds
-            buttonGradient.frame = ctaButton.bounds
         }
 
         // Animations - glow on the image

@@ -42,6 +42,15 @@ class GeminiService {
     - Car model MUST be a REAL car searchable on Wikipedia (e.g., "Porsche 911 GT3")
     - NOT concepts like "Zone 2", "Recovery Mode", "Base Model", etc.
     - Keep the same car unless significant performance changes (detailed rules in prompt)
+
+    # PERSONALIZATION & MEMORY
+    - You have persistent memory of this user's health journey (provided in AION MEMORY block)
+    - Reference their PERSONAL baselines when analyzing data (e.g., "Your HRV is 12% above YOUR baseline of 45ms")
+    - Acknowledge progress or regressions from previous analyses
+    - Use the user's name if provided in the memory block
+    - Build on previous advice - don't repeat the same generic suggestions
+    - If a previous STOP directive was followed (metric improved), acknowledge it
+    - Compare current metrics against their personal baselines, not population averages
     """
     
     private var currentTask: URLSessionDataTask?
@@ -148,9 +157,10 @@ class GeminiService {
                 lastCarReason = savedCar.explanation
             }
 
-            // Retrieve the previous response for context
-            let previousAnalysis = AnalysisCache.loadLatest() ?? ""
-            let previousAnalysisBlock = previousAnalysis.isEmpty ? "No previous analysis available" : previousAnalysis
+            // Build AION Memory block (replaces raw previous analysis)
+            let memory = AIONMemoryManager.loadFromCache()
+            let memoryBlock = self.buildMemoryBlock(memory)
+            print("🧠 [AION Memory] Loaded: \(memory != nil ? "YES (interactions: \(memory!.interactionCount))" : "nil (first analysis)")")
 
             let prompt = """
             MISSION: Analyze 90-day health performance trends and provide actionable insights.
@@ -267,13 +277,8 @@ class GeminiService {
             \(payloadJSON)
             \(graphsBlock)
             \(dataSourceContext)
+            \(memoryBlock)
             \(userNotesBlock)
-
-            ==================================================
-            PREVIOUS ANALYSIS (for continuity)
-            ==================================================
-
-            \(previousAnalysisBlock)
             """
 
             // Save for debug (before sending)
@@ -292,6 +297,23 @@ class GeminiService {
 
                 // Save for debug (after receiving the response)
                 GeminiDebugStore.save(prompt: prompt, response: response)
+
+                // Update AION Memory in the background
+                if let parsed = CarAnalysisParser.parseJSON(response) {
+                    let score = AnalysisCache.loadHealthScore() ?? 0
+                    DispatchQueue.global(qos: .utility).async {
+                        let updated = AIONMemoryExtractor.updateMemory(
+                            existingMemory: memory,
+                            parsedAnalysis: parsed,
+                            healthPayload: payload,
+                            healthScore: score
+                        )
+                        AIONMemoryManager.save(updated)
+                        print("🧠 [AION Memory] Saved! Interactions: \(updated.interactionCount), Car: \(updated.userProfile.currentCarModel ?? "?"), HRV baseline: \(updated.userProfile.baselineHRV.map { "\(Int($0))ms" } ?? "?"), Recent analyses: \(updated.recentAnalyses.count)")
+                    }
+                } else {
+                    print("🧠 [AION Memory] Could not parse response for memory update")
+                }
 
                 // Parse the response into parts
                 let (insights, recommendations, riskFactors) = self.parseResponse(response)
@@ -413,7 +435,136 @@ class GeminiService {
 
         return context
     }
-    
+
+    /// Builds the AION Memory block to inject into the prompt.
+    private func buildMemoryBlock(_ memory: AIONMemory?) -> String {
+        guard let memory = memory, memory.interactionCount > 0 else {
+            return """
+
+            ==================================================
+            AION MEMORY - USER CONTEXT
+            ==================================================
+            This is the FIRST analysis for this user. No previous history available.
+            Provide a thorough initial assessment and establish baseline observations.
+            """
+        }
+
+        let profile = memory.userProfile
+        let insights = memory.longitudinalInsights
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd/MM/yyyy"
+
+        var block = """
+
+        ==================================================
+        AION MEMORY - USER CONTEXT
+        ==================================================
+        This is analysis #\(memory.interactionCount + 1) for this user.
+        You have been their health advisor since \(dateFormatter.string(from: memory.firstAnalysisDate)).
+
+        USER PROFILE:
+        """
+
+        if let name = profile.displayName, !name.isEmpty {
+            block += "\n- Name: \(name)"
+        }
+        if let device = profile.dataSource, !device.isEmpty {
+            block += "\n- Device: \(device)"
+        }
+        if let fitness = profile.fitnessLevel, !fitness.isEmpty {
+            block += "\n- Fitness level: \(fitness)"
+        }
+        if let sleep = profile.typicalSleepHours {
+            block += "\n- Typical sleep: \(sleep)h"
+        }
+        if let hrv = profile.baselineHRV {
+            block += "\n- Baseline HRV: \(Int(hrv)) ms"
+        }
+        if let rhr = profile.baselineRHR {
+            block += "\n- Baseline RHR: \(Int(rhr)) bpm"
+        }
+        if let vo2 = profile.vo2maxRange, !vo2.isEmpty {
+            block += "\n- VO2max range: \(vo2)"
+        }
+        if let car = profile.currentCarModel, !car.isEmpty {
+            block += "\n- Current car: \(car)"
+        }
+        if let history = profile.carHistoryBrief, !history.isEmpty {
+            block += "\n- Car journey: \(history)"
+        }
+        if !profile.knownConditions.isEmpty {
+            block += "\n- Known conditions: \(profile.knownConditions.joined(separator: ", "))"
+        }
+
+        // Longitudinal observations
+        var hasLongitudinal = false
+        var longBlock = "\n\nLONG-TERM OBSERVATIONS:"
+
+        if let sleepTrend = insights.sleepTrend, !sleepTrend.isEmpty {
+            longBlock += "\n- Sleep trend: \(sleepTrend)"
+            hasLongitudinal = true
+        }
+        if let recoveryPattern = insights.recoveryPattern, !recoveryPattern.isEmpty {
+            longBlock += "\n- Recovery pattern: \(recoveryPattern)"
+            hasLongitudinal = true
+        }
+        if let trainingPattern = insights.trainingPattern, !trainingPattern.isEmpty {
+            longBlock += "\n- Training pattern: \(trainingPattern)"
+            hasLongitudinal = true
+        }
+        if !insights.keyStrengths.isEmpty {
+            longBlock += "\n- Strengths: \(insights.keyStrengths.joined(separator: "; "))"
+            hasLongitudinal = true
+        }
+        if !insights.persistentWeaknesses.isEmpty {
+            longBlock += "\n- Persistent issues: \(insights.persistentWeaknesses.joined(separator: "; "))"
+            hasLongitudinal = true
+        }
+        if let supplements = insights.supplementHistory, !supplements.isEmpty {
+            longBlock += "\n- Previous supplements: \(supplements)"
+            hasLongitudinal = true
+        }
+        if !insights.notableEvents.isEmpty {
+            longBlock += "\n- Notable events: \(insights.notableEvents.joined(separator: "; "))"
+            hasLongitudinal = true
+        }
+
+        if hasLongitudinal {
+            block += longBlock
+        }
+
+        // Recent analyses
+        if !memory.recentAnalyses.isEmpty {
+            block += "\n\nRECENT ANALYSES (last \(memory.recentAnalyses.count)):"
+            for (i, analysis) in memory.recentAnalyses.enumerated() {
+                block += "\n[\(i + 1)] \(dateFormatter.string(from: analysis.date)) | Car: \(analysis.carModel) | Score: \(analysis.healthScore)"
+                if !analysis.keyFindings_en.isEmpty {
+                    block += "\n    Findings: \(analysis.keyFindings_en)"
+                }
+                if let stop = analysis.directiveStop, !stop.isEmpty {
+                    block += "\n    STOP: \(stop)"
+                }
+                if let start = analysis.directiveStart, !start.isEmpty {
+                    block += "\n    START: \(start)"
+                }
+                if let watch = analysis.directiveWatch, !watch.isEmpty {
+                    block += "\n    WATCH: \(watch)"
+                }
+            }
+        }
+
+        block += """
+
+        \nCONTINUITY INSTRUCTIONS:
+        - Reference specific improvements or regressions you've tracked in their history
+        - If a previous directive was followed and the metric improved, acknowledge it
+        - Compare current metrics against their PERSONAL baselines listed above, not population averages
+        - Build on previous recommendations - evolve your advice, don't repeat the same generic suggestions
+        """
+
+        return block
+    }
+
     private func sendRequest(prompt: String, systemInstruction: String? = nil, temperature: Double = 0.2, completion: @escaping (String?, Error?) -> Void) {
         // Prevent duplicate calls
         guard !isAnalysisInProgress else {

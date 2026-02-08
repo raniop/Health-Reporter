@@ -38,6 +38,7 @@ final class InsightsDashboardViewController: UIViewController {
     private let guidanceCard = GuidanceCardView()
 
     private let loadingIndicator = UIActivityIndicatorView(style: .large)
+    private let refreshControl = UIRefreshControl()
 
     // MARK: - Lifecycle
 
@@ -73,6 +74,10 @@ final class InsightsDashboardViewController: UIViewController {
         updateBellBadge()
     }
 
+    @objc private func handlePullToRefresh() {
+        loadData()
+    }
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
@@ -96,6 +101,11 @@ final class InsightsDashboardViewController: UIViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = false
         view.addSubview(scrollView)
+
+        // Pull-to-refresh
+        refreshControl.tintColor = AIONDesign.accentPrimary
+        refreshControl.addTarget(self, action: #selector(handlePullToRefresh), for: .valueChanged)
+        scrollView.refreshControl = refreshControl
 
         // Content stack
         contentStack.axis = .vertical
@@ -163,9 +173,12 @@ final class InsightsDashboardViewController: UIViewController {
     // MARK: - Data Loading
 
     private func loadData() {
+        let isPullToRefresh = refreshControl.isRefreshing
         isLoading = true
-        loadingIndicator.startAnimating()
-        contentStack.isHidden = true
+        if !isPullToRefresh {
+            loadingIndicator.startAnimating()
+            contentStack.isHidden = true
+        }
 
         // Determine data range based on selected period
         let dataRange: DataRange
@@ -192,6 +205,7 @@ final class InsightsDashboardViewController: UIViewController {
                 DispatchQueue.main.async {
                     self?.isLoading = false
                     self?.loadingIndicator.stopAnimating()
+                    self?.refreshControl.endRefreshing()
                     self?.contentStack.isHidden = false
                 }
                 return
@@ -234,6 +248,7 @@ final class InsightsDashboardViewController: UIViewController {
                         self.updateUI()
                         self.isLoading = false
                         self.loadingIndicator.stopAnimating()
+                        self.refreshControl.endRefreshing()
                         self.contentStack.isHidden = false
                     }
 
@@ -293,6 +308,7 @@ final class InsightsDashboardViewController: UIViewController {
                 self.updateUI()
                 self.isLoading = false
                 self.loadingIndicator.stopAnimating()
+                self.refreshControl.endRefreshing()
                 self.contentStack.isHidden = false
             }
         }
