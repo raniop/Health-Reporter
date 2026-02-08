@@ -14,9 +14,6 @@ final class NotificationCell: UITableViewCell {
     /// Called when the tappable user name is tapped.
     var onUserNameTapped: (() -> Void)?
 
-    /// Range of the tappable name inside the body label (in glyph coordinates).
-    private var nameRange: NSRange?
-
     // MARK: - UI Elements
 
     private let iconContainer: UIView = {
@@ -47,7 +44,6 @@ final class NotificationCell: UITableViewCell {
         l.font = .systemFont(ofSize: 13, weight: .regular)
         l.textColor = AIONDesign.textSecondary
         l.numberOfLines = 2
-        l.isUserInteractionEnabled = true
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -94,9 +90,6 @@ final class NotificationCell: UITableViewCell {
         contentView.addSubview(timeLabel)
         contentView.addSubview(unreadDot)
 
-        let tap = UITapGestureRecognizer(target: self, action: #selector(bodyTapped(_:)))
-        bodyLabel.addGestureRecognizer(tap)
-
         let semantic = LocalizationManager.shared.semanticContentAttribute
         contentView.semanticContentAttribute = semantic
         titleLabel.textAlignment = LocalizationManager.shared.textAlignment
@@ -134,36 +127,6 @@ final class NotificationCell: UITableViewCell {
         ])
     }
 
-    // MARK: - Name Tap Detection
-
-    @objc private func bodyTapped(_ gesture: UITapGestureRecognizer) {
-        guard let range = nameRange,
-              let attrText = bodyLabel.attributedText,
-              range.location != NSNotFound else { return }
-
-        let tapLocation = gesture.location(in: bodyLabel)
-
-        // Use NSTextStorage + NSLayoutManager to hit-test the tapped character
-        let textStorage = NSTextStorage(attributedString: attrText)
-        let layoutManager = NSLayoutManager()
-        let textContainer = NSTextContainer(size: bodyLabel.bounds.size)
-        textContainer.lineFragmentPadding = 0
-        textContainer.maximumNumberOfLines = bodyLabel.numberOfLines
-        textContainer.lineBreakMode = bodyLabel.lineBreakMode
-        layoutManager.addTextContainer(textContainer)
-        textStorage.addLayoutManager(layoutManager)
-
-        let charIndex = layoutManager.characterIndex(
-            for: tapLocation,
-            in: textContainer,
-            fractionOfDistanceBetweenInsertionPoints: nil
-        )
-
-        if NSLocationInRange(charIndex, range) {
-            onUserNameTapped?()
-        }
-    }
-
     // MARK: - Configure
 
     func configure(with notification: NotificationItem, userName: String?, hasUserProfile: Bool) {
@@ -182,7 +145,6 @@ final class NotificationCell: UITableViewCell {
         let body = notification.body
         if let name = userName, hasUserProfile, let range = body.range(of: name) {
             let nsRange = NSRange(range, in: body)
-            self.nameRange = nsRange
 
             let attr = NSMutableAttributedString(string: body, attributes: [
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
@@ -194,7 +156,6 @@ final class NotificationCell: UITableViewCell {
             ], range: nsRange)
             bodyLabel.attributedText = attr
         } else {
-            self.nameRange = nil
             bodyLabel.attributedText = nil
             bodyLabel.text = body
         }
@@ -229,6 +190,5 @@ final class NotificationCell: UITableViewCell {
         unreadDot.isHidden = true
         contentView.alpha = 1.0
         onUserNameTapped = nil
-        nameRange = nil
     }
 }
