@@ -229,7 +229,6 @@ final class UserProfileViewController: UIViewController {
         scrollView.showsVerticalScrollIndicator = false
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.backgroundColor = .clear
-        scrollView.isHidden = true
         view.addSubview(scrollView)
 
         // --- Content stack (vertical) ---
@@ -706,14 +705,17 @@ final class UserProfileViewController: UIViewController {
     // MARK: - Data Loading
 
     private func loadUserData() {
+        // Show layout immediately with placeholders
+        scrollView.isHidden = false
+        nameLabel.text = "..."
+        scoreStatValue.text = "—"
+        followersStatValue.text = "—"
+        followingStatValue.text = "—"
         loadingSpinner.startAnimating()
 
-        let group = DispatchGroup()
-
-        // 1. Load score data from publicScores
-        group.enter()
+        // 1. Load score data from publicScores — update UI as soon as it arrives
         db.collection("publicScores").document(userUid).getDocument { [weak self] snapshot, _ in
-            guard let self = self else { group.leave(); return }
+            guard let self = self else { return }
 
             if let data = snapshot?.data(),
                let healthScore = data["healthScore"] as? Int,
@@ -731,11 +733,15 @@ final class UserProfileViewController: UIViewController {
                     carTierIndex: carTierIndex,
                     carTierName: carTierName
                 )
-                group.leave()
+                DispatchQueue.main.async {
+                    self.loadingSpinner.stopAnimating()
+                    self.applyData()
+                    self.playEntranceAnimations()
+                }
             } else {
                 // Fallback: load basic info from users collection
                 self.db.collection("users").document(self.userUid).getDocument { [weak self] snapshot, _ in
-                    guard let self = self else { group.leave(); return }
+                    guard let self = self else { return }
 
                     if let data = snapshot?.data(),
                        let displayName = data["displayName"] as? String, !displayName.isEmpty {
@@ -750,37 +756,36 @@ final class UserProfileViewController: UIViewController {
                             carTierName: carTierName
                         )
                     }
-                    group.leave()
+                    DispatchQueue.main.async {
+                        self.loadingSpinner.stopAnimating()
+                        self.applyData()
+                        self.playEntranceAnimations()
+                    }
                 }
             }
         }
 
-        // 2. Load followers count
-        group.enter()
+        // 2. Load followers count — update immediately when ready
         FollowFirestoreSync.fetchFollowersCount(for: userUid) { [weak self] count in
             self?.followersCount = count
-            group.leave()
+            DispatchQueue.main.async {
+                self?.followersStatValue.text = "\(count)"
+            }
         }
 
-        // 3. Load following count
-        group.enter()
+        // 3. Load following count — update immediately when ready
         FollowFirestoreSync.fetchFollowingCount(for: userUid) { [weak self] count in
             self?.followingCount = count
-            group.leave()
+            DispatchQueue.main.async {
+                self?.followingStatValue.text = "\(count)"
+            }
         }
 
-        // 4. Check friendship status
-        group.enter()
-        checkFriendshipStatus {
-            group.leave()
-        }
-
-        group.notify(queue: .main) { [weak self] in
-            guard let self = self else { return }
-            self.loadingSpinner.stopAnimating()
-            self.scrollView.isHidden = false
-            self.applyData()
-            self.playEntranceAnimations()
+        // 4. Check friendship status — update button when ready
+        checkFriendshipStatus { [weak self] in
+            DispatchQueue.main.async {
+                self?.applyButtonStates()
+            }
         }
     }
 
@@ -1022,7 +1027,10 @@ final class UserProfileViewController: UIViewController {
 
     // MARK: - Entrance Animations
 
+    private var didPlayEntrance = false
     private func playEntranceAnimations() {
+        guard !didPlayEntrance else { return }
+        didPlayEntrance = true
         let animatables: [UIView] = [
             headerCard, scoreCard, carTierCard, aboutCard
         ].filter { !$0.isHidden }
