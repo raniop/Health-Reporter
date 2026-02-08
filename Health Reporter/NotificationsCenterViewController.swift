@@ -442,7 +442,7 @@ extension NotificationsCenterViewController: UITableViewDelegate {
         detailVC.modalPresentationStyle = .pageSheet
         if let sheet = detailVC.sheetPresentationController {
             sheet.detents = [.medium()]
-            sheet.prefersGrabberHandle = true
+            sheet.prefersGrabberVisible = true
             sheet.preferredCornerRadius = AIONDesign.cornerRadiusLarge
         }
         present(detailVC, animated: true)
