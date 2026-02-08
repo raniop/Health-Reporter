@@ -52,7 +52,8 @@ final class NotificationCell: UITableViewCell {
     }()
 
     /// Transparent overlay button positioned exactly over the user name.
-    /// Using `.custom` type to avoid the system highlight delay.
+    /// Added to the cell itself (not contentView) so it intercepts touches
+    /// before UITableView's internal touch handling.
     private let nameOverlayButton: UIButton = {
         let b = UIButton(type: .custom)
         b.backgroundColor = .clear
@@ -102,8 +103,10 @@ final class NotificationCell: UITableViewCell {
         contentView.addSubview(timeLabel)
         contentView.addSubview(unreadDot)
 
-        // Name overlay button — sits on top of bodyLabel, positioned in layoutSubviews
-        contentView.addSubview(nameOverlayButton)
+        // IMPORTANT: Add to self (the cell), NOT contentView.
+        // This way hitTest can return this button INSTEAD of contentView,
+        // preventing UITableView from firing didSelectRowAt.
+        addSubview(nameOverlayButton)
         nameOverlayButton.addTarget(self, action: #selector(nameButtonTapped), for: .touchUpInside)
 
         let semantic = LocalizationManager.shared.semanticContentAttribute
@@ -141,6 +144,20 @@ final class NotificationCell: UITableViewCell {
         ])
     }
 
+    // MARK: - Hit Testing
+
+    /// Override hitTest so that taps landing on the name overlay button
+    /// are routed to the button (not to contentView → tableView selection).
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        if !nameOverlayButton.isHidden {
+            let buttonPoint = nameOverlayButton.convert(point, from: self)
+            if nameOverlayButton.bounds.contains(buttonPoint) {
+                return nameOverlayButton
+            }
+        }
+        return super.hitTest(point, with: event)
+    }
+
     // MARK: - Layout — position the name overlay button
 
     override func layoutSubviews() {
@@ -149,7 +166,7 @@ final class NotificationCell: UITableViewCell {
     }
 
     /// Calculates the bounding rect of the name range inside bodyLabel
-    /// and places the overlay button exactly on top.
+    /// and places the overlay button exactly on top (in cell coordinates).
     private func positionNameOverlay() {
         guard let range = nameRange,
               let attrText = bodyLabel.attributedText,
@@ -173,11 +190,11 @@ final class NotificationCell: UITableViewCell {
         layoutManager.characterRange(forGlyphRange: range, actualGlyphRange: &glyphRange)
         let nameRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
 
-        // Convert from bodyLabel coordinates to contentView coordinates
+        // Convert from bodyLabel coordinates to cell coordinates (not contentView)
         let padding: CGFloat = 4
-        let frameInContentView = bodyLabel.convert(nameRect, to: contentView)
+        let frameInCell = bodyLabel.convert(nameRect, to: self)
 
-        nameOverlayButton.frame = frameInContentView.insetBy(dx: -padding, dy: -padding)
+        nameOverlayButton.frame = frameInCell.insetBy(dx: -padding, dy: -padding)
         nameOverlayButton.isHidden = false
     }
 
@@ -202,7 +219,7 @@ final class NotificationCell: UITableViewCell {
         iconContainer.backgroundColor = bgColor
         iconImageView.tintColor = tintColor
 
-        // Build body text — style the user name as a tappable link
+        // Build body text — style the user name as a tappable link (white + underline)
         let body = notification.body
         if let name = userName, hasUserProfile, let range = body.range(of: name) {
             let nsRange = NSRange(range, in: body)
@@ -214,7 +231,7 @@ final class NotificationCell: UITableViewCell {
             ])
             attr.addAttributes([
                 .underlineStyle: NSUnderlineStyle.single.rawValue,
-                .foregroundColor: AIONDesign.accentPrimary,
+                .foregroundColor: UIColor.white,
                 .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
             ], range: nsRange)
             bodyLabel.attributedText = attr
