@@ -188,9 +188,23 @@ final class NotificationCell: UITableViewCell {
 
         layoutManager.ensureLayout(for: textContainer)
 
+        // Get the full text rect to compute the alignment offset
+        let fullGlyphRange = layoutManager.glyphRange(for: textContainer)
+        let fullTextRect = layoutManager.boundingRect(forGlyphRange: fullGlyphRange, in: textContainer)
+
         var glyphRange = NSRange()
         layoutManager.characterRange(forGlyphRange: range, actualGlyphRange: &glyphRange)
-        let nameRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+        var nameRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+
+        // NSLayoutManager always lays out LTR. When the UILabel textAlignment
+        // is .right, the label shifts the drawn text to the right by the
+        // difference between the label width and the actual text width.
+        if bodyLabel.textAlignment == .right || bodyLabel.textAlignment == .natural {
+            let alignmentOffset = bodyLabel.bounds.width - fullTextRect.width
+            if alignmentOffset > 0 {
+                nameRect.origin.x += alignmentOffset
+            }
+        }
 
         // Convert from bodyLabel coordinates to cell coordinates (not contentView)
         let padding: CGFloat = 4
@@ -198,7 +212,7 @@ final class NotificationCell: UITableViewCell {
 
         nameOverlayButton.frame = frameInCell.insetBy(dx: -padding, dy: -padding)
         nameOverlayButton.isHidden = false
-        print("🔍 [NotifCell] positionNameOverlay — nameRect=\(nameRect), frameInCell=\(frameInCell), finalFrame=\(nameOverlayButton.frame)")
+        print("🔍 [NotifCell] positionNameOverlay — nameRect=\(nameRect), fullTextW=\(fullTextRect.width), labelW=\(bodyLabel.bounds.width), frameInCell=\(frameInCell), finalFrame=\(nameOverlayButton.frame)")
     }
 
     // MARK: - Name Button Action
