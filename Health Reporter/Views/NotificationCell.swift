@@ -39,7 +39,19 @@ final class NotificationCell: UITableViewCell {
         return l
     }()
 
-    private let bodyLabel: UILabel = {
+    /// Container that holds body text parts: prefix label, name button, suffix label.
+    /// When there's no user name, only bodyPlainLabel is shown instead.
+    private let bodyStack: UIStackView = {
+        let s = UIStackView()
+        s.axis = .horizontal
+        s.alignment = .firstBaseline
+        s.spacing = 0
+        s.translatesAutoresizingMaskIntoConstraints = false
+        return s
+    }()
+
+    /// Used when there is NO tappable user name — plain body text.
+    private let bodyPlainLabel: UILabel = {
         let l = UILabel()
         l.font = .systemFont(ofSize: 13, weight: .regular)
         l.textColor = AIONDesign.textSecondary
@@ -48,15 +60,34 @@ final class NotificationCell: UITableViewCell {
         return l
     }()
 
-    /// Transparent button placed exactly over the user name text.
-    /// Because it's a real UIControl it intercepts the touch and prevents
-    /// the tableView from receiving `didSelectRowAt`.
+    /// Text before the user name.
+    private let prefixLabel: UILabel = {
+        let l = UILabel()
+        l.font = .systemFont(ofSize: 13, weight: .regular)
+        l.textColor = AIONDesign.textSecondary
+        l.setContentHuggingPriority(.required, for: .horizontal)
+        l.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return l
+    }()
+
+    /// The tappable user name button.
     private let nameButton: UIButton = {
         let b = UIButton(type: .system)
-        b.backgroundColor = .clear
-        b.translatesAutoresizingMaskIntoConstraints = false
-        b.isHidden = true
+        b.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        b.setTitleColor(AIONDesign.accentPrimary, for: .normal)
+        b.contentEdgeInsets = .zero
+        b.setContentHuggingPriority(.required, for: .horizontal)
+        b.setContentCompressionResistancePriority(.required, for: .horizontal)
         return b
+    }()
+
+    /// Text after the user name.
+    private let suffixLabel: UILabel = {
+        let l = UILabel()
+        l.font = .systemFont(ofSize: 13, weight: .regular)
+        l.textColor = AIONDesign.textSecondary
+        l.lineBreakMode = .byTruncatingTail
+        return l
     }()
 
     private let timeLabel: UILabel = {
@@ -74,12 +105,6 @@ final class NotificationCell: UITableViewCell {
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
     }()
-
-    /// Constraints for positioning the name button dynamically.
-    private var nameButtonLeading: NSLayoutConstraint?
-    private var nameButtonWidth: NSLayoutConstraint?
-    private var nameButtonTop: NSLayoutConstraint?
-    private var nameButtonHeight: NSLayoutConstraint?
 
     // MARK: - Init
 
@@ -103,28 +128,22 @@ final class NotificationCell: UITableViewCell {
         contentView.addSubview(iconContainer)
         iconContainer.addSubview(iconImageView)
         contentView.addSubview(titleLabel)
-        contentView.addSubview(bodyLabel)
+        contentView.addSubview(bodyPlainLabel)
+        contentView.addSubview(bodyStack)
         contentView.addSubview(timeLabel)
         contentView.addSubview(unreadDot)
 
-        // Name button sits on top of the body label
-        contentView.addSubview(nameButton)
+        // Build the body stack: prefix + name button + suffix
+        bodyStack.addArrangedSubview(prefixLabel)
+        bodyStack.addArrangedSubview(nameButton)
+        bodyStack.addArrangedSubview(suffixLabel)
         nameButton.addTarget(self, action: #selector(nameButtonTapped), for: .touchUpInside)
 
         let semantic = LocalizationManager.shared.semanticContentAttribute
         contentView.semanticContentAttribute = semantic
         titleLabel.textAlignment = LocalizationManager.shared.textAlignment
-        bodyLabel.textAlignment = LocalizationManager.shared.textAlignment
-
-        // Prepare dynamic constraints for the name button (inactive until positioned)
-        nameButtonLeading = nameButton.leadingAnchor.constraint(equalTo: bodyLabel.leadingAnchor)
-        nameButtonWidth = nameButton.widthAnchor.constraint(equalToConstant: 0)
-        nameButtonTop = nameButton.topAnchor.constraint(equalTo: bodyLabel.topAnchor)
-        nameButtonHeight = nameButton.heightAnchor.constraint(equalToConstant: 0)
-        nameButtonLeading?.isActive = true
-        nameButtonWidth?.isActive = true
-        nameButtonTop?.isActive = true
-        nameButtonHeight?.isActive = true
+        bodyPlainLabel.textAlignment = LocalizationManager.shared.textAlignment
+        bodyStack.semanticContentAttribute = semantic
 
         NSLayoutConstraint.activate([
             iconContainer.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
@@ -141,10 +160,17 @@ final class NotificationCell: UITableViewCell {
             titleLabel.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 12),
             titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: timeLabel.leadingAnchor, constant: -8),
 
-            bodyLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
-            bodyLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            bodyLabel.trailingAnchor.constraint(equalTo: unreadDot.leadingAnchor, constant: -8),
-            bodyLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
+            // Plain body label (no name)
+            bodyPlainLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
+            bodyPlainLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            bodyPlainLabel.trailingAnchor.constraint(equalTo: unreadDot.leadingAnchor, constant: -8),
+            bodyPlainLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
+
+            // Body stack (with name)
+            bodyStack.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
+            bodyStack.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            bodyStack.trailingAnchor.constraint(lessThanOrEqualTo: unreadDot.leadingAnchor, constant: -8),
+            bodyStack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
 
             timeLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 14),
             timeLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
@@ -177,64 +203,36 @@ final class NotificationCell: UITableViewCell {
         iconContainer.backgroundColor = bgColor
         iconImageView.tintColor = tintColor
 
-        // Build body text — style the user name as a tappable link
         let body = notification.body
-        if let name = userName, hasUserProfile, let range = body.range(of: name) {
-            let nsRange = NSRange(range, in: body)
 
-            let attr = NSMutableAttributedString(string: body, attributes: [
-                .font: UIFont.systemFont(ofSize: 13, weight: .regular),
-                .foregroundColor: AIONDesign.textSecondary,
-            ])
-            attr.addAttributes([
+        if let name = userName, hasUserProfile, let range = body.range(of: name) {
+            // Split body into prefix / name / suffix
+            let prefix = String(body[body.startIndex..<range.lowerBound])
+            let suffix = String(body[range.upperBound..<body.endIndex])
+
+            prefixLabel.text = prefix
+            nameButton.setTitle(name, for: .normal)
+
+            // Add underline to the button title
+            let underlined = NSAttributedString(string: name, attributes: [
                 .underlineStyle: NSUnderlineStyle.single.rawValue,
                 .foregroundColor: AIONDesign.accentPrimary,
                 .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
-            ], range: nsRange)
-            bodyLabel.attributedText = attr
-            nameButton.isHidden = false
+            ])
+            nameButton.setAttributedTitle(underlined, for: .normal)
 
-            // Position the invisible button over the name text after layout
-            DispatchQueue.main.async { [weak self] in
-                self?.positionNameButton(over: nsRange)
-            }
+            suffixLabel.text = suffix
+
+            bodyStack.isHidden = false
+            bodyPlainLabel.isHidden = true
         } else {
-            bodyLabel.attributedText = nil
-            bodyLabel.text = body
-            nameButton.isHidden = true
+            bodyPlainLabel.text = body
+            bodyStack.isHidden = true
+            bodyPlainLabel.isHidden = false
         }
 
         // Dim read notifications slightly
         contentView.alpha = notification.read ? 0.7 : 1.0
-    }
-
-    /// Uses NSLayoutManager to compute the pixel rect of the name range
-    /// inside bodyLabel, then positions nameButton exactly on top of it.
-    private func positionNameButton(over range: NSRange) {
-        guard let attrText = bodyLabel.attributedText else { return }
-
-        let textStorage = NSTextStorage(attributedString: attrText)
-        let layoutManager = NSLayoutManager()
-        let textContainer = NSTextContainer(size: bodyLabel.bounds.size)
-        textContainer.lineFragmentPadding = 0
-        textContainer.maximumNumberOfLines = bodyLabel.numberOfLines
-        textContainer.lineBreakMode = bodyLabel.lineBreakMode
-        layoutManager.addTextContainer(textContainer)
-        textStorage.addLayoutManager(layoutManager)
-
-        // Force layout so glyph positions are computed
-        layoutManager.ensureLayout(for: textContainer)
-
-        var glyphRange = NSRange()
-        layoutManager.characterRange(forGlyphRange: range, actualGlyphRange: &glyphRange)
-        let nameRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-
-        // Add small padding around the tap target for easier tapping
-        let padding: CGFloat = 4
-        nameButtonLeading?.constant = nameRect.origin.x - padding
-        nameButtonWidth?.constant = nameRect.width + padding * 2
-        nameButtonTop?.constant = nameRect.origin.y - padding
-        nameButtonHeight?.constant = nameRect.height + padding * 2
     }
 
     private func iconColors(for type: NotificationType) -> (UIColor, UIColor) {
@@ -257,12 +255,16 @@ final class NotificationCell: UITableViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         titleLabel.text = nil
-        bodyLabel.attributedText = nil
-        bodyLabel.text = nil
+        bodyPlainLabel.text = nil
+        prefixLabel.text = nil
+        suffixLabel.text = nil
+        nameButton.setTitle(nil, for: .normal)
+        nameButton.setAttributedTitle(nil, for: .normal)
         timeLabel.text = nil
         unreadDot.isHidden = true
         contentView.alpha = 1.0
         onUserNameTapped = nil
-        nameButton.isHidden = true
+        bodyStack.isHidden = true
+        bodyPlainLabel.isHidden = false
     }
 }
