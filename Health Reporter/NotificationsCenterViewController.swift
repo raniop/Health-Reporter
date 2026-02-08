@@ -433,21 +433,19 @@ extension NotificationsCenterViewController: UITableViewDelegate {
 
         // Show detail for morning/bedtime notifications
         if notification.type == .morningSummary || notification.type == .bedtimeRecommendation {
-            let fullTitle = (notification.data["fullTitle"] as? String) ?? notification.title
-            let fullBody = (notification.data["fullBody"] as? String) ?? notification.body
-            showNotificationDetail(title: fullTitle, body: fullBody)
+            showNotificationDetail(notification)
         }
     }
 
-    private func showNotificationDetail(title: String, body: String) {
-        let alert = UIAlertController(title: title, message: body, preferredStyle: .actionSheet)
-        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
-        if let popover = alert.popoverPresentationController {
-            popover.sourceView = view
-            popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
-            popover.permittedArrowDirections = []
+    private func showNotificationDetail(_ notification: NotificationItem) {
+        let detailVC = NotificationDetailViewController(notification: notification)
+        detailVC.modalPresentationStyle = .pageSheet
+        if let sheet = detailVC.sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberHandle = true
+            sheet.preferredCornerRadius = AIONDesign.cornerRadiusLarge
         }
-        present(alert, animated: true)
+        present(detailVC, animated: true)
     }
 
     /// Extracts the relevant user UID from the notification data dictionary.
