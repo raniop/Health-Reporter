@@ -70,6 +70,9 @@ final class MainTabBarController: UITabBarController {
         // Listen for notification to open Notifications Center (morning/bedtime tap)
         NotificationCenter.default.addObserver(self, selector: #selector(handleOpenNotificationsCenter), name: NSNotification.Name("OpenNotificationsCenter"), object: nil)
 
+        // Refresh app icon badge when a new notification is saved
+        NotificationCenter.default.addObserver(self, selector: #selector(handleNotificationItemSaved), name: NSNotification.Name("NotificationItemSaved"), object: nil)
+
         // Update follow request badges on launch
         updateFollowRequestBadge()
 
@@ -118,6 +121,10 @@ final class MainTabBarController: UITabBarController {
     }
 
     // MARK: - Badge Management
+
+    @objc private func handleNotificationItemSaved() {
+        updateFollowRequestBadge()
+    }
 
     /// Update app icon badge
     func updateFollowRequestBadge() {

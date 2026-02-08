@@ -701,6 +701,11 @@ enum FriendsFirestoreSync {
             .addDocument(data: docData) { error in
                 if let error = error {
                     print("[Notifications] Failed to save notification: \(error.localizedDescription)")
+                } else {
+                    print("[Notifications] Saved notification: type=\(type) title=\(title.prefix(40))")
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: NSNotification.Name("NotificationItemSaved"), object: nil)
+                    }
                 }
                 completion?(error)
             }

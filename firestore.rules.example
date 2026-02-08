@@ -27,9 +27,9 @@ service cloud.firestore {
                      (request.auth.uid == userId || request.auth.uid == followingUid);
       }
 
-      // Notifications subcollection (written by Cloud Functions, read/updated by owner)
+      // Notifications subcollection (written by Cloud Functions or owner app, read/updated by owner)
       match /notifications/{notificationId} {
-        allow read, update: if request.auth != null && request.auth.uid == userId;
+        allow read, create, update: if request.auth != null && request.auth.uid == userId;
       }
 
       // Legacy friends subcollection (backward compatibility)

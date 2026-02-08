@@ -53,6 +53,14 @@ final class InsightsDashboardViewController: UIViewController {
             name: UIApplication.willEnterForegroundNotification,
             object: nil
         )
+
+        // Refresh bell badge when a new notification is saved
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleNotificationItemSaved),
+            name: NSNotification.Name("NotificationItemSaved"),
+            object: nil
+        )
     }
 
     deinit {
@@ -459,6 +467,10 @@ final class InsightsDashboardViewController: UIViewController {
         let nav = UINavigationController(rootViewController: vc)
         nav.modalPresentationStyle = .formSheet
         present(nav, animated: true)
+    }
+
+    @objc private func handleNotificationItemSaved() {
+        updateBellBadge()
     }
 
     private func updateBellBadge() {
