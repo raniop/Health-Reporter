@@ -14,6 +14,11 @@ final class NotificationCell: UITableViewCell {
     /// Called when the tappable user name is tapped.
     var onUserNameTapped: (() -> Void)?
 
+    /// Set to `true` right after a name tap fires; the table-view delegate
+    /// checks this flag and skips presenting the detail sheet when it's `true`.
+    /// Reset it after reading.
+    var didHandleNameTap = false
+
     /// Range of the tappable name inside the body label.
     private var nameRange: NSRange?
 
@@ -159,6 +164,7 @@ final class NotificationCell: UITableViewCell {
         )
 
         if NSLocationInRange(charIndex, range) {
+            didHandleNameTap = true
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onUserNameTapped?()
         }
@@ -231,5 +237,6 @@ final class NotificationCell: UITableViewCell {
         contentView.alpha = 1.0
         onUserNameTapped = nil
         nameRange = nil
+        didHandleNameTap = false
     }
 }

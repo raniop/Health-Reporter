@@ -316,7 +316,6 @@ extension NotificationsCenterViewController: UITableViewDataSource {
             cell.configure(with: notification, userName: name, hasUserProfile: uid != nil)
             cell.onUserNameTapped = { [weak self] in
                 guard let self = self, let uid = uid else { return }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 let vc = UserProfileViewController(userUid: uid)
                 self.navigationController?.pushViewController(vc, animated: true)
             }
@@ -429,6 +428,12 @@ extension NotificationsCenterViewController: UITableViewDelegate {
             FriendsFirestoreSync.markNotificationAsRead(notification.id)
             tableView.reloadRows(at: [indexPath], with: .fade)
             delegate?.notificationsCenterDidUpdate(self)
+        }
+
+        // If the user tapped on a username link, skip detail → profile navigation already fired
+        if let cell = tableView.cellForRow(at: indexPath) as? NotificationCell, cell.didHandleNameTap {
+            cell.didHandleNameTap = false
+            return
         }
 
         // Show detail for any notification
