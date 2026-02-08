@@ -46,6 +46,7 @@ final class NotificationCell: UITableViewCell {
         tv.backgroundColor = .clear
         tv.isEditable = false
         tv.isScrollEnabled = false
+        tv.delaysContentTouches = false
         tv.textContainerInset = .zero
         tv.textContainer.lineFragmentPadding = 0
         tv.textContainer.maximumNumberOfLines = 2
@@ -102,6 +103,12 @@ final class NotificationCell: UITableViewCell {
         contentView.addSubview(unreadDot)
 
         bodyTextView.delegate = self
+        // Remove context menu / long-press interactions that cause link tap delay
+        for interaction in bodyTextView.interactions {
+            if interaction is UIContextMenuInteraction || interaction is UIDragInteraction {
+                bodyTextView.removeInteraction(interaction)
+            }
+        }
 
         let semantic = LocalizationManager.shared.semanticContentAttribute
         contentView.semanticContentAttribute = semantic
