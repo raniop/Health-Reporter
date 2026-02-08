@@ -151,7 +151,9 @@ final class NotificationCell: UITableViewCell {
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         if !nameOverlayButton.isHidden {
             let buttonPoint = nameOverlayButton.convert(point, from: self)
+            print("🔍 [NotifCell] hitTest — button.frame=\(nameOverlayButton.frame), point=\(point), buttonPoint=\(buttonPoint), contains=\(nameOverlayButton.bounds.contains(buttonPoint))")
             if nameOverlayButton.bounds.contains(buttonPoint) {
+                print("🔍 [NotifCell] hitTest → returning nameOverlayButton!")
                 return nameOverlayButton
             }
         }
@@ -196,11 +198,13 @@ final class NotificationCell: UITableViewCell {
 
         nameOverlayButton.frame = frameInCell.insetBy(dx: -padding, dy: -padding)
         nameOverlayButton.isHidden = false
+        print("🔍 [NotifCell] positionNameOverlay — nameRect=\(nameRect), frameInCell=\(frameInCell), finalFrame=\(nameOverlayButton.frame)")
     }
 
     // MARK: - Name Button Action
 
     @objc private func nameButtonTapped() {
+        print("🔍 [NotifCell] nameButtonTapped called! onUserNameTapped=\(onUserNameTapped != nil)")
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         onUserNameTapped?()
     }
