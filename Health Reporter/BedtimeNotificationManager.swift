@@ -339,21 +339,15 @@ final class BedtimeNotificationManager {
     // MARK: - Test Notification
 
     func sendTestNotification() {
-        // Try cached recommendation first for instant response
-        if let cached = AnalysisCache.loadBedtimeRecommendation() {
-            print("🌙 [BedtimeNotification] Using cached recommendation for test")
-            sendTestWithRecommendation(cached)
-            return
-        }
-
-        print("🌙 [BedtimeNotification] No cache — generating test recommendation via Gemini...")
+        // Always call Gemini live for fresh recommendation
+        print("🌙 [BedtimeNotification] Generating live recommendation via Gemini...")
         BedtimeRecommendationService.shared.generateRecommendation { [weak self] recommendation, error in
             guard let self = self else { return }
 
             if let recommendation = recommendation {
                 self.sendTestWithRecommendation(recommendation)
             } else {
-                print("🌙 [BedtimeNotification] Test failed - sending generic: \(error?.localizedDescription ?? "unknown")")
+                print("🌙 [BedtimeNotification] Gemini failed - sending generic: \(error?.localizedDescription ?? "unknown")")
                 self.sendBasicTestNotification()
             }
         }
