@@ -15,7 +15,6 @@ final class MainTabBarController: UITabBarController {
     private var socialNavController: UINavigationController?
     private var dashboardNavController: UINavigationController?
     private var profileNavController: UINavigationController?
-    private var dashboardBellBadgeLabel: UILabel?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -62,58 +61,20 @@ final class MainTabBarController: UITabBarController {
             configureNavigationBar(nav.navigationBar)
         }
 
-        // Add bell button to Dashboard nav bar
-        setupDashboardBellButton(for: home)
-
         // Listen for background color changes
         NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
 
         // Listen for notification to open Social Hub
         NotificationCenter.default.addObserver(self, selector: #selector(handleOpenSocialHub(_:)), name: NSNotification.Name("OpenSocialHub"), object: nil)
 
+        // Listen for notification to open Notifications Center (morning/bedtime tap)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleOpenNotificationsCenter), name: NSNotification.Name("OpenNotificationsCenter"), object: nil)
+
         // Update follow request badges on launch
         updateFollowRequestBadge()
 
         // Fallback: prompt users who skipped notifications during onboarding
         checkNotificationPermissionFallback()
-    }
-
-    // MARK: - Dashboard Bell Button
-
-    private func setupDashboardBellButton(for vc: UIViewController) {
-        let bellContainer = UIView(frame: CGRect(x: 0, y: 0, width: 32, height: 32))
-        let bellImageView = UIImageView(image: UIImage(systemName: "bell.fill"))
-        bellImageView.tintColor = AIONDesign.accentPrimary
-        bellImageView.contentMode = .scaleAspectFit
-        bellImageView.frame = CGRect(x: 2, y: 4, width: 24, height: 24)
-        bellContainer.addSubview(bellImageView)
-
-        let badge = UILabel()
-        badge.font = .systemFont(ofSize: 10, weight: .bold)
-        badge.textColor = .white
-        badge.backgroundColor = AIONDesign.accentDanger
-        badge.textAlignment = .center
-        badge.layer.cornerRadius = 8
-        badge.clipsToBounds = true
-        badge.frame = CGRect(x: 18, y: 0, width: 16, height: 16)
-        badge.isHidden = true
-        bellContainer.addSubview(badge)
-        dashboardBellBadgeLabel = badge
-
-        let bellTap = UITapGestureRecognizer(target: self, action: #selector(dashboardBellTapped))
-        bellContainer.addGestureRecognizer(bellTap)
-        bellContainer.isUserInteractionEnabled = true
-
-        let bellBarButton = UIBarButtonItem(customView: bellContainer)
-        vc.navigationItem.rightBarButtonItem = bellBarButton
-    }
-
-    @objc private func dashboardBellTapped() {
-        let vc = NotificationsCenterViewController()
-        vc.delegate = self
-        let nav = UINavigationController(rootViewController: vc)
-        nav.modalPresentationStyle = .formSheet
-        present(nav, animated: true)
     }
 
     deinit {
@@ -136,21 +97,32 @@ final class MainTabBarController: UITabBarController {
         }
     }
 
+    // MARK: - Deep Link: Notifications Center
+
+    @objc private func handleOpenNotificationsCenter() {
+        // Switch to home tab
+        selectedIndex = 0
+        dashboardNavController?.popToRootViewController(animated: false)
+
+        // Present notifications center
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self = self else { return }
+            // Avoid presenting if something is already presented
+            if self.presentedViewController != nil { return }
+            let vc = NotificationsCenterViewController()
+            vc.delegate = self
+            let nav = UINavigationController(rootViewController: vc)
+            nav.modalPresentationStyle = .formSheet
+            self.present(nav, animated: true)
+        }
+    }
+
     // MARK: - Badge Management
 
-    /// Update bell button badges on Dashboard and Profile, plus app icon badge
+    /// Update app icon badge
     func updateFollowRequestBadge() {
-        FriendsFirestoreSync.fetchUnreadNotificationsCount { [weak self] count in
+        FriendsFirestoreSync.fetchUnreadNotificationsCount { count in
             DispatchQueue.main.async {
-                // Update Dashboard bell badge
-                if count > 0 {
-                    self?.dashboardBellBadgeLabel?.text = "\(count)"
-                    self?.dashboardBellBadgeLabel?.isHidden = false
-                } else {
-                    self?.dashboardBellBadgeLabel?.isHidden = true
-                }
-
-                // Update app icon badge
                 UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
             }
         }

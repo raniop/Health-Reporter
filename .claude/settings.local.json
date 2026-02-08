@@ -40,7 +40,12 @@
       "WebFetch(domain:stackoverflow.com)",
       "WebFetch(domain:github.com)",
       "Bash(npx firebase deploy:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nBedtime notification system + move bell to home screen\n\n- Add full bedtime recommendation feature: BedtimePayloadBuilder \\(HealthKit data\\),\n  BedtimeRecommendationService \\(Gemini API\\), BedtimeNotificationManager \\(scheduling\\),\n  BedtimeNotificationSettingsViewController \\(settings UI\\)\n- Move notification bell from SocialHub to InsightsDashboard header \\(next to avatar\\)\n- Save morning & bedtime notifications to Firestore for notification center history\n- Add bedtimeRecommendation type to NotificationItem + NotificationCell styling\n- Add tap-to-detail for morning/bedtime notifications in NotificationsCenterViewController\n- Add bedtime Cloud Function trigger + Firestore indexes\n- Localization \\(EN + HE\\) for all bedtime notification strings\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git stash push:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

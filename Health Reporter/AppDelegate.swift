@@ -297,9 +297,11 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
                 object: nil,
                 userInfo: userInfo as? [String: Any]
             )
-        case "morning_health", "bedtime_recommendation":
-            // Navigate to home/insights on tap
-            break
+        case "morning_health", "morning_summary", "bedtime_recommendation":
+            NotificationCenter.default.post(
+                name: NSNotification.Name("OpenNotificationsCenter"),
+                object: nil
+            )
         default:
             break
         }
