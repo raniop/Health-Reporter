@@ -39,13 +39,24 @@ final class NotificationCell: UITableViewCell {
         return l
     }()
 
-    private let bodyLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 13, weight: .regular)
-        l.textColor = AIONDesign.textSecondary
-        l.numberOfLines = 2
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
+    private let bodyTextView: UITextView = {
+        let tv = UITextView()
+        tv.font = .systemFont(ofSize: 13, weight: .regular)
+        tv.textColor = AIONDesign.textSecondary
+        tv.backgroundColor = .clear
+        tv.isEditable = false
+        tv.isScrollEnabled = false
+        tv.textContainerInset = .zero
+        tv.textContainer.lineFragmentPadding = 0
+        tv.textContainer.maximumNumberOfLines = 2
+        tv.textContainer.lineBreakMode = .byTruncatingTail
+        tv.linkTextAttributes = [
+            .foregroundColor: AIONDesign.accentPrimary,
+            .underlineStyle: NSUnderlineStyle.single.rawValue,
+            .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+        ]
+        tv.translatesAutoresizingMaskIntoConstraints = false
+        return tv
     }()
 
     private let timeLabel: UILabel = {
@@ -86,17 +97,17 @@ final class NotificationCell: UITableViewCell {
         contentView.addSubview(iconContainer)
         iconContainer.addSubview(iconImageView)
         contentView.addSubview(titleLabel)
-        contentView.addSubview(bodyLabel)
+        contentView.addSubview(bodyTextView)
         contentView.addSubview(timeLabel)
         contentView.addSubview(unreadDot)
+
+        bodyTextView.delegate = self
 
         let semantic = LocalizationManager.shared.semanticContentAttribute
         contentView.semanticContentAttribute = semantic
         titleLabel.textAlignment = LocalizationManager.shared.textAlignment
-        bodyLabel.textAlignment = LocalizationManager.shared.textAlignment
+        bodyTextView.textAlignment = LocalizationManager.shared.textAlignment
 
-        // Use a horizontal stack approach: icon | text | time/dot
-        // semanticContentAttribute flips leading/trailing automatically for RTL
         NSLayoutConstraint.activate([
             iconContainer.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
             iconContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
@@ -112,10 +123,10 @@ final class NotificationCell: UITableViewCell {
             titleLabel.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 12),
             titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: timeLabel.leadingAnchor, constant: -8),
 
-            bodyLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
-            bodyLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            bodyLabel.trailingAnchor.constraint(equalTo: unreadDot.leadingAnchor, constant: -8),
-            bodyLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
+            bodyTextView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
+            bodyTextView.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            bodyTextView.trailingAnchor.constraint(equalTo: unreadDot.leadingAnchor, constant: -8),
+            bodyTextView.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
 
             timeLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 14),
             timeLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
@@ -141,24 +152,21 @@ final class NotificationCell: UITableViewCell {
         iconContainer.backgroundColor = bgColor
         iconImageView.tintColor = tintColor
 
-        // Build body text — underline the user name if present
+        // Build body text — add tappable link on user name if present
         let body = notification.body
+        let attr = NSMutableAttributedString(string: body, attributes: [
+            .font: UIFont.systemFont(ofSize: 13, weight: .regular),
+            .foregroundColor: AIONDesign.textSecondary,
+        ])
+
         if let name = userName, hasUserProfile, let range = body.range(of: name) {
             let nsRange = NSRange(range, in: body)
-
-            let attr = NSMutableAttributedString(string: body, attributes: [
-                .font: UIFont.systemFont(ofSize: 13, weight: .regular),
-                .foregroundColor: AIONDesign.textSecondary,
-            ])
             attr.addAttributes([
-                .underlineStyle: NSUnderlineStyle.single.rawValue,
-                .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+                .link: "username-tap://profile",
             ], range: nsRange)
-            bodyLabel.attributedText = attr
-        } else {
-            bodyLabel.attributedText = nil
-            bodyLabel.text = body
         }
+
+        bodyTextView.attributedText = attr
 
         // Dim read notifications slightly
         contentView.alpha = notification.read ? 0.7 : 1.0
@@ -184,11 +192,22 @@ final class NotificationCell: UITableViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         titleLabel.text = nil
-        bodyLabel.attributedText = nil
-        bodyLabel.text = nil
+        bodyTextView.attributedText = nil
         timeLabel.text = nil
         unreadDot.isHidden = true
         contentView.alpha = 1.0
         onUserNameTapped = nil
+    }
+}
+
+// MARK: - UITextViewDelegate
+
+extension NotificationCell: UITextViewDelegate {
+    func textView(_ textView: UITextView, shouldInteractWith URL: URL, in characterRange: NSRange, interaction: UITextItemInteraction) -> Bool {
+        if URL.scheme == "username-tap" {
+            onUserNameTapped?()
+            return false
+        }
+        return true
     }
 }
