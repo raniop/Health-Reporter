@@ -431,10 +431,8 @@ extension NotificationsCenterViewController: UITableViewDelegate {
             delegate?.notificationsCenterDidUpdate(self)
         }
 
-        // Show detail for morning/bedtime notifications
-        if notification.type == .morningSummary || notification.type == .bedtimeRecommendation {
-            showNotificationDetail(notification)
-        }
+        // Show detail for any notification
+        showNotificationDetail(notification)
     }
 
     private func showNotificationDetail(_ notification: NotificationItem) {
