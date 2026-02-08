@@ -14,7 +14,10 @@ final class NotificationCell: UITableViewCell {
     /// Called when the tappable user name is tapped.
     var onUserNameTapped: (() -> Void)?
 
-    /// Range of the tappable name inside the body label (used for overlay positioning).
+    /// Set to true when user taps on the name. Checked by the VC in didSelectRowAt.
+    var didTapName = false
+
+    /// Range of the tappable name inside the body label.
     private var nameRange: NSRange?
 
     // MARK: - UI Elements
@@ -47,18 +50,9 @@ final class NotificationCell: UITableViewCell {
         l.font = .systemFont(ofSize: 13, weight: .regular)
         l.textColor = AIONDesign.textSecondary
         l.numberOfLines = 2
+        l.isUserInteractionEnabled = true
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
-    }()
-
-    /// Transparent overlay button positioned exactly over the user name.
-    /// Added to the cell itself (not contentView) so it intercepts touches
-    /// before UITableView's internal touch handling.
-    private let nameOverlayButton: UIButton = {
-        let b = UIButton(type: .custom)
-        b.backgroundColor = .clear
-        b.isHidden = true
-        return b
     }()
 
     private let timeLabel: UILabel = {
@@ -103,11 +97,10 @@ final class NotificationCell: UITableViewCell {
         contentView.addSubview(timeLabel)
         contentView.addSubview(unreadDot)
 
-        // IMPORTANT: Add to self (the cell), NOT contentView.
-        // This way hitTest can return this button INSTEAD of contentView,
-        // preventing UITableView from firing didSelectRowAt.
-        addSubview(nameOverlayButton)
-        nameOverlayButton.addTarget(self, action: #selector(nameButtonTapped), for: .touchUpInside)
+        // Tap gesture on body label — fires BEFORE didSelectRowAt
+        let tap = UITapGestureRecognizer(target: self, action: #selector(bodyTapped(_:)))
+        tap.cancelsTouchesInView = false
+        bodyLabel.addGestureRecognizer(tap)
 
         let semantic = LocalizationManager.shared.semanticContentAttribute
         contentView.semanticContentAttribute = semantic
@@ -144,38 +137,15 @@ final class NotificationCell: UITableViewCell {
         ])
     }
 
-    // MARK: - Hit Testing
+    // MARK: - Body Tap
 
-    /// Override hitTest so that taps landing on the name overlay button
-    /// are routed to the button (not to contentView → tableView selection).
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        if !nameOverlayButton.isHidden {
-            let buttonPoint = nameOverlayButton.convert(point, from: self)
-            print("🔍 [NotifCell] hitTest — button.frame=\(nameOverlayButton.frame), point=\(point), buttonPoint=\(buttonPoint), contains=\(nameOverlayButton.bounds.contains(buttonPoint))")
-            if nameOverlayButton.bounds.contains(buttonPoint) {
-                print("🔍 [NotifCell] hitTest → returning nameOverlayButton!")
-                return nameOverlayButton
-            }
-        }
-        return super.hitTest(point, with: event)
-    }
-
-    // MARK: - Layout — position the name overlay button
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        positionNameOverlay()
-    }
-
-    /// Calculates the bounding rect of the name range inside bodyLabel
-    /// and places the overlay button exactly on top (in cell coordinates).
-    private func positionNameOverlay() {
+    @objc private func bodyTapped(_ gesture: UITapGestureRecognizer) {
         guard let range = nameRange,
               let attrText = bodyLabel.attributedText,
-              bodyLabel.bounds.size != .zero else {
-            nameOverlayButton.isHidden = true
-            return
-        }
+              range.location != NSNotFound,
+              bodyLabel.bounds.size != .zero else { return }
+
+        let tapLocation = gesture.location(in: bodyLabel)
 
         let textStorage = NSTextStorage(attributedString: attrText)
         let layoutManager = NSLayoutManager()
@@ -185,42 +155,29 @@ final class NotificationCell: UITableViewCell {
         textContainer.lineBreakMode = bodyLabel.lineBreakMode
         layoutManager.addTextContainer(textContainer)
         textStorage.addLayoutManager(layoutManager)
-
         layoutManager.ensureLayout(for: textContainer)
 
-        // Get the full text rect to compute the alignment offset
+        // Calculate alignment offset for right-aligned text
         let fullGlyphRange = layoutManager.glyphRange(for: textContainer)
         let fullTextRect = layoutManager.boundingRect(forGlyphRange: fullGlyphRange, in: textContainer)
-
-        var glyphRange = NSRange()
-        layoutManager.characterRange(forGlyphRange: range, actualGlyphRange: &glyphRange)
-        var nameRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-
-        // NSLayoutManager always lays out LTR. When the UILabel textAlignment
-        // is .right, the label shifts the drawn text to the right by the
-        // difference between the label width and the actual text width.
-        if bodyLabel.textAlignment == .right || bodyLabel.textAlignment == .natural {
-            let alignmentOffset = bodyLabel.bounds.width - fullTextRect.width
-            if alignmentOffset > 0 {
-                nameRect.origin.x += alignmentOffset
-            }
+        var adjustedTap = tapLocation
+        if bodyLabel.textAlignment == .right {
+            let offset = bodyLabel.bounds.width - fullTextRect.width
+            if offset > 0 { adjustedTap.x -= offset }
         }
 
-        // Convert from bodyLabel coordinates to cell coordinates (not contentView)
-        let padding: CGFloat = 4
-        let frameInCell = bodyLabel.convert(nameRect, to: self)
+        let charIndex = layoutManager.characterIndex(
+            for: adjustedTap,
+            in: textContainer,
+            fractionOfDistanceBetweenInsertionPoints: nil
+        )
 
-        nameOverlayButton.frame = frameInCell.insetBy(dx: -padding, dy: -padding)
-        nameOverlayButton.isHidden = false
-        print("🔍 [NotifCell] positionNameOverlay — nameRect=\(nameRect), fullTextW=\(fullTextRect.width), labelW=\(bodyLabel.bounds.width), frameInCell=\(frameInCell), finalFrame=\(nameOverlayButton.frame)")
-    }
-
-    // MARK: - Name Button Action
-
-    @objc private func nameButtonTapped() {
-        print("🔍 [NotifCell] nameButtonTapped called! onUserNameTapped=\(onUserNameTapped != nil)")
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        onUserNameTapped?()
+        if NSLocationInRange(charIndex, range) {
+            // User tapped on the name!
+            didTapName = true
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onUserNameTapped?()
+        }
     }
 
     // MARK: - Configure
@@ -237,7 +194,7 @@ final class NotificationCell: UITableViewCell {
         iconContainer.backgroundColor = bgColor
         iconImageView.tintColor = tintColor
 
-        // Build body text — style the user name as a tappable link (white + underline)
+        // Build body text — style the user name (white + underline)
         let body = notification.body
         if let name = userName, hasUserProfile, let range = body.range(of: name) {
             let nsRange = NSRange(range, in: body)
@@ -253,12 +210,10 @@ final class NotificationCell: UITableViewCell {
                 .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
             ], range: nsRange)
             bodyLabel.attributedText = attr
-            nameOverlayButton.isHidden = false
         } else {
             self.nameRange = nil
             bodyLabel.attributedText = nil
             bodyLabel.text = body
-            nameOverlayButton.isHidden = true
         }
 
         // Dim read notifications slightly
@@ -292,6 +247,6 @@ final class NotificationCell: UITableViewCell {
         contentView.alpha = 1.0
         onUserNameTapped = nil
         nameRange = nil
-        nameOverlayButton.isHidden = true
+        didTapName = false
     }
 }

@@ -430,6 +430,12 @@ extension NotificationsCenterViewController: UITableViewDelegate {
             delegate?.notificationsCenterDidUpdate(self)
         }
 
+        // If user tapped on a username link, skip detail — profile navigation already fired
+        if let cell = tableView.cellForRow(at: indexPath) as? NotificationCell, cell.didTapName {
+            cell.didTapName = false
+            return
+        }
+
         // Show detail for any notification
         showNotificationDetail(notification)
     }
