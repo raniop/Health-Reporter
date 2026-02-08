@@ -98,8 +98,13 @@ final class NotificationCell: UITableViewCell {
         bodyLabel.addGestureRecognizer(tap)
 
         let isRTL = LocalizationManager.shared.currentLanguage.isRTL
-        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
-        bodyLabel.textAlignment = LocalizationManager.shared.textAlignment
+        let align = LocalizationManager.shared.textAlignment
+        titleLabel.textAlignment = align
+        bodyLabel.textAlignment = align
+        let semantic: UISemanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
+        contentView.semanticContentAttribute = semantic
+        titleLabel.semanticContentAttribute = semantic
+        bodyLabel.semanticContentAttribute = semantic
 
         NSLayoutConstraint.activate([
             iconContainer.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
