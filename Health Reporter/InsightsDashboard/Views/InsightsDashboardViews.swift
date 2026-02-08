@@ -221,8 +221,10 @@ final class InsightsDashboardHeaderView: UIView {
             bellBadgeLabel.isHidden = false
             let w = max(16, bellBadgeLabel.intrinsicContentSize.width + 8)
             bellBadgeLabel.frame.size.width = w
+            bellButton.tintColor = UIColor(hex: "#FF2D55") ?? .systemRed
         } else {
             bellBadgeLabel.isHidden = true
+            bellButton.tintColor = AIONDesign.textPrimary
         }
     }
 
