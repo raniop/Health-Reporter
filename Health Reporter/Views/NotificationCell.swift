@@ -14,6 +14,9 @@ final class NotificationCell: UITableViewCell {
     /// Called when the tappable user name is tapped.
     var onUserNameTapped: (() -> Void)?
 
+    /// Range of the tappable name inside the body label.
+    private var nameRange: NSRange?
+
     // MARK: - UI Elements
 
     private let iconContainer: UIView = {
@@ -39,25 +42,14 @@ final class NotificationCell: UITableViewCell {
         return l
     }()
 
-    private let bodyTextView: UITextView = {
-        let tv = UITextView()
-        tv.font = .systemFont(ofSize: 13, weight: .regular)
-        tv.textColor = AIONDesign.textSecondary
-        tv.backgroundColor = .clear
-        tv.isEditable = false
-        tv.isScrollEnabled = false
-        tv.delaysContentTouches = false
-        tv.textContainerInset = .zero
-        tv.textContainer.lineFragmentPadding = 0
-        tv.textContainer.maximumNumberOfLines = 2
-        tv.textContainer.lineBreakMode = .byTruncatingTail
-        tv.linkTextAttributes = [
-            .foregroundColor: AIONDesign.accentPrimary,
-            .underlineStyle: NSUnderlineStyle.single.rawValue,
-            .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
-        ]
-        tv.translatesAutoresizingMaskIntoConstraints = false
-        return tv
+    private let bodyLabel: UILabel = {
+        let l = UILabel()
+        l.font = .systemFont(ofSize: 13, weight: .regular)
+        l.textColor = AIONDesign.textSecondary
+        l.numberOfLines = 2
+        l.isUserInteractionEnabled = true
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
     }()
 
     private let timeLabel: UILabel = {
@@ -98,22 +90,19 @@ final class NotificationCell: UITableViewCell {
         contentView.addSubview(iconContainer)
         iconContainer.addSubview(iconImageView)
         contentView.addSubview(titleLabel)
-        contentView.addSubview(bodyTextView)
+        contentView.addSubview(bodyLabel)
         contentView.addSubview(timeLabel)
         contentView.addSubview(unreadDot)
 
-        bodyTextView.delegate = self
-        // Remove context menu / long-press interactions that cause link tap delay
-        for interaction in bodyTextView.interactions {
-            if interaction is UIContextMenuInteraction || interaction is UIDragInteraction {
-                bodyTextView.removeInteraction(interaction)
-            }
-        }
+        // Tap on body label: if on name → profile, else pass through to tableView row selection
+        let tap = UITapGestureRecognizer(target: self, action: #selector(bodyTapped(_:)))
+        tap.cancelsTouchesInView = false
+        bodyLabel.addGestureRecognizer(tap)
 
         let semantic = LocalizationManager.shared.semanticContentAttribute
         contentView.semanticContentAttribute = semantic
         titleLabel.textAlignment = LocalizationManager.shared.textAlignment
-        bodyTextView.textAlignment = LocalizationManager.shared.textAlignment
+        bodyLabel.textAlignment = LocalizationManager.shared.textAlignment
 
         NSLayoutConstraint.activate([
             iconContainer.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
@@ -130,10 +119,10 @@ final class NotificationCell: UITableViewCell {
             titleLabel.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 12),
             titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: timeLabel.leadingAnchor, constant: -8),
 
-            bodyTextView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
-            bodyTextView.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            bodyTextView.trailingAnchor.constraint(equalTo: unreadDot.leadingAnchor, constant: -8),
-            bodyTextView.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
+            bodyLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
+            bodyLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            bodyLabel.trailingAnchor.constraint(equalTo: unreadDot.leadingAnchor, constant: -8),
+            bodyLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
 
             timeLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 14),
             timeLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
@@ -143,6 +132,36 @@ final class NotificationCell: UITableViewCell {
             unreadDot.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             unreadDot.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
         ])
+    }
+
+    // MARK: - Body Tap (hit-test on name only)
+
+    @objc private func bodyTapped(_ gesture: UITapGestureRecognizer) {
+        guard let range = nameRange,
+              let attrText = bodyLabel.attributedText,
+              range.location != NSNotFound else { return }
+
+        let tapLocation = gesture.location(in: bodyLabel)
+
+        let textStorage = NSTextStorage(attributedString: attrText)
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer(size: bodyLabel.bounds.size)
+        textContainer.lineFragmentPadding = 0
+        textContainer.maximumNumberOfLines = bodyLabel.numberOfLines
+        textContainer.lineBreakMode = bodyLabel.lineBreakMode
+        layoutManager.addTextContainer(textContainer)
+        textStorage.addLayoutManager(layoutManager)
+
+        let charIndex = layoutManager.characterIndex(
+            for: tapLocation,
+            in: textContainer,
+            fractionOfDistanceBetweenInsertionPoints: nil
+        )
+
+        if NSLocationInRange(charIndex, range) {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onUserNameTapped?()
+        }
     }
 
     // MARK: - Configure
@@ -159,21 +178,27 @@ final class NotificationCell: UITableViewCell {
         iconContainer.backgroundColor = bgColor
         iconImageView.tintColor = tintColor
 
-        // Build body text — add tappable link on user name if present
+        // Build body text — style the user name as a tappable link
         let body = notification.body
-        let attr = NSMutableAttributedString(string: body, attributes: [
-            .font: UIFont.systemFont(ofSize: 13, weight: .regular),
-            .foregroundColor: AIONDesign.textSecondary,
-        ])
-
         if let name = userName, hasUserProfile, let range = body.range(of: name) {
             let nsRange = NSRange(range, in: body)
-            attr.addAttributes([
-                .link: "username-tap://profile",
-            ], range: nsRange)
-        }
+            self.nameRange = nsRange
 
-        bodyTextView.attributedText = attr
+            let attr = NSMutableAttributedString(string: body, attributes: [
+                .font: UIFont.systemFont(ofSize: 13, weight: .regular),
+                .foregroundColor: AIONDesign.textSecondary,
+            ])
+            attr.addAttributes([
+                .underlineStyle: NSUnderlineStyle.single.rawValue,
+                .foregroundColor: AIONDesign.accentPrimary,
+                .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+            ], range: nsRange)
+            bodyLabel.attributedText = attr
+        } else {
+            self.nameRange = nil
+            bodyLabel.attributedText = nil
+            bodyLabel.text = body
+        }
 
         // Dim read notifications slightly
         contentView.alpha = notification.read ? 0.7 : 1.0
@@ -199,22 +224,12 @@ final class NotificationCell: UITableViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         titleLabel.text = nil
-        bodyTextView.attributedText = nil
+        bodyLabel.attributedText = nil
+        bodyLabel.text = nil
         timeLabel.text = nil
         unreadDot.isHidden = true
         contentView.alpha = 1.0
         onUserNameTapped = nil
-    }
-}
-
-// MARK: - UITextViewDelegate
-
-extension NotificationCell: UITextViewDelegate {
-    func textView(_ textView: UITextView, shouldInteractWith URL: URL, in characterRange: NSRange, interaction: UITextItemInteraction) -> Bool {
-        if URL.scheme == "username-tap" {
-            onUserNameTapped?()
-            return false
-        }
-        return true
+        nameRange = nil
     }
 }
