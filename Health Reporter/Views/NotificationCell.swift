@@ -97,17 +97,16 @@ final class NotificationCell: UITableViewCell {
         let tap = UITapGestureRecognizer(target: self, action: #selector(bodyTapped(_:)))
         bodyLabel.addGestureRecognizer(tap)
 
-        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
-        let align = LocalizationManager.shared.textAlignment
-        titleLabel.textAlignment = align
-        bodyLabel.textAlignment = align
-        let semantic: UISemanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
+        let semantic = LocalizationManager.shared.semanticContentAttribute
         contentView.semanticContentAttribute = semantic
-        titleLabel.semanticContentAttribute = semantic
-        bodyLabel.semanticContentAttribute = semantic
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
+        bodyLabel.textAlignment = LocalizationManager.shared.textAlignment
 
+        // Use a horizontal stack approach: icon | text | time/dot
+        // semanticContentAttribute flips leading/trailing automatically for RTL
         NSLayoutConstraint.activate([
             iconContainer.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
+            iconContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             iconContainer.widthAnchor.constraint(equalToConstant: 40),
             iconContainer.heightAnchor.constraint(equalToConstant: 40),
 
@@ -117,38 +116,22 @@ final class NotificationCell: UITableViewCell {
             iconImageView.heightAnchor.constraint(equalToConstant: 18),
 
             titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
+            titleLabel.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 12),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: timeLabel.leadingAnchor, constant: -8),
 
             bodyLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 3),
+            bodyLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            bodyLabel.trailingAnchor.constraint(equalTo: unreadDot.leadingAnchor, constant: -8),
             bodyLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
 
             timeLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 14),
+            timeLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
 
             unreadDot.widthAnchor.constraint(equalToConstant: 8),
             unreadDot.heightAnchor.constraint(equalToConstant: 8),
             unreadDot.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            unreadDot.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
         ])
-
-        if isRTL {
-            NSLayoutConstraint.activate([
-                iconContainer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-                titleLabel.trailingAnchor.constraint(equalTo: iconContainer.leadingAnchor, constant: -12),
-                titleLabel.leadingAnchor.constraint(greaterThanOrEqualTo: timeLabel.trailingAnchor, constant: 8),
-                bodyLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
-                bodyLabel.leadingAnchor.constraint(equalTo: unreadDot.trailingAnchor, constant: 8),
-                timeLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                unreadDot.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            ])
-        } else {
-            NSLayoutConstraint.activate([
-                iconContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                titleLabel.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 12),
-                titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: timeLabel.leadingAnchor, constant: -8),
-                bodyLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-                bodyLabel.trailingAnchor.constraint(equalTo: unreadDot.leadingAnchor, constant: -8),
-                timeLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-                unreadDot.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            ])
-        }
     }
 
     // MARK: - Name Tap Detection
