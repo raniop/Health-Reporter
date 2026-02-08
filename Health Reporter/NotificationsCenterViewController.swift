@@ -55,7 +55,7 @@ final class NotificationsCenterViewController: UIViewController {
         l.textColor = AIONDesign.textSecondary
         l.textAlignment = .center
         l.numberOfLines = 0
-        l.text = "No notifications yet"
+        l.text = "notifications.empty".localized
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -99,7 +99,7 @@ final class NotificationsCenterViewController: UIViewController {
     // MARK: - Setup Navigation
 
     private func setupNavigation() {
-        title = "Notifications"
+        title = "notifications.title".localized
         modalPresentationStyle = .formSheet
 
         let appearance = UINavigationBarAppearance()
@@ -356,7 +356,7 @@ extension NotificationsCenterViewController: UITableViewDataSource {
             return makeSectionHeader(title: "Follow Requests", icon: "person.badge.plus")
         case .notifications:
             guard !notifications.isEmpty else { return nil }
-            return makeSectionHeader(title: "Recent", icon: "clock.fill")
+            return makeSectionHeader(title: "notifications.section.recent".localized, icon: "clock.fill")
         case .none:
             return nil
         }
@@ -431,6 +431,23 @@ extension NotificationsCenterViewController: UITableViewDelegate {
             delegate?.notificationsCenterDidUpdate(self)
         }
 
+        // Show detail for morning/bedtime notifications
+        if notification.type == .morningSummary || notification.type == .bedtimeRecommendation {
+            let fullTitle = (notification.data["fullTitle"] as? String) ?? notification.title
+            let fullBody = (notification.data["fullBody"] as? String) ?? notification.body
+            showNotificationDetail(title: fullTitle, body: fullBody)
+        }
+    }
+
+    private func showNotificationDetail(title: String, body: String) {
+        let alert = UIAlertController(title: title, message: body, preferredStyle: .actionSheet)
+        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = view
+            popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        present(alert, animated: true)
     }
 
     /// Extracts the relevant user UID from the notification data dictionary.
@@ -442,7 +459,7 @@ extension NotificationsCenterViewController: UITableViewDelegate {
             return notification.data["acceptedByUid"] as? String
         case .newFollower:
             return notification.data["followerUid"] as? String
-        case .morningSummary, .healthMilestone:
+        case .morningSummary, .bedtimeRecommendation, .healthMilestone:
             return nil
         }
     }
@@ -456,7 +473,7 @@ extension NotificationsCenterViewController: UITableViewDelegate {
             return notification.data["acceptedByDisplayName"] as? String
         case .newFollower:
             return notification.data["followerDisplayName"] as? String
-        case .morningSummary, .healthMilestone:
+        case .morningSummary, .bedtimeRecommendation, .healthMilestone:
             return nil
         }
     }

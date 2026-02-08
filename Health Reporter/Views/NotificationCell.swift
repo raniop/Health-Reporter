@@ -225,6 +225,8 @@ final class NotificationCell: UITableViewCell {
             return (AIONDesign.accentSecondary.withAlphaComponent(0.15), AIONDesign.accentSecondary)
         case .morningSummary:
             return (AIONDesign.accentWarning.withAlphaComponent(0.15), AIONDesign.accentWarning)
+        case .bedtimeRecommendation:
+            return (UIColor.systemIndigo.withAlphaComponent(0.15), UIColor.systemIndigo)
         case .healthMilestone:
             return (UIColor(hex: "#FFD700")!.withAlphaComponent(0.15), UIColor(hex: "#FFD700")!)
         }

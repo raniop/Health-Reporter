@@ -37,6 +37,7 @@ final class SettingsViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         updateNotificationCardSubtitle()
+        updateBedtimeCardSubtitle()
     }
 
     // MARK: - UI Setup
@@ -111,6 +112,26 @@ final class SettingsViewController: UIViewController {
         ])
 
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: notificationCard)
+
+        // 4b. Bedtime Notification Card
+        let bedtimeCard = makeSettingsCard(
+            icon: "moon.stars.fill",
+            title: "profile.bedtimeNotification".localized,
+            subtitle: BedtimeNotificationManager.shared.isEnabled
+                ? String(format: "profile.notificationTime".localized, BedtimeNotificationManager.shared.formattedTime)
+                : "profile.notificationOff".localized
+        )
+        bedtimeCard.tag = 993
+        let bedtimeTap = UITapGestureRecognizer(target: self, action: #selector(bedtimeSettingsTapped))
+        bedtimeCard.addGestureRecognizer(bedtimeTap)
+        stack.addArrangedSubview(bedtimeCard)
+
+        NSLayoutConstraint.activate([
+            bedtimeCard.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            bedtimeCard.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+        ])
+
+        stack.setCustomSpacing(AIONDesign.spacingLarge, after: bedtimeCard)
 
         // 5. Follow Privacy Card
         let followPrivacyCard = makeFollowPrivacyCard()
@@ -525,6 +546,27 @@ final class SettingsViewController: UIViewController {
                    label.font == .systemFont(ofSize: 13, weight: .regular) {
                     label.text = MorningNotificationManager.shared.isEnabled
                         ? String(format: "profile.notificationTime".localized, MorningNotificationManager.shared.formattedTime)
+                        : "profile.notificationOff".localized
+                    break
+                }
+            }
+        }
+    }
+
+    // MARK: - Bedtime Notification
+
+    @objc private func bedtimeSettingsTapped() {
+        let vc = BedtimeNotificationSettingsViewController()
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func updateBedtimeCardSubtitle() {
+        if let card = stack.viewWithTag(993) {
+            for subview in card.subviews {
+                if let label = subview as? UILabel,
+                   label.font == .systemFont(ofSize: 13, weight: .regular) {
+                    label.text = BedtimeNotificationManager.shared.isEnabled
+                        ? String(format: "profile.notificationTime".localized, BedtimeNotificationManager.shared.formattedTime)
                         : "profile.notificationOff".localized
                     break
                 }

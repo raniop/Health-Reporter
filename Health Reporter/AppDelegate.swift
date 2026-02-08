@@ -24,14 +24,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Register Background Tasks
         MorningNotificationManager.shared.registerBackgroundTask()
+        BedtimeNotificationManager.shared.registerBackgroundTask()
 
         // Schedule morning notification if enabled
         if MorningNotificationManager.shared.isEnabled {
             MorningNotificationManager.shared.scheduleMorningNotification()
         }
 
-        // Sync morning notification settings to Firestore (for Cloud Function)
+        // Schedule bedtime notification if enabled
+        if BedtimeNotificationManager.shared.isEnabled {
+            BedtimeNotificationManager.shared.scheduleBedtimeNotification()
+        }
+
+        // Sync notification settings to Firestore (for Cloud Functions)
         MorningNotificationManager.shared.syncSettingsOnLaunch()
+        BedtimeNotificationManager.shared.syncSettingsOnLaunch()
 
         // Initialize Watch Connectivity
         _ = WatchConnectivityManager.shared
@@ -89,6 +96,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                         app.registerForRemoteNotifications()
                         if granted {
                             MorningNotificationManager.shared.scheduleMorningNotification()
+                            if BedtimeNotificationManager.shared.isEnabled {
+                                BedtimeNotificationManager.shared.scheduleBedtimeNotification()
+                            }
                         }
                     }
                 }
@@ -154,6 +164,31 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         print("[FCM] ❌ APNs registration FAILED: \(error.localizedDescription) (e.g. Simulator has no push - use real device)")
+    }
+
+    // MARK: - Silent Push (Cloud Function triggers)
+
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        if let type = userInfo["type"] as? String {
+            switch type {
+            case "morning_health_trigger":
+                MorningNotificationManager.shared.handleMorningTrigger { success in
+                    completionHandler(success ? .newData : .failed)
+                }
+            case "bedtime_trigger":
+                BedtimeNotificationManager.shared.handleBedtimeTrigger { success in
+                    completionHandler(success ? .newData : .failed)
+                }
+            default:
+                completionHandler(.noData)
+            }
+        } else {
+            completionHandler(.noData)
+        }
     }
 
     // MARK: UISceneSession Lifecycle
@@ -262,6 +297,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
                 object: nil,
                 userInfo: userInfo as? [String: Any]
             )
+        case "morning_health", "bedtime_recommendation":
+            // Navigate to home/insights on tap
+            break
         default:
             break
         }

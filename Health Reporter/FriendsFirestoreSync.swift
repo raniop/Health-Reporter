@@ -672,6 +672,40 @@ enum FriendsFirestoreSync {
             }
     }
 
+    // MARK: - Save Notification Item
+
+    /// Saves a notification item to the user's notifications collection in Firestore
+    static func saveNotificationItem(
+        type: String,
+        title: String,
+        body: String,
+        data: [String: Any] = [:],
+        completion: ((Error?) -> Void)? = nil
+    ) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
+            completion?(NSError(domain: "FriendsFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user logged in"]))
+            return
+        }
+
+        let docData: [String: Any] = [
+            "type": type,
+            "title": title,
+            "body": body,
+            "data": data,
+            "read": false,
+            "createdAt": FieldValue.serverTimestamp()
+        ]
+
+        db.collection(usersCollection).document(uid)
+            .collection("notifications")
+            .addDocument(data: docData) { error in
+                if let error = error {
+                    print("[Notifications] Failed to save notification: \(error.localizedDescription)")
+                }
+                completion?(error)
+            }
+    }
+
     // MARK: - Morning Notification Settings
 
     /// Saves morning notification settings to Firestore for Cloud Function scheduling
@@ -701,6 +735,40 @@ enum FriendsFirestoreSync {
                 print("🔔 [Firestore] Failed to save morning notification settings: \(error)")
             } else {
                 print("🔔 [Firestore] Morning notification settings saved - enabled: \(enabled), time: \(hour):\(minute)")
+            }
+            DispatchQueue.main.async { completion?(error) }
+        }
+    }
+
+    // MARK: - Bedtime Notification Settings
+
+    /// Saves bedtime notification settings to Firestore for Cloud Function scheduling
+    static func saveBedtimeNotificationSettings(
+        enabled: Bool,
+        hour: Int,
+        minute: Int,
+        completion: ((Error?) -> Void)? = nil
+    ) {
+        guard let currentUid = Auth.auth().currentUser?.uid, !currentUid.isEmpty else {
+            completion?(NSError(domain: "FriendsFirestoreSync", code: -1,
+                                userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
+            return
+        }
+
+        let settings: [String: Any] = [
+            "bedtimeNotification": [
+                "enabled": enabled,
+                "hour": hour,
+                "minute": minute,
+                "updatedAt": FieldValue.serverTimestamp()
+            ]
+        ]
+
+        db.collection(usersCollection).document(currentUid).setData(settings, merge: true) { error in
+            if let error = error {
+                print("🌙 [Firestore] Failed to save bedtime notification settings: \(error)")
+            } else {
+                print("🌙 [Firestore] Bedtime notification settings saved - enabled: \(enabled), time: \(hour):\(minute)")
             }
             DispatchQueue.main.async { completion?(error) }
         }

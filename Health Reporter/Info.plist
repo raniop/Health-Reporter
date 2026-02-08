@@ -26,6 +26,7 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.rani.Health-Reporter.morningRefresh</string>
+		<string>com.rani.Health-Reporter.bedtimeRefresh</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

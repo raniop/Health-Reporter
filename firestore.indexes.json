@@ -17,6 +17,24 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "bedtimeNotification.enabled",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "bedtimeNotification.hour",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "bedtimeNotification.minute",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

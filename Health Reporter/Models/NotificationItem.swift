@@ -12,6 +12,7 @@ enum NotificationType: String, Codable {
     case followAccepted = "follow_accepted"
     case newFollower = "new_follower"
     case morningSummary = "morning_summary"
+    case bedtimeRecommendation = "bedtime_recommendation"
     case healthMilestone = "health_milestone"
 
     var icon: String {
@@ -20,6 +21,7 @@ enum NotificationType: String, Codable {
         case .followAccepted: return "person.fill.checkmark"
         case .newFollower: return "person.2.fill"
         case .morningSummary: return "sun.horizon.fill"
+        case .bedtimeRecommendation: return "moon.stars.fill"
         case .healthMilestone: return "trophy.fill"
         }
     }

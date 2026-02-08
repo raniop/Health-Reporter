@@ -58,6 +58,10 @@ enum AnalysisCache {
     static let keyActivityScore = "AION.ScoreBreakdown.Activity"
     static let keyLoadBalanceScore = "AION.ScoreBreakdown.LoadBalance"
 
+    // Bedtime Recommendation Keys
+    static let keyBedtimeRecommendation = "AION.BedtimeRecommendation"
+    static let keyBedtimeLastDate = "AION.BedtimeLastDate"
+
     // User Personal Notes Key
     static let keyUserNotes = "AION.UserPersonalNotes"
 
@@ -556,6 +560,10 @@ enum AnalysisCache {
         UserDefaults.standard.removeObject(forKey: keyLastCarWikiName)
         UserDefaults.standard.removeObject(forKey: keyLastCarExplanation)
 
+        // Clear bedtime recommendation
+        UserDefaults.standard.removeObject(forKey: keyBedtimeRecommendation)
+        UserDefaults.standard.removeObject(forKey: keyBedtimeLastDate)
+
         // Clear pending car reveal
         UserDefaults.standard.removeObject(forKey: keyPendingCarReveal)
         UserDefaults.standard.removeObject(forKey: keyNewCarName)
@@ -604,6 +612,28 @@ enum AnalysisCache {
         UserDefaults.standard.set(hash, forKey: keyHealthDataHash)
 
         return CachedData(insights: insights, healthDataHash: hash, date: last, isValid: isValid)
+    }
+
+    // MARK: - Bedtime Recommendation
+
+    /// Saves the bedtime recommendation from Gemini
+    static func saveBedtimeRecommendation(_ recommendation: BedtimeRecommendation) {
+        if let data = try? JSONEncoder().encode(recommendation) {
+            UserDefaults.standard.set(data, forKey: keyBedtimeRecommendation)
+            UserDefaults.standard.set(Date(), forKey: keyBedtimeLastDate)
+            UserDefaults.standard.synchronize()
+        }
+    }
+
+    /// Loads the cached bedtime recommendation
+    static func loadBedtimeRecommendation() -> BedtimeRecommendation? {
+        guard let data = UserDefaults.standard.data(forKey: keyBedtimeRecommendation) else { return nil }
+        return try? JSONDecoder().decode(BedtimeRecommendation.self, from: data)
+    }
+
+    /// Last bedtime recommendation date
+    static func lastBedtimeUpdateDate() -> Date? {
+        return UserDefaults.standard.object(forKey: keyBedtimeLastDate) as? Date
     }
 }
 

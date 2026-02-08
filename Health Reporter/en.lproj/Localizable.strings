@@ -425,6 +425,21 @@
 "settings.morningNotification.testSent" = "Test Sent";
 "settings.morningNotification.testSentMessage" = "A test notification will appear in 5 seconds";
 
+/* Bedtime Notification Settings */
+"profile.bedtimeNotification" = "Bedtime Notification";
+"settings.bedtimeNotification.title" = "Bedtime Notification";
+"settings.bedtimeNotification.enable" = "Enable Notification";
+"settings.bedtimeNotification.enableDescription" = "Receive a personalized bedtime recommendation every evening";
+"settings.bedtimeNotification.time" = "Notification Time";
+"settings.bedtimeNotification.test" = "Send Test Notification";
+"settings.bedtimeNotification.testSent" = "Test Sent";
+"settings.bedtimeNotification.testSentMessage" = "A test notification will appear in a few seconds";
+
+/* Bedtime Notification Content */
+"bedtime.notification.title" = "🌙 Good evening, %@!";
+"bedtime.notification.title.noname" = "🌙 Good evening!";
+"bedtime.notification.generic" = "Check your personalized bedtime recommendation";
+
 /* Morning Notification Content */
 "morning.notification.title" = "🌅 Good morning, %@!";
 "morning.notification.title.noname" = "🌅 Good morning!";
@@ -972,6 +987,9 @@
 "notifications.denied.message" = "Notifications help you stay on top of your health goals and friend activity. Enable them in Settings to get the most out of AION Health.";
 "notifications.denied.openSettings" = "Open Settings";
 "notifications.denied.later" = "Not Now";
+"notifications.title" = "Notifications";
+"notifications.empty" = "No notifications yet";
+"notifications.section.recent" = "Recent";
 
 "onboarding.healthkit.title" = "Connect Your Health";
 "onboarding.healthkit.subtitle" = "Unlock powerful insights from your data";

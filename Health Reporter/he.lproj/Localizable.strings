@@ -416,6 +416,21 @@
 "settings.morningNotification.testSent" = "נשלחה בדיקה";
 "settings.morningNotification.testSentMessage" = "התראת בדיקה תופיע בעוד 5 שניות";
 
+/* הגדרות התראת שינה */
+"profile.bedtimeNotification" = "התראת שינה";
+"settings.bedtimeNotification.title" = "התראת שינה";
+"settings.bedtimeNotification.enable" = "הפעל התראה";
+"settings.bedtimeNotification.enableDescription" = "קבל המלצת שעת שינה מותאמת אישית בכל ערב";
+"settings.bedtimeNotification.time" = "שעת התראה";
+"settings.bedtimeNotification.test" = "שלח התראת בדיקה";
+"settings.bedtimeNotification.testSent" = "נשלחה בדיקה";
+"settings.bedtimeNotification.testSentMessage" = "התראת בדיקה תופיע בעוד מספר שניות";
+
+/* תוכן התראת שינה */
+"bedtime.notification.title" = "🌙 ערב טוב, %@!";
+"bedtime.notification.title.noname" = "🌙 ערב טוב!";
+"bedtime.notification.generic" = "בדוק את המלצת שעת השינה המותאמת אישית שלך";
+
 /* Morning Notification Content */
 "morning.notification.title" = "🌅 בוקר טוב, %@!";
 "morning.notification.title.noname" = "🌅 בוקר טוב!";
@@ -976,6 +991,9 @@
 "notifications.denied.message" = "התראות עוזרות לך לעקוב אחרי יעדי הבריאות שלך ופעילות חברים. הפעל אותן בהגדרות כדי להפיק את המרב מ-AION Health.";
 "notifications.denied.openSettings" = "פתח הגדרות";
 "notifications.denied.later" = "לא עכשיו";
+"notifications.title" = "התראות";
+"notifications.empty" = "אין התראות עדיין";
+"notifications.section.recent" = "אחרונות";
 
 "onboarding.healthkit.title" = "חבר את הבריאות שלך";
 "onboarding.healthkit.subtitle" = "פתח תובנות עוצמתיות מהנתונים שלך";

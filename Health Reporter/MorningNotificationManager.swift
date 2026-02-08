@@ -779,6 +779,14 @@ final class MorningNotificationManager {
                 print("🔔 [MorningNotification] ✅ Immediate notification sent with fresh data!")
             }
         }
+
+        // Save to Firestore notification center
+        FriendsFirestoreSync.saveNotificationItem(
+            type: "morning_summary",
+            title: content.title,
+            body: content.body,
+            data: ["fullTitle": content.title, "fullBody": content.body]
+        )
     }
 
     private func scheduleLocalNotification(content: UNMutableNotificationContent) {
@@ -970,6 +978,14 @@ final class MorningNotificationManager {
                     print("🔔 [MorningNotification] ✅ Test notification with REAL data scheduled (3 seconds)")
                 }
             }
+
+            // Save to Firestore notification center
+            FriendsFirestoreSync.saveNotificationItem(
+                type: "morning_summary",
+                title: content.title,
+                body: content.body,
+                data: ["fullTitle": content.title, "fullBody": content.body]
+            )
         }
     }
 
@@ -1003,5 +1019,13 @@ final class MorningNotificationManager {
                 print("🔔 [MorningNotification] Basic test notification scheduled (3 seconds)")
             }
         }
+
+        // Save to Firestore notification center
+        FriendsFirestoreSync.saveNotificationItem(
+            type: "morning_summary",
+            title: content.title,
+            body: content.body,
+            data: ["fullTitle": content.title, "fullBody": content.body]
+        )
     }
 }

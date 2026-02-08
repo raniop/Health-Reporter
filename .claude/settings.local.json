@@ -39,7 +39,8 @@
       "Bash(brew install:*)",
       "WebFetch(domain:stackoverflow.com)",
       "WebFetch(domain:github.com)",
-      "Bash(npx firebase deploy:*)"
+      "Bash(npx firebase deploy:*)",
+      "Bash(git add:*)"
     ]
   }
 }

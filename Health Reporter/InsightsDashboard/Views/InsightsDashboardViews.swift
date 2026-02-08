@@ -198,8 +198,13 @@ final class InsightsDashboardHeaderView: UIView {
     private let dateLabel = UILabel()
     private let lastUpdatedLabel = UILabel()
     private let avatarImageView = UIImageView()
+    private let bellButton = UIButton(type: .custom)
+    private let bellBadgeLabel = UILabel()
     private var mainStack: UIStackView?
     private var textStack: UIStackView?
+
+    /// Called when the bell button is tapped.
+    var onBellTapped: (() -> Void)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -207,6 +212,18 @@ final class InsightsDashboardHeaderView: UIView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    /// Updates the bell badge count. Pass 0 to hide.
+    func updateBadge(count: Int) {
+        if count > 0 {
+            bellBadgeLabel.text = "\(count)"
+            bellBadgeLabel.isHidden = false
+            let w = max(16, bellBadgeLabel.intrinsicContentSize.width + 8)
+            bellBadgeLabel.frame.size.width = w
+        } else {
+            bellBadgeLabel.isHidden = true
+        }
     }
 
     func configure(lastUpdated: Date? = nil) {
@@ -247,16 +264,40 @@ final class InsightsDashboardHeaderView: UIView {
         avatarImageView.layer.cornerRadius = 20
         avatarImageView.backgroundColor = AIONDesign.surface
 
-        // RTL: avatar on left, text on right
-        // LTR: text on left, avatar on right
+        // Bell button
+        bellButton.frame = CGRect(x: 0, y: 0, width: 36, height: 36)
+        bellButton.backgroundColor = AIONDesign.surfaceElevated
+        bellButton.layer.cornerRadius = 18
+        let bellConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        bellButton.setImage(UIImage(systemName: "bell.fill", withConfiguration: bellConfig), for: .normal)
+        bellButton.tintColor = AIONDesign.textPrimary
+        bellButton.addTarget(self, action: #selector(bellButtonTapped), for: .touchUpInside)
+        bellButton.translatesAutoresizingMaskIntoConstraints = false
+        bellButton.clipsToBounds = false
+
+        // Badge on bell
+        bellBadgeLabel.font = .monospacedDigitSystemFont(ofSize: 9, weight: .black)
+        bellBadgeLabel.textColor = .white
+        bellBadgeLabel.backgroundColor = UIColor(hex: "#FF2D55") ?? .systemRed
+        bellBadgeLabel.textAlignment = .center
+        bellBadgeLabel.layer.cornerRadius = 8
+        bellBadgeLabel.clipsToBounds = true
+        bellBadgeLabel.frame = CGRect(x: 22, y: -4, width: 16, height: 16)
+        bellBadgeLabel.isHidden = true
+        bellButton.addSubview(bellBadgeLabel)
+
+        // RTL: avatar — bell — spacer — text
+        // LTR: text — spacer — bell — avatar
         let spacer = UIView()
         if currentIsRTL {
             stack.addArrangedSubview(avatarImageView)
+            stack.addArrangedSubview(bellButton)
             stack.addArrangedSubview(spacer)
             stack.addArrangedSubview(tStack)
         } else {
             stack.addArrangedSubview(tStack)
             stack.addArrangedSubview(spacer)
+            stack.addArrangedSubview(bellButton)
             stack.addArrangedSubview(avatarImageView)
         }
 
@@ -267,7 +308,10 @@ final class InsightsDashboardHeaderView: UIView {
             stack.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             avatarImageView.widthAnchor.constraint(equalToConstant: 40),
-            avatarImageView.heightAnchor.constraint(equalToConstant: 40)
+            avatarImageView.heightAnchor.constraint(equalToConstant: 40),
+
+            bellButton.widthAnchor.constraint(equalToConstant: 36),
+            bellButton.heightAnchor.constraint(equalToConstant: 36),
         ])
 
         // Greeting based on time + user name
@@ -315,6 +359,10 @@ final class InsightsDashboardHeaderView: UIView {
                 avatarImageView.tintColor = AIONDesign.textTertiary
             }
         }
+    }
+
+    @objc private func bellButtonTapped() {
+        onBellTapped?()
     }
 }
 

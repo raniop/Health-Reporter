@@ -62,11 +62,13 @@ final class InsightsDashboardViewController: UIViewController {
     @objc private func appWillEnterForeground() {
         // Refresh data when app returns from background (new data may be available)
         loadData()
+        updateBellBadge()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
+        updateBellBadge()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -123,6 +125,10 @@ final class InsightsDashboardViewController: UIViewController {
         ])
 
         // Setup callbacks
+        headerView.onBellTapped = { [weak self] in
+            self?.bellTapped()
+        }
+
         periodSelector.onPeriodChanged = { [weak self] period in
             self?.handlePeriodChange(period)
         }
@@ -443,6 +449,32 @@ final class InsightsDashboardViewController: UIViewController {
 
         // Set alignment based on language direction
         contentStack.alignment = .fill
+    }
+
+    // MARK: - Notifications Bell
+
+    private func bellTapped() {
+        let vc = NotificationsCenterViewController()
+        vc.delegate = self
+        let nav = UINavigationController(rootViewController: vc)
+        nav.modalPresentationStyle = .formSheet
+        present(nav, animated: true)
+    }
+
+    private func updateBellBadge() {
+        FriendsFirestoreSync.fetchUnreadNotificationsCount { [weak self] count in
+            DispatchQueue.main.async {
+                self?.headerView.updateBadge(count: count)
+            }
+        }
+    }
+}
+
+// MARK: - NotificationsCenterViewControllerDelegate
+
+extension InsightsDashboardViewController: NotificationsCenterViewControllerDelegate {
+    func notificationsCenterDidUpdate(_ controller: NotificationsCenterViewController) {
+        updateBellBadge()
     }
 }
 

@@ -282,6 +282,82 @@ exports.onSettingsChanged = functions.firestore
       const bSettings = before?.morningNotification;
       const aSettings = after?.morningNotification;
       if (JSON.stringify(bSettings) !== JSON.stringify(aSettings)) {
-        console.log(`${TAG} ${context.params.userId}: ${JSON.stringify(aSettings)}`);
+        console.log(`${TAG} ${context.params.userId} morning: ${JSON.stringify(aSettings)}`);
       }
+
+      const bBedtime = before?.bedtimeNotification;
+      const aBedtime = after?.bedtimeNotification;
+      if (JSON.stringify(bBedtime) !== JSON.stringify(aBedtime)) {
+        console.log(`${TAG} ${context.params.userId} bedtime: ${JSON.stringify(aBedtime)}`);
+      }
+    });
+
+// ============================================================================
+// 6) BEDTIME NOTIFICATIONS (scheduled every minute)
+// ============================================================================
+
+exports.sendBedtimeNotifications = functions.pubsub
+    .schedule("* * * * *")
+    .timeZone("Asia/Jerusalem")
+    .onRun(async () => {
+      const TAG = "[BedtimeNotif]";
+      const now = new Date();
+      const h = now.getHours();
+      const m = now.getMinutes();
+      console.log(`${TAG} Check ${h}:${String(m).padStart(2, "0")}`);
+
+      const snap = await db.collection("users")
+          .where("bedtimeNotification.enabled", "==", true)
+          .where("bedtimeNotification.hour", "==", h)
+          .where("bedtimeNotification.minute", "==", m)
+          .get();
+
+      if (snap.empty) {
+        console.log(`${TAG} No users at this time`);
+        return null;
+      }
+
+      console.log(`${TAG} ${snap.docs.length} user(s) matched`);
+
+      const results = await Promise.allSettled(
+          snap.docs.map(async (doc) => {
+            const uid = doc.id;
+            const token = doc.data().fcmToken;
+            if (!token) {
+              console.log(`${TAG} ${uid}: no token`);
+              return {uid, success: false};
+            }
+
+            await saveNotification(uid, "bedtime_recommendation",
+                "Bedtime Recommendation", "Your personalized bedtime is ready",
+                {timestamp: now.toISOString()}, TAG);
+
+            const res = await sendFCM(token, {
+              token,
+              data: {
+                type: "bedtime_trigger",
+                userId: uid,
+                timestamp: now.toISOString(),
+              },
+              apns: {
+                payload: {aps: {"content-available": 1}},
+                headers: {
+                  "apns-priority": "5",
+                  "apns-push-type": "background",
+                },
+              },
+            }, uid, TAG);
+
+            if (res.success) {
+              await db.collection("users").doc(uid).update({
+                "bedtimeNotification.lastSent": now,
+              });
+            }
+            return {uid, ...res};
+          }),
+      );
+
+      const ok = results.filter((r) => r.status === "fulfilled" && r.value?.success).length;
+      console.log(`${TAG} Done: ${ok}/${snap.docs.length} sent`);
+      return null;
     });

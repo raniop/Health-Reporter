@@ -88,8 +88,6 @@ final class SocialHubViewController: UIViewController {
         return sv
     }()
 
-    // Bell badge
-    private var bellBadgeLabel: UILabel?
     private var hasLoadedOnce = false
     private var hasAnimatedPodium = false
     private var lastLoadTime: Date?
@@ -115,7 +113,6 @@ final class SocialHubViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        updateBellBadge()
 
         // Skip full reload if data was loaded recently (< 30 seconds ago)
         if let last = lastLoadTime, Date().timeIntervalSince(last) < 30, hasLoadedOnce {
@@ -141,51 +138,6 @@ final class SocialHubViewController: UIViewController {
         ]
         navigationItem.standardAppearance = appearance
         navigationItem.scrollEdgeAppearance = appearance
-
-        // Bell button as nav bar item — simple UIButton approach
-        let bellButton = UIButton(type: .custom)
-        bellButton.frame = CGRect(x: 0, y: 0, width: 36, height: 36)
-        bellButton.backgroundColor = AIONDesign.surface
-        bellButton.layer.cornerRadius = 18
-
-        let bellConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-        bellButton.setImage(UIImage(systemName: "bell.fill", withConfiguration: bellConfig), for: .normal)
-        bellButton.tintColor = AIONDesign.textPrimary
-        bellButton.addTarget(self, action: #selector(bellTapped), for: .touchUpInside)
-
-        // Badge on the bell button
-        let badge = UILabel()
-        badge.font = .monospacedDigitSystemFont(ofSize: 9, weight: .black)
-        badge.textColor = .white
-        badge.backgroundColor = UIColor(hex: "#FF2D55") ?? AIONDesign.accentDanger
-        badge.textAlignment = .center
-        badge.layer.cornerRadius = 8
-        badge.clipsToBounds = true
-        badge.frame = CGRect(x: 22, y: -4, width: 16, height: 16)
-        badge.isHidden = true
-        bellButton.addSubview(badge)
-        bellButton.clipsToBounds = false
-        bellBadgeLabel = badge
-
-        let barItem = UIBarButtonItem(customView: bellButton)
-        navigationItem.rightBarButtonItem = barItem
-    }
-
-    // MARK: - Bell Badge
-
-    private func updateBellBadge() {
-        FriendsFirestoreSync.fetchUnreadNotificationsCount { [weak self] count in
-            DispatchQueue.main.async {
-                if count > 0 {
-                    self?.bellBadgeLabel?.text = "\(count)"
-                    self?.bellBadgeLabel?.isHidden = false
-                    let w = max(16, (self?.bellBadgeLabel?.intrinsicContentSize.width ?? 16) + 8)
-                    self?.bellBadgeLabel?.frame.size.width = w
-                } else {
-                    self?.bellBadgeLabel?.isHidden = true
-                }
-            }
-        }
     }
 
     // MARK: - Layout
@@ -243,14 +195,6 @@ final class SocialHubViewController: UIViewController {
 
     @objc private func handleRefresh() {
         loadArenaData()
-    }
-
-    @objc private func bellTapped() {
-        let vc = NotificationsCenterViewController()
-        vc.delegate = self
-        let nav = UINavigationController(rootViewController: vc)
-        nav.modalPresentationStyle = .formSheet
-        present(nav, animated: true)
     }
 
     @objc private func leaderboardTapped() {
@@ -1433,14 +1377,6 @@ extension SocialHubViewController: UISearchBarDelegate {
             self.searchResults = results
             self.showSearchResults()
         }
-    }
-}
-
-// MARK: - NotificationsCenterViewControllerDelegate
-
-extension SocialHubViewController: NotificationsCenterViewControllerDelegate {
-    func notificationsCenterDidUpdate(_ controller: NotificationsCenterViewController) {
-        updateBellBadge()
     }
 }
 
