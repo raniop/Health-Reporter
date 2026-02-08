@@ -14,14 +14,6 @@ final class NotificationCell: UITableViewCell {
     /// Called when the tappable user name is tapped.
     var onUserNameTapped: (() -> Void)?
 
-    /// Set to `true` right after a name tap fires; the table-view delegate
-    /// checks this flag and skips presenting the detail sheet when it's `true`.
-    /// Reset it after reading.
-    var didHandleNameTap = false
-
-    /// Range of the tappable name inside the body label.
-    private var nameRange: NSRange?
-
     // MARK: - UI Elements
 
     private let iconContainer: UIView = {
@@ -52,9 +44,19 @@ final class NotificationCell: UITableViewCell {
         l.font = .systemFont(ofSize: 13, weight: .regular)
         l.textColor = AIONDesign.textSecondary
         l.numberOfLines = 2
-        l.isUserInteractionEnabled = true
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
+    }()
+
+    /// Transparent button placed exactly over the user name text.
+    /// Because it's a real UIControl it intercepts the touch and prevents
+    /// the tableView from receiving `didSelectRowAt`.
+    private let nameButton: UIButton = {
+        let b = UIButton(type: .system)
+        b.backgroundColor = .clear
+        b.translatesAutoresizingMaskIntoConstraints = false
+        b.isHidden = true
+        return b
     }()
 
     private let timeLabel: UILabel = {
@@ -72,6 +74,12 @@ final class NotificationCell: UITableViewCell {
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
     }()
+
+    /// Constraints for positioning the name button dynamically.
+    private var nameButtonLeading: NSLayoutConstraint?
+    private var nameButtonWidth: NSLayoutConstraint?
+    private var nameButtonTop: NSLayoutConstraint?
+    private var nameButtonHeight: NSLayoutConstraint?
 
     // MARK: - Init
 
@@ -99,15 +107,24 @@ final class NotificationCell: UITableViewCell {
         contentView.addSubview(timeLabel)
         contentView.addSubview(unreadDot)
 
-        // Tap on body label: if on name → profile, else pass through to tableView row selection
-        let tap = UITapGestureRecognizer(target: self, action: #selector(bodyTapped(_:)))
-        tap.cancelsTouchesInView = false
-        bodyLabel.addGestureRecognizer(tap)
+        // Name button sits on top of the body label
+        contentView.addSubview(nameButton)
+        nameButton.addTarget(self, action: #selector(nameButtonTapped), for: .touchUpInside)
 
         let semantic = LocalizationManager.shared.semanticContentAttribute
         contentView.semanticContentAttribute = semantic
         titleLabel.textAlignment = LocalizationManager.shared.textAlignment
         bodyLabel.textAlignment = LocalizationManager.shared.textAlignment
+
+        // Prepare dynamic constraints for the name button (inactive until positioned)
+        nameButtonLeading = nameButton.leadingAnchor.constraint(equalTo: bodyLabel.leadingAnchor)
+        nameButtonWidth = nameButton.widthAnchor.constraint(equalToConstant: 0)
+        nameButtonTop = nameButton.topAnchor.constraint(equalTo: bodyLabel.topAnchor)
+        nameButtonHeight = nameButton.heightAnchor.constraint(equalToConstant: 0)
+        nameButtonLeading?.isActive = true
+        nameButtonWidth?.isActive = true
+        nameButtonTop?.isActive = true
+        nameButtonHeight?.isActive = true
 
         NSLayoutConstraint.activate([
             iconContainer.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
@@ -139,35 +156,11 @@ final class NotificationCell: UITableViewCell {
         ])
     }
 
-    // MARK: - Body Tap (hit-test on name only)
+    // MARK: - Name Button Action
 
-    @objc private func bodyTapped(_ gesture: UITapGestureRecognizer) {
-        guard let range = nameRange,
-              let attrText = bodyLabel.attributedText,
-              range.location != NSNotFound else { return }
-
-        let tapLocation = gesture.location(in: bodyLabel)
-
-        let textStorage = NSTextStorage(attributedString: attrText)
-        let layoutManager = NSLayoutManager()
-        let textContainer = NSTextContainer(size: bodyLabel.bounds.size)
-        textContainer.lineFragmentPadding = 0
-        textContainer.maximumNumberOfLines = bodyLabel.numberOfLines
-        textContainer.lineBreakMode = bodyLabel.lineBreakMode
-        layoutManager.addTextContainer(textContainer)
-        textStorage.addLayoutManager(layoutManager)
-
-        let charIndex = layoutManager.characterIndex(
-            for: tapLocation,
-            in: textContainer,
-            fractionOfDistanceBetweenInsertionPoints: nil
-        )
-
-        if NSLocationInRange(charIndex, range) {
-            didHandleNameTap = true
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            onUserNameTapped?()
-        }
+    @objc private func nameButtonTapped() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        onUserNameTapped?()
     }
 
     // MARK: - Configure
@@ -188,7 +181,6 @@ final class NotificationCell: UITableViewCell {
         let body = notification.body
         if let name = userName, hasUserProfile, let range = body.range(of: name) {
             let nsRange = NSRange(range, in: body)
-            self.nameRange = nsRange
 
             let attr = NSMutableAttributedString(string: body, attributes: [
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
@@ -200,14 +192,49 @@ final class NotificationCell: UITableViewCell {
                 .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
             ], range: nsRange)
             bodyLabel.attributedText = attr
+            nameButton.isHidden = false
+
+            // Position the invisible button over the name text after layout
+            DispatchQueue.main.async { [weak self] in
+                self?.positionNameButton(over: nsRange)
+            }
         } else {
-            self.nameRange = nil
             bodyLabel.attributedText = nil
             bodyLabel.text = body
+            nameButton.isHidden = true
         }
 
         // Dim read notifications slightly
         contentView.alpha = notification.read ? 0.7 : 1.0
+    }
+
+    /// Uses NSLayoutManager to compute the pixel rect of the name range
+    /// inside bodyLabel, then positions nameButton exactly on top of it.
+    private func positionNameButton(over range: NSRange) {
+        guard let attrText = bodyLabel.attributedText else { return }
+
+        let textStorage = NSTextStorage(attributedString: attrText)
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer(size: bodyLabel.bounds.size)
+        textContainer.lineFragmentPadding = 0
+        textContainer.maximumNumberOfLines = bodyLabel.numberOfLines
+        textContainer.lineBreakMode = bodyLabel.lineBreakMode
+        layoutManager.addTextContainer(textContainer)
+        textStorage.addLayoutManager(layoutManager)
+
+        // Force layout so glyph positions are computed
+        layoutManager.ensureLayout(for: textContainer)
+
+        var glyphRange = NSRange()
+        layoutManager.characterRange(forGlyphRange: range, actualGlyphRange: &glyphRange)
+        let nameRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+
+        // Add small padding around the tap target for easier tapping
+        let padding: CGFloat = 4
+        nameButtonLeading?.constant = nameRect.origin.x - padding
+        nameButtonWidth?.constant = nameRect.width + padding * 2
+        nameButtonTop?.constant = nameRect.origin.y - padding
+        nameButtonHeight?.constant = nameRect.height + padding * 2
     }
 
     private func iconColors(for type: NotificationType) -> (UIColor, UIColor) {
@@ -236,7 +263,6 @@ final class NotificationCell: UITableViewCell {
         unreadDot.isHidden = true
         contentView.alpha = 1.0
         onUserNameTapped = nil
-        nameRange = nil
-        didHandleNameTap = false
+        nameButton.isHidden = true
     }
 }
