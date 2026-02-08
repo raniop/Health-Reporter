@@ -339,54 +339,64 @@ final class BedtimeNotificationManager {
     // MARK: - Test Notification
 
     func sendTestNotification() {
-        print("🌙 [BedtimeNotification] Generating test recommendation...")
+        // Try cached recommendation first for instant response
+        if let cached = AnalysisCache.loadBedtimeRecommendation() {
+            print("🌙 [BedtimeNotification] Using cached recommendation for test")
+            sendTestWithRecommendation(cached)
+            return
+        }
 
+        print("🌙 [BedtimeNotification] No cache — generating test recommendation via Gemini...")
         BedtimeRecommendationService.shared.generateRecommendation { [weak self] recommendation, error in
             guard let self = self else { return }
 
             if let recommendation = recommendation {
-                print("🌙 [BedtimeNotification] Test: bedtime \(recommendation.recommendedBedtimeLocal)")
-
-                let content = UNMutableNotificationContent()
-                content.sound = .default
-                content.userInfo = ["type": "bedtime_recommendation"]
-
-                let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
-                content.title = isHebrew ? recommendation.notification.title_he : recommendation.notification.title_en
-                content.body = isHebrew ? recommendation.notification.body_he : recommendation.notification.body_en
-
-                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)
-                let request = UNNotificationRequest(
-                    identifier: "bedtime-test-notification-\(Date().timeIntervalSince1970)",
-                    content: content,
-                    trigger: trigger
-                )
-
-                UNUserNotificationCenter.current().add(request) { error in
-                    if let error = error {
-                        print("🌙 [BedtimeNotification] Test failed: \(error)")
-                    } else {
-                        print("🌙 [BedtimeNotification] Test notification scheduled (3 seconds)")
-                    }
-                }
-
-                // Save to Firestore notification center
-                FriendsFirestoreSync.saveNotificationItem(
-                    type: "bedtime_recommendation",
-                    title: content.title,
-                    body: content.body,
-                    data: [
-                        "fullTitle": content.title,
-                        "fullBody": content.body,
-                        "recommendedBedtime": recommendation.recommendedBedtimeLocal,
-                        "sleepNeedMinutes": recommendation.sleepNeedTonightMinutes
-                    ]
-                )
+                self.sendTestWithRecommendation(recommendation)
             } else {
                 print("🌙 [BedtimeNotification] Test failed - sending generic: \(error?.localizedDescription ?? "unknown")")
                 self.sendBasicTestNotification()
             }
         }
+    }
+
+    private func sendTestWithRecommendation(_ recommendation: BedtimeRecommendation) {
+        print("🌙 [BedtimeNotification] Test: bedtime \(recommendation.recommendedBedtimeLocal)")
+
+        let content = UNMutableNotificationContent()
+        content.sound = .default
+        content.userInfo = ["type": "bedtime_recommendation"]
+
+        let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
+        content.title = isHebrew ? recommendation.notification.title_he : recommendation.notification.title_en
+        content.body = isHebrew ? recommendation.notification.body_he : recommendation.notification.body_en
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "bedtime-test-notification-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("🌙 [BedtimeNotification] Test notification failed: \(error)")
+            } else {
+                print("🌙 [BedtimeNotification] Test notification scheduled (3 seconds)")
+            }
+        }
+
+        // Save to Firestore notification center
+        FriendsFirestoreSync.saveNotificationItem(
+            type: "bedtime_recommendation",
+            title: content.title,
+            body: content.body,
+            data: [
+                "fullTitle": content.title,
+                "fullBody": content.body,
+                "recommendedBedtime": recommendation.recommendedBedtimeLocal,
+                "sleepNeedMinutes": recommendation.sleepNeedTonightMinutes
+            ]
+        )
     }
 
     private func sendBasicTestNotification() {
