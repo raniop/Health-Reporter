@@ -264,11 +264,11 @@ final class InsightsDashboardHeaderView: UIView {
         avatarImageView.layer.cornerRadius = 20
         avatarImageView.backgroundColor = AIONDesign.surface
 
-        // Bell button
-        bellButton.frame = CGRect(x: 0, y: 0, width: 36, height: 36)
+        // Bell button — same size as avatar (40x40)
+        bellButton.frame = CGRect(x: 0, y: 0, width: 40, height: 40)
         bellButton.backgroundColor = AIONDesign.surfaceElevated
-        bellButton.layer.cornerRadius = 18
-        let bellConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        bellButton.layer.cornerRadius = 20
+        let bellConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
         bellButton.setImage(UIImage(systemName: "bell.fill", withConfiguration: bellConfig), for: .normal)
         bellButton.tintColor = AIONDesign.textPrimary
         bellButton.addTarget(self, action: #selector(bellButtonTapped), for: .touchUpInside)
@@ -282,7 +282,7 @@ final class InsightsDashboardHeaderView: UIView {
         bellBadgeLabel.textAlignment = .center
         bellBadgeLabel.layer.cornerRadius = 8
         bellBadgeLabel.clipsToBounds = true
-        bellBadgeLabel.frame = CGRect(x: 22, y: -4, width: 16, height: 16)
+        bellBadgeLabel.frame = CGRect(x: 26, y: -2, width: 16, height: 16)
         bellBadgeLabel.isHidden = true
         bellButton.addSubview(bellBadgeLabel)
 
@@ -310,8 +310,8 @@ final class InsightsDashboardHeaderView: UIView {
             avatarImageView.widthAnchor.constraint(equalToConstant: 40),
             avatarImageView.heightAnchor.constraint(equalToConstant: 40),
 
-            bellButton.widthAnchor.constraint(equalToConstant: 36),
-            bellButton.heightAnchor.constraint(equalToConstant: 36),
+            bellButton.widthAnchor.constraint(equalToConstant: 40),
+            bellButton.heightAnchor.constraint(equalToConstant: 40),
         ])
 
         // Greeting based on time + user name
