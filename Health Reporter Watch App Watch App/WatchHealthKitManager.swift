@@ -14,6 +14,10 @@ class WatchHealthKitManager {
 
     private let healthStore = HKHealthStore()
 
+    /// Track whether we've already requested authorization this session
+    private(set) var isAuthorized: Bool = false
+    private var authorizationTask: Task<Bool, Error>?
+
     private init() {}
 
     // MARK: - Authorization
@@ -23,13 +27,9 @@ class WatchHealthKitManager {
         return HKHealthStore.isHealthDataAvailable()
     }
 
-    /// Requests HealthKit authorization for Watch-available types
-    func requestAuthorization() async throws -> Bool {
-        guard isHealthKitAvailable else {
-            throw WatchHealthKitError.notAvailable
-        }
-
-        let typesToRead: Set<HKObjectType> = [
+    /// The set of HealthKit types we need to read
+    private var typesToRead: Set<HKObjectType> {
+        [
             // Activity
             HKQuantityType.quantityType(forIdentifier: .stepCount)!,
             HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!,
@@ -44,15 +44,120 @@ class WatchHealthKitManager {
             // Sleep
             HKCategoryType.categoryType(forIdentifier: .sleepAnalysis)!,
         ]
+    }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: success)
+    /// Requests HealthKit authorization for Watch-available types.
+    /// Safe to call multiple times - concurrent calls will await the same result.
+    func requestAuthorization() async throws -> Bool {
+        guard isHealthKitAvailable else {
+            print("⌚️ HealthKit: NOT AVAILABLE on this device!")
+            throw WatchHealthKitError.notAvailable
+        }
+
+        // If already authorized, return immediately
+        if isAuthorized {
+            return true
+        }
+
+        // If there's an existing authorization task in progress, await its result
+        if let existingTask = authorizationTask {
+            print("⌚️ HealthKit: Awaiting existing authorization task...")
+            return try await existingTask.value
+        }
+
+        // Create a new authorization task
+        let task = Task<Bool, Error> {
+            print("⌚️ HealthKit: Requesting authorization for \(typesToRead.count) types...")
+
+            let success = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+                healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
+                    if let error = error {
+                        print("⌚️ HealthKit: Authorization ERROR: \(error.localizedDescription)")
+                        continuation.resume(throwing: error)
+                    } else {
+                        print("⌚️ HealthKit: requestAuthorization callback success=\(success)")
+                        continuation.resume(returning: success)
+                    }
                 }
             }
+
+            self.isAuthorized = success
+            logAuthorizationStatuses()
+            return success
+        }
+
+        authorizationTask = task
+        return try await task.value
+    }
+
+    /// Logs the authorization status for each HealthKit type (for debugging)
+    /// Note: For READ-only types, Apple always returns .sharingDenied (privacy protection)
+    /// This is normal - it doesn't mean the user denied access
+    private func logAuthorizationStatuses() {
+        for type in typesToRead {
+            let status = healthStore.authorizationStatus(for: type)
+            let statusStr: String
+            switch status {
+            case .notDetermined: statusStr = "NOT_DETERMINED"
+            case .sharingDenied: statusStr = "SHARING_DENIED (normal for read-only)"
+            case .sharingAuthorized: statusStr = "AUTHORIZED"
+            @unknown default: statusStr = "UNKNOWN"
+            }
+            print("⌚️ HealthKit: \(type.identifier) → \(statusStr)")
+        }
+    }
+
+    /// Performs a quick diagnostic query to check if HealthKit data is actually accessible
+    func runDiagnostic() async -> String {
+        guard isHealthKitAvailable else { return "HealthKit NOT available" }
+
+        var results: [String] = []
+
+        // Try to read step count to verify read access works
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfDay = calendar.startOfDay(for: now)
+
+        do {
+            let steps = try await fetchSumQuantity(.stepCount, start: startOfDay, end: now)
+            results.append("Steps: \(steps != nil ? "\(Int(steps!))" : "nil")")
+        } catch {
+            results.append("Steps ERROR: \(error.localizedDescription)")
+        }
+
+        do {
+            let hr = try await fetchLatestQuantity(.heartRate)
+            results.append("HR: \(hr != nil ? "\(Int(hr!))" : "nil")")
+        } catch {
+            results.append("HR ERROR: \(error.localizedDescription)")
+        }
+
+        do {
+            let cal = try await fetchSumQuantity(.activeEnergyBurned, start: startOfDay, end: now)
+            results.append("Cal: \(cal != nil ? "\(Int(cal!))" : "nil")")
+        } catch {
+            results.append("Cal ERROR: \(error.localizedDescription)")
+        }
+
+        let diagnostic = results.joined(separator: "\n")
+        print("⌚️ HealthKit Diagnostic:\n\(diagnostic)")
+        return diagnostic
+    }
+
+    /// Ensures authorization and fetches data - convenience method for startup
+    func ensureAuthorizationAndFetch() async -> WatchHealthData? {
+        do {
+            let authorized = try await requestAuthorization()
+            guard authorized else {
+                print("⌚️ HealthKit: Not authorized, cannot fetch local data")
+                return nil
+            }
+            let data = try await fetchTodayData()
+            print("⌚️ HealthKit: Local fetch successful - score=\(data.healthScore), steps=\(data.steps)")
+            return data
+        } catch {
+            print("⌚️ HealthKit: Auth or fetch error: \(error.localizedDescription)")
+            return nil
         }
     }
 
@@ -82,25 +187,23 @@ class WatchHealthKitManager {
         let hrvValue = try await hrv ?? 0
         let sleepValue = try await sleepHours ?? 0
 
-        // Calculate a simple health score for standalone mode
-        let healthScore = calculateSimpleScore(
-            steps: Int(stepsValue),
-            exerciseMinutes: Int(exerciseValue),
-            sleepHours: sleepValue,
-            restingHR: Int(restingHRValue),
-            hrv: Int(hrvValue)
-        )
+        // Detailed logging for debugging
+        print("⌚️ HealthKit fetchTodayData results:")
+        print("  steps=\(stepsValue), calories=\(caloriesValue), exercise=\(exerciseValue)")
+        print("  standHours=\(standHours), heartRate=\(heartRateValue), restingHR=\(restingHRValue)")
+        print("  hrv=\(hrvValue), sleep=\(sleepValue)h")
+        print("  timeRange: \(startOfDay) → \(now)")
 
-        let tier = tierForScore(healthScore)
-
+        // Return raw HealthKit metrics only - no score/tier calculation
+        // Real health score and car tier come only from iPhone
         return WatchHealthData(
-            healthScore: healthScore,
-            healthStatus: tier.status,
-            reliabilityScore: 60, // Lower reliability for standalone
-            carTierIndex: tier.index,
-            carName: tier.name,
-            carEmoji: tier.emoji,
-            carTierLabel: tier.label,
+            healthScore: 0,
+            healthStatus: "",
+            reliabilityScore: 0,
+            carTierIndex: 0,
+            carName: "",
+            carEmoji: "",
+            carTierLabel: "",
             geminiCarName: nil,
             geminiCarScore: nil,
             geminiCarTierIndex: nil,
@@ -281,57 +384,6 @@ class WatchHealthKitManager {
         }
     }
 
-    // MARK: - Simple Scoring
-
-    private func calculateSimpleScore(steps: Int, exerciseMinutes: Int, sleepHours: Double, restingHR: Int, hrv: Int) -> Int {
-        var score: Double = 50 // Base score
-
-        // Steps contribution (max 20 points)
-        let stepsScore = min(20.0, Double(steps) / 10000.0 * 20.0)
-        score += stepsScore
-
-        // Exercise contribution (max 15 points)
-        let exerciseScore = min(15.0, Double(exerciseMinutes) / 30.0 * 15.0)
-        score += exerciseScore
-
-        // Sleep contribution (max 25 points)
-        if sleepHours >= 7.0 && sleepHours <= 9.0 {
-            score += 25
-        } else if sleepHours >= 6.0 {
-            score += 15
-        } else if sleepHours >= 5.0 {
-            score += 5
-        }
-
-        // HRV contribution (max 10 points) - higher is better
-        if hrv > 0 {
-            let hrvScore = min(10.0, Double(hrv) / 60.0 * 10.0)
-            score += hrvScore
-        }
-
-        // Resting HR contribution (max 10 points) - lower is better
-        if restingHR > 0 && restingHR < 100 {
-            let hrScore = max(0.0, 10.0 - Double(restingHR - 50) / 5.0)
-            score += hrScore
-        }
-
-        return min(100, max(0, Int(score)))
-    }
-
-    private func tierForScore(_ score: Int) -> (index: Int, name: String, emoji: String, status: String, label: String) {
-        switch score {
-        case 0..<25:
-            return (0, "Fiat Panda", "🚙", "Needs Attention", "Needs Attention")
-        case 25..<45:
-            return (1, "Toyota Corolla", "🚗", "Okay", "Okay")
-        case 45..<65:
-            return (2, "BMW M3", "🏎️", "Good", "Good Condition")
-        case 65..<82:
-            return (3, "Porsche 911 Turbo", "🏁", "Excellent", "Excellent")
-        default:
-            return (4, "Ferrari SF90 Stradale", "🏆", "Peak", "Peak Performance")
-        }
-    }
 }
 
 // MARK: - Errors

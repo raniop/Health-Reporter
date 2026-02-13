@@ -1,0 +1,3 @@
+/* English translations for Info.plist strings */
+"NSHealthShareUsageDescription" = "The app needs access to your health data to analyze and show you important insights about your health status.";
+"NSHealthUpdateUsageDescription" = "The app needs access to update health data to save additional information.";

@@ -16,6 +16,9 @@ struct Health_Reporter_Watch_App_Watch_AppApp: App {
     init() {
         // Activate WatchConnectivity session
         WatchConnectivityManager.shared.activateSession()
+
+        // Request HealthKit authorization early so local data is available
+        WatchDataManager.shared.ensureHealthKitAuthorization()
     }
 
     var body: some Scene {

@@ -308,7 +308,11 @@ extension WatchConnectivityManager: WCSessionDelegate {
             // Send ALL data back to Watch
             DispatchQueue.main.async {
                 if let widgetData = WidgetDataManager.shared.loadCurrentData() {
-                    let tier = CarTierEngine.tierForScore(widgetData.healthScore)
+                    // Use dailyScore (real health score), NOT healthScore (which is Gemini 90-day)
+                    let cachedMainScore = AnalysisCache.loadMainScore()
+                    let dailyHealthScore = widgetData.dailyScore ?? cachedMainScore ?? 0
+                    print("📱 WatchConnectivity DEBUG: widgetData.healthScore(90day)=\(widgetData.healthScore), widgetData.dailyScore=\(String(describing: widgetData.dailyScore)), AnalysisCache.mainScore=\(String(describing: cachedMainScore)), SENDING=\(dailyHealthScore)")
+                    let tier = CarTierEngine.tierForScore(dailyHealthScore)
 
                     // Get Gemini car data from cache
                     let geminiCar = AnalysisCache.loadSelectedCar()
@@ -316,7 +320,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
                     let geminiTierIndex = geminiScore.map { CarTierEngine.tierForScore($0).tierIndex }
 
                     let watchData = WatchHealthDataTransfer(
-                        healthScore: widgetData.healthScore,
+                        healthScore: dailyHealthScore,
                         healthStatus: widgetData.healthStatus,
                         reliabilityScore: 85,
                         carTierIndex: widgetData.carTierIndex,
@@ -349,7 +353,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
 
                     if let encoded = try? JSONEncoder().encode(watchData) {
                         replyHandler(["watchHealthData": encoded])
-                        print("📱 WatchConnectivity: Sent to Watch - score=\(widgetData.healthScore), exercise=\(widgetData.exerciseMinutes), stand=\(widgetData.standHours)")
+                        print("📱 WatchConnectivity: Sent to Watch - dailyScore=\(dailyHealthScore), exercise=\(widgetData.exerciseMinutes), stand=\(widgetData.standHours)")
                     } else {
                         replyHandler(["error": "Failed to encode data"])
                     }

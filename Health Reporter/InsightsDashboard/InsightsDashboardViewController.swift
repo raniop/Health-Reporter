@@ -502,6 +502,9 @@ final class InsightsDashboardViewController: UIViewController {
 
 extension InsightsDashboardViewController: NotificationsCenterViewControllerDelegate {
     func notificationsCenterDidUpdate(_ controller: NotificationsCenterViewController) {
+        // Clear badge immediately (don't wait for Firestore round-trip)
+        headerView.updateBadge(count: 0)
+        // Also refresh from Firestore to get the actual count (in case of new notifications)
         updateBellBadge()
     }
 }

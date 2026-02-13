@@ -132,8 +132,10 @@ final class WidgetDataManager {
         let carEmoji = carName.isEmpty ? "" : tier.emoji
 
         // Save to widgets AND sync to Watch with all data
+        // score IS the daily score here (from Dashboard daily view)
         updateWidgetData(
             healthScore: score,
+            dailyScore: score,  // Explicitly set dailyScore = score (this IS the daily health score)
             healthStatus: status,
             steps: steps,
             calories: activeCalories,
@@ -264,9 +266,12 @@ extension WidgetDataManager {
         let geminiCar = AnalysisCache.loadSelectedCar()
         let geminiScore = AnalysisCache.loadHealthScore()
 
-        print("📱➡️⌚️ Sending to Watch: score=\(data.healthScore), steps=\(data.steps)")
+        // Use dailyScore (real health score) for Watch, NOT healthScore (which is Gemini 90-day)
+        let cachedMainScore = AnalysisCache.loadMainScore()
+        let watchHealthScore = data.dailyScore ?? cachedMainScore ?? 0
+        print("📱➡️⌚️ WidgetDataManager.sendToWatch DEBUG: data.healthScore(90day)=\(data.healthScore), data.dailyScore=\(String(describing: data.dailyScore)), AnalysisCache.mainScore=\(String(describing: cachedMainScore)), SENDING=\(watchHealthScore)")
         WatchConnectivityManager.shared.sendWidgetDataToWatch(
-            healthScore: data.healthScore,
+            healthScore: watchHealthScore,
             healthStatus: data.healthStatus,
             steps: data.steps,
             calories: data.calories,

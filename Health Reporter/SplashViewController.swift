@@ -222,100 +222,139 @@ class SplashViewController: UIViewController {
                 print("📊 [Splash] Saved YESTERDAY's activity: steps=\(steps), calories=\(calories)")
             }
 
-            // Send to watch - latest day data
-            // Priority: mainScore (daily score) > healthScoreInt (90-day score)
-            let todayEntry = dailyEntries.last
-            let displayScore = AnalysisCache.loadMainScore() ?? score
-            // Priority to saved status (from InsightsDashboard), otherwise calculate from score
-            let healthStatus: String
-            if let savedStatus = AnalysisCache.loadMainScoreStatus() {
-                healthStatus = savedStatus
-            } else {
-                let scoreLevel = RangeLevel.from(score: Double(displayScore))
-                healthStatus = "score.description.\(scoreLevel.rawValue)".localized
+            // Calculate daily mainScore from DailyMetrics (same as InsightsDashboard)
+            // This ensures mainScore is always fresh and correct, not stale from cache
+            let historicalData = dailyEntries.map { entry -> HealthDataModel in
+                var model = HealthDataModel()
+                model.date = entry.date
+                model.steps = entry.steps
+                model.heartRateVariability = entry.hrvMs
+                model.restingHeartRate = entry.restingHR
+                model.sleepHours = entry.sleepHours
+                model.sleepDeepHours = entry.deepSleepHours
+                model.sleepRemHours = entry.remSleepHours
+                model.activeEnergy = entry.activeCalories
+                model.vo2Max = entry.vo2max
+                return model
             }
+            let todayModel = historicalData.last ?? HealthDataModel()
 
-            // Fetch fresh exercise and stand data from HealthKit for today
-            let startOfDay = calendar.startOfDay(for: Date())
-            let endOfDay = Date()
+            DailyMetricsEngine.shared.calculateDailyMetrics(
+                todayData: todayModel,
+                historicalData: historicalData,
+                period: .day
+            ) { [weak self] dailyMetrics in
+                guard let self = self else { return }
 
-            HealthKitManager.shared.fetchExerciseMinutes(startDate: startOfDay, endDate: endOfDay) { exerciseMinutes in
-                HealthKitManager.shared.fetchStandHours(startDate: startOfDay, endDate: endOfDay) { standHours in
-                    DispatchQueue.main.async {
-                        let exercise = Int(exerciseMinutes ?? 0)
-                        let stand = Int(standHours ?? 0)
+                // Save the fresh daily mainScore
+                let freshMainScore: Int
+                if let mainScore = dailyMetrics.mainScore {
+                    freshMainScore = Int(mainScore)
+                    let scoreLevel = RangeLevel.from(score: mainScore)
+                    let freshStatus = "score.description.\(scoreLevel.rawValue)".localized
+                    AnalysisCache.saveMainScore(freshMainScore, status: freshStatus)
+                    print("📱 [Splash] ✅ Calculated fresh dailyMainScore=\(freshMainScore) from DailyMetrics")
+                } else {
+                    // No enough data for mainScore - use 0
+                    freshMainScore = 0
+                    print("📱 [Splash] ⚠️ DailyMetrics.mainScore is nil (not enough data)")
+                }
 
-                        // Check: if Gemini data exists in cache - use it for widget
-                        let geminiCar = AnalysisCache.loadSelectedCar()
-                        let geminiScore = AnalysisCache.loadHealthScore()
-                        let userName = Auth.auth().currentUser?.displayName ?? ""
+                // Send to watch - latest day data with fresh daily score
+                let todayEntry = dailyEntries.last
+                let displayScore = freshMainScore
+                let healthStatus: String
+                if freshMainScore > 0 {
+                    let scoreLevel = RangeLevel.from(score: Double(freshMainScore))
+                    healthStatus = "score.description.\(scoreLevel.rawValue)".localized
+                } else {
+                    healthStatus = ""
+                }
 
-                        if let geminiCarName = geminiCar?.name, let geminiScoreValue = geminiScore {
-                            // Has Gemini data - update widget with car name and score from Gemini
-                            let geminiTier = CarTierEngine.tierForScore(geminiScoreValue)
+                print("📱 [Splash] DEBUG: freshMainScore=\(freshMainScore), gemini90d=\(score), displayScore=\(displayScore)")
 
-                            // Prefetch car image for faster loading in Insights tab
-                            if let wikiName = geminiCar?.wikiName, !wikiName.isEmpty {
-                                WidgetDataManager.shared.prefetchCarImage(wikiName: wikiName)
+                // Fetch fresh exercise and stand data from HealthKit for today
+                let startOfDay = calendar.startOfDay(for: Date())
+                let endOfDay = Date()
+
+                HealthKitManager.shared.fetchExerciseMinutes(startDate: startOfDay, endDate: endOfDay) { exerciseMinutes in
+                    HealthKitManager.shared.fetchStandHours(startDate: startOfDay, endDate: endOfDay) { standHours in
+                        DispatchQueue.main.async {
+                            let exercise = Int(exerciseMinutes ?? 0)
+                            let stand = Int(standHours ?? 0)
+
+                            // Check: if Gemini data exists in cache - use it for widget
+                            let geminiCar = AnalysisCache.loadSelectedCar()
+                            let geminiScore = AnalysisCache.loadHealthScore()
+                            let userName = Auth.auth().currentUser?.displayName ?? ""
+
+                            if let geminiCarName = geminiCar?.name, let geminiScoreValue = geminiScore {
+                                // Has Gemini data - update widget with car name and score from Gemini
+                                let geminiTier = CarTierEngine.tierForScore(geminiScoreValue)
+
+                                // Prefetch car image for faster loading in Insights tab
+                                if let wikiName = geminiCar?.wikiName, !wikiName.isEmpty {
+                                    WidgetDataManager.shared.prefetchCarImage(wikiName: wikiName)
+                                }
+                                WidgetDataManager.shared.updateFromInsights(
+                                    score: geminiScoreValue,
+                                    dailyScore: displayScore,  // Daily score for secondary display
+                                    status: healthStatus,
+                                    carName: geminiCarName,
+                                    carEmoji: geminiTier.emoji,
+                                    steps: Int(todayEntry?.steps ?? 0),
+                                    activeCalories: Int(todayEntry?.activeCalories ?? 0),
+                                    exerciseMinutes: exercise,
+                                    standHours: stand,
+                                    restingHR: todayEntry?.restingHR.map { Int($0) },
+                                    hrv: todayEntry?.hrvMs.map { Int($0) },
+                                    sleepHours: todayEntry?.sleepHours,
+                                    userName: userName
+                                )
+                                print("📱 [Splash] Widget updated with Gemini data: car=\(geminiCarName), score=\(geminiScoreValue), user=\(userName)")
+
+                                // Send to watch - with daily score (not Gemini!) to maintain consistency
+                                // ALWAYS use Gemini car name - never generic tier names
+                                WatchConnectivityManager.shared.sendWidgetDataToWatch(
+                                    healthScore: displayScore,
+                                    healthStatus: healthStatus,
+                                    steps: Int(todayEntry?.steps ?? 0),
+                                    calories: Int(todayEntry?.activeCalories ?? 0),
+                                    exerciseMinutes: exercise,
+                                    standHours: stand,
+                                    heartRate: todayEntry?.restingHR.map { Int($0) } ?? 0,
+                                    hrv: todayEntry?.hrvMs.map { Int($0) } ?? 0,
+                                    sleepHours: todayEntry?.sleepHours ?? 0,
+                                    carName: geminiCarName,  // Use Gemini car name, not tier.name
+                                    carEmoji: geminiTier.emoji,
+                                    carTierIndex: geminiTier.tierIndex,
+                                    carTierLabel: geminiTier.tierLabel,
+                                    geminiCarName: geminiCarName,
+                                    geminiCarScore: geminiScoreValue
+                                )
+                            } else {
+                                // No Gemini data - use regular score (calculated from HealthScore)
+                                // Note: updateFromDashboard will use empty car name since no Gemini data
+                                WidgetDataManager.shared.updateFromDashboard(
+                                    score: displayScore,
+                                    status: healthStatus,
+                                    steps: Int(todayEntry?.steps ?? 0),
+                                    activeCalories: Int(todayEntry?.activeCalories ?? 0),
+                                    exerciseMinutes: exercise,
+                                    standHours: stand,
+                                    restingHR: todayEntry?.restingHR.map { Int($0) },
+                                    hrv: todayEntry?.hrvMs.map { Int($0) },
+                                    sleepHours: todayEntry?.sleepHours,
+                                    carTier: CarTierEngine.tierForScore(displayScore),
+                                    userName: userName
+                                )
+                                print("📱 [Splash] Widget updated - no Gemini data yet, score=\(displayScore), user=\(userName)")
                             }
-                            WidgetDataManager.shared.updateFromInsights(
-                                score: geminiScoreValue,
-                                dailyScore: displayScore,  // Daily score for secondary display
-                                status: healthStatus,
-                                carName: geminiCarName,
-                                carEmoji: geminiTier.emoji,
-                                steps: Int(todayEntry?.steps ?? 0),
-                                activeCalories: Int(todayEntry?.activeCalories ?? 0),
-                                exerciseMinutes: exercise,
-                                standHours: stand,
-                                restingHR: todayEntry?.restingHR.map { Int($0) },
-                                hrv: todayEntry?.hrvMs.map { Int($0) },
-                                sleepHours: todayEntry?.sleepHours,
-                                userName: userName
-                            )
-                            print("📱 [Splash] Widget updated with Gemini data: car=\(geminiCarName), score=\(geminiScoreValue), user=\(userName)")
-
-                            // Send to watch - with daily score (not Gemini!) to maintain consistency
-                            // ALWAYS use Gemini car name - never generic tier names
-                            WatchConnectivityManager.shared.sendWidgetDataToWatch(
-                                healthScore: displayScore,
-                                healthStatus: healthStatus,
-                                steps: Int(todayEntry?.steps ?? 0),
-                                calories: Int(todayEntry?.activeCalories ?? 0),
-                                exerciseMinutes: exercise,
-                                standHours: stand,
-                                heartRate: todayEntry?.restingHR.map { Int($0) } ?? 0,
-                                hrv: todayEntry?.hrvMs.map { Int($0) } ?? 0,
-                                sleepHours: todayEntry?.sleepHours ?? 0,
-                                carName: geminiCarName,  // Use Gemini car name, not tier.name
-                                carEmoji: geminiTier.emoji,
-                                carTierIndex: geminiTier.tierIndex,
-                                carTierLabel: geminiTier.tierLabel,
-                                geminiCarName: geminiCarName,
-                                geminiCarScore: geminiScoreValue
-                            )
-                        } else {
-                            // No Gemini data - use regular score (calculated from HealthScore)
-                            // Note: updateFromDashboard will use empty car name since no Gemini data
-                            WidgetDataManager.shared.updateFromDashboard(
-                                score: displayScore,
-                                status: healthStatus,
-                                steps: Int(todayEntry?.steps ?? 0),
-                                activeCalories: Int(todayEntry?.activeCalories ?? 0),
-                                exerciseMinutes: exercise,
-                                standHours: stand,
-                                restingHR: todayEntry?.restingHR.map { Int($0) },
-                                hrv: todayEntry?.hrvMs.map { Int($0) },
-                                sleepHours: todayEntry?.sleepHours,
-                                carTier: tier,
-                                userName: userName
-                            )
-                            print("📱 [Splash] Widget updated - no Gemini data yet, score=\(displayScore), user=\(userName)")
+                            print("📱 [Splash] Sent to Watch: score=\(displayScore), steps=\(Int(todayEntry?.steps ?? 0)), exercise=\(exercise), stand=\(stand)")
                         }
-                        print("📱 [Splash] Sent to Watch: score=\(displayScore), steps=\(Int(todayEntry?.steps ?? 0)), exercise=\(exercise), stand=\(stand)")
                     }
                 }
-            }
+            } // end DailyMetricsEngine callback
         }
     }
 

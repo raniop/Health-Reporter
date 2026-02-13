@@ -74,6 +74,93 @@ enum ProfileFirestoreSync {
         }
     }
 
+    /// Deletes all Firestore data for the current user (called before Firebase Auth deletion).
+    static func deleteAllUserData(completion: @escaping (Error?) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
+            completion(NSError(domain: "ProfileFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "sync.noUserLoggedIn".localized]))
+            return
+        }
+
+        let db = Firestore.firestore()
+        let userRef = db.collection(usersCollection).document(uid)
+        let group = DispatchGroup()
+        var firstError: Error?
+
+        let setError: (Error?) -> Void = { error in
+            if let error = error, firstError == nil { firstError = error }
+        }
+
+        // Helper to delete all docs in a subcollection
+        let deleteSubcollection: (CollectionReference) -> Void = { collectionRef in
+            group.enter()
+            collectionRef.getDocuments { snapshot, error in
+                if let error = error { setError(error); group.leave(); return }
+                guard let docs = snapshot?.documents, !docs.isEmpty else { group.leave(); return }
+                let batch = db.batch()
+                for doc in docs { batch.deleteDocument(doc.reference) }
+                batch.commit { error in setError(error); group.leave() }
+            }
+        }
+
+        // 1. Delete subcollections under users/{uid}
+        deleteSubcollection(userRef.collection("friends"))
+        deleteSubcollection(userRef.collection("following"))
+        deleteSubcollection(userRef.collection("followers"))
+        deleteSubcollection(userRef.collection("notifications"))
+
+        // 2. Delete publicScores/{uid}
+        group.enter()
+        db.collection("publicScores").document(uid).delete { error in
+            setError(error); group.leave()
+        }
+
+        // 3. Delete friend requests involving this user (from or to)
+        for field in ["fromUid", "toUid"] {
+            group.enter()
+            db.collection("friendRequests").whereField(field, isEqualTo: uid).getDocuments { snapshot, error in
+                if let error = error { setError(error); group.leave(); return }
+                guard let docs = snapshot?.documents, !docs.isEmpty else { group.leave(); return }
+                let batch = db.batch()
+                for doc in docs { batch.deleteDocument(doc.reference) }
+                batch.commit { error in setError(error); group.leave() }
+            }
+        }
+
+        // 4. Delete follow requests involving this user
+        for field in ["fromUid", "toUid"] {
+            group.enter()
+            db.collection("followRequests").whereField(field, isEqualTo: uid).getDocuments { snapshot, error in
+                if let error = error { setError(error); group.leave(); return }
+                guard let docs = snapshot?.documents, !docs.isEmpty else { group.leave(); return }
+                let batch = db.batch()
+                for doc in docs { batch.deleteDocument(doc.reference) }
+                batch.commit { error in setError(error); group.leave() }
+            }
+        }
+
+        // 5. Delete profile photo from Storage
+        group.enter()
+        Storage.storage().reference().child("profile_photos/\(uid).jpg").delete { error in
+            // Ignore "object not found" errors
+            if let error = error as NSError?, error.domain == StorageErrorDomain, error.code == StorageErrorCode.objectNotFound.rawValue {
+                group.leave()
+            } else {
+                setError(error)
+                group.leave()
+            }
+        }
+
+        // 6. Delete the user document itself
+        group.enter()
+        userRef.delete { error in
+            setError(error); group.leave()
+        }
+
+        group.notify(queue: .main) {
+            completion(firstError)
+        }
+    }
+
     /// Uploads image to Storage, returns download URL. path: profile_photos/{uid}.jpg
     static func uploadProfileImage(_ image: UIImage, completion: @escaping (Result<String, Error>) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {

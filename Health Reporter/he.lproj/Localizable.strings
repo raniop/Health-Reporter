@@ -463,10 +463,22 @@
 "morning.quality.good" = "איכות טובה";
 "morning.quality.low" = "איכות לשיפור";
 
-/* Morning Closing Messages (dynamic by score) */
-"morning.closing.excellent" = "יום מעולה מחכה לך! 🚀";
-"morning.closing.good" = "יום טוב לפניך! 💪";
-"morning.closing.rest" = "קח את זה בנוחות היום 🌿";
+/* Morning Closing Messages (dynamic by score, multiple variants) */
+"morning.closing.excellent.0" = "יום מעולה מחכה לך! 🚀";
+"morning.closing.excellent.1" = "הגוף שלך במיטבו, תנצל את זה! 🔥";
+"morning.closing.excellent.2" = "אנרגיה ברמות שיא, יאללה! ⚡";
+"morning.closing.excellent.3" = "הכל ירוק, אפשר לשבור שיאים! 🏆";
+"morning.closing.excellent.4" = "מצב מצוין, תהנה מהיום! ✨";
+"morning.closing.good.0" = "יום טוב לפניך! 💪";
+"morning.closing.good.1" = "יום נהדר מתחיל עכשיו! 🌟";
+"morning.closing.good.2" = "אתה במסלול הנכון, קדימה! 👊";
+"morning.closing.good.3" = "יום טוב להתקדם! 🎯";
+"morning.closing.good.4" = "הכל טוב, תעשה את המקסימום! 💫";
+"morning.closing.rest.0" = "קח את זה בנוחות היום 🌿";
+"morning.closing.rest.1" = "יום טוב להתאוששות, תהיה עדין עם עצמך 🧘";
+"morning.closing.rest.2" = "תן לגוף לנוח, מחר יהיה יותר טוב 🌙";
+"morning.closing.rest.3" = "התאוששות היא חלק מהתהליך 💚";
+"morning.closing.rest.4" = "יום שקט = השקעה במחר 🌱";
 
 /* Nutrition */
 "nutrition.supplementRecommendations" = "המלצות תוספי תזונה";
@@ -1062,3 +1074,13 @@
 "dataSources.strength.samsung.bloodPressure" = "מעקב לחץ דם";
 "dataSources.strength.samsung.ecg" = "ECG";
 "dataSources.strength.samsung.bodyComposition" = "הרכב גוף";
+
+/* מחיקת חשבון */
+"profile.deleteAccount" = "מחיקת חשבון";
+"profile.deleteAccountSubtitle" = "מחיקה לצמיתות של החשבון והנתונים";
+"profile.deleteAccountTitle" = "מחיקת חשבון";
+"profile.deleteAccountMessage" = "האם אתה בטוח שברצונך למחוק את החשבון לצמיתות? כל הנתונים שלך יימחקו ולא ניתן יהיה לשחזר פעולה זו.";
+"profile.deleteAccountConfirm" = "מחק את החשבון שלי";
+"profile.deleteAccountDeleting" = "מוחק חשבון...";
+"profile.deleteAccountError" = "מחיקת החשבון נכשלה. נסה שוב.";
+"profile.deleteAccountReauthRequired" = "לצורכי אבטחה, יש להתחבר מחדש לפני מחיקת החשבון.";

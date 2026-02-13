@@ -297,20 +297,22 @@ final class MorningNotificationManager {
             lines.append(String(format: "morning.steps.line".localized, stepsFormatted, goalFormatted))
         }
 
-        // Closing message (dynamic based on score)
+        // Closing message (dynamic based on score, randomized)
         if includeMotivation {
-            let closingMessage: String
+            let tier: String
             if let score = healthScore {
                 if score >= 80 {
-                    closingMessage = "morning.closing.excellent".localized
+                    tier = "morning.closing.excellent"
                 } else if score >= 60 {
-                    closingMessage = "morning.closing.good".localized
+                    tier = "morning.closing.good"
                 } else {
-                    closingMessage = "morning.closing.rest".localized
+                    tier = "morning.closing.rest"
                 }
             } else {
-                closingMessage = "morning.closing.good".localized
+                tier = "morning.closing.good"
             }
+            let variant = Int.random(in: 0...4)
+            let closingMessage = "\(tier).\(variant)".localized
             lines.append("")
             lines.append(closingMessage)
         }
@@ -718,20 +720,22 @@ final class MorningNotificationManager {
             bodyLines.append(String(format: "morning.streak.line".localized, stepStreak))
         }
 
-        // 6. Closing message (dynamic based on health score)
+        // 6. Closing message (dynamic based on health score, randomized)
         if includeMotivation {
-            let closingMessage: String
+            let tier: String
             if let score = healthScore {
                 if score >= 80 {
-                    closingMessage = "morning.closing.excellent".localized
+                    tier = "morning.closing.excellent"
                 } else if score >= 60 {
-                    closingMessage = "morning.closing.good".localized
+                    tier = "morning.closing.good"
                 } else {
-                    closingMessage = "morning.closing.rest".localized
+                    tier = "morning.closing.rest"
                 }
             } else {
-                closingMessage = "morning.closing.good".localized
+                tier = "morning.closing.good"
             }
+            let variant = Int.random(in: 0...4)
+            let closingMessage = "\(tier).\(variant)".localized
             bodyLines.append("")  // Empty line before closing
             bodyLines.append(closingMessage)
         }

@@ -67,10 +67,11 @@ class WatchDataManager: ObservableObject {
                 phoneData.isFromPhone = true
                 phoneData.lastUpdated = Date()
 
-                // Update on main actor
+                // Update on main actor - phone data always takes priority (richer scores)
                 DispatchQueue.main.async {
                     self.updateData(phoneData)
-                    print("⌚️ WatchDataManager: Received data - score=\(phoneData.healthScore), move=\(phoneData.moveCalories), exercise=\(phoneData.exerciseMinutes), stand=\(phoneData.standHours)")
+                    self.isLoading = false
+                    print("⌚️ WatchDataManager: Received phone data - score=\(phoneData.healthScore), move=\(phoneData.moveCalories), exercise=\(phoneData.exerciseMinutes), stand=\(phoneData.standHours)")
                 }
             } catch {
                 print("⌚️ WatchDataManager: Failed to decode context data: \(error)")
@@ -146,32 +147,67 @@ class WatchDataManager: ObservableObject {
         )
     }
 
-    /// Requests data refresh from iPhone, with fallback to local HealthKit
+    /// Requests data refresh - always fetches local HealthKit first, then upgrades from iPhone if available
     func requestRefresh() {
-        // Check if iPhone is reachable
-        if WatchConnectivityManager.shared.isReachable {
-            // iPhone is reachable - request data from it
-            WatchConnectivityManager.shared.requestDataFromPhone()
-        } else {
-            // iPhone not reachable - fetch local data from HealthKit on Watch
-            print("⌚️ WatchDataManager: iPhone not reachable, fetching local HealthKit data")
-            fetchLocalHealthKitData()
+        isLoading = true
+
+        // Fetch local HealthKit data and also request from iPhone in parallel
+        Task {
+            // Step 1: Authorize + fetch local HealthKit data
+            await authorizeAndFetchLocal()
+
+            // Step 2: Also try to get richer data from iPhone (includes advanced scores, Gemini car, etc.)
+            if WatchConnectivityManager.shared.isReachable {
+                print("⌚️ WatchDataManager: iPhone reachable - also requesting enriched data")
+                WatchConnectivityManager.shared.requestDataFromPhone()
+            } else {
+                print("⌚️ WatchDataManager: iPhone not reachable - using local HealthKit data only")
+            }
+            self.isLoading = false
         }
     }
 
-    /// Fetches health data from local HealthKit on Watch (fallback when iPhone not reachable)
-    private func fetchLocalHealthKitData() {
+    /// Ensures HealthKit authorization is granted on Watch, then fetches initial data (called at app launch)
+    func ensureHealthKitAuthorization() {
         Task {
-            do {
-                let localData = try await WatchHealthKitManager.shared.fetchTodayData()
-                self.healthData = localData
-                WatchDataStorage.saveData(localData)
-                WidgetCenter.shared.reloadAllTimelines()
-                print("⌚️ WatchDataManager: Using local HealthKit data - score=\(localData.healthScore), steps=\(localData.steps), exercise=\(localData.exerciseMinutes)")
-            } catch {
-                print("⌚️ WatchDataManager: Failed to fetch local HealthKit data: \(error)")
-                self.lastError = "Failed to fetch local data"
-            }
+            await authorizeAndFetchLocal()
+        }
+    }
+
+    /// Single method that handles authorization + local HealthKit fetch sequentially (no race conditions)
+    /// Only updates raw metrics (steps, HR, sleep, etc.) - never overwrites score/tier from iPhone
+    private func authorizeAndFetchLocal() async {
+        // Step 1: Request authorization (will only show prompt once)
+        do {
+            let _ = try await WatchHealthKitManager.shared.requestAuthorization()
+        } catch {
+            print("⌚️ WatchDataManager: HealthKit authorization error: \(error.localizedDescription)")
+        }
+
+        // Step 2: Fetch raw metrics from HealthKit
+        do {
+            let localData = try await WatchHealthKitManager.shared.fetchTodayData()
+
+            // Merge local HealthKit metrics into existing data
+            // Keep score/tier/car from iPhone (if available), only update raw metrics
+            var merged = healthData
+            merged.steps = localData.steps
+            merged.heartRate = localData.heartRate
+            merged.restingHeartRate = localData.restingHeartRate
+            merged.hrv = localData.hrv
+            merged.sleepHours = localData.sleepHours
+            merged.moveCalories = localData.moveCalories
+            merged.exerciseMinutes = localData.exerciseMinutes
+            merged.standHours = localData.standHours
+            merged.lastUpdated = Date()
+
+            self.healthData = merged
+            WatchDataStorage.saveData(merged)
+            WidgetCenter.shared.reloadAllTimelines()
+            print("⌚️ WatchDataManager: ✅ Local metrics updated - steps=\(merged.steps), hr=\(merged.heartRate), sleep=\(merged.sleepHours)h")
+        } catch {
+            print("⌚️ WatchDataManager: Failed to fetch local HealthKit data: \(error)")
+            self.lastError = "Failed to fetch local data"
         }
     }
 }

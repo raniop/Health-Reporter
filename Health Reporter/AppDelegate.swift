@@ -265,6 +265,29 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         let userInfo = notification.request.content.userInfo
         print("Notification received in foreground: \(userInfo)")
 
+        // Save scheduled notifications to Firestore bell page (immediate ones already save themselves)
+        if let type = userInfo["type"] as? String {
+            let content = notification.request.content
+            let isScheduled = notification.request.trigger is UNCalendarNotificationTrigger
+            if isScheduled {
+                let firestoreType: String
+                switch type {
+                case "morning_health":
+                    firestoreType = "morning_summary"
+                case "bedtime_recommendation":
+                    firestoreType = "bedtime_recommendation"
+                default:
+                    firestoreType = type
+                }
+                FriendsFirestoreSync.saveNotificationItem(
+                    type: firestoreType,
+                    title: content.title,
+                    body: content.body,
+                    data: ["fullTitle": content.title, "fullBody": content.body]
+                )
+            }
+        }
+
         // Show notification banner even when app is in foreground
         completionHandler([[.banner, .badge, .sound]])
     }
@@ -278,8 +301,28 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
         print("Notification tapped: \(userInfo)")
 
-        // Handle navigation based on notification type
+        // Save scheduled notifications to Firestore bell page when tapped (background delivery)
         if let type = userInfo["type"] as? String {
+            let content = response.notification.request.content
+            let isScheduled = response.notification.request.trigger is UNCalendarNotificationTrigger
+            if isScheduled {
+                let firestoreType: String
+                switch type {
+                case "morning_health":
+                    firestoreType = "morning_summary"
+                case "bedtime_recommendation":
+                    firestoreType = "bedtime_recommendation"
+                default:
+                    firestoreType = type
+                }
+                FriendsFirestoreSync.saveNotificationItem(
+                    type: firestoreType,
+                    title: content.title,
+                    body: content.body,
+                    data: ["fullTitle": content.title, "fullBody": content.body]
+                )
+            }
+
             handleNotificationAction(type: type, userInfo: userInfo)
         }
 

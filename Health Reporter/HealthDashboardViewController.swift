@@ -809,8 +809,8 @@ class HealthDashboardViewController: UIViewController {
                 tier = eval.tier
             }
         } else {
-            // Fallback: check AnalysisCache for saved score
-            if let cachedScore = AnalysisCache.loadHealthScore(), cachedScore > 0 {
+            // Fallback: use daily mainScore (NOT loadHealthScore which is Gemini 90-day)
+            if let cachedScore = AnalysisCache.loadMainScore(), cachedScore > 0 {
                 score = cachedScore
                 tier = CarTierEngine.tierForScore(score)
             }

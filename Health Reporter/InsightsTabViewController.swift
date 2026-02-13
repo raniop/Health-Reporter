@@ -807,8 +807,9 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     let scoreLevel = RangeLevel.from(score: Double(score))
     let status = "score.description.\(scoreLevel.rawValue)".localized
 
-    // Save the score and status for use on the watch
-    AnalysisCache.saveMainScore(score, status: status)
+    // NOTE: Do NOT save to mainScore here! This score is the Gemini 90-day average.
+    // mainScore should only be saved from InsightsDashboardViewController (daily score).
+    // AnalysisCache.saveMainScore is intentionally NOT called here.
 
     // Determine color based on score
     let tierColor: UIColor
@@ -3102,8 +3103,9 @@ private func showDiscoveryLoadingAnimation() {
         let scoreLevel = RangeLevel.from(score: Double(score))
         let status = "score.description.\(scoreLevel.rawValue)".localized
 
-        // Save the score and status for use on the watch
-        AnalysisCache.saveMainScore(score, status: status)
+        // NOTE: Do NOT save to mainScore here! This score is the Gemini 90-day average.
+        // mainScore should only be saved from InsightsDashboardViewController (daily score).
+        // AnalysisCache.saveMainScore is intentionally NOT called here.
 
         let tierColor: UIColor
         switch score {

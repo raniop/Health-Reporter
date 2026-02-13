@@ -144,7 +144,16 @@ final class SettingsViewController: UIViewController {
 
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: followPrivacyCard)
 
-        // 6. Logout Button
+        // 6. Delete Account Card (red, inside scroll view)
+        let deleteAccountCard = makeDeleteAccountCard()
+        stack.addArrangedSubview(deleteAccountCard)
+
+        NSLayoutConstraint.activate([
+            deleteAccountCard.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            deleteAccountCard.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+        ])
+
+        // 7. Logout Button (pinned to bottom)
         logoutButton.setTitle("profile.logout".localized, for: .normal)
         logoutButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .medium)
         logoutButton.setTitleColor(AIONDesign.textTertiary, for: .normal)
@@ -665,6 +674,82 @@ final class SettingsViewController: UIViewController {
         FollowFirestoreSync.setFollowPrivacy(privacy)
     }
 
+    // MARK: - Delete Account Card
+
+    private func makeDeleteAccountCard() -> UIView {
+        let card = UIView()
+        card.backgroundColor = AIONDesign.surface
+        card.layer.cornerRadius = AIONDesign.cornerRadius
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.isUserInteractionEnabled = true
+
+        let iconView = UIImageView(image: UIImage(systemName: "trash.fill"))
+        iconView.tintColor = .systemRed
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = "profile.deleteAccount".localized
+        titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.textColor = .systemRed
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "profile.deleteAccountSubtitle".localized
+        subtitleLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        subtitleLabel.textColor = AIONDesign.textSecondary
+        subtitleLabel.textAlignment = LocalizationManager.shared.textAlignment
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        let chevron = UIImageView(image: UIImage(systemName: isRTL ? "chevron.left" : "chevron.right"))
+        chevron.tintColor = AIONDesign.textTertiary
+        chevron.contentMode = .scaleAspectFit
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+
+        card.addSubview(iconView)
+        card.addSubview(titleLabel)
+        card.addSubview(subtitleLabel)
+        card.addSubview(chevron)
+
+        NSLayoutConstraint.activate([
+            card.heightAnchor.constraint(equalToConstant: 64),
+
+            iconView.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 28),
+            iconView.heightAnchor.constraint(equalToConstant: 28),
+
+            titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
+
+            chevron.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            chevron.widthAnchor.constraint(equalToConstant: 16),
+            chevron.heightAnchor.constraint(equalToConstant: 16),
+        ])
+
+        if isRTL {
+            NSLayoutConstraint.activate([
+                iconView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+                titleLabel.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -12),
+                subtitleLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+                chevron.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+                titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
+                subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+                chevron.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+            ])
+        }
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(deleteAccountTapped))
+        card.addGestureRecognizer(tap)
+
+        return card
+    }
+
     // MARK: - Background Color Change Notification
 
     @objc private func backgroundColorDidChange() {
@@ -691,5 +776,100 @@ final class SettingsViewController: UIViewController {
             alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
             present(alert, animated: true)
         }
+    }
+
+    // MARK: - Delete Account
+
+    @objc private func deleteAccountTapped() {
+        let alert = UIAlertController(
+            title: "profile.deleteAccountTitle".localized,
+            message: "profile.deleteAccountMessage".localized,
+            preferredStyle: .alert
+        )
+
+        alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
+
+        alert.addAction(UIAlertAction(title: "profile.deleteAccountConfirm".localized, style: .destructive) { [weak self] _ in
+            self?.performAccountDeletion()
+        })
+
+        present(alert, animated: true)
+    }
+
+    private func performAccountDeletion() {
+        guard let user = Auth.auth().currentUser else { return }
+
+        // Show loading
+        let loadingAlert = UIAlertController(
+            title: nil,
+            message: "profile.deleteAccountDeleting".localized,
+            preferredStyle: .alert
+        )
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        spinner.startAnimating()
+        loadingAlert.view.addSubview(spinner)
+        NSLayoutConstraint.activate([
+            spinner.centerXAnchor.constraint(equalTo: loadingAlert.view.centerXAnchor),
+            spinner.bottomAnchor.constraint(equalTo: loadingAlert.view.bottomAnchor, constant: -20),
+            loadingAlert.view.heightAnchor.constraint(greaterThanOrEqualToConstant: 100)
+        ])
+        present(loadingAlert, animated: true)
+
+        // Step 1: Delete all Firestore data & Storage
+        ProfileFirestoreSync.deleteAllUserData { [weak self] firestoreError in
+            if let firestoreError = firestoreError {
+                print("⚠️ Firestore cleanup error (proceeding anyway): \(firestoreError.localizedDescription)")
+            }
+
+            // Step 2: Clear local data
+            AnalyticsService.shared.resetAnalyticsData()
+            AIONMemoryManager.clear()
+
+            // Step 3: Delete Firebase Auth account
+            user.delete { [weak self] error in
+                DispatchQueue.main.async {
+                    loadingAlert.dismiss(animated: true) {
+                        if let error = error {
+                            let nsError = error as NSError
+                            // Firebase requires recent authentication for account deletion
+                            if nsError.code == AuthErrorCode.requiresRecentLogin.rawValue {
+                                self?.showReauthRequiredAlert()
+                            } else {
+                                self?.showErrorAlert(message: "profile.deleteAccountError".localized)
+                            }
+                        } else {
+                            // Account deleted — go to login
+                            (self?.view.window?.windowScene?.delegate as? SceneDelegate)?.showLogin()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func showReauthRequiredAlert() {
+        let alert = UIAlertController(
+            title: "profile.deleteAccountTitle".localized,
+            message: "profile.deleteAccountReauthRequired".localized,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "ok".localized, style: .default) { [weak self] _ in
+            // Sign out so the user can sign in again fresh
+            do {
+                try Auth.auth().signOut()
+                (self?.view.window?.windowScene?.delegate as? SceneDelegate)?.showLogin()
+            } catch {
+                self?.showErrorAlert(message: error.localizedDescription)
+            }
+        })
+        alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
+        present(alert, animated: true)
+    }
+
+    private func showErrorAlert(message: String) {
+        let alert = UIAlertController(title: "error".localized, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
+        present(alert, animated: true)
     }
 }

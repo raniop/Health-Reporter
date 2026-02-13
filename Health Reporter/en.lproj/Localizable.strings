@@ -472,10 +472,22 @@
 "morning.quality.good" = "good quality";
 "morning.quality.low" = "needs improvement";
 
-/* Morning Closing Messages (dynamic by score) */
-"morning.closing.excellent" = "Have an amazing day! 🚀";
-"morning.closing.good" = "Good day ahead! 💪";
-"morning.closing.rest" = "Take it easy today 🌿";
+/* Morning Closing Messages (dynamic by score, multiple variants) */
+"morning.closing.excellent.0" = "Have an amazing day! 🚀";
+"morning.closing.excellent.1" = "Your body is at its best, make it count! 🔥";
+"morning.closing.excellent.2" = "Energy levels are peaking, let's go! ⚡";
+"morning.closing.excellent.3" = "All green, time to crush it! 🏆";
+"morning.closing.excellent.4" = "Feeling great, enjoy the day! ✨";
+"morning.closing.good.0" = "Good day ahead! 💪";
+"morning.closing.good.1" = "A great day starts now! 🌟";
+"morning.closing.good.2" = "You're on the right track, keep going! 👊";
+"morning.closing.good.3" = "Good day to make progress! 🎯";
+"morning.closing.good.4" = "All good, make the most of it! 💫";
+"morning.closing.rest.0" = "Take it easy today 🌿";
+"morning.closing.rest.1" = "A good day for recovery, be kind to yourself 🧘";
+"morning.closing.rest.2" = "Let your body rest, tomorrow will be better 🌙";
+"morning.closing.rest.3" = "Recovery is part of the process 💚";
+"morning.closing.rest.4" = "A quiet day = investing in tomorrow 🌱";
 
 /* Nutrition */
 "nutrition.supplementRecommendations" = "Supplement Recommendations";
@@ -1058,3 +1070,13 @@
 "dataSources.strength.samsung.bloodPressure" = "Blood Pressure Monitoring";
 "dataSources.strength.samsung.ecg" = "ECG";
 "dataSources.strength.samsung.bodyComposition" = "Body Composition";
+
+/* Account Deletion */
+"profile.deleteAccount" = "Delete Account";
+"profile.deleteAccountSubtitle" = "Permanently remove your account and data";
+"profile.deleteAccountTitle" = "Delete Account";
+"profile.deleteAccountMessage" = "Are you sure you want to permanently delete your account? All your data will be removed and this action cannot be undone.";
+"profile.deleteAccountConfirm" = "Delete My Account";
+"profile.deleteAccountDeleting" = "Deleting account...";
+"profile.deleteAccountError" = "Failed to delete account. Please try again.";
+"profile.deleteAccountReauthRequired" = "For security, please sign in again before deleting your account.";
