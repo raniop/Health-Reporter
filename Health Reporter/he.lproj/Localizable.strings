@@ -765,6 +765,22 @@
 "social.timeAgo.yesterday" = "אתמול";
 "social.timeAgo.days" = "לפני %d ימים";
 
+/* צ׳אט */
+"chat.title" = "הודעות";
+"chat.message" = "הודעה";
+"chat.noConversations" = "עדיין אין הודעות";
+"chat.noConversationsSubtitle" = "התחל לשוחח עם חברים!";
+"chat.typeMessage" = "הקלד הודעה...";
+"chat.sent" = "נשלח";
+"chat.delivered" = "נמסר";
+"chat.seen" = "נקרא";
+"chat.today" = "היום";
+"chat.yesterday" = "אתמול";
+"chat.startConversation" = "תגיד שלום! שלח את ההודעה הראשונה.";
+"chat.noMessages" = "עדיין אין הודעות";
+"chat.unknownUser" = "משתמש לא ידוע";
+"chat.mutualFollowRequired" = "שניכם צריכים לעקוב אחד אחרי השני כדי לשוחח";
+
 /* מסך הגדרות */
 "settings.title" = "הגדרות";
 
@@ -1084,3 +1100,35 @@
 "profile.deleteAccountDeleting" = "מוחק חשבון...";
 "profile.deleteAccountError" = "מחיקת החשבון נכשלה. נסה שוב.";
 "profile.deleteAccountReauthRequired" = "לצורכי אבטחה, יש להתחבר מחדש לפני מחיקת החשבון.";
+
+/* מסך הבית - עיצוב מחדש */
+"home.edit" = "עריכה";
+"home.hero.metric" = "מדד מרכזי";
+"home.secondary.metrics" = "מדדים משניים";
+"home.recommendations.title" = "ההמלצות שלך";
+"home.recommendations.medical" = "רפואי";
+"home.recommendations.sports" = "ספורט וכושר";
+"home.recommendations.nutrition" = "תזונה";
+"home.recommendations.error" = "לא ניתן לטעון המלצות";
+"home.recommendations.retry" = "שלח שוב לניתוח AI";
+"home.reset.defaults" = "איפוס לברירת מחדל";
+"home.select.hero" = "בחר מדד מרכזי";
+"home.select.secondary" = "בחר 4 מדדים משניים";
+
+/* הסברי מדדים */
+"explanation.main_score" = "ציון משוקלל המבוסס על התאוששות, שינה, אנרגיה, פעילות ואיזון עומסים";
+"explanation.nervous_system_balance" = "איזון בין מערכת העצבים הסימפתטית לפאראסימפתטית על בסיס HRV ודופק מנוחה";
+"explanation.recovery_readiness" = "עד כמה הגוף מוכן לביצועים, על בסיס שינה, HRV ודופק מנוחה";
+"explanation.recovery_debt" = "עודף או גירעון התאוששות מצטבר בשבוע האחרון";
+"explanation.stress_load_index" = "מדד לחץ משולב מדיכוי HRV, דופק מוגבר וגירעון שינה";
+"explanation.morning_freshness" = "עד כמה אתה רענן על בסיס מדדי ההתאוששות הלילית";
+"explanation.sleep_quality" = "ציון שינה כולל המבוסס על משך, שינה עמוקה, REM ויעילות";
+"explanation.sleep_consistency" = "עד כמה לוח השינה שלך היה עקבי בשבוע האחרון";
+"explanation.sleep_debt" = "גירעון שינה מצטבר בהשוואה לצורך השינה האופטימלי שלך";
+"explanation.training_strain" = "רמת עצימות האימון על בסיס משך, דופק וקלוריות";
+"explanation.load_balance" = "יחס בין עומס האימון האחרון לממוצע ארוך הטווח";
+"explanation.energy_forecast" = "תחזית אנרגיה על בסיס התאוששות, שינה ודפוסי פעילות אחרונים";
+"explanation.workout_readiness" = "עד כמה הגוף מוכן לאימון אינטנסיבי היום";
+"explanation.activity_score" = "רמת פעילות יומית על בסיס צעדים, דקות פעילות ותנועה";
+"explanation.daily_goals" = "התקדמות לעבר יעדי תנועה, אימון ועמידה יומיים";
+"explanation.cardio_fitness_trend" = "מגמת כושר קרדיווסקולרי על בסיס הערכות VO2 max";

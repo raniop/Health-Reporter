@@ -29,23 +29,16 @@ enum OnboardingManager {
     ///   - additionalUserInfo: Additional info from Firebase (to check isNewUser in OAuth)
     /// - Returns: true if onboarding should be shown
     static func shouldShowOnboarding(isSignUp: Bool, additionalUserInfo: AdditionalUserInfo?) -> Bool {
-        // If already completed onboarding in current version - don't show
+        // If already completed onboarding in current version on this device - don't show
         if hasCompletedOnboarding() {
             return false
         }
 
-        // Case 1: Email signup - isSignUp is true
-        if isSignUp {
-            return true
-        }
-
-        // Case 2: OAuth (Google/Apple) - check isNewUser
-        if let additional = additionalUserInfo, additional.isNewUser {
-            return true
-        }
-
-        // Case 3: Returning user logging in - don't show
-        return false
+        // Device has no local onboarding completion record.
+        // This means either a new user or an existing user on a new device.
+        // In both cases we need to show onboarding so the user grants
+        // HealthKit / notification permissions on this device.
+        return true
     }
 
     /// Checks if the user has already completed onboarding

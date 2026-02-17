@@ -752,4 +752,26 @@ extension AnalysisCache {
     static func clearUserNotes() {
         UserDefaults.standard.removeObject(forKey: keyUserNotes)
     }
+
+    // MARK: - Home Recommendations (3 categories)
+
+    private static let keyHomeRecommendations = "AnalysisCache.HomeRecommendations"
+    private static let keyHomeRecommendationsDate = "AnalysisCache.HomeRecommendationsDate"
+
+    static func saveHomeRecommendations(_ recs: HomeRecommendations) {
+        if let data = try? JSONEncoder().encode(recs) {
+            UserDefaults.standard.set(data, forKey: keyHomeRecommendations)
+            UserDefaults.standard.set(Date(), forKey: keyHomeRecommendationsDate)
+        }
+    }
+
+    /// Returns cached recommendations if they were saved today; otherwise nil.
+    static func loadHomeRecommendations() -> HomeRecommendations? {
+        guard let savedDate = UserDefaults.standard.object(forKey: keyHomeRecommendationsDate) as? Date,
+              Calendar.current.isDateInToday(savedDate),
+              let data = UserDefaults.standard.data(forKey: keyHomeRecommendations),
+              let recs = try? JSONDecoder().decode(HomeRecommendations.self, from: data)
+        else { return nil }
+        return recs
+    }
 }

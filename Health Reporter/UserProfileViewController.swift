@@ -999,6 +999,17 @@ final class UserProfileViewController: UIViewController {
             primaryButton.layer.borderColor = AIONDesign.separator.withAlphaComponent(0.4).cgColor
             secondaryButton.isHidden = true
 
+            // Check for mutual follow to show Message button
+            ChatFirestoreSync.checkMutualFollow(with: userUid) { [weak self] isMutual in
+                guard let self = self, isMutual else { return }
+                self.secondaryButton.isHidden = false
+                self.secondaryButton.setTitle("chat.message".localized, for: .normal)
+                self.secondaryButton.setTitleColor(AIONDesign.accentPrimary, for: .normal)
+                self.secondaryButton.backgroundColor = .clear
+                self.secondaryButton.layer.borderWidth = 1
+                self.secondaryButton.layer.borderColor = AIONDesign.accentPrimary.withAlphaComponent(0.4).cgColor
+            }
+
         case .followRequestSent:
             primaryButton.isHidden = false
             primaryButton.isEnabled = true
@@ -1066,9 +1077,30 @@ final class UserProfileViewController: UIViewController {
     @objc private func didTapSecondary() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         secondaryButton.springAnimation { [weak self] in
-            if case .followRequestReceived(let rid) = self?.friendshipStatus {
-                self?.performDecline(requestId: rid)
+            guard let self = self else { return }
+            if case .followRequestReceived(let rid) = self.friendshipStatus {
+                self.performDecline(requestId: rid)
+            } else if case .following = self.friendshipStatus {
+                // Message button — open chat
+                self.openChat()
             }
+        }
+    }
+
+    private func openChat() {
+        setButtonsLoading(true)
+        ChatFirestoreSync.getOrCreateConversation(with: userUid) { [weak self] conversation, error in
+            guard let self = self else { return }
+            self.setButtonsLoading(false)
+
+            if let error = error {
+                self.presentError(error.localizedDescription)
+                return
+            }
+
+            guard let conversation = conversation else { return }
+            let chatVC = ChatViewController(conversation: conversation)
+            self.navigationController?.pushViewController(chatVC, animated: true)
         }
     }
 

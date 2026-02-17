@@ -2,8 +2,7 @@
 //  InsightsDashboardViewController.swift
 //  Health Reporter
 //
-//  Main screen - Insights Dashboard
-//  Shows meaning, not raw data
+//  Main screen - Redesigned home with 5 customizable metrics + AI recommendations.
 //
 
 import UIKit
@@ -15,28 +14,26 @@ final class InsightsDashboardViewController: UIViewController {
 
     private var dailyMetrics: DailyMetrics?
     private var starMetrics: StarMetrics?
-    private var currentPeriodData: HealthDataModel?  // Current period data
-    private var storedHistoricalData: [HealthDataModel] = []  // 90 days retained for 7-day charts
-    private var scoreHistory: [DailyScoreEntry] = []           // 7-day computed score history
+    private var currentPeriodData: HealthDataModel?
+    private var storedHistoricalData: [HealthDataModel] = []
+    private var scoreHistory: [DailyScoreEntry] = []
     private var isLoading = true
     private var selectedPeriod: TimePeriod = .day
     private var lastUpdatedTime: Date?
+    private var metricSelection = HomeMetricSelection.load()
+    private var recommendations: HomeRecommendations?
+    private var hasPlayedEntrance = false
+    private var lastRecsHealthData: HealthDataModel?
+    private var lastRecsDailyMetrics: DailyMetrics?
 
+    // UI
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
-
-    // Sections
-    private let headerView = InsightsDashboardHeaderView()
-    private let periodSelector = PeriodSelectorView()
-    private let heroSection = HeroScoreSection()
-    private let starMetricsBar = StarMetricsBarView()
-    private let whyScoreSection = WhyScoreSection()
-    private let recoverySectionView = RecoverySectionView()
-    private let sleepSectionView = SleepSectionView()
-    private let trainingSectionView = TrainingSectionView()
-    private let activitySectionView = ActivitySectionCompact()
-    private let guidanceCard = GuidanceCardView()
-
+    private let headerView = HomeHeaderView()
+    private let heroCard = HeroMetricCardView()
+    private let secondaryGrid = UIStackView()   // 2x2 grid
+    private let secondaryCards: [SecondaryMetricCardView] = (0..<4).map { _ in SecondaryMetricCardView() }
+    private let recommendationsSection = AIRecommendationsSectionView()
     private let loadingIndicator = UIActivityIndicatorView(style: .large)
     private let refreshControl = UIRefreshControl()
 
@@ -47,36 +44,24 @@ final class InsightsDashboardViewController: UIViewController {
         setupUI()
         loadData()
 
-        // Listen for app returning from background - refresh data
         NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(appWillEnterForeground),
-            name: UIApplication.willEnterForegroundNotification,
-            object: nil
+            self, selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification, object: nil
         )
-
-        // Refresh bell badge when a new notification is saved
         NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleNotificationItemSaved),
-            name: NSNotification.Name("NotificationItemSaved"),
-            object: nil
+            self, selector: #selector(handleNotificationItemSaved),
+            name: NSNotification.Name("NotificationItemSaved"), object: nil
         )
     }
 
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
+    deinit { NotificationCenter.default.removeObserver(self) }
 
     @objc private func appWillEnterForeground() {
-        // Refresh data when app returns from background (new data may be available)
         loadData()
         updateBellBadge()
     }
 
-    @objc private func handlePullToRefresh() {
-        loadData()
-    }
+    @objc private func handlePullToRefresh() { loadData() }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -93,13 +78,12 @@ final class InsightsDashboardViewController: UIViewController {
 
     private func setupUI() {
         view.backgroundColor = AIONDesign.background
-
-        // Configure semantic direction (RTL/LTR)
         configureSemanticDirection()
 
         // Scroll view
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsVerticalScrollIndicator = false
+        scrollView.delegate = self
         view.addSubview(scrollView)
 
         // Pull-to-refresh
@@ -109,18 +93,19 @@ final class InsightsDashboardViewController: UIViewController {
 
         // Content stack
         contentStack.axis = .vertical
-        contentStack.spacing = 16
+        contentStack.spacing = 20
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentStack)
 
-        // Add sections to stack
-        [headerView, periodSelector, heroSection, starMetricsBar,
-         whyScoreSection, recoverySectionView, sleepSectionView,
-         trainingSectionView, activitySectionView, guidanceCard].forEach {
+        // Build 2x2 grid for secondary cards
+        setupSecondaryGrid()
+
+        // Add sections
+        [headerView, heroCard, secondaryGrid, recommendationsSection].forEach {
             contentStack.addArrangedSubview($0)
         }
 
-        // Loading indicator
+        // Loading
         loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
         loadingIndicator.hidesWhenStopped = true
         loadingIndicator.color = AIONDesign.accentPrimary
@@ -135,39 +120,54 @@ final class InsightsDashboardViewController: UIViewController {
             contentStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16),
             contentStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
             contentStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
-            contentStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -16),
+            contentStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -32),
             contentStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32),
 
             loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
         ])
 
-        // Setup callbacks
-        headerView.onBellTapped = { [weak self] in
-            self?.bellTapped()
+        // Callbacks
+        headerView.onEditTapped = { [weak self] in self?.showMetricEditor() }
+        headerView.onBellTapped = { [weak self] in self?.bellTapped() }
+
+        heroCard.onTap = { [weak self] in self?.heroCardTapped() }
+
+        for (i, card) in secondaryCards.enumerated() {
+            card.onTap = { [weak self] in self?.secondaryCardTapped(index: i) }
         }
 
-        periodSelector.onPeriodChanged = { [weak self] period in
-            self?.handlePeriodChange(period)
+        recommendationsSection.onRetryTapped = { [weak self] in
+            self?.retryRecommendations()
         }
 
-        whyScoreSection.isHidden = true // Initially collapsed
-        heroSection.onWhyTapped = { [weak self] in
-            self?.toggleWhySection()
-        }
+        // Initially hidden for entrance animation
+        contentStack.alpha = 0
+    }
 
-        heroSection.onCarTapped = { [weak self] in
-            // Navigate to Insights tab when car cube is tapped
-            self?.tabBarController?.selectedIndex = 2
-        }
+    private func setupSecondaryGrid() {
+        secondaryGrid.axis = .vertical
+        secondaryGrid.spacing = 12
+        secondaryGrid.distribution = .fillEqually
 
-        heroSection.onSleepTapped = { [weak self] in
-            self?.showSleepDetail()
-        }
+        let row1 = UIStackView(arrangedSubviews: [secondaryCards[0], secondaryCards[1]])
+        row1.axis = .horizontal
+        row1.spacing = 12
+        row1.distribution = .fillEqually
 
-        starMetricsBar.onMetricTapped = { [weak self] metric in
-            self?.showMetricDetail(metric)
-        }
+        let row2 = UIStackView(arrangedSubviews: [secondaryCards[2], secondaryCards[3]])
+        row2.axis = .horizontal
+        row2.spacing = 12
+        row2.distribution = .fillEqually
+
+        secondaryGrid.addArrangedSubview(row1)
+        secondaryGrid.addArrangedSubview(row2)
+
+        // Card heights
+        NSLayoutConstraint.activate([
+            row1.heightAnchor.constraint(equalToConstant: 170),
+            row2.heightAnchor.constraint(equalToConstant: 170),
+        ])
     }
 
     // MARK: - Data Loading
@@ -180,7 +180,6 @@ final class InsightsDashboardViewController: UIViewController {
             contentStack.isHidden = true
         }
 
-        // Determine data range based on selected period
         let dataRange: DataRange
         switch selectedPeriod {
         case .day: dataRange = .day
@@ -189,8 +188,7 @@ final class InsightsDashboardViewController: UIViewController {
         }
 
         #if DEBUG
-        // Test user - using mock data from cache
-        if DebugTestHelper.isTestUser(email: FirebaseAuth.Auth.auth().currentUser?.email),
+        if DebugTestHelper.isTestUser(email: Auth.auth().currentUser?.email),
            let mockData = HealthDataCache.shared.healthData,
            let mockBundle = HealthDataCache.shared.chartBundle {
             print("🧪 [InsightsDashboard] Test user - using mock health data")
@@ -199,7 +197,6 @@ final class InsightsDashboardViewController: UIViewController {
         }
         #endif
 
-        // Load data for selected period
         HealthKitManager.shared.fetchAllHealthData(for: dataRange) { [weak self] periodData, error in
             guard let self = self, let periodModel = periodData else {
                 DispatchQueue.main.async {
@@ -211,12 +208,10 @@ final class InsightsDashboardViewController: UIViewController {
                 return
             }
 
-            // Fetch historical data (90 days for all calculations)
             HealthKitManager.shared.fetchDailyHealthData(days: 90) { historicalEntries in
-                // Convert RawDailyHealthEntry to HealthDataModel
                 let historicalData = historicalEntries.map { entry -> HealthDataModel in
                     var model = HealthDataModel()
-                    model.date = entry.date  // Important! Need the date for the sleep chart
+                    model.date = entry.date
                     model.steps = entry.steps
                     model.heartRateVariability = entry.hrvMs
                     model.restingHeartRate = entry.restingHR
@@ -228,11 +223,6 @@ final class InsightsDashboardViewController: UIViewController {
                     return model
                 }
 
-                // Calculate metrics with period awareness
-                // Log periodModel data
-                print("📊 [Dashboard] periodModel for \(self.selectedPeriod): steps=\(periodModel.steps ?? 0), calories=\(periodModel.activeEnergy ?? 0)")
-
-                // Retain historical data for 7-day chart calculations
                 self.storedHistoricalData = historicalData
 
                 DailyMetricsEngine.shared.calculateDailyMetrics(
@@ -241,7 +231,7 @@ final class InsightsDashboardViewController: UIViewController {
                     period: self.selectedPeriod
                 ) { dailyMetrics in
                     DispatchQueue.main.async {
-                        self.currentPeriodData = periodModel  // Save period data
+                        self.currentPeriodData = periodModel
                         self.dailyMetrics = dailyMetrics
                         self.starMetrics = StarMetricsCalculator.shared.calculateStarMetrics(from: dailyMetrics)
                         self.lastUpdatedTime = Date()
@@ -250,27 +240,29 @@ final class InsightsDashboardViewController: UIViewController {
                         self.loadingIndicator.stopAnimating()
                         self.refreshControl.endRefreshing()
                         self.contentStack.isHidden = false
+                        self.playEntranceAnimationIfNeeded()
                     }
 
-                    // Compute 7-day score history in background
+                    // 7-day score history
                     DailyMetricsEngine.shared.calculate7DayHistory(
                         fullHistoricalData: historicalData
                     ) { [weak self] history in
                         guard let self = self else { return }
                         self.scoreHistory = history
-                        self.updateUI()  // Refresh to make history available to bottom sheets
+                        DispatchQueue.main.async {
+                            self.updateUI()
+                        }
                     }
+
+                    // Fetch AI recommendations
+                    self.fetchRecommendations(healthData: periodModel, dailyMetrics: dailyMetrics)
                 }
             }
         }
     }
 
     #if DEBUG
-    /// Load mock data for test user
     private func loadDataWithMockData(mockData: HealthDataModel, mockBundle: AIONChartDataBundle) {
-        print("🧪 [InsightsDashboard] Loading with mock data: steps=\(mockData.steps ?? 0), hrv=\(mockData.heartRateVariability ?? 0)")
-
-        // Create mock history from chartBundle (7 days)
         var historicalData: [HealthDataModel] = []
         for i in 0..<mockBundle.steps.points.count {
             var dayModel = HealthDataModel()
@@ -293,8 +285,6 @@ final class InsightsDashboardViewController: UIViewController {
             historicalData.append(dayModel)
         }
 
-        print("🧪 [InsightsDashboard] Mock data: steps=\(mockData.steps ?? 0), calories=\(mockData.activeEnergy ?? 0)")
-
         DailyMetricsEngine.shared.calculateDailyMetrics(
             todayData: mockData,
             historicalData: historicalData,
@@ -310,38 +300,27 @@ final class InsightsDashboardViewController: UIViewController {
                 self.loadingIndicator.stopAnimating()
                 self.refreshControl.endRefreshing()
                 self.contentStack.isHidden = false
+                self.playEntranceAnimationIfNeeded()
             }
         }
     }
     #endif
 
-    private func updateUI() {
-        guard let metrics = dailyMetrics, let stars = starMetrics else { return }
+    // MARK: - Update UI
 
-        // Update header
+    private func updateUI() {
+        guard let metrics = dailyMetrics else { return }
+
+        // Header
         headerView.configure(lastUpdated: lastUpdatedTime)
 
-        // Update hero section with correct scores
-        heroSection.configure(
-            healthScore: metrics.mainScore != nil ? Int(metrics.mainScore!) : nil,
-            carScore: getCarScore(),
-            carName: getCarName(),
-            sleepScore: metrics.sleepQuality.value != nil ? Int(metrics.sleepQuality.value!) : nil,
-            energyForecast: metrics.energyForecast,
-            parentVC: self,
-            scoreHistory: self.scoreHistory
-        )
-
-        // Save the daily main score
+        // Save score data (keep existing behaviour)
         if let mainScore = metrics.mainScore {
             let scoreInt = Int(mainScore)
             let scoreLevel = RangeLevel.from(score: mainScore)
             let healthStatus = "score.description.\(scoreLevel.rawValue)".localized
-
             AnalysisCache.saveMainScore(scoreInt, status: healthStatus)
         }
-
-        // Save score breakdown for sending to watch (only for day period)
         if selectedPeriod == .day {
             AnalysisCache.saveScoreBreakdown(
                 recovery: metrics.recoveryReadiness.value.map { Int($0) },
@@ -353,125 +332,179 @@ final class InsightsDashboardViewController: UIViewController {
             )
         }
 
-        // Update star metrics bar
-        starMetricsBar.configure(with: stars)
-
-        // Update why score section
-        whyScoreSection.configure(with: metrics)
-
-        // Update recovery section
-        recoverySectionView.configure(
-            readiness: metrics.recoveryReadiness,
-            stressLoad: metrics.stressLoadIndex,
-            morningFreshness: metrics.morningFreshness,
-            parentVC: self,
-            scoreHistory: self.scoreHistory
+        // Hero card
+        let heroMetric = findMetric(id: metricSelection.heroMetricId, in: metrics)
+        let heroChartData = buildChartData(for: metricSelection.heroMetricId)
+        let heroExplanation = explanationText(for: metricSelection.heroMetricId)
+        heroCard.configure(
+            metric: heroMetric,
+            metricId: metricSelection.heroMetricId,
+            chartData: heroChartData,
+            explanationText: heroExplanation
         )
 
-        // Update sleep section
-        sleepSectionView.configure(
-            quality: metrics.sleepQuality,
-            debt: metrics.sleepDebt,
-            consistency: metrics.sleepConsistency,
-            parentVC: self,
-            scoreHistory: self.scoreHistory
-        )
+        // Secondary cards
+        for (i, cardView) in secondaryCards.enumerated() {
+            guard i < metricSelection.secondaryMetricIds.count else { continue }
+            let metricId = metricSelection.secondaryMetricIds[i]
+            let metric = findMetric(id: metricId, in: metrics)
+            let chartData = buildChartData(for: metricId)
+            let explanation = explanationText(for: metricId)
+            cardView.configure(metric: metric, metricId: metricId, chartData: chartData, explanationText: explanation)
+        }
 
-        // Update training section
-        trainingSectionView.configure(
-            strain: metrics.trainingStrain,
-            loadBalance: metrics.loadBalance,
-            cardioTrend: metrics.cardioFitnessTrend,
-            parentVC: self,
-            scoreHistory: self.scoreHistory
-        )
+        // Recommendations
+        recommendationsSection.configure(recommendations: recommendations)
+    }
 
-        // Update activity section
-        activitySectionView.configure(
-            goals: metrics.dailyGoals,
-            activityScore: metrics.activityScore,
-            parentVC: self,
-            scoreHistory: self.scoreHistory
-        )
+    // MARK: - Metric Lookup Helpers
 
-        // Update guidance card
-        guidanceCard.configure(with: metrics, stars: stars)
+    private func findMetric(id: String, in metrics: DailyMetrics) -> (any InsightMetric)? {
+        if id == "main_score" || id == "health_score" {
+            // mainScore is a computed Double, not an InsightMetric — wrap it
+            return metrics.allMetrics.first { $0.id == "recovery_readiness" }.map { _ in
+                MainScoreProxy(value: metrics.mainScore)
+            }
+        }
+        return metrics.allMetrics.first { $0.id == id }
+    }
+
+    private func buildChartData(for metricId: String) -> [BarChartDataPoint] {
+        scoreHistory.map { entry in
+            BarChartDataPoint(
+                date: entry.date,
+                dayLabel: entry.dayOfWeekShort,
+                value: entry.value(for: metricId) ?? 0,
+                isToday: Calendar.current.isDateInToday(entry.date)
+            )
+        }
+    }
+
+    private func explanationText(for metricId: String) -> String {
+        let key = "explanation.\(metricId)"
+        let localized = key.localized
+        return localized != key ? localized : ""
     }
 
     // MARK: - Actions
 
-    private func handlePeriodChange(_ period: TimePeriod) {
-        guard period != selectedPeriod else { return }
-        selectedPeriod = period
-        loadData() // Reload data for new period
-    }
-
-    private func toggleWhySection() {
-        UIView.animate(withDuration: 0.3) {
-            self.whyScoreSection.isHidden.toggle()
-            self.whyScoreSection.alpha = self.whyScoreSection.isHidden ? 0 : 1
-        }
-    }
-
-    private func showMetricDetail(_ metric: any InsightMetric) {
-        let config = ScoreDetailConfig.from(
-            metric: metric,
-            scoreHistory: self.scoreHistory
-        )
+    private func heroCardTapped() {
+        guard let metrics = dailyMetrics else { return }
+        let metric = findMetric(id: metricSelection.heroMetricId, in: metrics)
+        guard let m = metric else { return }
+        let config = ScoreDetailConfig.from(metric: m, scoreHistory: scoreHistory)
         let detailVC = ScoreDetailWithGraphViewController(config: config)
         present(detailVC, animated: true)
     }
 
-    private func showSleepDetail() {
-        let alert = UIAlertController(
-            title: "dashboard.sleepScore".localized,
-            message: "explanation.sleepScore".localized,
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
-        present(alert, animated: true)
+    private func secondaryCardTapped(index: Int) {
+        guard let metrics = dailyMetrics,
+              index < metricSelection.secondaryMetricIds.count else { return }
+        let metricId = metricSelection.secondaryMetricIds[index]
+        guard let m = findMetric(id: metricId, in: metrics) else { return }
+        let config = ScoreDetailConfig.from(metric: m, scoreHistory: scoreHistory)
+        let detailVC = ScoreDetailWithGraphViewController(config: config)
+        present(detailVC, animated: true)
     }
 
-    // MARK: - Score Helpers
-
-    /// Returns the car score - same logic as in InsightsTabViewController
-    private func getCarScore() -> Int? {
-        // Prefer the saved score from HealthScoreEngine
-        if let savedScore = AnalysisCache.loadHealthScore() {
-            return savedScore
+    private func showMetricEditor() {
+        let editorVC = MetricSelectionViewController(current: metricSelection)
+        let nav = UINavigationController(rootViewController: editorVC)
+        editorVC.onSave = { [weak self] newSelection in
+            self?.metricSelection = newSelection
+            self?.updateUI()
         }
-        // fallback: calculate from CarTierEngine
-        let stats = AnalysisCache.loadWeeklyStats()
-        let score = CarTierEngine.computeHealthScore(
-            readinessAvg: stats?.readiness,
-            sleepHoursAvg: stats?.sleepHours,
-            hrvAvg: stats?.hrv,
-            strainAvg: stats?.strain
-        )
-        return score > 0 ? score : nil
+        present(nav, animated: true)
     }
 
-    /// Returns the car name - only from Gemini! Must not display generic names
-    private func getCarName() -> String? {
-        // ONLY return Gemini car name - NEVER use generic tier names
-        if let savedCar = AnalysisCache.loadSelectedCar() {
-            return savedCar.name
+    // MARK: - AI Recommendations
+
+    private func fetchRecommendations(healthData: HealthDataModel, dailyMetrics: DailyMetrics) {
+        print("🏠 [HomeRecs] fetchRecommendations called — always fresh from Gemini")
+
+        // Store for retry
+        lastRecsHealthData = healthData
+        lastRecsDailyMetrics = dailyMetrics
+
+        // Show loading state
+        DispatchQueue.main.async {
+            self.recommendationsSection.configure(recommendations: nil)
         }
-        // No Gemini data = no car name (don't show generic tier names like Porsche/BMW)
-        return nil
+
+        GeminiService.shared.generateHomeRecommendations(
+            healthData: healthData,
+            dailyMetrics: dailyMetrics
+        ) { [weak self] recs in
+            if let recs = recs {
+                print("🏠 [HomeRecs] Got recommendations ✅ medical=\(recs.medical.prefix(50))...")
+            } else {
+                print("🏠 [HomeRecs] Gemini returned nil ❌ — lastHomeRecsHadNoData=\(GeminiService.shared.lastHomeRecsHadNoData)")
+            }
+            DispatchQueue.main.async {
+                self?.recommendations = recs
+                if let recs = recs {
+                    self?.recommendationsSection.isHidden = false
+                    self?.recommendationsSection.configure(recommendations: recs)
+                } else if GeminiService.shared.lastHomeRecsHadNoData {
+                    // No health data available — hide the section entirely
+                    print("🏠 [HomeRecs] No health data — hiding recommendations section")
+                    self?.recommendationsSection.isHidden = true
+                } else {
+                    // API error — show retry
+                    self?.recommendationsSection.isHidden = false
+                    self?.recommendationsSection.showError()
+                }
+            }
+        }
     }
 
-    // MARK: - RTL/LTR Support
+    private func retryRecommendations() {
+        guard let healthData = lastRecsHealthData, let dailyMetrics = lastRecsDailyMetrics else {
+            print("🏠 [HomeRecs] Retry — no stored data, calling loadData()")
+            loadData()
+            return
+        }
+        print("🏠 [HomeRecs] Retry tapped — fetching fresh recommendations")
+        fetchRecommendations(healthData: healthData, dailyMetrics: dailyMetrics)
+    }
+
+    // MARK: - Entrance Animations
+
+    private func playEntranceAnimationIfNeeded() {
+        guard !hasPlayedEntrance else { return }
+        hasPlayedEntrance = true
+
+        // Prepare views
+        let animatableViews: [UIView] = [headerView, heroCard, secondaryGrid, recommendationsSection]
+        for (i, view) in animatableViews.enumerated() {
+            view.alpha = 0
+            view.transform = CGAffineTransform(translationX: 0, y: 30)
+        }
+        contentStack.alpha = 1
+
+        // Staggered entrance
+        for (i, view) in animatableViews.enumerated() {
+            UIView.animate(
+                withDuration: 0.5,
+                delay: Double(i) * 0.1,
+                usingSpringWithDamping: 0.8,
+                initialSpringVelocity: 0.5,
+                options: .curveEaseOut
+            ) {
+                view.alpha = 1
+                view.transform = .identity
+            }
+        }
+    }
+
+    // MARK: - RTL/LTR
 
     private func configureSemanticDirection() {
-        let isRTL = UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft
-        let semanticAttribute: UISemanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
-
-        view.semanticContentAttribute = semanticAttribute
-        scrollView.semanticContentAttribute = semanticAttribute
-        contentStack.semanticContentAttribute = semanticAttribute
-
-        // Set alignment based on language direction
+        let rtl = LocalizationManager.shared.currentLanguage == .hebrew
+        let sem: UISemanticContentAttribute = rtl ? .forceRightToLeft : .forceLeftToRight
+        view.semanticContentAttribute = sem
+        scrollView.semanticContentAttribute = sem
+        contentStack.semanticContentAttribute = sem
         contentStack.alignment = .fill
     }
 
@@ -485,9 +518,7 @@ final class InsightsDashboardViewController: UIViewController {
         present(nav, animated: true)
     }
 
-    @objc private func handleNotificationItemSaved() {
-        updateBellBadge()
-    }
+    @objc private func handleNotificationItemSaved() { updateBellBadge() }
 
     private func updateBellBadge() {
         FriendsFirestoreSync.fetchUnreadNotificationsCount { [weak self] count in
@@ -498,14 +529,39 @@ final class InsightsDashboardViewController: UIViewController {
     }
 }
 
+// MARK: - UIScrollViewDelegate (Parallax)
+
+extension InsightsDashboardViewController: UIScrollViewDelegate {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let offset = max(0, scrollView.contentOffset.y)  // Ignore negative (pull-to-refresh)
+        // Subtle parallax: hero card scales down slightly as user scrolls down
+        let scale = max(0.92, 1.0 - offset / 800.0)
+        heroCard.transform = CGAffineTransform(scaleX: scale, y: scale)
+    }
+}
+
 // MARK: - NotificationsCenterViewControllerDelegate
 
 extension InsightsDashboardViewController: NotificationsCenterViewControllerDelegate {
     func notificationsCenterDidUpdate(_ controller: NotificationsCenterViewController) {
-        // Clear badge immediately (don't wait for Firestore round-trip)
         headerView.updateBadge(count: 0)
-        // Also refresh from Firestore to get the actual count (in case of new notifications)
         updateBellBadge()
+    }
+}
+
+// MARK: - MainScoreProxy (wraps the composite mainScore as InsightMetric)
+
+private struct MainScoreProxy: InsightMetric {
+    let id = "main_score"
+    let nameKey = "dashboard.healthScore"
+    let value: Double?
+    let category: MetricCategory = .performance
+    let reliability: DataReliability = .high
+    let trend: MetricTrend? = nil
+
+    var displayValue: String {
+        guard let v = value else { return "--" }
+        return "\(Int(v))"
     }
 }
 

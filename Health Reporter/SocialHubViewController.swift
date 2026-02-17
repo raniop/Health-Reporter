@@ -96,6 +96,10 @@ final class SocialHubViewController: UIViewController {
     private var searchResults: [UserSearchResult] = []
     private var isSearchActive = false
 
+    // Chat
+    private var chatUnreadListener: Any?  // ListenerRegistration
+    private var chatBadgeLabel: UILabel?
+
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -138,6 +142,64 @@ final class SocialHubViewController: UIViewController {
         ]
         navigationItem.standardAppearance = appearance
         navigationItem.scrollEdgeAppearance = appearance
+
+        // Chat button with unread badge
+        let chatButton = UIButton(type: .system)
+        let config = UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
+        chatButton.setImage(UIImage(systemName: "bubble.left.and.bubble.right", withConfiguration: config), for: .normal)
+        chatButton.tintColor = AIONDesign.accentPrimary
+        chatButton.addTarget(self, action: #selector(chatButtonTapped), for: .touchUpInside)
+        chatButton.frame = CGRect(x: 0, y: 0, width: 36, height: 36)
+
+        // Badge label
+        let badge = UILabel()
+        badge.font = .systemFont(ofSize: 10, weight: .bold)
+        badge.textColor = .white
+        badge.textAlignment = .center
+        badge.backgroundColor = AIONDesign.accentDanger
+        badge.layer.cornerRadius = 9
+        badge.clipsToBounds = true
+        badge.isHidden = true
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        chatButton.addSubview(badge)
+
+        NSLayoutConstraint.activate([
+            badge.topAnchor.constraint(equalTo: chatButton.topAnchor, constant: -2),
+            badge.trailingAnchor.constraint(equalTo: chatButton.trailingAnchor, constant: 4),
+            badge.heightAnchor.constraint(equalToConstant: 18),
+            badge.widthAnchor.constraint(greaterThanOrEqualToConstant: 18),
+        ])
+
+        chatBadgeLabel = badge
+        let chatBarItem = UIBarButtonItem(customView: chatButton)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        if isRTL {
+            navigationItem.leftBarButtonItem = chatBarItem
+        } else {
+            navigationItem.rightBarButtonItem = chatBarItem
+        }
+
+        // Listen for unread chat count
+        chatUnreadListener = ChatFirestoreSync.listenToTotalUnreadCount { [weak self] count in
+            self?.updateChatBadge(count)
+        }
+    }
+
+    private func updateChatBadge(_ count: Int) {
+        guard let badge = chatBadgeLabel else { return }
+        if count > 0 {
+            badge.text = count > 99 ? "99+" : " \(count) "
+            badge.isHidden = false
+        } else {
+            badge.isHidden = true
+        }
+    }
+
+    @objc private func chatButtonTapped() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        let vc = ChatListViewController()
+        navigationController?.pushViewController(vc, animated: true)
     }
 
     // MARK: - Layout

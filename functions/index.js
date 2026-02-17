@@ -197,7 +197,95 @@ exports.onNewFollower = functions.firestore
     });
 
 // ============================================================================
-// 4) MORNING NOTIFICATIONS (scheduled every minute)
+// 4) CHAT MESSAGE NOTIFICATION
+// ============================================================================
+
+exports.onChatMessageCreated = functions.firestore
+    .document("chats/{chatId}/messages/{messageId}")
+    .onCreate(async (snap, context) => {
+      const TAG = "[ChatMsg]";
+      const chatId = context.params.chatId;
+      const data = snap.data();
+      const senderUid = data.senderUid;
+      const text = data.text || "";
+
+      console.log(`${TAG} New message in ${chatId} from ${senderUid}, text="${text.substring(0, 30)}"`);
+
+      // Get chat document to find participants
+      const chatDoc = await db.collection("chats").doc(chatId).get();
+      if (!chatDoc.exists) {
+        console.error(`${TAG} Chat doc not found: ${chatId}`);
+        return null;
+      }
+
+      const chatData = chatDoc.data();
+      const participants = chatData.participants || [];
+      const recipientUid = participants.find((uid) => uid !== senderUid);
+      if (!recipientUid) {
+        console.error(`${TAG} No recipient found in chat ${chatId}`);
+        return null;
+      }
+
+      // Mark the other user's previous messages as "seen" (sending a reply = read)
+      try {
+        const prevMsgs = await db.collection("chats").doc(chatId)
+            .collection("messages")
+            .orderBy("timestamp", "desc")
+            .limit(20)
+            .get();
+
+        const batch = db.batch();
+        let updated = 0;
+        for (const msgDoc of prevMsgs.docs) {
+          if (msgDoc.id === context.params.messageId) continue;
+          const msgData = msgDoc.data();
+          if (msgData.senderUid === recipientUid && msgData.status !== "seen") {
+            batch.update(msgDoc.ref, {status: "seen"});
+            updated++;
+          }
+        }
+        if (updated > 0) {
+          await batch.commit();
+          console.log(`${TAG} Marked ${updated} messages from ${recipientUid} as seen`);
+        }
+      } catch (err) {
+        console.error(`${TAG} Failed to mark messages as seen:`, err.message);
+      }
+
+      // Get sender name from participant profiles (stored on the chat doc)
+      const profiles = chatData.participantProfiles || {};
+      const senderName = profiles[senderUid]?.displayName || "Someone";
+
+      // Preview text (truncated)
+      const preview = text.length > 100 ? text.substring(0, 100) + "…" : text;
+
+      const title = senderName;
+      const body = preview;
+
+      console.log(`${TAG} Recipient: ${recipientUid}, sender name: ${senderName}`);
+
+      const token = await getToken(recipientUid, TAG);
+      if (!token) {
+        console.log(`${TAG} No FCM token for recipient ${recipientUid} — skipping`);
+        return null;
+      }
+
+      console.log(`${TAG} Sending FCM to ${recipientUid}, title="${title}", body="${body.substring(0, 50)}"`);
+      return sendFCM(token, {
+        token,
+        notification: {title, body},
+        data: {
+          type: "chat_message",
+          chatId,
+          senderUid,
+          senderName,
+        },
+        apns: {payload: {aps: {badge: 1, sound: "default"}}},
+      }, recipientUid, TAG);
+    });
+
+// ============================================================================
+// 5) MORNING NOTIFICATIONS (scheduled every minute)
 // ============================================================================
 
 exports.sendMorningNotifications = functions.pubsub
@@ -268,7 +356,7 @@ exports.sendMorningNotifications = functions.pubsub
     });
 
 // ============================================================================
-// 5) SETTINGS CHANGE LOGGER
+// 6) SETTINGS CHANGE LOGGER
 // ============================================================================
 
 exports.onSettingsChanged = functions.firestore
@@ -293,7 +381,7 @@ exports.onSettingsChanged = functions.firestore
     });
 
 // ============================================================================
-// 6) BEDTIME NOTIFICATIONS (scheduled every minute)
+// 7) BEDTIME NOTIFICATIONS (scheduled every minute)
 // ============================================================================
 
 exports.sendBedtimeNotifications = functions.pubsub

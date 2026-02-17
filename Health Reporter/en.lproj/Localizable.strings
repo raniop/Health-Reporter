@@ -761,6 +761,22 @@
 "social.timeAgo.yesterday" = "yesterday";
 "social.timeAgo.days" = "%dd ago";
 
+/* Chat */
+"chat.title" = "Messages";
+"chat.message" = "Message";
+"chat.noConversations" = "No messages yet";
+"chat.noConversationsSubtitle" = "Start chatting with your friends!";
+"chat.typeMessage" = "Type a message...";
+"chat.sent" = "Sent";
+"chat.delivered" = "Delivered";
+"chat.seen" = "Seen";
+"chat.today" = "Today";
+"chat.yesterday" = "Yesterday";
+"chat.startConversation" = "Say hello! Send the first message.";
+"chat.noMessages" = "No messages yet";
+"chat.unknownUser" = "Unknown User";
+"chat.mutualFollowRequired" = "You both need to follow each other to chat";
+
 /* Settings Screen */
 "settings.title" = "Settings";
 
@@ -1080,3 +1096,35 @@
 "profile.deleteAccountDeleting" = "Deleting account...";
 "profile.deleteAccountError" = "Failed to delete account. Please try again.";
 "profile.deleteAccountReauthRequired" = "For security, please sign in again before deleting your account.";
+
+/* Home Screen - Redesigned */
+"home.edit" = "Edit";
+"home.hero.metric" = "Main Metric";
+"home.secondary.metrics" = "Secondary Metrics";
+"home.recommendations.title" = "Your Recommendations";
+"home.recommendations.medical" = "Medical";
+"home.recommendations.sports" = "Sports & Fitness";
+"home.recommendations.nutrition" = "Nutrition";
+"home.recommendations.error" = "Could not load recommendations";
+"home.recommendations.retry" = "Retry AI Analysis";
+"home.reset.defaults" = "Reset to Defaults";
+"home.select.hero" = "Choose Main Metric";
+"home.select.secondary" = "Choose 4 Secondary Metrics";
+
+/* Metric Explanations */
+"explanation.main_score" = "Composite score based on recovery, sleep, energy, activity and load balance";
+"explanation.nervous_system_balance" = "Balance between sympathetic and parasympathetic activity based on HRV and resting heart rate";
+"explanation.recovery_readiness" = "How ready your body is to perform, based on sleep quality, HRV and resting heart rate";
+"explanation.recovery_debt" = "Accumulated recovery surplus or deficit over the past week";
+"explanation.stress_load_index" = "Combined stress indicator from HRV depression, elevated heart rate and sleep deficit";
+"explanation.morning_freshness" = "How refreshed you are based on overnight recovery metrics";
+"explanation.sleep_quality" = "Overall sleep score based on duration, deep sleep, REM sleep and efficiency";
+"explanation.sleep_consistency" = "How consistent your sleep schedule has been over the past week";
+"explanation.sleep_debt" = "Accumulated sleep deficit compared to your optimal sleep need";
+"explanation.training_strain" = "Training intensity level based on exercise duration, heart rate and active calories";
+"explanation.load_balance" = "Ratio of recent training load to your long-term average";
+"explanation.energy_forecast" = "Predicted energy level based on recovery, sleep and recent activity patterns";
+"explanation.workout_readiness" = "How ready your body is for intense exercise today";
+"explanation.activity_score" = "Daily activity level based on steps, exercise minutes and movement";
+"explanation.daily_goals" = "Progress towards daily movement, exercise and stand goals";
+"explanation.cardio_fitness_trend" = "Trend in cardiovascular fitness based on VO2 max estimates";

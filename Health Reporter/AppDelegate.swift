@@ -263,7 +263,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         let userInfo = notification.request.content.userInfo
-        print("Notification received in foreground: \(userInfo)")
+        let notifType = userInfo["type"] as? String ?? "unknown"
+        print("🔔 [Notif] FOREGROUND — type=\(notifType), title=\(notification.request.content.title), body=\(notification.request.content.body)")
+        print("🔔 [Notif] FOREGROUND — full userInfo=\(userInfo)")
 
         // Save scheduled notifications to Firestore bell page (immediate ones already save themselves)
         if let type = userInfo["type"] as? String {
@@ -299,7 +301,8 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
-        print("Notification tapped: \(userInfo)")
+        let notifType = userInfo["type"] as? String ?? "unknown"
+        print("🔔 [Notif] TAPPED — type=\(notifType), userInfo=\(userInfo)")
 
         // Save scheduled notifications to Firestore bell page when tapped (background delivery)
         if let type = userInfo["type"] as? String {
@@ -330,6 +333,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     }
 
     private func handleNotificationAction(type: String, userInfo: [AnyHashable: Any]) {
+        print("🔔 [Notif] handleNotificationAction — type=\(type), userInfo=\(userInfo)")
         // Post notification to navigate to the appropriate screen
         switch type {
         case "friend_request_received", "friend_request_accepted",
@@ -337,6 +341,12 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
              "new_follower":
             NotificationCenter.default.post(
                 name: NSNotification.Name("OpenSocialHub"),
+                object: nil,
+                userInfo: userInfo as? [String: Any]
+            )
+        case "chat_message":
+            NotificationCenter.default.post(
+                name: NSNotification.Name("OpenChatFromNotification"),
                 object: nil,
                 userInfo: userInfo as? [String: Any]
             )

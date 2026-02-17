@@ -10,7 +10,12 @@ import FirebaseAuth
 
 class GeminiService {
     static let shared = GeminiService()
-    
+
+    /// True when the last `generateHomeRecommendations` call returned nil because
+    /// there was no meaningful health data to send (all metrics were zero / missing).
+    /// The dashboard uses this to decide whether to hide the section vs. show a retry.
+    var lastHomeRecsHadNoData = false
+
     private var apiKey: String {
         guard let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
               let plist = NSDictionary(contentsOfFile: path),
@@ -92,6 +97,13 @@ class GeminiService {
         HealthKitManager.shared.fetchDailyHealthData(days: 90) { [weak self] dailyEntries in
             guard let self = self else { return }
 
+            // Don't send empty data to Gemini
+            if dailyEntries.isEmpty {
+                print("⚠️ [GeminiService] No daily health entries — skipping Gemini analysis")
+                completion(nil, nil, nil, nil)
+                return
+            }
+
             #if DEBUG
             // Test user - don't overwrite the score already computed from mock data
             let isTestUser = DebugTestHelper.isTestUser(email: Auth.auth().currentUser?.email)
@@ -113,6 +125,13 @@ class GeminiService {
             // Build the new Payload with filtering of missing values and outliers
             let builder = GeminiHealthPayloadBuilder()
             let payload = builder.build(from: dailyEntries)
+
+            // Don't send empty data to Gemini — skip if no meaningful health data available
+            if payload.dataReliabilityScore == 0 && payload.totalDays == 0 {
+                print("⚠️ [GeminiService] No health data available — skipping Gemini analysis")
+                completion(nil, nil, nil, nil)
+                return
+            }
 
             guard let payloadJSON = payload.toJSONString() else {
                 completion(nil, nil, nil, NSError(domain: "GeminiService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Error creating analysis payload"]))
@@ -884,5 +903,218 @@ class GeminiService {
         }
 
         return (insights, recommendations, riskFactors)
+    }
+
+    // MARK: - Home Screen Recommendations (3 categories)
+
+    /// Generates 3 personalised recommendations: medical, sports, nutrition.
+    /// Uses a dedicated lightweight Gemini call (separate from the main analysis).
+    func generateHomeRecommendations(
+        healthData: HealthDataModel,
+        dailyMetrics: DailyMetrics,
+        completion: @escaping (HomeRecommendations?) -> Void
+    ) {
+        print("🤖 [HomeRecs] generateHomeRecommendations() START")
+        let lang = LocalizationManager.shared.currentLanguage == .hebrew ? "Hebrew" : "English"
+        print("🤖 [HomeRecs] Language: \(lang)")
+
+        // Build a summary from raw HealthKit data (real measurements, not calculated scores)
+        // Filter out zero values — 0 means "no data" for most health metrics
+        var lines: [String] = []
+
+        // Sleep
+        if let sleep = healthData.sleepHours, sleep > 0 { lines.append("Sleep last night: \(String(format: "%.1f", sleep)) hours") }
+        if let deep = healthData.sleepDeepHours, deep > 0 { lines.append("Deep sleep: \(String(format: "%.1f", deep)) hours") }
+        if let rem = healthData.sleepRemHours, rem > 0 { lines.append("REM sleep: \(String(format: "%.1f", rem)) hours") }
+        if let efficiency = healthData.sleepEfficiency, efficiency > 0 { lines.append("Sleep efficiency: \(Int(efficiency))%") }
+
+        // Heart / Recovery
+        if let hrv = healthData.heartRateVariability, hrv > 0 { lines.append("HRV: \(Int(hrv)) ms") }
+        if let rhr = healthData.restingHeartRate, rhr > 0 { lines.append("Resting heart rate: \(Int(rhr)) bpm") }
+        if let hr = healthData.heartRate, hr > 0 { lines.append("Current heart rate: \(Int(hr)) bpm") }
+        if let spo2 = healthData.oxygenSaturation, spo2 > 0 { lines.append("Blood oxygen: \(Int(spo2 * 100))%") }
+        if let recovery = healthData.heartRateRecovery, recovery > 0 { lines.append("Heart rate recovery: \(Int(recovery)) bpm") }
+
+        // Activity
+        if let steps = healthData.steps, steps > 0 { lines.append("Steps today: \(Int(steps))") }
+        if let active = healthData.activeEnergy, active > 0 { lines.append("Active calories: \(Int(active)) kcal") }
+        if let exercise = healthData.exerciseMinutes, exercise > 0 { lines.append("Exercise minutes: \(Int(exercise))") }
+        if let standHours = healthData.standHours, standHours > 0 { lines.append("Stand hours: \(Int(standHours))") }
+
+        // Workouts
+        if let workoutMin = healthData.totalWorkoutMinutes, workoutMin > 0 {
+            lines.append("Workout today: \(Int(workoutMin)) minutes")
+        }
+        if let types = healthData.workoutTypes, !types.isEmpty {
+            lines.append("Workout types: \(types.joined(separator: ", "))")
+        }
+
+        // Fitness
+        if let vo2 = healthData.vo2Max, vo2 > 0 { lines.append("VO2 Max: \(String(format: "%.1f", vo2))") }
+
+        // Body
+        if let temp = healthData.bodyTemperatureDeviation, abs(temp) > 0.01 {
+            lines.append("Body temperature deviation: \(String(format: "%+.1f", temp))°C")
+        }
+        if let resp = healthData.respiratoryRate, resp > 0 { lines.append("Respiratory rate: \(String(format: "%.1f", resp)) breaths/min") }
+
+        let metricsBlock = lines.joined(separator: "\n")
+        print("🤖 [HomeRecs] Metrics block (\(lines.count) lines):\n\(metricsBlock)")
+
+        // Don't send empty data to Gemini — skip if no meaningful metrics available
+        if lines.isEmpty {
+            print("🤖 [HomeRecs] ⚠️ No health data available — skipping Gemini call")
+            lastHomeRecsHadNoData = true
+            completion(nil)
+            return
+        }
+        lastHomeRecsHadNoData = false
+
+        let prompt = """
+        You are given today's REAL health data from Apple Health / wearable device for a user.
+        Analyze the raw data and provide EXACTLY 3 short, personalised recommendations (2-3 sentences each).
+
+        Be specific and reference actual numbers from the data.
+        If the data looks good (e.g. good sleep, low resting HR, high HRV), acknowledge it positively.
+        Focus advice on areas that actually need improvement based on the data.
+        Write in \(lang).
+
+        TODAY'S HEALTH DATA:
+        \(metricsBlock)
+
+        Return ONLY valid JSON with this exact schema — no text before or after:
+        {
+          "medical": "Health/medical observation and advice based on the real data",
+          "sports": "Training and exercise recommendation based on today's recovery and activity",
+          "nutrition": "Dietary recommendation based on today's activity and recovery needs"
+        }
+        """
+
+        let systemInstruction = """
+        You are an elite health advisor. Provide concise, actionable advice.
+        Output ONLY valid JSON. No markdown, no code fences.
+        """
+
+        // Use a separate URLSession call so we don't block the main analysis pipeline
+        guard let url = URL(string: "\(baseURL)?key=\(apiKey)") else {
+            print("🤖 [HomeRecs] ❌ Invalid URL!")
+            completion(nil)
+            return
+        }
+        print("🤖 [HomeRecs] URL created OK, sending request...")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30
+
+        let body: [String: Any] = [
+            "contents": [["parts": [["text": prompt]]]],
+            "systemInstruction": ["parts": [["text": systemInstruction]]],
+            "generationConfig": [
+                "temperature": 0.3,
+                "maxOutputTokens": 4096,
+                "responseMimeType": "text/plain"
+            ]
+        ]
+
+        guard let httpBody = try? JSONSerialization.data(withJSONObject: body) else {
+            print("🤖 [HomeRecs] ❌ Failed to serialize request body!")
+            completion(nil)
+            return
+        }
+        request.httpBody = httpBody
+        print("🤖 [HomeRecs] Request body: \(httpBody.count) bytes, firing URLSession...")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data, error == nil else {
+                print("⚠️ [HomeRecommendations] Request failed: \(error?.localizedDescription ?? "unknown")")
+                completion(nil)
+                return
+            }
+
+            // Log HTTP status for debugging
+            if let httpResp = response as? HTTPURLResponse, httpResp.statusCode != 200 {
+                let raw = String(data: data, encoding: .utf8) ?? "(no body)"
+                print("⚠️ [HomeRecommendations] HTTP \(httpResp.statusCode): \(raw.prefix(300))")
+                completion(nil)
+                return
+            }
+
+            // Parse Gemini response envelope
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let candidates = json["candidates"] as? [[String: Any]],
+                  let firstCandidate = candidates.first,
+                  let content = firstCandidate["content"] as? [String: Any],
+                  let parts = content["parts"] as? [[String: Any]] else {
+                let raw = String(data: data, encoding: .utf8) ?? "(no body)"
+                print("⚠️ [HomeRecommendations] Failed to parse Gemini envelope: \(raw.prefix(500))")
+                completion(nil)
+                return
+            }
+
+            // Log finishReason for debugging
+            let finishReason = firstCandidate["finishReason"] as? String ?? "unknown"
+            print("🤖 [HomeRecs] finishReason: \(finishReason), parts count: \(parts.count)")
+
+            // Concatenate ALL text parts (Gemini may split the response across multiple parts)
+            let text = parts.compactMap { $0["text"] as? String }.joined()
+            guard !text.isEmpty else {
+                let raw = String(data: data, encoding: .utf8) ?? "(no body)"
+                print("⚠️ [HomeRecommendations] Empty text in parts. Raw: \(raw.prefix(500))")
+                completion(nil)
+                return
+            }
+
+            // Clean markdown code fences that Gemini may wrap around the JSON
+            var jsonString = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if jsonString.hasPrefix("```json") {
+                jsonString = String(jsonString.dropFirst(7))
+            } else if jsonString.hasPrefix("```") {
+                jsonString = String(jsonString.dropFirst(3))
+            }
+            if jsonString.hasSuffix("```") {
+                jsonString = String(jsonString.dropLast(3))
+            }
+            jsonString = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Parse the inner JSON
+            guard let innerData = jsonString.data(using: .utf8) else {
+                print("⚠️ [HomeRecommendations] Failed to convert jsonString to Data")
+                completion(nil)
+                return
+            }
+
+            // Log full JSON for debugging
+            print("🤖 [HomeRecs] Full JSON response (\(jsonString.count) chars):\n\(jsonString)")
+
+            // Try decoding with detailed error
+            let recs: HomeRecommendations
+            do {
+                recs = try JSONDecoder().decode(HomeRecommendations.self, from: innerData)
+            } catch {
+                print("⚠️ [HomeRecommendations] Decode error: \(error)")
+                print("⚠️ [HomeRecommendations] JSON string: \(jsonString)")
+
+                // Fallback: try parsing as generic JSON dict to extract fields manually
+                if let dict = try? JSONSerialization.jsonObject(with: innerData) as? [String: Any] {
+                    let medical = dict["medical"] as? String ?? ""
+                    let sports = dict["sports"] as? String ?? ""
+                    let nutrition = dict["nutrition"] as? String ?? ""
+                    if !medical.isEmpty || !sports.isEmpty || !nutrition.isEmpty {
+                        let fallbackRecs = HomeRecommendations(medical: medical, sports: sports, nutrition: nutrition)
+                        print("✅ [HomeRecommendations] Recovered via manual dict parsing!")
+                        completion(fallbackRecs)
+                        return
+                    }
+                }
+
+                completion(nil)
+                return
+            }
+
+            print("✅ [HomeRecommendations] Successfully loaded recommendations")
+            completion(recs)
+        }.resume()
     }
 }

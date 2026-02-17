@@ -70,6 +70,9 @@ final class MainTabBarController: UITabBarController {
         // Listen for notification to open Notifications Center (morning/bedtime tap)
         NotificationCenter.default.addObserver(self, selector: #selector(handleOpenNotificationsCenter), name: NSNotification.Name("OpenNotificationsCenter"), object: nil)
 
+        // Listen for chat message notification tap
+        NotificationCenter.default.addObserver(self, selector: #selector(handleOpenChat(_:)), name: NSNotification.Name("OpenChatFromNotification"), object: nil)
+
         // Refresh app icon badge when a new notification is saved
         NotificationCenter.default.addObserver(self, selector: #selector(handleNotificationItemSaved), name: NSNotification.Name("NotificationItemSaved"), object: nil)
 
@@ -97,6 +100,37 @@ final class MainTabBarController: UITabBarController {
             // Switch to Social tab
             selectedIndex = 3
             socialNavController?.popToRootViewController(animated: false)
+        }
+    }
+
+    // MARK: - Deep Link: Chat Message
+
+    @objc private func handleOpenChat(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let chatId = userInfo["chatId"] as? String,
+              let senderUid = userInfo["senderUid"] as? String else {
+            print("🔔 [DeepLink] handleOpenChat — missing chatId or senderUid in userInfo")
+            return
+        }
+
+        print("🔔 [DeepLink] Opening chat \(chatId) from notification, senderUid=\(senderUid)")
+
+        // Switch to Social tab and navigate to chat
+        selectedIndex = 3
+        socialNavController?.popToRootViewController(animated: false)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let socialNav = self?.socialNavController else { return }
+            // Push chat list then open the specific chat
+            let chatList = ChatListViewController()
+            socialNav.pushViewController(chatList, animated: false)
+
+            // Load the conversation and push the chat view
+            ChatFirestoreSync.getOrCreateConversation(with: senderUid) { conversation, error in
+                guard let conversation = conversation else { return }
+                let chatVC = ChatViewController(conversation: conversation)
+                socialNav.pushViewController(chatVC, animated: true)
+            }
         }
     }
 
