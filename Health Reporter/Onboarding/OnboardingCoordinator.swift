@@ -282,9 +282,9 @@ final class OnboardingCoordinator {
         }
 
         // Sync to leaderboard
-        let score = AnalysisCache.loadHealthScore() ?? 0
+        let score = GeminiResultStore.loadHealthScore() ?? AnalysisCache.loadHealthScore() ?? 0
         let tier = CarTierEngine.tierForScore(score)
-        let carName = AnalysisCache.loadSelectedCar()?.name
+        let carName = GeminiResultStore.loadCarName() ?? AnalysisCache.loadSelectedCar()?.name
         LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: carName)
     }
 
@@ -388,10 +388,10 @@ final class OnboardingCoordinator {
         }
 
         // Sync to leaderboard
-        let score = AnalysisCache.loadHealthScore() ?? 0
+        let score = GeminiResultStore.loadHealthScore() ?? AnalysisCache.loadHealthScore() ?? 0
         print("🧪 [Onboarding] Score at end of runTestUserGeminiAnalysis: \(score)")
         let tier = CarTierEngine.tierForScore(score)
-        let carName = AnalysisCache.loadSelectedCar()?.name
+        let carName = GeminiResultStore.loadCarName() ?? AnalysisCache.loadSelectedCar()?.name
         LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: carName)
     }
 

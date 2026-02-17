@@ -143,8 +143,8 @@ final class ScoreDetailWithGraphViewController: UIViewController {
         // Explanation
         let explanationLabel = UILabel()
         explanationLabel.text = config.explanationText
-        explanationLabel.font = UIFont.systemFont(ofSize: 15, weight: .regular)
-        explanationLabel.textColor = AIONDesign.textSecondary
+        explanationLabel.font = UIFont.systemFont(ofSize: 16, weight: .regular)
+        explanationLabel.textColor = UIColor.white.withAlphaComponent(0.85)
         explanationLabel.textAlignment = .center
         explanationLabel.numberOfLines = 0
         stack.addArrangedSubview(explanationLabel)

@@ -622,7 +622,7 @@ final class ProfileViewController: UIViewController {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         AnalyticsService.shared.logEvent(.profileShareTapped)
 
-        let score = AnalysisCache.loadHealthScore() ?? 0
+        let score = GeminiResultStore.loadHealthScore() ?? 0
         let text = String(format: "profile.shareText".localized, score)
         let ac = UIActivityViewController(activityItems: [text], applicationActivities: nil)
         ac.popoverPresentationController?.sourceView = shareProfileButton
@@ -632,7 +632,7 @@ final class ProfileViewController: UIViewController {
     // MARK: - Data Loading
 
     private func loadHealthScoreData() {
-        if let score = AnalysisCache.loadHealthScore() {
+        if let score = GeminiResultStore.loadHealthScore() {
             scoreStatValue.text = "\(score)"
 
             // Update circular progress

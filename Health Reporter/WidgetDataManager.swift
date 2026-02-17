@@ -8,6 +8,9 @@
 import Foundation
 import WidgetKit
 import UIKit
+import Vision
+import CoreImage
+import CoreImage.CIFilterBuiltins
 
 /// Data structure shared with widgets (must match HealthWidgetData in widget extension)
 struct SharedWidgetData: Codable {
@@ -127,8 +130,7 @@ final class WidgetDataManager {
         scoreBreakdown = (recoveryScore, sleepScore, nervousSystemScore, energyScore, activityScore, loadBalanceScore)
 
         // ALWAYS use Gemini car name if available, NEVER use generic tier name
-        let geminiCar = AnalysisCache.loadSelectedCar()
-        let carName = geminiCar?.name ?? ""  // Empty if no Gemini data - don't show generic names
+        let carName = GeminiResultStore.loadCarName() ?? AnalysisCache.loadSelectedCar()?.name ?? ""
         let carEmoji = carName.isEmpty ? "" : tier.emoji
 
         // Save to widgets AND sync to Watch with all data
@@ -248,8 +250,7 @@ extension WidgetDataManager {
     /// ALWAYS uses Gemini car name - never generic tier names
     func sendCarDataToWatch(tier: CarTier) {
         // ALWAYS use Gemini car name if available
-        let geminiCar = AnalysisCache.loadSelectedCar()
-        let carName = geminiCar?.name ?? ""  // Empty if no Gemini data
+        let carName = GeminiResultStore.loadCarName() ?? AnalysisCache.loadSelectedCar()?.name ?? ""
 
         print("📱➡️⌚️ Sending car data to Watch: car=\(carName), tier=\(tier.tierIndex)")
         WatchConnectivityManager.shared.sendCarDataToWatch(
@@ -262,14 +263,13 @@ extension WidgetDataManager {
 
     /// Sends full data to Apple Watch via WatchConnectivity
     private func sendToWatch(_ data: SharedWidgetData) {
-        // Get Gemini car data from cache
-        let geminiCar = AnalysisCache.loadSelectedCar()
-        let geminiScore = AnalysisCache.loadHealthScore()
+        // Get Gemini car data from store
+        let geminiCarName = GeminiResultStore.loadCarName()
+        let geminiScore = GeminiResultStore.loadHealthScore()
 
         // Use dailyScore (real health score) for Watch, NOT healthScore (which is Gemini 90-day)
-        let cachedMainScore = AnalysisCache.loadMainScore()
-        let watchHealthScore = data.dailyScore ?? cachedMainScore ?? 0
-        print("📱➡️⌚️ WidgetDataManager.sendToWatch DEBUG: data.healthScore(90day)=\(data.healthScore), data.dailyScore=\(String(describing: data.dailyScore)), AnalysisCache.mainScore=\(String(describing: cachedMainScore)), SENDING=\(watchHealthScore)")
+        let watchHealthScore = data.dailyScore ?? geminiScore ?? 0
+        print("📱➡️⌚️ WidgetDataManager.sendToWatch DEBUG: data.healthScore=\(data.healthScore), data.dailyScore=\(String(describing: data.dailyScore)), geminiScore=\(String(describing: geminiScore)), SENDING=\(watchHealthScore)")
         WatchConnectivityManager.shared.sendWidgetDataToWatch(
             healthScore: watchHealthScore,
             healthStatus: data.healthStatus,
@@ -292,17 +292,81 @@ extension WidgetDataManager {
             activityScore: scoreBreakdown?.activity,
             loadBalanceScore: scoreBreakdown?.loadBalance,
             // Gemini car data (for CarTierView on Watch)
-            geminiCarName: geminiCar?.name,
+            geminiCarName: geminiCarName,
             geminiCarScore: geminiScore
         )
+    }
+}
+
+// MARK: - Car Image Background Removal
+
+extension WidgetDataManager {
+
+    /// Removes the background from a car image using Vision framework (iOS 17+).
+    /// Returns the isolated subject with transparent background via completion handler.
+    /// Falls back to the original image if background removal fails.
+    func removeBackground(from image: UIImage, completion: @escaping (UIImage) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let inputCIImage = CIImage(image: image) else {
+                print("🚗 [BgRemoval] ❌ Failed to create CIImage")
+                completion(image)
+                return
+            }
+
+            let request = VNGenerateForegroundInstanceMaskRequest()
+            let handler = VNImageRequestHandler(ciImage: inputCIImage)
+
+            do {
+                try handler.perform([request])
+
+                guard let result = request.results?.first else {
+                    print("🚗 [BgRemoval] ❌ No mask results")
+                    completion(image)
+                    return
+                }
+
+                let mask = try result.generateScaledMaskForImage(
+                    forInstances: result.allInstances,
+                    from: handler
+                )
+
+                let maskCIImage = CIImage(cvPixelBuffer: mask)
+
+                let filter = CIFilter.blendWithMask()
+                filter.inputImage = inputCIImage
+                filter.maskImage = maskCIImage
+                filter.backgroundImage = CIImage.empty()
+
+                guard let outputCIImage = filter.outputImage else {
+                    print("🚗 [BgRemoval] ❌ Filter produced no output")
+                    completion(image)
+                    return
+                }
+
+                let context = CIContext(options: nil)
+                guard let cgImage = context.createCGImage(outputCIImage, from: outputCIImage.extent) else {
+                    print("🚗 [BgRemoval] ❌ Failed to create CGImage")
+                    completion(image)
+                    return
+                }
+
+                let resultImage = UIImage(cgImage: cgImage)
+                print("🚗 [BgRemoval] ✅ Background removed successfully")
+                completion(resultImage)
+
+            } catch {
+                print("🚗 [BgRemoval] ❌ Vision error: \(error.localizedDescription)")
+                completion(image)
+            }
+        }
     }
 }
 
 // MARK: - Car Image Management
 
 extension WidgetDataManager {
-    private var carImageFileName: String { "widget_car_image.jpg" }
-    private var carImageCacheFileName: String { "cached_car_image.jpg" }
+    private var carImageFileName: String { "widget_car_image.png" }
+    private var carImageCacheFileName: String { "cached_car_image.png" }
     private var carImageCacheKeyName: String { "cached_car_wiki_name" }
 
     /// Saves car image to App Group for widget access
@@ -314,9 +378,9 @@ extension WidgetDataManager {
 
         let imageURL = containerURL.appendingPathComponent(carImageFileName)
 
-        // Compress and save as JPEG for smaller file size
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-            print("WidgetDataManager: Failed to convert image to JPEG")
+        // Save as PNG to preserve transparency (background-removed images)
+        guard let imageData = image.pngData() else {
+            print("WidgetDataManager: Failed to convert image to PNG")
             return
         }
 
@@ -357,9 +421,9 @@ extension WidgetDataManager {
         let imageURL = containerURL.appendingPathComponent(carImageCacheFileName)
         let keyURL = containerURL.appendingPathComponent(carImageCacheKeyName)
 
-        // Compress and save as JPEG
-        guard let imageData = image.jpegData(compressionQuality: 0.85) else {
-            print("WidgetDataManager: Failed to convert cached image to JPEG")
+        // Save as PNG to preserve transparency (background-removed images)
+        guard let imageData = image.pngData() else {
+            print("WidgetDataManager: Failed to convert cached image to PNG")
             return
         }
 
@@ -408,6 +472,28 @@ extension WidgetDataManager {
         return nil
     }
 
+    /// Migrates old JPEG car image cache to PNG (one-time on upgrade)
+    private func migrateJpegCacheToPngIfNeeded() {
+        let migrationKey = "CarImageCache.MigratedToPNG"
+        guard !UserDefaults.standard.bool(forKey: migrationKey) else { return }
+        UserDefaults.standard.set(true, forKey: migrationKey)
+
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else { return }
+
+        // Remove old JPEG files
+        let oldFiles = ["cached_car_image.jpg", "widget_car_image.jpg"]
+        for file in oldFiles {
+            let url = containerURL.appendingPathComponent(file)
+            if FileManager.default.fileExists(atPath: url.path) {
+                try? FileManager.default.removeItem(at: url)
+                print("🚗 [CarCache] Migrated: removed old \(file)")
+            }
+        }
+        // Also clear the wiki key so cache is rebuilt
+        let keyURL = containerURL.appendingPathComponent(carImageCacheKeyName)
+        try? FileManager.default.removeItem(at: keyURL)
+    }
+
     /// Clears the car image cache
     func clearCarImageCache() {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else {
@@ -430,6 +516,9 @@ extension WidgetDataManager {
             completion?(false)
             return
         }
+
+        // One-time migration from old JPEG cache to PNG
+        migrateJpegCacheToPngIfNeeded()
 
         // Check if already cached
         if loadCachedCarImage(forWikiName: wikiName) != nil {
@@ -501,10 +590,12 @@ extension WidgetDataManager {
                 guard let self = self else { return }
 
                 if let imgData = imgData, !imgData.isEmpty, let image = UIImage(data: imgData) {
-                    print("🚗 [Prefetch] ✅ Image prefetched for '\(carName)'")
-                    self.saveCarImage(image)
-                    self.cacheCarImage(image, forWikiName: originalWikiName)
-                    completion?(true)
+                    print("🚗 [Prefetch] ✅ Image prefetched for '\(carName)', removing background...")
+                    self.removeBackground(from: image) { processedImage in
+                        self.saveCarImage(processedImage)
+                        self.cacheCarImage(processedImage, forWikiName: originalWikiName)
+                        completion?(true)
+                    }
                 } else {
                     // Try original URL
                     if let originalURL = URL(string: source) {
@@ -514,10 +605,12 @@ extension WidgetDataManager {
                         URLSession.shared.dataTask(with: retryRequest) { [weak self] retryData, _, _ in
                             guard let self = self else { return }
                             if let retryData = retryData, !retryData.isEmpty, let image = UIImage(data: retryData) {
-                                print("🚗 [Prefetch] ✅ Image prefetched with original URL for '\(carName)'")
-                                self.saveCarImage(image)
-                                self.cacheCarImage(image, forWikiName: originalWikiName)
-                                completion?(true)
+                                print("🚗 [Prefetch] ✅ Image prefetched with original URL for '\(carName)', removing background...")
+                                self.removeBackground(from: image) { processedImage in
+                                    self.saveCarImage(processedImage)
+                                    self.cacheCarImage(processedImage, forWikiName: originalWikiName)
+                                    completion?(true)
+                                }
                             } else {
                                 self.prefetchWithCandidates(candidates: candidates, index: index + 1, originalWikiName: originalWikiName, completion: completion)
                             }

@@ -67,7 +67,7 @@ struct HealthWidgetData: Codable {
 
 struct WidgetDataLoader {
     static let appGroupID = "group.com.rani.Health-Reporter"
-    static let carImageFileName = "widget_car_image.jpg"
+    static let carImageFileName = "widget_car_image.png"
 
     static func loadData() -> HealthWidgetData {
         guard let userDefaults = UserDefaults(suiteName: appGroupID) else {

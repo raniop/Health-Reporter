@@ -12,19 +12,13 @@ final class InsightsDashboardViewController: UIViewController {
 
     // MARK: - Properties
 
-    private var dailyMetrics: DailyMetrics?
-    private var starMetrics: StarMetrics?
-    private var currentPeriodData: HealthDataModel?
-    private var storedHistoricalData: [HealthDataModel] = []
-    private var scoreHistory: [DailyScoreEntry] = []
+    private var geminiResult: GeminiDailyResult?
     private var isLoading = true
-    private var selectedPeriod: TimePeriod = .day
     private var lastUpdatedTime: Date?
     private var metricSelection = HomeMetricSelection.load()
-    private var recommendations: HomeRecommendations?
     private var hasPlayedEntrance = false
-    private var lastRecsHealthData: HealthDataModel?
-    private var lastRecsDailyMetrics: DailyMetrics?
+    private var chartDataCache: [String: [BarChartDataPoint]] = [:]
+    private var lastFailureReason: AnalysisFailureReason?
 
     // UI
     private let scrollView = UIScrollView()
@@ -174,172 +168,66 @@ final class InsightsDashboardViewController: UIViewController {
 
     private func loadData() {
         let isPullToRefresh = refreshControl.isRefreshing
+        let forceRefresh = isPullToRefresh
+
+        // On initial load, try cached result first (Splash already loaded it)
+        if !forceRefresh, let cached = GeminiResultStore.load(), Calendar.current.isDateInToday(cached.date) {
+            geminiResult = cached
+            lastUpdatedTime = cached.date
+            isLoading = false
+            contentStack.isHidden = false
+            removeEmptyState()
+            updateUI()
+            playEntranceAnimationIfNeeded()
+            loadChartData()
+            return
+        }
+
+        // Pull-to-refresh or no cached data — call orchestrator
         isLoading = true
         if !isPullToRefresh {
             loadingIndicator.startAnimating()
             contentStack.isHidden = true
         }
 
-        let dataRange: DataRange
-        switch selectedPeriod {
-        case .day: dataRange = .day
-        case .week: dataRange = .week
-        case .month: dataRange = .month
-        }
-
-        #if DEBUG
-        if DebugTestHelper.isTestUser(email: Auth.auth().currentUser?.email),
-           let mockData = HealthDataCache.shared.healthData,
-           let mockBundle = HealthDataCache.shared.chartBundle {
-            print("🧪 [InsightsDashboard] Test user - using mock health data")
-            loadDataWithMockData(mockData: mockData, mockBundle: mockBundle)
-            return
-        }
-        #endif
-
-        HealthKitManager.shared.fetchAllHealthData(for: dataRange) { [weak self] periodData, error in
-            guard let self = self, let periodModel = periodData else {
-                DispatchQueue.main.async {
-                    self?.isLoading = false
-                    self?.loadingIndicator.stopAnimating()
-                    self?.refreshControl.endRefreshing()
-                    self?.contentStack.isHidden = false
-                }
-                return
-            }
-
-            HealthKitManager.shared.fetchDailyHealthData(days: 90) { historicalEntries in
-                let historicalData = historicalEntries.map { entry -> HealthDataModel in
-                    var model = HealthDataModel()
-                    model.date = entry.date
-                    model.steps = entry.steps
-                    model.heartRateVariability = entry.hrvMs
-                    model.restingHeartRate = entry.restingHR
-                    model.sleepHours = entry.sleepHours
-                    model.sleepDeepHours = entry.deepSleepHours
-                    model.sleepRemHours = entry.remSleepHours
-                    model.activeEnergy = entry.activeCalories
-                    model.vo2Max = entry.vo2max
-                    return model
-                }
-
-                self.storedHistoricalData = historicalData
-
-                DailyMetricsEngine.shared.calculateDailyMetrics(
-                    todayData: periodModel,
-                    historicalData: historicalData,
-                    period: self.selectedPeriod
-                ) { dailyMetrics in
-                    DispatchQueue.main.async {
-                        self.currentPeriodData = periodModel
-                        self.dailyMetrics = dailyMetrics
-                        self.starMetrics = StarMetricsCalculator.shared.calculateStarMetrics(from: dailyMetrics)
-                        self.lastUpdatedTime = Date()
-                        self.updateUI()
-                        self.isLoading = false
-                        self.loadingIndicator.stopAnimating()
-                        self.refreshControl.endRefreshing()
-                        self.contentStack.isHidden = false
-                        self.playEntranceAnimationIfNeeded()
-                    }
-
-                    // 7-day score history
-                    DailyMetricsEngine.shared.calculate7DayHistory(
-                        fullHistoricalData: historicalData
-                    ) { [weak self] history in
-                        guard let self = self else { return }
-                        self.scoreHistory = history
-                        DispatchQueue.main.async {
-                            self.updateUI()
-                        }
-                    }
-
-                    // Fetch AI recommendations
-                    self.fetchRecommendations(healthData: periodModel, dailyMetrics: dailyMetrics)
-                }
-            }
-        }
-    }
-
-    #if DEBUG
-    private func loadDataWithMockData(mockData: HealthDataModel, mockBundle: AIONChartDataBundle) {
-        var historicalData: [HealthDataModel] = []
-        for i in 0..<mockBundle.steps.points.count {
-            var dayModel = HealthDataModel()
-            dayModel.date = mockBundle.steps.points[i].date
-            dayModel.steps = mockBundle.steps.points[i].steps
-            if i < mockBundle.hrvTrend.points.count {
-                dayModel.heartRateVariability = mockBundle.hrvTrend.points[i].value
-            }
-            if i < mockBundle.rhrTrend.points.count {
-                dayModel.restingHeartRate = mockBundle.rhrTrend.points[i].value
-            }
-            if i < mockBundle.sleep.points.count {
-                dayModel.sleepHours = mockBundle.sleep.points[i].totalHours
-                dayModel.sleepDeepHours = mockBundle.sleep.points[i].deepHours
-                dayModel.sleepRemHours = mockBundle.sleep.points[i].remHours
-            }
-            if i < mockBundle.glucoseEnergy.points.count {
-                dayModel.activeEnergy = mockBundle.glucoseEnergy.points[i].activeEnergy
-            }
-            historicalData.append(dayModel)
-        }
-
-        DailyMetricsEngine.shared.calculateDailyMetrics(
-            todayData: mockData,
-            historicalData: historicalData,
-            period: self.selectedPeriod
-        ) { dailyMetrics in
+        AIONAnalysisOrchestrator.shared.ensureTodayResult(forceRefresh: forceRefresh) { [weak self] result, failureReason in
+            guard let self = self else { return }
             DispatchQueue.main.async {
-                self.currentPeriodData = mockData
-                self.dailyMetrics = dailyMetrics
-                self.starMetrics = StarMetricsCalculator.shared.calculateStarMetrics(from: dailyMetrics)
+                self.geminiResult = result
+                self.lastFailureReason = failureReason
                 self.lastUpdatedTime = Date()
-                self.updateUI()
                 self.isLoading = false
                 self.loadingIndicator.stopAnimating()
                 self.refreshControl.endRefreshing()
                 self.contentStack.isHidden = false
-                self.playEntranceAnimationIfNeeded()
+
+                if result != nil {
+                    self.removeEmptyState()
+                    self.updateUI()
+                    self.playEntranceAnimationIfNeeded()
+                    self.loadChartData()
+                } else {
+                    self.showEmptyState()
+                }
             }
         }
     }
-    #endif
 
     // MARK: - Update UI
 
     private func updateUI() {
-        guard let metrics = dailyMetrics else { return }
+        guard let result = geminiResult else { return }
 
         // Header
         headerView.configure(lastUpdated: lastUpdatedTime)
 
-        // Save score data (keep existing behaviour)
-        if let mainScore = metrics.mainScore {
-            let scoreInt = Int(mainScore)
-            let scoreLevel = RangeLevel.from(score: mainScore)
-            let healthStatus = "score.description.\(scoreLevel.rawValue)".localized
-            AnalysisCache.saveMainScore(scoreInt, status: healthStatus)
-        }
-        if selectedPeriod == .day {
-            AnalysisCache.saveScoreBreakdown(
-                recovery: metrics.recoveryReadiness.value.map { Int($0) },
-                sleep: metrics.sleepQuality.value.map { Int($0) },
-                nervousSystem: metrics.nervousSystemBalance.value.map { Int($0) },
-                energy: metrics.energyForecast.value.map { Int($0) },
-                activity: metrics.activityScore.value.map { Int($0) },
-                loadBalance: metrics.loadBalance.value.map { Int($0) }
-            )
-        }
-
         // Hero card
-        let heroMetric = findMetric(id: metricSelection.heroMetricId, in: metrics)
-        let heroChartData = buildChartData(for: metricSelection.heroMetricId)
-        let heroExplanation = explanationText(for: metricSelection.heroMetricId)
+        let heroMetric = geminiMetric(for: metricSelection.heroMetricId, from: result)
+        let heroExplanation = geminiExplanation(for: metricSelection.heroMetricId, from: result)
         heroCard.configure(
             metric: heroMetric,
             metricId: metricSelection.heroMetricId,
-            chartData: heroChartData,
+            chartData: chartDataCache[metricSelection.heroMetricId] ?? [],
             explanationText: heroExplanation
         )
 
@@ -347,62 +235,232 @@ final class InsightsDashboardViewController: UIViewController {
         for (i, cardView) in secondaryCards.enumerated() {
             guard i < metricSelection.secondaryMetricIds.count else { continue }
             let metricId = metricSelection.secondaryMetricIds[i]
-            let metric = findMetric(id: metricId, in: metrics)
-            let chartData = buildChartData(for: metricId)
-            let explanation = explanationText(for: metricId)
-            cardView.configure(metric: metric, metricId: metricId, chartData: chartData, explanationText: explanation)
+            let metric = geminiMetric(for: metricId, from: result)
+            let explanation = geminiExplanation(for: metricId, from: result)
+            cardView.configure(metric: metric, metricId: metricId, chartData: chartDataCache[metricId] ?? [], explanationText: explanation)
         }
 
-        // Recommendations
-        recommendationsSection.configure(recommendations: recommendations)
+        // Recommendations (from Gemini result — no separate API call)
+        let recs = HomeRecommendations(
+            medical: result.homeRecommendationMedical,
+            sports: result.homeRecommendationSports,
+            nutrition: result.homeRecommendationNutrition
+        )
+        let hasRecs = !recs.medical.isEmpty || !recs.sports.isEmpty || !recs.nutrition.isEmpty
+        recommendationsSection.isHidden = !hasRecs
+        if hasRecs {
+            recommendationsSection.configure(recommendations: recs)
+        }
     }
 
-    // MARK: - Metric Lookup Helpers
+    // MARK: - Gemini Metric Helpers
 
-    private func findMetric(id: String, in metrics: DailyMetrics) -> (any InsightMetric)? {
-        if id == "main_score" || id == "health_score" {
-            // mainScore is a computed Double, not an InsightMetric — wrap it
-            return metrics.allMetrics.first { $0.id == "recovery_readiness" }.map { _ in
-                MainScoreProxy(value: metrics.mainScore)
+    /// Maps a metric ID to a Gemini score value wrapped as InsightMetric
+    private func geminiMetric(for metricId: String, from result: GeminiDailyResult) -> (any InsightMetric)? {
+        let scores = result.scores
+        switch metricId {
+        case "main_score", "health_score":
+            return GeminiMetricProxy(id: metricId, nameKey: "dashboard.healthScore", value: scores.healthScore.map { Double($0) }, category: .performance)
+        case "sleep_quality":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.sleep_quality", value: scores.sleepScore.map { Double($0) }, category: .sleep)
+        case "recovery_readiness":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.recovery_readiness", value: scores.readinessScore.map { Double($0) }, category: .recovery)
+        case "energy_forecast":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.energy_forecast", value: scores.energyScore.map { Double($0) }, category: .performance)
+        case "training_strain":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.training_strain", value: scores.trainingStrain, category: .load, isStrain: true)
+        case "nervous_system_balance":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.nervous_system_balance", value: scores.nervousSystemBalance.map { Double($0) }, category: .recovery)
+        case "recovery_debt":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.recovery_debt", value: scores.recoveryDebt.map { Double($0) }, category: .recovery)
+        case "activity_score":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.activity_score", value: scores.activityScore.map { Double($0) }, category: .habit)
+        case "load_balance":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.load_balance", value: scores.loadBalance.map { Double($0) }, category: .load)
+        default:
+            return nil
+        }
+    }
+
+    /// Returns the Gemini explanation text for a given metric
+    private func geminiExplanation(for metricId: String, from result: GeminiDailyResult) -> String {
+        let scores = result.scores
+        switch metricId {
+        case "main_score", "health_score":
+            return scores.healthScoreExplanation ?? ""
+        case "sleep_quality":
+            return scores.sleepScoreExplanation ?? ""
+        case "recovery_readiness":
+            return scores.readinessScoreExplanation ?? ""
+        case "energy_forecast":
+            return scores.energyScoreExplanation ?? ""
+        case "training_strain":
+            return scores.trainingStrainExplanation ?? ""
+        case "nervous_system_balance":
+            return scores.nervousSystemBalanceExplanation ?? ""
+        case "recovery_debt":
+            return scores.recoveryDebtExplanation ?? ""
+        case "activity_score":
+            return scores.activityScoreExplanation ?? ""
+        case "load_balance":
+            return scores.loadBalanceExplanation ?? ""
+        default:
+            return ""
+        }
+    }
+
+    // MARK: - Chart Data
+
+    /// Fetches 7-day HealthKit data and builds chart points for each metric.
+    /// Today's value is overridden with the actual Gemini score.
+    private func loadChartData() {
+        HealthKitManager.shared.fetchDailyHealthData(days: 7) { [weak self] entries in
+            guard let self = self else { return }
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+
+            // Get last 7 entries (or fewer if less data)
+            let last7 = Array(entries.suffix(7))
+            guard !last7.isEmpty else { return }
+
+            let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
+            let dayFormatter = DateFormatter()
+            dayFormatter.dateFormat = "EEE"
+            dayFormatter.locale = isHebrew ? Locale(identifier: "he_IL") : Locale(identifier: "en_US")
+
+            let allMetricIds = [
+                "main_score", "health_score",
+                "sleep_quality", "recovery_readiness", "energy_forecast",
+                "training_strain", "nervous_system_balance", "recovery_debt",
+                "activity_score", "load_balance"
+            ]
+
+            var charts: [String: [BarChartDataPoint]] = [:]
+
+            for metricId in allMetricIds {
+                charts[metricId] = last7.map { entry in
+                    let value = self.healthKitValueForMetric(metricId, entry: entry)
+                    let isToday = calendar.isDate(entry.date, inSameDayAs: today)
+                    return BarChartDataPoint(
+                        date: entry.date,
+                        dayLabel: dayFormatter.string(from: entry.date),
+                        value: value,
+                        isToday: isToday
+                    )
+                }
+            }
+
+            // Override today's data point with actual Gemini score
+            if let result = self.geminiResult {
+                for metricId in allMetricIds {
+                    if var points = charts[metricId],
+                       let todayIdx = points.firstIndex(where: { $0.isToday }),
+                       let geminiVal = self.geminiScoreValue(for: metricId, from: result) {
+                        points[todayIdx] = BarChartDataPoint(
+                            date: points[todayIdx].date,
+                            dayLabel: points[todayIdx].dayLabel,
+                            value: geminiVal,
+                            isToday: true
+                        )
+                        charts[metricId] = points
+                    }
+                }
+            }
+
+            DispatchQueue.main.async {
+                self.chartDataCache = charts
+                // Re-render cards with chart data (only if we have Gemini data)
+                if self.geminiResult != nil {
+                    self.updateUI()
+                }
             }
         }
-        return metrics.allMetrics.first { $0.id == id }
     }
 
-    private func buildChartData(for metricId: String) -> [BarChartDataPoint] {
-        scoreHistory.map { entry in
-            BarChartDataPoint(
-                date: entry.date,
-                dayLabel: entry.dayOfWeekShort,
-                value: entry.value(for: metricId) ?? 0,
-                isToday: Calendar.current.isDateInToday(entry.date)
-            )
+    /// Maps a metric ID to a scaled HealthKit value for chart display
+    private func healthKitValueForMetric(_ metricId: String, entry: RawDailyHealthEntry) -> Double {
+        switch metricId {
+        case "main_score", "health_score":
+            // Composite: average of sleep, HRV, and activity signals
+            let sleepPart = min(100.0, ((entry.sleepHours ?? 0) / 8.0) * 100.0)
+            let hrvPart = min(100.0, ((entry.hrvMs ?? 0) / 60.0) * 100.0)
+            let actPart = min(100.0, ((entry.steps ?? 0) / 10000.0) * 100.0)
+            let count = [entry.sleepHours, entry.hrvMs, entry.steps].compactMap({ $0 }).count
+            return count > 0 ? (sleepPart + hrvPart + actPart) / Double(max(count, 1)) : 0
+        case "sleep_quality":
+            return min(100.0, ((entry.sleepHours ?? 0) / 8.0) * 100.0)
+        case "recovery_readiness":
+            // HRV-based: higher HRV = better readiness
+            return min(100.0, ((entry.hrvMs ?? 0) / 60.0) * 100.0)
+        case "energy_forecast":
+            // Composite of HRV + sleep
+            let sleepPart = min(100.0, ((entry.sleepHours ?? 0) / 8.0) * 100.0)
+            let hrvPart = min(100.0, ((entry.hrvMs ?? 0) / 60.0) * 100.0)
+            return (sleepPart + hrvPart) / 2.0
+        case "training_strain":
+            // Scale: 0-10 based on active calories
+            return min(10.0, ((entry.activeCalories ?? 0) / 300.0) * 10.0)
+        case "nervous_system_balance":
+            // HRV-based
+            return min(100.0, ((entry.hrvMs ?? 0) / 60.0) * 100.0)
+        case "recovery_debt":
+            // Lower sleep = more debt (inverted)
+            let sleepRatio = min(1.0, (entry.sleepHours ?? 0) / 8.0)
+            return (1.0 - sleepRatio) * 100.0
+        case "activity_score":
+            return min(100.0, ((entry.steps ?? 0) / 10000.0) * 100.0)
+        case "load_balance":
+            return min(100.0, ((entry.activeCalories ?? 0) / 500.0) * 100.0)
+        default:
+            return 0
         }
     }
 
-    private func explanationText(for metricId: String) -> String {
-        let key = "explanation.\(metricId)"
-        let localized = key.localized
-        return localized != key ? localized : ""
+    /// Gets the actual Gemini score for a metric to override today's chart point
+    private func geminiScoreValue(for metricId: String, from result: GeminiDailyResult) -> Double? {
+        let scores = result.scores
+        switch metricId {
+        case "main_score", "health_score":
+            return scores.healthScore.map { Double($0) }
+        case "sleep_quality":
+            return scores.sleepScore.map { Double($0) }
+        case "recovery_readiness":
+            return scores.readinessScore.map { Double($0) }
+        case "energy_forecast":
+            return scores.energyScore.map { Double($0) }
+        case "training_strain":
+            return scores.trainingStrain
+        case "nervous_system_balance":
+            return scores.nervousSystemBalance.map { Double($0) }
+        case "recovery_debt":
+            return scores.recoveryDebt.map { Double($0) }
+        case "activity_score":
+            return scores.activityScore.map { Double($0) }
+        case "load_balance":
+            return scores.loadBalance.map { Double($0) }
+        default:
+            return nil
+        }
     }
 
     // MARK: - Actions
 
     private func heroCardTapped() {
-        guard let metrics = dailyMetrics else { return }
-        let metric = findMetric(id: metricSelection.heroMetricId, in: metrics)
-        guard let m = metric else { return }
-        let config = ScoreDetailConfig.from(metric: m, scoreHistory: scoreHistory)
+        guard let result = geminiResult else { return }
+        guard let m = geminiMetric(for: metricSelection.heroMetricId, from: result) else { return }
+        let explanation = geminiExplanation(for: metricSelection.heroMetricId, from: result)
+        let config = ScoreDetailConfig.from(metric: m, scoreHistory: [], explanation: explanation.isEmpty ? nil : explanation)
         let detailVC = ScoreDetailWithGraphViewController(config: config)
         present(detailVC, animated: true)
     }
 
     private func secondaryCardTapped(index: Int) {
-        guard let metrics = dailyMetrics,
+        guard let result = geminiResult,
               index < metricSelection.secondaryMetricIds.count else { return }
         let metricId = metricSelection.secondaryMetricIds[index]
-        guard let m = findMetric(id: metricId, in: metrics) else { return }
-        let config = ScoreDetailConfig.from(metric: m, scoreHistory: scoreHistory)
+        guard let m = geminiMetric(for: metricId, from: result) else { return }
+        let explanation = geminiExplanation(for: metricId, from: result)
+        let config = ScoreDetailConfig.from(metric: m, scoreHistory: [], explanation: explanation.isEmpty ? nil : explanation)
         let detailVC = ScoreDetailWithGraphViewController(config: config)
         present(detailVC, animated: true)
     }
@@ -419,53 +477,95 @@ final class InsightsDashboardViewController: UIViewController {
 
     // MARK: - AI Recommendations
 
-    private func fetchRecommendations(healthData: HealthDataModel, dailyMetrics: DailyMetrics) {
-        print("🏠 [HomeRecs] fetchRecommendations called — always fresh from Gemini")
-
-        // Store for retry
-        lastRecsHealthData = healthData
-        lastRecsDailyMetrics = dailyMetrics
-
-        // Show loading state
-        DispatchQueue.main.async {
-            self.recommendationsSection.configure(recommendations: nil)
-        }
-
-        GeminiService.shared.generateHomeRecommendations(
-            healthData: healthData,
-            dailyMetrics: dailyMetrics
-        ) { [weak self] recs in
-            if let recs = recs {
-                print("🏠 [HomeRecs] Got recommendations ✅ medical=\(recs.medical.prefix(50))...")
-            } else {
-                print("🏠 [HomeRecs] Gemini returned nil ❌ — lastHomeRecsHadNoData=\(GeminiService.shared.lastHomeRecsHadNoData)")
-            }
-            DispatchQueue.main.async {
-                self?.recommendations = recs
-                if let recs = recs {
-                    self?.recommendationsSection.isHidden = false
-                    self?.recommendationsSection.configure(recommendations: recs)
-                } else if GeminiService.shared.lastHomeRecsHadNoData {
-                    // No health data available — hide the section entirely
-                    print("🏠 [HomeRecs] No health data — hiding recommendations section")
-                    self?.recommendationsSection.isHidden = true
-                } else {
-                    // API error — show retry
-                    self?.recommendationsSection.isHidden = false
-                    self?.recommendationsSection.showError()
-                }
-            }
-        }
+    private func retryRecommendations() {
+        // Force refresh from Gemini
+        loadData()
     }
 
-    private func retryRecommendations() {
-        guard let healthData = lastRecsHealthData, let dailyMetrics = lastRecsDailyMetrics else {
-            print("🏠 [HomeRecs] Retry — no stored data, calling loadData()")
-            loadData()
-            return
+    // MARK: - Empty State
+
+    private let emptyStateTag = 9999
+
+    private func showEmptyState() {
+        // Don't add twice
+        guard view.viewWithTag(emptyStateTag) == nil else { return }
+
+        // Choose icon and text based on failure reason
+        let iconName: String
+        let titleText: String
+        let subtitleText: String
+
+        switch lastFailureReason {
+        case .geminiFailed:
+            iconName = "wifi.exclamationmark"
+            titleText = "dashboard.geminiFailed".localized
+            subtitleText = "dashboard.geminiFailedSubtitle".localized
+        case .noHealthData, .none:
+            iconName = "heart.slash"
+            titleText = "dashboard.noHealthData".localized
+            subtitleText = "dashboard.noHealthDataSubtitle".localized
         }
-        print("🏠 [HomeRecs] Retry tapped — fetching fresh recommendations")
-        fetchRecommendations(healthData: healthData, dailyMetrics: dailyMetrics)
+
+        let container = UIView()
+        container.tag = emptyStateTag
+        container.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(container)
+
+        let icon = UIImageView(image: UIImage(systemName: iconName))
+        icon.tintColor = AIONDesign.accentPrimary
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = UILabel()
+        title.text = titleText
+        title.font = .systemFont(ofSize: 18, weight: .semibold)
+        title.textColor = .white
+        title.textAlignment = .center
+        title.numberOfLines = 0
+        title.translatesAutoresizingMaskIntoConstraints = false
+
+        let subtitle = UILabel()
+        subtitle.text = subtitleText
+        subtitle.font = .systemFont(ofSize: 14, weight: .regular)
+        subtitle.textColor = UIColor.white.withAlphaComponent(0.5)
+        subtitle.textAlignment = .center
+        subtitle.numberOfLines = 0
+        subtitle.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(icon)
+        container.addSubview(title)
+        container.addSubview(subtitle)
+
+        NSLayoutConstraint.activate([
+            container.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            container.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -40),
+            container.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 40),
+            container.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -40),
+
+            icon.topAnchor.constraint(equalTo: container.topAnchor),
+            icon.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 48),
+            icon.heightAnchor.constraint(equalToConstant: 48),
+
+            title.topAnchor.constraint(equalTo: icon.bottomAnchor, constant: 16),
+            title.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            title.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+
+            subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 8),
+            subtitle.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            subtitle.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            subtitle.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        // Fade in
+        container.alpha = 0
+        UIView.animate(withDuration: 0.3) { container.alpha = 1 }
+    }
+
+    private func removeEmptyState() {
+        if let empty = view.viewWithTag(emptyStateTag) {
+            empty.removeFromSuperview()
+        }
     }
 
     // MARK: - Entrance Animations
@@ -549,18 +649,20 @@ extension InsightsDashboardViewController: NotificationsCenterViewControllerDele
     }
 }
 
-// MARK: - MainScoreProxy (wraps the composite mainScore as InsightMetric)
+// MARK: - GeminiMetricProxy (wraps a Gemini score as InsightMetric)
 
-private struct MainScoreProxy: InsightMetric {
-    let id = "main_score"
-    let nameKey = "dashboard.healthScore"
+private struct GeminiMetricProxy: InsightMetric {
+    let id: String
+    let nameKey: String
     let value: Double?
-    let category: MetricCategory = .performance
+    let category: MetricCategory
     let reliability: DataReliability = .high
     let trend: MetricTrend? = nil
+    var isStrain: Bool = false
 
     var displayValue: String {
         guard let v = value else { return "--" }
+        if isStrain { return String(format: "%.1f", v) }
         return "\(Int(v))"
     }
 }

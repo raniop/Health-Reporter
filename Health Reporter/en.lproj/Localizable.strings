@@ -86,6 +86,12 @@
 "dashboard.exercise" = "Exercise";
 "dashboard.stand" = "Stand";
 "dashboard.runAnalysisForRecommendations" = "Run analysis (AION Insights) to see recommendations.";
+"dashboard.analyzingHealth" = "Analyzing your data...";
+"dashboard.analyzingHealthSubtitle" = "Pull down to refresh";
+"dashboard.noHealthData" = "No health data available";
+"dashboard.noHealthDataSubtitle" = "Make sure Apple Health permissions are granted and that you have health data recorded";
+"dashboard.geminiFailed" = "Could not complete analysis";
+"dashboard.geminiFailedSubtitle" = "Check your internet connection and pull down to try again";
 
 /* Activity Extended */
 "activity.floors" = "Floors";
@@ -266,6 +272,8 @@
 /* Splash - Extended */
 "splash.syncAppleHealth" = "Syncing with Apple Health...";
 "splash.processingData" = "Processing data...";
+"splash.analyzingAI" = "Analyzing with AI...";
+"splash.ready" = "Ready!";
 "splash.healthReport" = "Personal Health Report · Performance Lab";
 
 /* Trends - Extended */

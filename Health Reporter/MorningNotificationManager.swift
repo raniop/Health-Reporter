@@ -174,7 +174,7 @@ final class MorningNotificationManager {
         }
 
         // Build body from cached data - use mainScore (daily) instead of widget healthScore (90-day)
-        let mainScore = AnalysisCache.loadMainScore()
+        let mainScore = GeminiResultStore.loadHealthScore()
         let widgetData = WidgetDataManager.shared.loadCurrentData()
         let weeklyStats = AnalysisCache.loadWeeklyStats()
         let dailyActivity = AnalysisCache.loadDailyActivity()
@@ -418,7 +418,7 @@ final class MorningNotificationManager {
             // CRITICAL: Use mainScore (daily score) NOT widgetData.healthScore (90-day average)!
             // mainScore = the daily score the user sees (54)
             // widgetData.healthScore = 90-day average score (70)
-            let healthScore = AnalysisCache.loadMainScore() ?? widgetData?.healthScore ?? 0
+            let healthScore = GeminiResultStore.loadHealthScore() ?? widgetData?.healthScore ?? 0
             let sleepHours = widgetData?.sleepHours ?? todayData.sleep
 
             // Build and send notification with CORRECT data
@@ -470,12 +470,12 @@ final class MorningNotificationManager {
     /// Get today's health score (mainScore = daily score, NOT 90-day average)
     private func getTodayHealthScore() -> Int? {
         // Priority: mainScore (daily) > widget healthScore (90-day average)
-        return AnalysisCache.loadMainScore() ?? WidgetDataManager.shared.loadCurrentData()?.healthScore
+        return GeminiResultStore.loadHealthScore() ?? WidgetDataManager.shared.loadCurrentData()?.healthScore
     }
 
     private func sendNotificationWithCachedData() {
         // Use mainScore (daily) as priority, fallback to widget data
-        let mainScore = AnalysisCache.loadMainScore()
+        let mainScore = GeminiResultStore.loadHealthScore()
         let widgetData = WidgetDataManager.shared.loadCurrentData()
         let weeklyStats = AnalysisCache.loadWeeklyStats()
         let dailyActivity = AnalysisCache.loadDailyActivity()
@@ -916,7 +916,7 @@ final class MorningNotificationManager {
             let yesterdayData = self.getYesterdayData(from: entries)
 
             // CRITICAL: Use mainScore (daily score) NOT widgetData.healthScore (90-day average)!
-            let healthScore = AnalysisCache.loadMainScore() ?? widgetData?.healthScore ?? 0
+            let healthScore = GeminiResultStore.loadHealthScore() ?? widgetData?.healthScore ?? 0
             let sleepHours = widgetData?.sleepHours ?? todayData.sleep ?? weeklyStats?.sleepHours
 
             // Get readiness - prefer today's data, fallback to weekly stats

@@ -257,6 +257,8 @@
 /* Splash - Extended */
 "splash.syncAppleHealth" = "מסנכרן עם Apple Health...";
 "splash.processingData" = "מעבד נתונים...";
+"splash.analyzingAI" = "מנתח עם AI...";
+"splash.ready" = "מוכן!";
 "splash.healthReport" = "דוח בריאות אישי · Performance Lab";
 
 /* Trends - Extended */
@@ -504,6 +506,12 @@
 
 /* Dashboard Extended */
 "dashboard.runAnalysisForRecommendations" = "הרץ ניתוח (תובנות AION) כדי לראות המלצות.";
+"dashboard.analyzingHealth" = "מנתח את הנתונים שלך...";
+"dashboard.analyzingHealthSubtitle" = "משוך למטה לרענון";
+"dashboard.noHealthData" = "אין נתוני בריאות זמינים";
+"dashboard.noHealthDataSubtitle" = "ודא שהרשאות Apple Health ניתנו ושיש לך נתוני בריאות מוקלטים";
+"dashboard.geminiFailed" = "לא ניתן להשלים את הניתוח";
+"dashboard.geminiFailedSubtitle" = "בדוק את חיבור האינטרנט ומשוך למטה כדי לנסות שוב";
 
 /* Activity Extended */
 "activity.floors" = "קומות";

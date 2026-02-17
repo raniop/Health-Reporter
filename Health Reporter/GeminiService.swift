@@ -28,13 +28,15 @@ class GeminiService {
     
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     
-    private static let aionSystemInstruction = """
+    private static var aionSystemInstruction: String {
+        let lang = LocalizationManager.shared.currentLanguage == .hebrew ? "Hebrew" : "English"
+        return """
     # ROLE: AION Health Analysis Engine
     You are an Elite Sports Physician, Performance Coach, and Data Analyst combined.
 
     # OUTPUT REQUIREMENTS
     - Return ONLY valid JSON - no text before or after the JSON block
-    - All text fields MUST have both Hebrew (_he) and English (_en) versions
+    - Write ALL text fields in \(lang)
     - Follow the exact JSON schema provided in the prompt
     - Be concise: 2-3 sentences per field maximum
 
@@ -56,8 +58,23 @@ class GeminiService {
     - Build on previous advice - don't repeat the same generic suggestions
     - If a previous STOP directive was followed (metric improved), acknowledge it
     - Compare current metrics against their personal baselines, not population averages
+
+    # SCORE CALIBRATION (all scores 0-100 unless noted)
+    You MUST calculate numerical scores from the provided raw health data.
+    - healthScore: Overall daily health. 50=baseline, 60-74=good, 75-89=very good, 90+=exceptional (rare)
+    - sleepScore: Sleep quality from duration, deep/REM ratio, efficiency. 7-8h optimal.
+    - readinessScore: Recovery readiness from HRV trends, RHR delta, sleep quality, recent load.
+    - energyScore: Predicted energy today based on HRV, sleep, recovery status.
+    - trainingStrain: Training intensity 0-10 scale (like WHOOP). 0=rest, 3-5=moderate, 7+=very high.
+    - nervousSystemBalance: Autonomic balance from HRV/RHR 7-day vs 28-day trends.
+    - recoveryDebt: Accumulated deficit. 0=fully recovered, 50+=significant debt.
+    - activityScore: Activity vs personal baseline from steps, exercise, movement.
+    - loadBalance: Acute/chronic training load ratio. 50=balanced, below=undertrained, above=overreached.
+    - carScore: Combined score for the car card. Weight: readiness 40%, sleep 25%, HRV 20%, strain 15%.
+    Be CONSISTENT day-to-day: similar data should produce similar scores. Use personal baselines.
     """
-    
+    }
+
     private var currentTask: URLSessionDataTask?
     private let taskQueue = DispatchQueue(label: "GeminiService.task")
     private var isAnalysisInProgress = false
@@ -104,23 +121,7 @@ class GeminiService {
                 return
             }
 
-            #if DEBUG
-            // Test user - don't overwrite the score already computed from mock data
-            let isTestUser = DebugTestHelper.isTestUser(email: Auth.auth().currentUser?.email)
-            if !isTestUser {
-                // === Local HealthScore calculation with HealthScoreEngine ===
-                let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
-                // Save the score and breakdown in Cache for UI usage
-                AnalysisCache.saveHealthScoreResult(healthResult)
-            } else {
-                print("🧪 [GeminiService] Test user - preserving mock health score")
-            }
-            #else
-            // === Local HealthScore calculation with HealthScoreEngine ===
-            let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
-            // Save the score and breakdown in Cache for UI usage
-            AnalysisCache.saveHealthScoreResult(healthResult)
-            #endif
+            // Scores are now computed by Gemini — no local HealthScoreEngine calculation needed
 
             // Build the new Payload with filtering of missing values and outliers
             let builder = GeminiHealthPayloadBuilder()
@@ -181,9 +182,14 @@ class GeminiService {
             let memoryBlock = self.buildMemoryBlock(memory)
             print("🧠 [AION Memory] Loaded: \(memory != nil ? "YES (interactions: \(memory!.interactionCount))" : "nil (first analysis)")")
 
+            let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
+            let langCode = isHebrew ? "he" : "en"
+            let langName = isHebrew ? "Hebrew" : "English"
+
             let prompt = """
             MISSION: Analyze 90-day health performance trends and provide actionable insights.
             Data sources: Weekly summaries (13 weeks) + daily data (last 14 days).
+            Write ALL text in \(langName).
 
             ==================================================
             CAR IDENTITY LOCK
@@ -205,86 +211,94 @@ class GeminiService {
                NOT concepts like "Zone 2", "Recovery Mode", "Base Model".
 
             ==================================================
-            REQUIRED JSON OUTPUT (Bilingual)
+            REQUIRED JSON OUTPUT
             ==================================================
 
-            Return ONLY valid JSON. Every text field must have both _he (Hebrew) and _en (English) versions.
+            Return ONLY valid JSON. Write all text fields in \(langName) using the _\(langCode) suffix.
+            Only include the _\(langCode) version of each field (do NOT include both _he and _en).
 
             {
               "carIdentity": {
-                "model_he": "Car name in Hebrew",
-                "model_en": "Car name in English",
+                "model_\(langCode)": "Car name in \(langName)",
                 "wikiName": "Wikipedia-searchable English car name",
-                "explanation_he": "Why this car fits the user's profile (2-3 sentences, Hebrew)",
-                "explanation_en": "Why this car fits the user's profile (2-3 sentences, English)"
+                "explanation_\(langCode)": "Why this car fits the user's profile (2-3 sentences, \(langName))"
               },
               "performanceReview": {
-                "engine_he": "Cardio fitness, endurance, VO2max analysis (Hebrew)",
-                "engine_en": "Cardio fitness, endurance, VO2max analysis (English)",
-                "transmission_he": "Recovery, sleep, HRV analysis (Hebrew)",
-                "transmission_en": "Recovery, sleep, HRV analysis (English)",
-                "suspension_he": "Injury status, flexibility, joints (Hebrew)",
-                "suspension_en": "Injury status, flexibility, joints (English)",
-                "fuelEfficiency_he": "Energy, stress, nutrition (Hebrew)",
-                "fuelEfficiency_en": "Energy, stress, nutrition (English)",
-                "electronics_he": "Focus, consistency, nervous system balance (Hebrew)",
-                "electronics_en": "Focus, consistency, nervous system balance (English)"
+                "engine_\(langCode)": "Cardio fitness, endurance, VO2max analysis (\(langName))",
+                "transmission_\(langCode)": "Recovery, sleep, HRV analysis (\(langName))",
+                "suspension_\(langCode)": "Injury status, flexibility, joints (\(langName))",
+                "fuelEfficiency_\(langCode)": "Energy, stress, nutrition (\(langName))",
+                "electronics_\(langCode)": "Focus, consistency, nervous system balance (\(langName))"
               },
-              "bottlenecks_he": ["Bottleneck 1 in Hebrew", "Bottleneck 2 in Hebrew"],
-              "bottlenecks_en": ["Bottleneck 1 in English", "Bottleneck 2 in English"],
+              "bottlenecks_\(langCode)": ["Bottleneck 1", "Bottleneck 2"],
               "optimizationPlan": {
-                "upgrades_he": ["Upgrade 1 Hebrew", "Upgrade 2 Hebrew"],
-                "upgrades_en": ["Upgrade 1 English", "Upgrade 2 English"],
-                "skippedMaintenance_he": ["Skipped maintenance Hebrew"],
-                "skippedMaintenance_en": ["Skipped maintenance English"],
-                "stopImmediately_he": ["Stop immediately Hebrew"],
-                "stopImmediately_en": ["Stop immediately English"]
+                "upgrades_\(langCode)": ["Upgrade 1", "Upgrade 2"],
+                "skippedMaintenance_\(langCode)": ["Skipped maintenance"],
+                "stopImmediately_\(langCode)": ["Stop immediately"]
               },
               "tuneUpPlan": {
-                "trainingAdjustments_he": "Training adjustments for next 1-2 months (Hebrew)",
-                "trainingAdjustments_en": "Training adjustments for next 1-2 months (English)",
-                "recoveryChanges_he": "Recovery and sleep changes (Hebrew)",
-                "recoveryChanges_en": "Recovery and sleep changes (English)",
-                "habitToAdd_he": "One new habit to add with explanation (Hebrew)",
-                "habitToAdd_en": "One new habit to add with explanation (English)",
-                "habitToRemove_he": "One habit to remove with explanation (Hebrew)",
-                "habitToRemove_en": "One habit to remove with explanation (English)"
+                "trainingAdjustments_\(langCode)": "Training adjustments for next 1-2 months",
+                "recoveryChanges_\(langCode)": "Recovery and sleep changes",
+                "habitToAdd_\(langCode)": "One new habit to add with explanation",
+                "habitToRemove_\(langCode)": "One habit to remove with explanation"
               },
               "directives": {
-                "stop_he": "One sentence - what to stop (Hebrew)",
-                "stop_en": "One sentence - what to stop (English)",
-                "start_he": "One sentence - what to start (Hebrew)",
-                "start_en": "One sentence - what to start (English)",
-                "watch_he": "One sentence - what to monitor (Hebrew)",
-                "watch_en": "One sentence - what to monitor (English)"
+                "stop_\(langCode)": "One sentence - what to stop",
+                "start_\(langCode)": "One sentence - what to start",
+                "watch_\(langCode)": "One sentence - what to monitor"
               },
-              "forecast_he": "3-month forecast if current trends continue (Hebrew)",
-              "forecast_en": "3-month forecast if current trends continue (English)",
+              "forecast_\(langCode)": "3-month forecast if current trends continue",
               "energyForecast": {
-                "text_he": "Today's energy prediction based on HRV, sleep, and recent activity (1-2 sentences, Hebrew)",
-                "text_en": "Today's energy prediction based on HRV, sleep, and recent activity (1-2 sentences, English)",
+                "text_\(langCode)": "Today's energy prediction based on HRV, sleep, and recent activity (1-2 sentences)",
                 "trend": "rising|falling|stable (based on recent recovery and sleep trends)"
               },
               "supplements": [
                 {
-                  "name_he": "Supplement name (Hebrew)",
-                  "name_en": "Supplement name (English)",
-                  "dosage_he": "Exact dosage and timing (Hebrew)",
-                  "dosage_en": "Exact dosage and timing (English)",
-                  "reason_he": "Specific reason from data (Hebrew)",
-                  "reason_en": "Specific reason from data (English)",
+                  "name_\(langCode)": "Supplement name",
+                  "dosage_\(langCode)": "Exact dosage and timing",
+                  "reason_\(langCode)": "Specific reason from data",
                   "category": "sleep|performance|recovery|general"
                 }
-              ]
+              ],
+              "scores": {
+                "healthScore": 78,
+                "healthScoreExplanation_\(langCode)": "1-2 sentence explanation of overall health score",
+                "sleepScore": 82,
+                "sleepScoreExplanation_\(langCode)": "1-2 sentence explanation of sleep score",
+                "readinessScore": 71,
+                "readinessScoreExplanation_\(langCode)": "1-2 sentence explanation of readiness",
+                "energyScore": 65,
+                "energyScoreExplanation_\(langCode)": "1-2 sentence explanation of energy prediction",
+                "trainingStrain": 6.2,
+                "trainingStrainExplanation_\(langCode)": "1-2 sentence explanation of training strain",
+                "nervousSystemBalance": 74,
+                "nervousSystemBalanceExplanation_\(langCode)": "1-2 sentence explanation of ANS balance",
+                "recoveryDebt": 30,
+                "recoveryDebtExplanation_\(langCode)": "1-2 sentence explanation of recovery debt",
+                "activityScore": 68,
+                "activityScoreExplanation_\(langCode)": "1-2 sentence explanation of activity level",
+                "loadBalance": 55,
+                "loadBalanceExplanation_\(langCode)": "1-2 sentence explanation of load balance",
+                "carScore": 72,
+                "carScoreExplanation_\(langCode)": "1-2 sentence explanation of car score"
+              },
+              "homeRecommendations": {
+                "medical_\(langCode)": "2-3 sentences: health/medical observation and advice based on today's data",
+                "sports_\(langCode)": "2-3 sentences: training and exercise recommendation for today",
+                "nutrition_\(langCode)": "2-3 sentences: dietary recommendation based on today's activity and recovery"
+              }
             }
 
             CRITICAL RULES:
             - Return JSON ONLY, no text before or after
             - ALL fields are required - do not omit any
-            - Every text field must have both _he and _en versions
+            - Write all text in \(langName) using _\(langCode) suffix fields only
             - Valid supplement categories: sleep, performance, recovery, general
-            - wikiName must be a REAL car (not a concept)
+            - wikiName must be a REAL car (not a concept) and always in English
             - If lastCarModel exists and is a real car with no major changes, keep it
+            - scores: ALL numerical scores MUST be calculated from the provided health data
+            - scores: Use 0-100 scale (except trainingStrain which is 0-10)
+            - homeRecommendations: Provide personalized daily advice in each of the 3 categories
 
             ==================================================
             DATA
@@ -317,9 +331,28 @@ class GeminiService {
                 // Save for debug (after receiving the response)
                 GeminiDebugStore.save(prompt: prompt, response: response)
 
-                // Update AION Memory in the background
+                // Save to GeminiResultStore (single source of truth)
                 if let parsed = CarAnalysisParser.parseJSON(response) {
-                    let score = AnalysisCache.loadHealthScore() ?? 0
+                    let lang = LocalizationManager.shared.currentLanguage
+                    let geminiScores = GeminiScores.from(parsed.scores, language: lang)
+                    let dailyResult = GeminiDailyResult(
+                        date: Date(),
+                        scores: geminiScores,
+                        carModelHe: parsed.carModelHe, carModelEn: parsed.carModelEn,
+                        carWikiName: parsed.carWikiName,
+                        carExplanationHe: parsed.carExplanationHe, carExplanationEn: parsed.carExplanationEn,
+                        homeRecommendationMedicalHe: parsed.homeRecommendationMedicalHe,
+                        homeRecommendationMedicalEn: parsed.homeRecommendationMedicalEn,
+                        homeRecommendationSportsHe: parsed.homeRecommendationSportsHe,
+                        homeRecommendationSportsEn: parsed.homeRecommendationSportsEn,
+                        homeRecommendationNutritionHe: parsed.homeRecommendationNutritionHe,
+                        homeRecommendationNutritionEn: parsed.homeRecommendationNutritionEn,
+                        rawAnalysisJSON: response
+                    )
+                    GeminiResultStore.save(dailyResult)
+
+                    // Update AION Memory in the background
+                    let score = geminiScores.healthScore ?? 0
                     DispatchQueue.global(qos: .utility).async {
                         let updated = AIONMemoryExtractor.updateMemory(
                             existingMemory: memory,

@@ -107,7 +107,7 @@ enum AIONMemoryExtractor {
         }
 
         // Fitness level from health score
-        let score = AnalysisCache.loadHealthScore() ?? 0
+        let score = GeminiResultStore.loadHealthScore() ?? 0
         if score > 0 {
             memory.userProfile.fitnessLevel = fitnessLevel(from: score)
         }

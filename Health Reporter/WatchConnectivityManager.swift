@@ -308,15 +308,15 @@ extension WatchConnectivityManager: WCSessionDelegate {
             // Send ALL data back to Watch
             DispatchQueue.main.async {
                 if let widgetData = WidgetDataManager.shared.loadCurrentData() {
-                    // Use dailyScore (real health score), NOT healthScore (which is Gemini 90-day)
-                    let cachedMainScore = AnalysisCache.loadMainScore()
-                    let dailyHealthScore = widgetData.dailyScore ?? cachedMainScore ?? 0
-                    print("📱 WatchConnectivity DEBUG: widgetData.healthScore(90day)=\(widgetData.healthScore), widgetData.dailyScore=\(String(describing: widgetData.dailyScore)), AnalysisCache.mainScore=\(String(describing: cachedMainScore)), SENDING=\(dailyHealthScore)")
+                    // Use dailyScore (real health score) from Gemini
+                    let geminiHealthScore = GeminiResultStore.loadHealthScore()
+                    let dailyHealthScore = widgetData.dailyScore ?? geminiHealthScore ?? 0
+                    print("📱 WatchConnectivity DEBUG: widgetData.healthScore=\(widgetData.healthScore), widgetData.dailyScore=\(String(describing: widgetData.dailyScore)), geminiScore=\(String(describing: geminiHealthScore)), SENDING=\(dailyHealthScore)")
                     let tier = CarTierEngine.tierForScore(dailyHealthScore)
 
-                    // Get Gemini car data from cache
-                    let geminiCar = AnalysisCache.loadSelectedCar()
-                    let geminiScore = AnalysisCache.loadHealthScore()
+                    // Get Gemini car data from store
+                    let geminiCarName = GeminiResultStore.loadCarName()
+                    let geminiScore = GeminiResultStore.loadHealthScore()
                     let geminiTierIndex = geminiScore.map { CarTierEngine.tierForScore($0).tierIndex }
 
                     let watchData = WatchHealthDataTransfer(
@@ -327,7 +327,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
                         carName: widgetData.carName,
                         carEmoji: widgetData.carEmoji,
                         carTierLabel: tier.tierLabel,
-                        geminiCarName: geminiCar?.name,
+                        geminiCarName: geminiCarName,
                         geminiCarScore: geminiScore,
                         geminiCarTierIndex: geminiTierIndex,
                         moveCalories: widgetData.calories,

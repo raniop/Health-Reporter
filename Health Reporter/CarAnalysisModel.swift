@@ -14,39 +14,95 @@ struct CarAnalysisJSONResponse: Codable {
     let carIdentity: CarIdentityJSON
     let performanceReview: PerformanceReviewJSON
 
-    // Bilingual bottlenecks
-    let bottlenecks_he: [String]
-    let bottlenecks_en: [String]
+    // Bilingual bottlenecks (optional - Gemini may return only one language)
+    let bottlenecks_he: [String]?
+    let bottlenecks_en: [String]?
     let bottlenecks: [String]?  // Legacy
 
     let optimizationPlan: OptimizationPlanJSON
     let tuneUpPlan: TuneUpPlanJSON
     let directives: DirectivesJSON
 
-    // Bilingual forecast/summary
-    let forecast_he: String
-    let forecast_en: String
+    // Bilingual forecast/summary (optional - Gemini may return only one language)
+    let forecast_he: String?
+    let forecast_en: String?
     let forecast: String?  // Legacy
 
     // Energy Forecast (optional - new field)
     let energyForecast: EnergyForecastJSON?
 
     let supplements: [SupplementJSON]
+
+    // Scores (all calculated by Gemini)
+    let scores: ScoresJSON?
+
+    // Home Recommendations (merged into main call)
+    let homeRecommendations: HomeRecommendationsJSON?
+}
+
+// MARK: - Scores (Gemini-calculated)
+
+struct ScoresJSON: Codable {
+    let healthScore: Double?
+    let healthScoreExplanation_he: String?
+    let healthScoreExplanation_en: String?
+    let sleepScore: Double?
+    let sleepScoreExplanation_he: String?
+    let sleepScoreExplanation_en: String?
+    let readinessScore: Double?
+    let readinessScoreExplanation_he: String?
+    let readinessScoreExplanation_en: String?
+    let energyScore: Double?
+    let energyScoreExplanation_he: String?
+    let energyScoreExplanation_en: String?
+    let trainingStrain: Double?
+    let trainingStrainExplanation_he: String?
+    let trainingStrainExplanation_en: String?
+    let nervousSystemBalance: Double?
+    let nervousSystemBalanceExplanation_he: String?
+    let nervousSystemBalanceExplanation_en: String?
+    let recoveryDebt: Double?
+    let recoveryDebtExplanation_he: String?
+    let recoveryDebtExplanation_en: String?
+    let activityScore: Double?
+    let activityScoreExplanation_he: String?
+    let activityScoreExplanation_en: String?
+    let loadBalance: Double?
+    let loadBalanceExplanation_he: String?
+    let loadBalanceExplanation_en: String?
+    let carScore: Double?
+    let carScoreExplanation_he: String?
+    let carScoreExplanation_en: String?
+}
+
+// MARK: - Home Recommendations (merged into main Gemini call)
+
+struct HomeRecommendationsJSON: Codable {
+    let medical_he: String?
+    let medical_en: String?
+    let sports_he: String?
+    let sports_en: String?
+    let nutrition_he: String?
+    let nutrition_en: String?
+    // Legacy single-language fields
+    let medical: String?
+    let sports: String?
+    let nutrition: String?
 }
 
 struct EnergyForecastJSON: Codable {
-    let text_he: String
-    let text_en: String
+    let text_he: String?
+    let text_en: String?
     let trend: String  // "rising", "falling", "stable"
 }
 
 struct CarIdentityJSON: Codable {
-    // Bilingual fields
-    let model_he: String
-    let model_en: String
+    // Bilingual fields (optional - Gemini may return only one language)
+    let model_he: String?
+    let model_en: String?
     let wikiName: String
-    let explanation_he: String
-    let explanation_en: String
+    let explanation_he: String?
+    let explanation_en: String?
 
     // Backward compatibility - single language fields (legacy)
     let model: String?
@@ -54,17 +110,17 @@ struct CarIdentityJSON: Codable {
 }
 
 struct PerformanceReviewJSON: Codable {
-    // Bilingual fields
-    let engine_he: String
-    let engine_en: String
-    let transmission_he: String
-    let transmission_en: String
-    let suspension_he: String
-    let suspension_en: String
-    let fuelEfficiency_he: String
-    let fuelEfficiency_en: String
-    let electronics_he: String
-    let electronics_en: String
+    // Bilingual fields (optional - Gemini may return only one language)
+    let engine_he: String?
+    let engine_en: String?
+    let transmission_he: String?
+    let transmission_en: String?
+    let suspension_he: String?
+    let suspension_en: String?
+    let fuelEfficiency_he: String?
+    let fuelEfficiency_en: String?
+    let electronics_he: String?
+    let electronics_en: String?
 
     // Backward compatibility - single language fields (legacy)
     let engine: String?
@@ -75,13 +131,13 @@ struct PerformanceReviewJSON: Codable {
 }
 
 struct OptimizationPlanJSON: Codable {
-    // Bilingual fields
-    let upgrades_he: [String]
-    let upgrades_en: [String]
-    let skippedMaintenance_he: [String]
-    let skippedMaintenance_en: [String]
-    let stopImmediately_he: [String]
-    let stopImmediately_en: [String]
+    // Bilingual fields (optional - Gemini may return only one language)
+    let upgrades_he: [String]?
+    let upgrades_en: [String]?
+    let skippedMaintenance_he: [String]?
+    let skippedMaintenance_en: [String]?
+    let stopImmediately_he: [String]?
+    let stopImmediately_en: [String]?
 
     // Backward compatibility - single language fields (legacy)
     let upgrades: [String]?
@@ -90,15 +146,15 @@ struct OptimizationPlanJSON: Codable {
 }
 
 struct TuneUpPlanJSON: Codable {
-    // Bilingual fields
-    let trainingAdjustments_he: String
-    let trainingAdjustments_en: String
-    let recoveryChanges_he: String
-    let recoveryChanges_en: String
-    let habitToAdd_he: String
-    let habitToAdd_en: String
-    let habitToRemove_he: String
-    let habitToRemove_en: String
+    // Bilingual fields (optional - Gemini may return only one language)
+    let trainingAdjustments_he: String?
+    let trainingAdjustments_en: String?
+    let recoveryChanges_he: String?
+    let recoveryChanges_en: String?
+    let habitToAdd_he: String?
+    let habitToAdd_en: String?
+    let habitToRemove_he: String?
+    let habitToRemove_en: String?
 
     // Backward compatibility - single language fields (legacy)
     let trainingAdjustments: String?
@@ -108,13 +164,13 @@ struct TuneUpPlanJSON: Codable {
 }
 
 struct DirectivesJSON: Codable {
-    // Bilingual fields
-    let stop_he: String
-    let stop_en: String
-    let start_he: String
-    let start_en: String
-    let watch_he: String
-    let watch_en: String
+    // Bilingual fields (optional - Gemini may return only one language)
+    let stop_he: String?
+    let stop_en: String?
+    let start_he: String?
+    let start_en: String?
+    let watch_he: String?
+    let watch_en: String?
 
     // Backward compatibility - single language fields (legacy)
     let stop: String?
@@ -262,6 +318,17 @@ struct CarAnalysisResponse {
     var energyForecastTextEn: String
     var energyForecastTrend: String  // "rising", "falling", "stable"
 
+    // 10. Scores (from Gemini)
+    var scores: ScoresJSON?
+
+    // 11. Home Recommendations (from Gemini)
+    var homeRecommendationMedicalHe: String
+    var homeRecommendationMedicalEn: String
+    var homeRecommendationSportsHe: String
+    var homeRecommendationSportsEn: String
+    var homeRecommendationNutritionHe: String
+    var homeRecommendationNutritionEn: String
+
     // The original response (for fallback purposes)
     var rawResponse: String
 
@@ -306,6 +373,11 @@ struct CarAnalysisResponse {
 
     // 9. Energy Forecast
     var energyForecastText: String { isHebrew ? energyForecastTextHe : energyForecastTextEn }
+
+    // 11. Home Recommendations
+    var homeRecommendationMedical: String { isHebrew ? homeRecommendationMedicalHe : homeRecommendationMedicalEn }
+    var homeRecommendationSports: String { isHebrew ? homeRecommendationSportsHe : homeRecommendationSportsEn }
+    var homeRecommendationNutrition: String { isHebrew ? homeRecommendationNutritionHe : homeRecommendationNutritionEn }
 }
 
 /// Parser that extracts data from the Gemini response
@@ -371,6 +443,22 @@ enum CarAnalysisParser {
             return dict[key] as? [String] ?? []
         }
 
+        // Helpers: resolve bilingual fields - pick whichever language is present, fill both slots
+        func biStr(_ dict: [String: Any], he: String, en: String, legacy: String? = nil) -> (String, String) {
+            let h = str(dict, he).isEmpty ? nil : str(dict, he)
+            let e = str(dict, en).isEmpty ? nil : str(dict, en)
+            let l = legacy != nil ? (str(dict, legacy!).isEmpty ? nil : str(dict, legacy!)) : nil
+            let resolved = h ?? e ?? l ?? ""
+            return (h ?? resolved, e ?? resolved)
+        }
+        func biArr(_ dict: [String: Any], he: String, en: String, legacy: String? = nil) -> ([String], [String]) {
+            let h = strArr(dict, he).isEmpty ? nil : strArr(dict, he)
+            let e = strArr(dict, en).isEmpty ? nil : strArr(dict, en)
+            let l = legacy != nil ? (strArr(dict, legacy!).isEmpty ? nil : strArr(dict, legacy!)) : nil
+            let resolved = h ?? e ?? l ?? []
+            return (h ?? resolved, e ?? resolved)
+        }
+
         // Parse supplements manually
         var supplements: [SupplementRecommendation] = []
         if let supplementsArray = json["supplements"] as? [[String: Any]] {
@@ -384,12 +472,9 @@ enum CarAnalysisParser {
                 default: category = .general
                 }
 
-                let nameHe = s["name_he"] as? String ?? s["name"] as? String ?? ""
-                let nameEn = s["name_en"] as? String ?? s["englishName"] as? String ?? s["name"] as? String ?? ""
-                let dosageHe = s["dosage_he"] as? String ?? s["dosage"] as? String ?? ""
-                let dosageEn = s["dosage_en"] as? String ?? s["dosage"] as? String ?? dosageHe
-                let reasonHe = s["reason_he"] as? String ?? s["reason"] as? String ?? ""
-                let reasonEn = s["reason_en"] as? String ?? s["reason"] as? String ?? ""
+                let (nameHe, nameEn) = biStr(s, he: "name_he", en: "name_en", legacy: "name")
+                let (dosageHe, dosageEn) = biStr(s, he: "dosage_he", en: "dosage_en", legacy: "dosage")
+                let (reasonHe, reasonEn) = biStr(s, he: "reason_he", en: "reason_en", legacy: "reason")
 
                 supplements.append(SupplementRecommendation(
                     nameHe: nameHe,
@@ -403,85 +488,116 @@ enum CarAnalysisParser {
             }
         }
 
+        let (modelHe, modelEn) = biStr(carIdentity, he: "model_he", en: "model_en", legacy: "model")
+        let (explHe, explEn) = biStr(carIdentity, he: "explanation_he", en: "explanation_en", legacy: "explanation")
+        let (engineHe, engineEn) = biStr(performanceReview, he: "engine_he", en: "engine_en", legacy: "engine")
+        let (transHe, transEn) = biStr(performanceReview, he: "transmission_he", en: "transmission_en", legacy: "transmission")
+        let (suspHe, suspEn) = biStr(performanceReview, he: "suspension_he", en: "suspension_en", legacy: "suspension")
+        let (fuelHe, fuelEn) = biStr(performanceReview, he: "fuelEfficiency_he", en: "fuelEfficiency_en", legacy: "fuelEfficiency")
+        let (elecHe, elecEn) = biStr(performanceReview, he: "electronics_he", en: "electronics_en", legacy: "electronics")
+        let root = json as [String: Any]
+        let (bnHe, bnEn) = biArr(root, he: "bottlenecks_he", en: "bottlenecks_en", legacy: "bottlenecks")
+        let (upgHe, upgEn) = biArr(optimizationPlan, he: "upgrades_he", en: "upgrades_en", legacy: "upgrades")
+        let (skipHe, skipEn) = biArr(optimizationPlan, he: "skippedMaintenance_he", en: "skippedMaintenance_en", legacy: "skippedMaintenance")
+        let (stopHe, stopEn) = biArr(optimizationPlan, he: "stopImmediately_he", en: "stopImmediately_en", legacy: "stopImmediately")
+        let (trainHe, trainEn) = biStr(tuneUpPlan, he: "trainingAdjustments_he", en: "trainingAdjustments_en", legacy: "trainingAdjustments")
+        let (recHe, recEn) = biStr(tuneUpPlan, he: "recoveryChanges_he", en: "recoveryChanges_en", legacy: "recoveryChanges")
+        let (addHe, addEn) = biStr(tuneUpPlan, he: "habitToAdd_he", en: "habitToAdd_en", legacy: "habitToAdd")
+        let (remHe, remEn) = biStr(tuneUpPlan, he: "habitToRemove_he", en: "habitToRemove_en", legacy: "habitToRemove")
+        let (dStopHe, dStopEn) = biStr(directives, he: "stop_he", en: "stop_en", legacy: "stop")
+        let (dStartHe, dStartEn) = biStr(directives, he: "start_he", en: "start_en", legacy: "start")
+        let (dWatchHe, dWatchEn) = biStr(directives, he: "watch_he", en: "watch_en", legacy: "watch")
+        let (sumHe, sumEn) = biStr(root, he: "forecast_he", en: "forecast_en", legacy: "forecast")
+
+        let ef = json["energyForecast"] as? [String: Any] ?? [:]
+        let (eTextHe, eTextEn) = biStr(ef, he: "text_he", en: "text_en")
+
         return CarAnalysisResponse(
-            carModelHe: str(carIdentity, "model_he").isEmpty ? str(carIdentity, "model") : str(carIdentity, "model_he"),
-            carModelEn: str(carIdentity, "model_en").isEmpty ? str(carIdentity, "model") : str(carIdentity, "model_en"),
-            carExplanationHe: str(carIdentity, "explanation_he").isEmpty ? str(carIdentity, "explanation") : str(carIdentity, "explanation_he"),
-            carExplanationEn: str(carIdentity, "explanation_en").isEmpty ? str(carIdentity, "explanation") : str(carIdentity, "explanation_en"),
+            carModelHe: modelHe, carModelEn: modelEn,
+            carExplanationHe: explHe, carExplanationEn: explEn,
             carImageURL: "",
             carWikiName: str(carIdentity, "wikiName"),
 
-            engineHe: str(performanceReview, "engine_he").isEmpty ? str(performanceReview, "engine") : str(performanceReview, "engine_he"),
-            engineEn: str(performanceReview, "engine_en").isEmpty ? str(performanceReview, "engine") : str(performanceReview, "engine_en"),
-            transmissionHe: str(performanceReview, "transmission_he").isEmpty ? str(performanceReview, "transmission") : str(performanceReview, "transmission_he"),
-            transmissionEn: str(performanceReview, "transmission_en").isEmpty ? str(performanceReview, "transmission") : str(performanceReview, "transmission_en"),
-            suspensionHe: str(performanceReview, "suspension_he").isEmpty ? str(performanceReview, "suspension") : str(performanceReview, "suspension_he"),
-            suspensionEn: str(performanceReview, "suspension_en").isEmpty ? str(performanceReview, "suspension") : str(performanceReview, "suspension_en"),
-            fuelEfficiencyHe: str(performanceReview, "fuelEfficiency_he").isEmpty ? str(performanceReview, "fuelEfficiency") : str(performanceReview, "fuelEfficiency_he"),
-            fuelEfficiencyEn: str(performanceReview, "fuelEfficiency_en").isEmpty ? str(performanceReview, "fuelEfficiency") : str(performanceReview, "fuelEfficiency_en"),
-            electronicsHe: str(performanceReview, "electronics_he").isEmpty ? str(performanceReview, "electronics") : str(performanceReview, "electronics_he"),
-            electronicsEn: str(performanceReview, "electronics_en").isEmpty ? str(performanceReview, "electronics") : str(performanceReview, "electronics_en"),
+            engineHe: engineHe, engineEn: engineEn,
+            transmissionHe: transHe, transmissionEn: transEn,
+            suspensionHe: suspHe, suspensionEn: suspEn,
+            fuelEfficiencyHe: fuelHe, fuelEfficiencyEn: fuelEn,
+            electronicsHe: elecHe, electronicsEn: elecEn,
 
-            bottlenecksHe: strArr(json as [String: Any], "bottlenecks_he").isEmpty ? strArr(json as [String: Any], "bottlenecks") : strArr(json as [String: Any], "bottlenecks_he"),
-            bottlenecksEn: strArr(json as [String: Any], "bottlenecks_en").isEmpty ? strArr(json as [String: Any], "bottlenecks") : strArr(json as [String: Any], "bottlenecks_en"),
+            bottlenecksHe: bnHe, bottlenecksEn: bnEn,
             warningSignals: [],
 
-            upgradesHe: strArr(optimizationPlan, "upgrades_he").isEmpty ? strArr(optimizationPlan, "upgrades") : strArr(optimizationPlan, "upgrades_he"),
-            upgradesEn: strArr(optimizationPlan, "upgrades_en").isEmpty ? strArr(optimizationPlan, "upgrades") : strArr(optimizationPlan, "upgrades_en"),
-            skippedMaintenanceHe: strArr(optimizationPlan, "skippedMaintenance_he").isEmpty ? strArr(optimizationPlan, "skippedMaintenance") : strArr(optimizationPlan, "skippedMaintenance_he"),
-            skippedMaintenanceEn: strArr(optimizationPlan, "skippedMaintenance_en").isEmpty ? strArr(optimizationPlan, "skippedMaintenance") : strArr(optimizationPlan, "skippedMaintenance_en"),
-            stopImmediatelyHe: strArr(optimizationPlan, "stopImmediately_he").isEmpty ? strArr(optimizationPlan, "stopImmediately") : strArr(optimizationPlan, "stopImmediately_he"),
-            stopImmediatelyEn: strArr(optimizationPlan, "stopImmediately_en").isEmpty ? strArr(optimizationPlan, "stopImmediately") : strArr(optimizationPlan, "stopImmediately_en"),
+            upgradesHe: upgHe, upgradesEn: upgEn,
+            skippedMaintenanceHe: skipHe, skippedMaintenanceEn: skipEn,
+            stopImmediatelyHe: stopHe, stopImmediatelyEn: stopEn,
 
-            trainingAdjustmentsHe: str(tuneUpPlan, "trainingAdjustments_he").isEmpty ? str(tuneUpPlan, "trainingAdjustments") : str(tuneUpPlan, "trainingAdjustments_he"),
-            trainingAdjustmentsEn: str(tuneUpPlan, "trainingAdjustments_en").isEmpty ? str(tuneUpPlan, "trainingAdjustments") : str(tuneUpPlan, "trainingAdjustments_en"),
-            recoveryChangesHe: str(tuneUpPlan, "recoveryChanges_he").isEmpty ? str(tuneUpPlan, "recoveryChanges") : str(tuneUpPlan, "recoveryChanges_he"),
-            recoveryChangesEn: str(tuneUpPlan, "recoveryChanges_en").isEmpty ? str(tuneUpPlan, "recoveryChanges") : str(tuneUpPlan, "recoveryChanges_en"),
-            habitToAddHe: str(tuneUpPlan, "habitToAdd_he").isEmpty ? str(tuneUpPlan, "habitToAdd") : str(tuneUpPlan, "habitToAdd_he"),
-            habitToAddEn: str(tuneUpPlan, "habitToAdd_en").isEmpty ? str(tuneUpPlan, "habitToAdd") : str(tuneUpPlan, "habitToAdd_en"),
-            habitToRemoveHe: str(tuneUpPlan, "habitToRemove_he").isEmpty ? str(tuneUpPlan, "habitToRemove") : str(tuneUpPlan, "habitToRemove_he"),
-            habitToRemoveEn: str(tuneUpPlan, "habitToRemove_en").isEmpty ? str(tuneUpPlan, "habitToRemove") : str(tuneUpPlan, "habitToRemove_en"),
+            trainingAdjustmentsHe: trainHe, trainingAdjustmentsEn: trainEn,
+            recoveryChangesHe: recHe, recoveryChangesEn: recEn,
+            habitToAddHe: addHe, habitToAddEn: addEn,
+            habitToRemoveHe: remHe, habitToRemoveEn: remEn,
 
-            directiveStopHe: str(directives, "stop_he").isEmpty ? str(directives, "stop") : str(directives, "stop_he"),
-            directiveStopEn: str(directives, "stop_en").isEmpty ? str(directives, "stop") : str(directives, "stop_en"),
-            directiveStartHe: str(directives, "start_he").isEmpty ? str(directives, "start") : str(directives, "start_he"),
-            directiveStartEn: str(directives, "start_en").isEmpty ? str(directives, "start") : str(directives, "start_en"),
-            directiveWatchHe: str(directives, "watch_he").isEmpty ? str(directives, "watch") : str(directives, "watch_he"),
-            directiveWatchEn: str(directives, "watch_en").isEmpty ? str(directives, "watch") : str(directives, "watch_en"),
+            directiveStopHe: dStopHe, directiveStopEn: dStopEn,
+            directiveStartHe: dStartHe, directiveStartEn: dStartEn,
+            directiveWatchHe: dWatchHe, directiveWatchEn: dWatchEn,
 
-            summaryHe: str(json as [String: Any], "forecast_he").isEmpty ? str(json as [String: Any], "forecast") : str(json as [String: Any], "forecast_he"),
-            summaryEn: str(json as [String: Any], "forecast_en").isEmpty ? str(json as [String: Any], "forecast") : str(json as [String: Any], "forecast_en"),
+            summaryHe: sumHe, summaryEn: sumEn,
 
             supplements: supplements,
 
-            // Energy Forecast
-            energyForecastTextHe: {
-                if let ef = json["energyForecast"] as? [String: Any] {
-                    return str(ef, "text_he")
-                }
-                return ""
-            }(),
-            energyForecastTextEn: {
-                if let ef = json["energyForecast"] as? [String: Any] {
-                    return str(ef, "text_en")
-                }
-                return ""
-            }(),
-            energyForecastTrend: {
-                if let ef = json["energyForecast"] as? [String: Any] {
-                    return str(ef, "trend")
-                }
-                return "stable"
-            }(),
+            energyForecastTextHe: eTextHe, energyForecastTextEn: eTextEn,
+            energyForecastTrend: str(ef, "trend").isEmpty ? "stable" : str(ef, "trend"),
+
+            scores: parseScoresManually(from: root),
+
+            homeRecommendationMedicalHe: "", homeRecommendationMedicalEn: "",
+            homeRecommendationSportsHe: "", homeRecommendationSportsEn: "",
+            homeRecommendationNutritionHe: "", homeRecommendationNutritionEn: "",
 
             rawResponse: rawResponse
+        )
+    }
+
+    /// Parse scores from manual JSON dictionary
+    private static func parseScoresManually(from root: [String: Any]) -> ScoresJSON? {
+        guard let s = root["scores"] as? [String: Any] else { return nil }
+        return ScoresJSON(
+            healthScore: s["healthScore"] as? Double,
+            healthScoreExplanation_he: s["healthScoreExplanation_he"] as? String,
+            healthScoreExplanation_en: s["healthScoreExplanation_en"] as? String,
+            sleepScore: s["sleepScore"] as? Double,
+            sleepScoreExplanation_he: s["sleepScoreExplanation_he"] as? String,
+            sleepScoreExplanation_en: s["sleepScoreExplanation_en"] as? String,
+            readinessScore: s["readinessScore"] as? Double,
+            readinessScoreExplanation_he: s["readinessScoreExplanation_he"] as? String,
+            readinessScoreExplanation_en: s["readinessScoreExplanation_en"] as? String,
+            energyScore: s["energyScore"] as? Double,
+            energyScoreExplanation_he: s["energyScoreExplanation_he"] as? String,
+            energyScoreExplanation_en: s["energyScoreExplanation_en"] as? String,
+            trainingStrain: s["trainingStrain"] as? Double,
+            trainingStrainExplanation_he: s["trainingStrainExplanation_he"] as? String,
+            trainingStrainExplanation_en: s["trainingStrainExplanation_en"] as? String,
+            nervousSystemBalance: s["nervousSystemBalance"] as? Double,
+            nervousSystemBalanceExplanation_he: s["nervousSystemBalanceExplanation_he"] as? String,
+            nervousSystemBalanceExplanation_en: s["nervousSystemBalanceExplanation_en"] as? String,
+            recoveryDebt: s["recoveryDebt"] as? Double,
+            recoveryDebtExplanation_he: s["recoveryDebtExplanation_he"] as? String,
+            recoveryDebtExplanation_en: s["recoveryDebtExplanation_en"] as? String,
+            activityScore: s["activityScore"] as? Double,
+            activityScoreExplanation_he: s["activityScoreExplanation_he"] as? String,
+            activityScoreExplanation_en: s["activityScoreExplanation_en"] as? String,
+            loadBalance: s["loadBalance"] as? Double,
+            loadBalanceExplanation_he: s["loadBalanceExplanation_he"] as? String,
+            loadBalanceExplanation_en: s["loadBalanceExplanation_en"] as? String,
+            carScore: s["carScore"] as? Double,
+            carScoreExplanation_he: s["carScoreExplanation_he"] as? String,
+            carScoreExplanation_en: s["carScoreExplanation_en"] as? String
         )
     }
 
     /// Converts the parsed JSON to a CarAnalysisResponse model
     /// Supports both the new bilingual format (_he/_en) and the legacy format (single field)
     private static func convertJSONToResponse(_ json: CarAnalysisJSONResponse, rawResponse: String) -> CarAnalysisResponse {
-        // Convert supplements - handle nil values gracefully
+        // Convert supplements - handle single-language and nil values gracefully
         let supplements = json.supplements.map { s in
             let category: SupplementCategory
             switch (s.category ?? "general").lowercased() {
@@ -490,13 +606,17 @@ enum CarAnalysisParser {
             case "recovery": category = .recovery
             default: category = .general
             }
-            // Use bilingual fields, fallback to legacy if nil or empty
-            let nameHe = (s.name_he?.isEmpty ?? true) ? (s.name ?? s.name_he ?? "") : (s.name_he ?? "")
-            let nameEn = (s.name_en?.isEmpty ?? true) ? (s.englishName ?? s.name ?? s.name_en ?? "") : (s.name_en ?? "")
-            let dosageHe = (s.dosage_he?.isEmpty ?? true) ? (s.dosage ?? s.dosage_he ?? "") : (s.dosage_he ?? "")
-            let dosageEn = (s.dosage_en?.isEmpty ?? true) ? (s.dosage ?? s.dosage_en ?? dosageHe) : (s.dosage_en ?? "")
-            let reasonHe = (s.reason_he?.isEmpty ?? true) ? (s.reason ?? s.reason_he ?? "") : (s.reason_he ?? "")
-            let reasonEn = (s.reason_en?.isEmpty ?? true) ? (s.reason ?? s.reason_en ?? "") : (s.reason_en ?? "")
+            // Resolve: pick whichever language is present, fill both
+            func resolve(he: String?, en: String?, legacy: String?) -> (String, String) {
+                let h = (he ?? "").isEmpty ? nil : he
+                let e = (en ?? "").isEmpty ? nil : en
+                let l = (legacy ?? "").isEmpty ? nil : legacy
+                let r = h ?? e ?? l ?? ""
+                return (h ?? r, e ?? r)
+            }
+            let (nameHe, nameEn) = resolve(he: s.name_he, en: s.name_en, legacy: s.name ?? s.englishName)
+            let (dosageHe, dosageEn) = resolve(he: s.dosage_he, en: s.dosage_en, legacy: s.dosage)
+            let (reasonHe, reasonEn) = resolve(he: s.reason_he, en: s.reason_en, legacy: s.reason)
 
             return SupplementRecommendation(
                 nameHe: nameHe,
@@ -509,75 +629,92 @@ enum CarAnalysisParser {
             )
         }
 
-        // Helper to get bilingual value with legacy fallback
+        // Helpers: resolve bilingual string/array - pick whichever language is available, fill both slots
+        func biStr(he: String?, en: String?, legacy: String?) -> (String, String) {
+            let h = (he ?? "").isEmpty ? nil : he
+            let e = (en ?? "").isEmpty ? nil : en
+            let l = (legacy ?? "").isEmpty ? nil : legacy
+            let resolved = h ?? e ?? l ?? ""
+            return (h ?? resolved, e ?? resolved)
+        }
+        func biArr(he: [String]?, en: [String]?, legacy: [String]?) -> ([String], [String]) {
+            let h = (he ?? []).isEmpty ? nil : he
+            let e = (en ?? []).isEmpty ? nil : en
+            let l = (legacy ?? []).isEmpty ? nil : legacy
+            let resolved = h ?? e ?? l ?? []
+            return (h ?? resolved, e ?? resolved)
+        }
+
         let carIdentity = json.carIdentity
         let perf = json.performanceReview
         let opt = json.optimizationPlan
         let tune = json.tuneUpPlan
         let dir = json.directives
 
+        let (modelHe, modelEn) = biStr(he: carIdentity.model_he, en: carIdentity.model_en, legacy: carIdentity.model)
+        let (explHe, explEn) = biStr(he: carIdentity.explanation_he, en: carIdentity.explanation_en, legacy: carIdentity.explanation)
+        let (engineHe, engineEn) = biStr(he: perf.engine_he, en: perf.engine_en, legacy: perf.engine)
+        let (transHe, transEn) = biStr(he: perf.transmission_he, en: perf.transmission_en, legacy: perf.transmission)
+        let (suspHe, suspEn) = biStr(he: perf.suspension_he, en: perf.suspension_en, legacy: perf.suspension)
+        let (fuelHe, fuelEn) = biStr(he: perf.fuelEfficiency_he, en: perf.fuelEfficiency_en, legacy: perf.fuelEfficiency)
+        let (elecHe, elecEn) = biStr(he: perf.electronics_he, en: perf.electronics_en, legacy: perf.electronics)
+        let (bnHe, bnEn) = biArr(he: json.bottlenecks_he, en: json.bottlenecks_en, legacy: json.bottlenecks)
+        let (upgHe, upgEn) = biArr(he: opt.upgrades_he, en: opt.upgrades_en, legacy: opt.upgrades)
+        let (skipHe, skipEn) = biArr(he: opt.skippedMaintenance_he, en: opt.skippedMaintenance_en, legacy: opt.skippedMaintenance)
+        let (stopHe, stopEn) = biArr(he: opt.stopImmediately_he, en: opt.stopImmediately_en, legacy: opt.stopImmediately)
+        let (trainHe, trainEn) = biStr(he: tune.trainingAdjustments_he, en: tune.trainingAdjustments_en, legacy: tune.trainingAdjustments)
+        let (recHe, recEn) = biStr(he: tune.recoveryChanges_he, en: tune.recoveryChanges_en, legacy: tune.recoveryChanges)
+        let (addHe, addEn) = biStr(he: tune.habitToAdd_he, en: tune.habitToAdd_en, legacy: tune.habitToAdd)
+        let (remHe, remEn) = biStr(he: tune.habitToRemove_he, en: tune.habitToRemove_en, legacy: tune.habitToRemove)
+        let (dStopHe, dStopEn) = biStr(he: dir.stop_he, en: dir.stop_en, legacy: dir.stop)
+        let (dStartHe, dStartEn) = biStr(he: dir.start_he, en: dir.start_en, legacy: dir.start)
+        let (dWatchHe, dWatchEn) = biStr(he: dir.watch_he, en: dir.watch_en, legacy: dir.watch)
+        let (sumHe, sumEn) = biStr(he: json.forecast_he, en: json.forecast_en, legacy: json.forecast)
+        let (eTextHe, eTextEn) = biStr(he: json.energyForecast?.text_he, en: json.energyForecast?.text_en, legacy: nil)
+        let homeRec = biStr(he: json.homeRecommendations?.medical_he, en: json.homeRecommendations?.medical_en, legacy: json.homeRecommendations?.medical)
+        let homeSports = biStr(he: json.homeRecommendations?.sports_he, en: json.homeRecommendations?.sports_en, legacy: json.homeRecommendations?.sports)
+        let homeNutrition = biStr(he: json.homeRecommendations?.nutrition_he, en: json.homeRecommendations?.nutrition_en, legacy: json.homeRecommendations?.nutrition)
+
         return CarAnalysisResponse(
-            // Car Identity
-            carModelHe: carIdentity.model_he.isEmpty ? (carIdentity.model ?? carIdentity.model_he) : carIdentity.model_he,
-            carModelEn: carIdentity.model_en.isEmpty ? (carIdentity.model ?? carIdentity.model_en) : carIdentity.model_en,
-            carExplanationHe: carIdentity.explanation_he.isEmpty ? (carIdentity.explanation ?? carIdentity.explanation_he) : carIdentity.explanation_he,
-            carExplanationEn: carIdentity.explanation_en.isEmpty ? (carIdentity.explanation ?? carIdentity.explanation_en) : carIdentity.explanation_en,
+            carModelHe: modelHe, carModelEn: modelEn,
+            carExplanationHe: explHe, carExplanationEn: explEn,
             carImageURL: "",
             carWikiName: carIdentity.wikiName,
 
-            // Performance Review
-            engineHe: perf.engine_he.isEmpty ? (perf.engine ?? perf.engine_he) : perf.engine_he,
-            engineEn: perf.engine_en.isEmpty ? (perf.engine ?? perf.engine_en) : perf.engine_en,
-            transmissionHe: perf.transmission_he.isEmpty ? (perf.transmission ?? perf.transmission_he) : perf.transmission_he,
-            transmissionEn: perf.transmission_en.isEmpty ? (perf.transmission ?? perf.transmission_en) : perf.transmission_en,
-            suspensionHe: perf.suspension_he.isEmpty ? (perf.suspension ?? perf.suspension_he) : perf.suspension_he,
-            suspensionEn: perf.suspension_en.isEmpty ? (perf.suspension ?? perf.suspension_en) : perf.suspension_en,
-            fuelEfficiencyHe: perf.fuelEfficiency_he.isEmpty ? (perf.fuelEfficiency ?? perf.fuelEfficiency_he) : perf.fuelEfficiency_he,
-            fuelEfficiencyEn: perf.fuelEfficiency_en.isEmpty ? (perf.fuelEfficiency ?? perf.fuelEfficiency_en) : perf.fuelEfficiency_en,
-            electronicsHe: perf.electronics_he.isEmpty ? (perf.electronics ?? perf.electronics_he) : perf.electronics_he,
-            electronicsEn: perf.electronics_en.isEmpty ? (perf.electronics ?? perf.electronics_en) : perf.electronics_en,
+            engineHe: engineHe, engineEn: engineEn,
+            transmissionHe: transHe, transmissionEn: transEn,
+            suspensionHe: suspHe, suspensionEn: suspEn,
+            fuelEfficiencyHe: fuelHe, fuelEfficiencyEn: fuelEn,
+            electronicsHe: elecHe, electronicsEn: elecEn,
 
-            // Bottlenecks
-            bottlenecksHe: json.bottlenecks_he.isEmpty ? (json.bottlenecks ?? json.bottlenecks_he) : json.bottlenecks_he,
-            bottlenecksEn: json.bottlenecks_en.isEmpty ? (json.bottlenecks ?? json.bottlenecks_en) : json.bottlenecks_en,
+            bottlenecksHe: bnHe, bottlenecksEn: bnEn,
             warningSignals: [],
 
-            // Optimization Plan
-            upgradesHe: opt.upgrades_he.isEmpty ? (opt.upgrades ?? opt.upgrades_he) : opt.upgrades_he,
-            upgradesEn: opt.upgrades_en.isEmpty ? (opt.upgrades ?? opt.upgrades_en) : opt.upgrades_en,
-            skippedMaintenanceHe: opt.skippedMaintenance_he.isEmpty ? (opt.skippedMaintenance ?? opt.skippedMaintenance_he) : opt.skippedMaintenance_he,
-            skippedMaintenanceEn: opt.skippedMaintenance_en.isEmpty ? (opt.skippedMaintenance ?? opt.skippedMaintenance_en) : opt.skippedMaintenance_en,
-            stopImmediatelyHe: opt.stopImmediately_he.isEmpty ? (opt.stopImmediately ?? opt.stopImmediately_he) : opt.stopImmediately_he,
-            stopImmediatelyEn: opt.stopImmediately_en.isEmpty ? (opt.stopImmediately ?? opt.stopImmediately_en) : opt.stopImmediately_en,
+            upgradesHe: upgHe, upgradesEn: upgEn,
+            skippedMaintenanceHe: skipHe, skippedMaintenanceEn: skipEn,
+            stopImmediatelyHe: stopHe, stopImmediatelyEn: stopEn,
 
-            // Tune Up Plan
-            trainingAdjustmentsHe: tune.trainingAdjustments_he.isEmpty ? (tune.trainingAdjustments ?? tune.trainingAdjustments_he) : tune.trainingAdjustments_he,
-            trainingAdjustmentsEn: tune.trainingAdjustments_en.isEmpty ? (tune.trainingAdjustments ?? tune.trainingAdjustments_en) : tune.trainingAdjustments_en,
-            recoveryChangesHe: tune.recoveryChanges_he.isEmpty ? (tune.recoveryChanges ?? tune.recoveryChanges_he) : tune.recoveryChanges_he,
-            recoveryChangesEn: tune.recoveryChanges_en.isEmpty ? (tune.recoveryChanges ?? tune.recoveryChanges_en) : tune.recoveryChanges_en,
-            habitToAddHe: tune.habitToAdd_he.isEmpty ? (tune.habitToAdd ?? tune.habitToAdd_he) : tune.habitToAdd_he,
-            habitToAddEn: tune.habitToAdd_en.isEmpty ? (tune.habitToAdd ?? tune.habitToAdd_en) : tune.habitToAdd_en,
-            habitToRemoveHe: tune.habitToRemove_he.isEmpty ? (tune.habitToRemove ?? tune.habitToRemove_he) : tune.habitToRemove_he,
-            habitToRemoveEn: tune.habitToRemove_en.isEmpty ? (tune.habitToRemove ?? tune.habitToRemove_en) : tune.habitToRemove_en,
+            trainingAdjustmentsHe: trainHe, trainingAdjustmentsEn: trainEn,
+            recoveryChangesHe: recHe, recoveryChangesEn: recEn,
+            habitToAddHe: addHe, habitToAddEn: addEn,
+            habitToRemoveHe: remHe, habitToRemoveEn: remEn,
 
-            // Directives
-            directiveStopHe: dir.stop_he.isEmpty ? (dir.stop ?? dir.stop_he) : dir.stop_he,
-            directiveStopEn: dir.stop_en.isEmpty ? (dir.stop ?? dir.stop_en) : dir.stop_en,
-            directiveStartHe: dir.start_he.isEmpty ? (dir.start ?? dir.start_he) : dir.start_he,
-            directiveStartEn: dir.start_en.isEmpty ? (dir.start ?? dir.start_en) : dir.start_en,
-            directiveWatchHe: dir.watch_he.isEmpty ? (dir.watch ?? dir.watch_he) : dir.watch_he,
-            directiveWatchEn: dir.watch_en.isEmpty ? (dir.watch ?? dir.watch_en) : dir.watch_en,
+            directiveStopHe: dStopHe, directiveStopEn: dStopEn,
+            directiveStartHe: dStartHe, directiveStartEn: dStartEn,
+            directiveWatchHe: dWatchHe, directiveWatchEn: dWatchEn,
 
-            // Summary
-            summaryHe: json.forecast_he.isEmpty ? (json.forecast ?? json.forecast_he) : json.forecast_he,
-            summaryEn: json.forecast_en.isEmpty ? (json.forecast ?? json.forecast_en) : json.forecast_en,
+            summaryHe: sumHe, summaryEn: sumEn,
 
             supplements: supplements,
 
-            // Energy Forecast
-            energyForecastTextHe: json.energyForecast?.text_he ?? "",
-            energyForecastTextEn: json.energyForecast?.text_en ?? "",
+            energyForecastTextHe: eTextHe, energyForecastTextEn: eTextEn,
             energyForecastTrend: json.energyForecast?.trend ?? "stable",
+
+            scores: json.scores,
+
+            homeRecommendationMedicalHe: homeRec.0, homeRecommendationMedicalEn: homeRec.1,
+            homeRecommendationSportsHe: homeSports.0, homeRecommendationSportsEn: homeSports.1,
+            homeRecommendationNutritionHe: homeNutrition.0, homeRecommendationNutritionEn: homeNutrition.1,
 
             rawResponse: rawResponse
         )
@@ -682,6 +819,12 @@ enum CarAnalysisParser {
             energyForecastTextHe: "",
             energyForecastTextEn: "",
             energyForecastTrend: "stable",
+
+            scores: nil,
+
+            homeRecommendationMedicalHe: "", homeRecommendationMedicalEn: "",
+            homeRecommendationSportsHe: "", homeRecommendationSportsEn: "",
+            homeRecommendationNutritionHe: "", homeRecommendationNutritionEn: "",
 
             rawResponse: response
         )

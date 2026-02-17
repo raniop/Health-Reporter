@@ -188,6 +188,9 @@ final class InsightsTabViewController: UIViewController {
     private var notesTextView: UITextView?
     private var notesPlaceholderLabel: UILabel?
 
+    // Language tracking – triggers auto-refresh when system language changes
+    private var lastContentLanguage: AppLanguage?
+
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -204,6 +207,9 @@ final class InsightsTabViewController: UIViewController {
         // Listen for background color changes
         NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
 
+        // Listen for language changes — auto-refresh when user switches language
+        NotificationCenter.default.addObserver(self, selector: #selector(languageDidChange), name: .languageDidChange, object: nil)
+
         // Analytics: Log screen view
         AnalyticsService.shared.logScreenView(.insights)
 
@@ -218,6 +224,25 @@ final class InsightsTabViewController: UIViewController {
         navigationController?.navigationBar.barTintColor = AIONDesign.background
         navigationController?.navigationBar.backgroundColor = AIONDesign.background
         navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: textWhite]
+    }
+
+    @objc private func languageDidChange() {
+        // Language switched — force a fresh Gemini analysis in the new language
+        guard lastContentLanguage != nil,
+              lastContentLanguage != LocalizationManager.shared.currentLanguage else { return }
+        lastContentLanguage = LocalizationManager.shared.currentLanguage
+
+        // Update UI direction & title
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        title = "insights.title".localized
+
+        // Trigger full re-analysis from Gemini via orchestrator
+        showLoading()
+        AIONAnalysisOrchestrator.shared.refresh { [weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.refreshContent()
+            }
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -366,38 +391,13 @@ final class InsightsTabViewController: UIViewController {
     }
 
     @objc private func refreshTapped() {
-        // Check if there is a significant change in the data (dashboard is now in the Performance tab)
-        if let dashboard = embeddedHealthDashboard(),
-           let bundle = dashboard.currentChartBundle {
-
-            if !AnalysisCache.hasSignificantChange(currentBundle: bundle) {
-                // No significant change - show message
-                showNoSignificantChangeAlert()
-                return
+        // Always allow refresh — triggers fresh Gemini call via orchestrator
+        showLoading()
+        AIONAnalysisOrchestrator.shared.refresh { [weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.refreshContent()
             }
         }
-
-        // Significant change found or no data - call Gemini
-        showLoading()
-        unifiedPerformanceVC()?.runAnalysisForInsights(forceAnalysis: true)
-    }
-
-    private func showNoSignificantChangeAlert() {
-        let alert = UIAlertController(
-            title: "insights.noSignificantChange".localized,
-            message: "insights.noSignificantChangeMsg".localized,
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "understand".localized, style: .default))
-        alert.addAction(UIAlertAction(title: "insights.refreshAnyway".localized, style: .destructive) { [weak self] _ in
-            self?.forceRefresh()
-        })
-        present(alert, animated: true)
-    }
-
-    private func forceRefresh() {
-        showLoading()
-        unifiedPerformanceVC()?.runAnalysisForInsights(forceAnalysis: true)
     }
 
     // MARK: - Loading
@@ -417,13 +417,16 @@ final class InsightsTabViewController: UIViewController {
     private func refreshContent() {
         hideLoading()
 
+        // Track current language so we can detect changes later
+        lastContentLanguage = LocalizationManager.shared.currentLanguage
+
         // Prevent conflicting animations - if an animation is already running, defer the refresh
         guard !isAnimatingContent else { return }
 
         // If we're in the middle of a discovery flow - don't delete
         if isShowingDiscoveryFlow {
             // Check if analysis has completed
-            if let insights = AnalysisCache.loadLatest(), !insights.isEmpty {
+            if let insights = GeminiResultStore.loadRawAnalysis(), !insights.isEmpty {
                 // Results found! If still loading - transition to reveal
                 // (this is handled in checkForResultsAndReveal)
             }
@@ -442,8 +445,8 @@ final class InsightsTabViewController: UIViewController {
         }
 
         // Early check: if there's new data - check if the car changed before displaying UI
-        if let insights = AnalysisCache.loadLatest(), !insights.isEmpty {
-            let parsed = CarAnalysisParser.parse(insights)
+        if let rawAnalysis = GeminiResultStore.loadRawAnalysis(), !rawAnalysis.isEmpty {
+            let parsed = CarAnalysisParser.parse(rawAnalysis)
             let cleanedGeminiCar = cleanCarName(parsed.carModel)
             let invalidWords = [
                 "strain", "training", "score", "wiki", "generation", "first", "second", "third",
@@ -470,19 +473,18 @@ final class InsightsTabViewController: UIViewController {
             return
         }
 
-        guard let insights = AnalysisCache.loadLatest(), !insights.isEmpty else {
+        guard let rawAnalysis = GeminiResultStore.loadRawAnalysis(), !rawAnalysis.isEmpty else {
             addEmptyState()
             addPersonalNotesCard()
             return
         }
 
-        let parsed = CarAnalysisParser.parse(insights)
+        let parsed = CarAnalysisParser.parse(rawAnalysis)
 
         // Build Premium UI
         addHeader()
         addHeroCarCard(parsed: parsed)
         addPersonalNotesCard()
-        addWeeklyDataGrid(parsed: parsed)
         addPerformanceSection(parsed: parsed)
         addBottlenecksCard(parsed: parsed)
         addOptimizationCard(parsed: parsed)
@@ -726,7 +728,7 @@ final class InsightsTabViewController: UIViewController {
         subtitle.textColor = textGray
 
         let dateLabel = UILabel()
-        if let d = AnalysisCache.lastUpdateDate() {
+        if let d = GeminiResultStore.load()?.date {
             let f = DateFormatter()
             f.locale = Locale(identifier: LocalizationManager.shared.currentLanguage == .hebrew ? "he_IL" : "en_US")
             f.dateFormat = LocalizationManager.shared.currentLanguage == .hebrew ? "d בMMMM yyyy" : "MMMM d, yyyy"
@@ -748,19 +750,8 @@ final class InsightsTabViewController: UIViewController {
 // MARK: - Hero Car Card (Like Dashboard)
 
 private func addHeroCarCard(parsed: CarAnalysisResponse) {
-    // Get score (for display only, not for car selection)
-    let stats = AnalysisCache.loadWeeklyStats()
-    let score: Int
-    if let savedScore = AnalysisCache.loadHealthScore() {
-        score = savedScore
-    } else {
-        score = CarTierEngine.computeHealthScore(
-            readinessAvg: stats?.readiness,
-            sleepHoursAvg: stats?.sleepHours,
-            hrvAvg: stats?.hrv,
-            strainAvg: stats?.strain
-        )
-    }
+    // Get score from Gemini (single source of truth)
+    let score: Int = GeminiResultStore.loadCarScore() ?? GeminiResultStore.loadHealthScore() ?? 0
 
     // Determine car name - priority: Gemini > Saved > Placeholder
     let cleanedGeminiCar = cleanCarName(parsed.carModel)
@@ -822,8 +813,6 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     }
 
     // Update widget with car name and real activity data
-    let hrvValue = stats?.hrv ?? 0
-    let sleepValue = stats?.sleepHours ?? 0
     let dailyActivity = AnalysisCache.loadDailyActivity()
     let userName = Auth.auth().currentUser?.displayName ?? ""
     WidgetDataManager.shared.updateFromInsights(
@@ -836,190 +825,183 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         exerciseMinutes: dailyActivity?.exerciseMinutes ?? 0,
         standHours: dailyActivity?.standHours ?? 0,
         restingHR: dailyActivity?.restingHR ?? 0 > 0 ? dailyActivity?.restingHR : nil,
-        hrv: hrvValue > 0 ? Int(hrvValue) : nil,
-        sleepHours: sleepValue > 0 ? sleepValue : nil,
+        hrv: nil,
+        sleepHours: nil,
         userName: userName
     )
 
-    // ✅ Card is the arrangedSubview (NO wrapper container)
+    // ═══ Glass Card with floating car image ═══
+    let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+    // Wrapper - doesn't clip so car image can overflow
+    let wrapper = UIView()
+    wrapper.clipsToBounds = false
+    wrapper.translatesAutoresizingMaskIntoConstraints = false
+
+    // Glass card
     let card = UIView()
-    card.backgroundColor = cardBgColor
     card.layer.cornerRadius = 20
     card.clipsToBounds = true
     card.translatesAutoresizingMaskIntoConstraints = false
-    card.setContentHuggingPriority(.required, for: .vertical)
-    card.setContentCompressionResistancePriority(.required, for: .vertical)
 
-    self.discoveryContainer = card
+    self.discoveryContainer = wrapper
     self.carCardView = card
 
-    // Background image - doesn't determine height, only fills the card
-    class NoIntrinsicImageView: UIImageView {
-        override var intrinsicContentSize: CGSize { CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric) }
-    }
-    let bgImageView = NoIntrinsicImageView()
-    bgImageView.contentMode = .scaleAspectFill
-    bgImageView.clipsToBounds = true
-    bgImageView.backgroundColor = UIColor(white: 0.15, alpha: 1)
-    bgImageView.translatesAutoresizingMaskIntoConstraints = false
+    // Blur background
+    let blurEffect = UIBlurEffect(style: .systemUltraThinMaterialDark)
+    let blurView = UIVisualEffectView(effect: blurEffect)
+    blurView.translatesAutoresizingMaskIntoConstraints = false
+    card.addSubview(blurView)
 
-    card.addSubview(bgImageView)
+    // Subtle border
+    card.layer.borderWidth = 1
+    card.layer.borderColor = UIColor.white.withAlphaComponent(0.12).cgColor
 
-    // Add gradient overlay for better text readability on light car images
-    let gradientOverlay = GradientOverlayView()
-    gradientOverlay.translatesAutoresizingMaskIntoConstraints = false
-    card.addSubview(gradientOverlay)
-
-    // Load car image
-    print("🚗 [CarImage] wikiName = '\(wikiName)', carName = '\(carName)'")
-    if !wikiName.isEmpty {
-        fetchCarImageFromWikipedia(carName: wikiName, into: bgImageView, fallbackEmoji: "")
-    } else {
-        print("🚗 [CarImage] ⚠️ wikiName is empty! Using carName as fallback")
-        if !carName.isEmpty && carName != "insights.waitingForAnalysis".localized {
-            fetchCarImageFromWikipedia(carName: carName, into: bgImageView, fallbackEmoji: "")
-        }
-    }
-
-    // Car name
+    // ── Car name ──
     let carNameLabel = UILabel()
     carNameLabel.text = carName
-    carNameLabel.font = .systemFont(ofSize: 28, weight: .heavy)
+    carNameLabel.font = .systemFont(ofSize: 22, weight: .heavy)
     carNameLabel.textColor = .white
     carNameLabel.textAlignment = .center
     carNameLabel.numberOfLines = 1
     carNameLabel.adjustsFontSizeToFitWidth = true
     carNameLabel.minimumScaleFactor = 0.7
-    carNameLabel.layer.shadowColor = UIColor.black.cgColor
-    carNameLabel.layer.shadowOffset = CGSize(width: 0, height: 2)
-    carNameLabel.layer.shadowOpacity = 1
-    carNameLabel.layer.shadowRadius = 4
     carNameLabel.translatesAutoresizingMaskIntoConstraints = false
 
-    // Status badge (pill shape with dynamic corner radius)
+    // ── Score + badge row (centered) ──
+    let scoreLabel = UILabel()
+    scoreLabel.text = "\(score)"
+    scoreLabel.font = .monospacedDigitSystemFont(ofSize: 44, weight: .black)
+    scoreLabel.textColor = tierColor
+    scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+
+    let maxScoreLabel = UILabel()
+    maxScoreLabel.text = "/100"
+    maxScoreLabel.font = .systemFont(ofSize: 18, weight: .medium)
+    maxScoreLabel.textColor = UIColor.white.withAlphaComponent(0.4)
+    maxScoreLabel.translatesAutoresizingMaskIntoConstraints = false
+
     let statusBadge = PaddedLabel()
     statusBadge.text = status
-    statusBadge.font = .systemFont(ofSize: 14, weight: .bold)
+    statusBadge.font = .systemFont(ofSize: 12, weight: .bold)
     statusBadge.textColor = .white
     statusBadge.backgroundColor = tierColor
     statusBadge.clipsToBounds = true
     statusBadge.translatesAutoresizingMaskIntoConstraints = false
 
-    // Score
-    let scoreLabel = UILabel()
-    scoreLabel.text = "\(score)/100"
-    scoreLabel.font = .systemFont(ofSize: 24, weight: .bold)
-    scoreLabel.textColor = tierColor
-    scoreLabel.layer.shadowColor = UIColor.black.cgColor
-    scoreLabel.layer.shadowOffset = CGSize(width: 0, height: 1)
-    scoreLabel.layer.shadowOpacity = 0.8
-    scoreLabel.layer.shadowRadius = 3
-    scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+    let scoreRow = UIStackView()
+    scoreRow.axis = .horizontal
+    scoreRow.alignment = .firstBaseline
+    scoreRow.spacing = 2
+    scoreRow.translatesAutoresizingMaskIntoConstraints = false
+    scoreRow.addArrangedSubview(scoreLabel)
+    scoreRow.addArrangedSubview(maxScoreLabel)
+    scoreRow.setCustomSpacing(10, after: maxScoreLabel)
+    scoreRow.addArrangedSubview(statusBadge)
 
-    // Progress bar
+    // Center the score row
+    let scoreCenterStack = UIStackView()
+    scoreCenterStack.axis = .horizontal
+    scoreCenterStack.alignment = .center
+    scoreCenterStack.distribution = .equalCentering
+    scoreCenterStack.translatesAutoresizingMaskIntoConstraints = false
+    let leftSpacer = UIView(); leftSpacer.translatesAutoresizingMaskIntoConstraints = false
+    let rightSpacer = UIView(); rightSpacer.translatesAutoresizingMaskIntoConstraints = false
+    scoreCenterStack.addArrangedSubview(leftSpacer)
+    scoreCenterStack.addArrangedSubview(scoreRow)
+    scoreCenterStack.addArrangedSubview(rightSpacer)
+    leftSpacer.widthAnchor.constraint(equalTo: rightSpacer.widthAnchor).isActive = true
+
+    // ── Progress bar ──
     let progressBar = AnimatedProgressBar()
     progressBar.progressColor = tierColor
     progressBar.translatesAutoresizingMaskIntoConstraints = false
 
-    // Explanation
+    // ── Explanation ──
     let rawExplanation = explanation.isEmpty ? "insights.carSelectedBased".localized : explanation
     let explanationText = cleanExplanationText(rawExplanation, carName: carName)
 
     let explanationLabel = UILabel()
     explanationLabel.text = explanationText
-    explanationLabel.font = .systemFont(ofSize: 14, weight: .semibold)
-    explanationLabel.textColor = .white
-    explanationLabel.textAlignment = LocalizationManager.shared.textAlignment
+    explanationLabel.font = .systemFont(ofSize: 15, weight: .regular)
+    explanationLabel.textColor = UIColor.white.withAlphaComponent(0.85)
+    explanationLabel.textAlignment = .center
     explanationLabel.numberOfLines = 0
-    explanationLabel.layer.shadowColor = UIColor.black.cgColor
-    explanationLabel.layer.shadowOffset = CGSize(width: 0, height: 1)
-    explanationLabel.layer.shadowOpacity = 0.8
-    explanationLabel.layer.shadowRadius = 2
+    explanationLabel.lineBreakMode = .byWordWrapping
     explanationLabel.translatesAutoresizingMaskIntoConstraints = false
-    explanationLabel.setContentHuggingPriority(.required, for: .vertical)
-    explanationLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
-    // Action buttons
-    let buttonsStack = UIStackView()
-    buttonsStack.axis = .horizontal
-    buttonsStack.spacing = 12
-    buttonsStack.distribution = .fillEqually
-    buttonsStack.translatesAutoresizingMaskIntoConstraints = false
-
+    // ── Action button ──
     let refreshButton = createActionButton(title: "🔄 " + "insights.checkAgain".localized, action: #selector(rediscoverTapped))
-    buttonsStack.addArrangedSubview(refreshButton)
+    refreshButton.translatesAutoresizingMaskIntoConstraints = false
 
-    // Header row: score + badge (centered)
-    let headerRow = UIStackView()
-    headerRow.axis = .horizontal
-    headerRow.alignment = .center
-    headerRow.distribution = .fill
-    headerRow.spacing = 8
-    headerRow.translatesAutoresizingMaskIntoConstraints = false
-
-    let leftSpacer = UIView()
-    leftSpacer.translatesAutoresizingMaskIntoConstraints = false
-    leftSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-    leftSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-    let rightSpacer = UIView()
-    rightSpacer.translatesAutoresizingMaskIntoConstraints = false
-    rightSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-    rightSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-    // Centered layout: spacer - score - badge - spacer
-    let isRTL = LocalizationManager.shared.currentLanguage.isRTL
-    headerRow.addArrangedSubview(leftSpacer)
-    if isRTL {
-        headerRow.addArrangedSubview(statusBadge)
-        headerRow.addArrangedSubview(scoreLabel)
-    } else {
-        headerRow.addArrangedSubview(scoreLabel)
-        headerRow.addArrangedSubview(statusBadge)
-    }
-    headerRow.addArrangedSubview(rightSpacer)
-
-    // Make spacers equal width for centering
-    leftSpacer.widthAnchor.constraint(equalTo: rightSpacer.widthAnchor).isActive = true
-
-    // Main content stack (packed)
+    // ── Content stack (inside glass card) ──
     let contentStack = UIStackView()
     contentStack.axis = .vertical
-//    contentStack.alignment = .fill
-    contentStack.distribution = .fill
-    contentStack.spacing = 8
+    contentStack.spacing = 6
+    contentStack.alignment = .fill
     contentStack.translatesAutoresizingMaskIntoConstraints = false
 
     contentStack.addArrangedSubview(carNameLabel)
-    contentStack.addArrangedSubview(headerRow)
+    contentStack.addArrangedSubview(scoreCenterStack)
     contentStack.addArrangedSubview(progressBar)
+    contentStack.setCustomSpacing(10, after: progressBar)
     contentStack.addArrangedSubview(explanationLabel)
-    contentStack.addArrangedSubview(buttonsStack)
+    contentStack.setCustomSpacing(12, after: explanationLabel)
+    contentStack.addArrangedSubview(refreshButton)
 
     card.addSubview(contentStack)
 
-    // The content determines the card height, the image only fills it
+    // ── Car image (floating, overlaps card top) ──
+    let carImageView = UIImageView()
+    carImageView.contentMode = .scaleAspectFit
+    carImageView.clipsToBounds = false
+    carImageView.backgroundColor = .clear
+    carImageView.translatesAutoresizingMaskIntoConstraints = false
+
+    // Add subtle drop shadow to the car image
+    carImageView.layer.shadowColor = UIColor.black.cgColor
+    carImageView.layer.shadowOffset = CGSize(width: 0, height: 8)
+    carImageView.layer.shadowOpacity = 0.5
+    carImageView.layer.shadowRadius = 16
+
+    print("🚗 [CarImage] wikiName = '\(wikiName)', carName = '\(carName)'")
+    if !wikiName.isEmpty {
+        fetchCarImageFromWikipedia(carName: wikiName, into: carImageView, fallbackEmoji: "")
+    } else if !carName.isEmpty && carName != "insights.waitingForAnalysis".localized {
+        fetchCarImageFromWikipedia(carName: carName, into: carImageView, fallbackEmoji: "")
+    }
+
+    // ── Assemble ──
+    wrapper.addSubview(card)
+    wrapper.addSubview(carImageView)  // On top of card, can overflow
+
     NSLayoutConstraint.activate([
-        // The content determines the height
-        contentStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-        contentStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-        contentStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-        contentStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+        // Card inside wrapper - leave space at top for floating car
+        card.topAnchor.constraint(equalTo: wrapper.topAnchor, constant: 50),
+        card.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+        card.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+        card.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
 
-        // Image - fills the card (doesn't determine height)
-        bgImageView.topAnchor.constraint(equalTo: card.topAnchor),
-        bgImageView.leadingAnchor.constraint(equalTo: card.leadingAnchor),
-        bgImageView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
-        bgImageView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+        // Blur fills card
+        blurView.topAnchor.constraint(equalTo: card.topAnchor),
+        blurView.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+        blurView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+        blurView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
 
-        // Gradient overlay for text readability
-        gradientOverlay.topAnchor.constraint(equalTo: card.topAnchor),
-        gradientOverlay.leadingAnchor.constraint(equalTo: card.leadingAnchor),
-        gradientOverlay.trailingAnchor.constraint(equalTo: card.trailingAnchor),
-        gradientOverlay.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+        // Content inside card
+        contentStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+        contentStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+        contentStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+        contentStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
 
-        progressBar.heightAnchor.constraint(equalToConstant: 6),
-        buttonsStack.heightAnchor.constraint(equalToConstant: 44),
+        progressBar.heightAnchor.constraint(equalToConstant: 5),
+        refreshButton.heightAnchor.constraint(equalToConstant: 38),
+
+        // Floating car image - centered at top, overlapping the card
+        carImageView.centerXAnchor.constraint(equalTo: wrapper.trailingAnchor, constant: -90),
+        carImageView.bottomAnchor.constraint(equalTo: card.topAnchor, constant: 30),
+        carImageView.widthAnchor.constraint(equalToConstant: 160),
+        carImageView.heightAnchor.constraint(equalToConstant: 100),
     ])
 
     // Update progress bar
@@ -1027,7 +1009,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         progressBar.setProgress(CGFloat(score) / 100.0)
     }
 
-    stack.addArrangedSubview(card)
+    stack.addArrangedSubview(wrapper)
 }
 
 
@@ -1337,57 +1319,64 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                 imageRequest.cachePolicy = .reloadIgnoringLocalCacheData
 
                 URLSession.shared.dataTask(with: imageRequest) { [weak self, weak imageView] imgData, response, imgError in
-                    DispatchQueue.main.async {
-                        guard let self = self, let imageView = imageView else { return }
+                    // Log response details for debugging
+                    if let httpResponse = response as? HTTPURLResponse {
+                        print("🚗 [CarImage] HTTP Status: \(httpResponse.statusCode), Content-Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "none")")
+                        if httpResponse.statusCode != 200 {
+                            print("🚗 [CarImage] ⚠️ Non-200 status code, headers: \(httpResponse.allHeaderFields)")
+                        }
+                    }
 
-                        // Log response details for debugging
-                        if let httpResponse = response as? HTTPURLResponse {
-                            print("🚗 [CarImage] HTTP Status: \(httpResponse.statusCode), Content-Type: \(httpResponse.value(forHTTPHeaderField: "Content-Type") ?? "none")")
-                            if httpResponse.statusCode != 200 {
-                                print("🚗 [CarImage] ⚠️ Non-200 status code, headers: \(httpResponse.allHeaderFields)")
+                    if let imgError = imgError {
+                        print("🚗 [CarImage] ⚠️ Image download error: \(imgError.localizedDescription), code: \((imgError as NSError).code)")
+                    }
+
+                    if let imgData = imgData, !imgData.isEmpty, let image = UIImage(data: imgData) {
+                        print("🚗 [CarImage] ✅ Image loaded successfully for '\(carName)' (size: \(imgData.count) bytes), removing background...")
+                        WidgetDataManager.shared.removeBackground(from: image) { [weak self, weak imageView] processedImage in
+                            DispatchQueue.main.async {
+                                guard let imageView = imageView else { return }
+                                imageView.image = processedImage
+                                imageView.contentMode = .scaleAspectFill
+                                imageView.backgroundColor = .clear
                             }
+                            WidgetDataManager.shared.saveCarImage(processedImage)
+                            WidgetDataManager.shared.cacheCarImage(processedImage, forWikiName: originalWikiName)
                         }
+                    } else {
+                        print("🚗 [CarImage] ❌ Failed to load image data: \(imgError?.localizedDescription ?? "no error"), data size: \(imgData?.count ?? 0)")
+                        // Try original thumbnail URL as fallback (without size modification)
+                        if let originalURL = URL(string: source) {
+                            print("🚗 [CarImage] 🔄 Retrying with original URL: \(source)")
+                            var retryRequest = URLRequest(url: originalURL)
+                            retryRequest.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
+                            retryRequest.setValue("image/webp,image/apng,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+                            retryRequest.cachePolicy = .reloadIgnoringLocalCacheData
 
-                        if let imgError = imgError {
-                            print("🚗 [CarImage] ⚠️ Image download error: \(imgError.localizedDescription), code: \((imgError as NSError).code)")
-                        }
-
-                        if let imgData = imgData, !imgData.isEmpty, let image = UIImage(data: imgData) {
-                            print("🚗 [CarImage] ✅ Image loaded successfully for '\(carName)' (size: \(imgData.count) bytes)")
-                            imageView.image = image
-                            imageView.contentMode = .scaleAspectFill
-                            imageView.backgroundColor = .clear
-
-                            // Save car image for widget and cache
-                            WidgetDataManager.shared.saveCarImage(image)
-                            WidgetDataManager.shared.cacheCarImage(image, forWikiName: originalWikiName)
-                        } else {
-                            print("🚗 [CarImage] ❌ Failed to load image data: \(imgError?.localizedDescription ?? "no error"), data size: \(imgData?.count ?? 0)")
-                            // Try original thumbnail URL as fallback (without size modification)
-                            if let originalURL = URL(string: source) {
-                                print("🚗 [CarImage] 🔄 Retrying with original URL: \(source)")
-                                var retryRequest = URLRequest(url: originalURL)
-                                retryRequest.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
-                                retryRequest.setValue("image/webp,image/apng,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
-                                retryRequest.cachePolicy = .reloadIgnoringLocalCacheData
-
-                                URLSession.shared.dataTask(with: retryRequest) { [weak self, weak imageView] retryData, _, _ in
-                                    DispatchQueue.main.async {
-                                        guard let self = self, let imageView = imageView else { return }
-                                        if let retryData = retryData, !retryData.isEmpty, let image = UIImage(data: retryData) {
-                                            print("🚗 [CarImage] ✅ Image loaded with original URL for '\(carName)'")
-                                            imageView.image = image
+                            URLSession.shared.dataTask(with: retryRequest) { [weak self, weak imageView] retryData, _, _ in
+                                if let retryData = retryData, !retryData.isEmpty, let image = UIImage(data: retryData) {
+                                    print("🚗 [CarImage] ✅ Image loaded with original URL for '\(carName)', removing background...")
+                                    WidgetDataManager.shared.removeBackground(from: image) { [weak self, weak imageView] processedImage in
+                                        DispatchQueue.main.async {
+                                            guard let imageView = imageView else { return }
+                                            imageView.image = processedImage
                                             imageView.contentMode = .scaleAspectFill
                                             imageView.backgroundColor = .clear
-                                            WidgetDataManager.shared.saveCarImage(image)
-                                            WidgetDataManager.shared.cacheCarImage(image, forWikiName: originalWikiName)
-                                        } else {
-                                            print("🚗 [CarImage] ❌ Retry also failed")
-                                            self.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
                                         }
+                                        WidgetDataManager.shared.saveCarImage(processedImage)
+                                        WidgetDataManager.shared.cacheCarImage(processedImage, forWikiName: originalWikiName)
                                     }
-                                }.resume()
-                            } else {
+                                } else {
+                                    DispatchQueue.main.async {
+                                        guard let self = self, let imageView = imageView else { return }
+                                        print("🚗 [CarImage] ❌ Retry also failed")
+                                        self.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
+                                    }
+                                }
+                            }.resume()
+                        } else {
+                            DispatchQueue.main.async { [weak self, weak imageView] in
+                                guard let self = self, let imageView = imageView else { return }
                                 self.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
                             }
                         }
@@ -1427,41 +1416,39 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         gridStack.spacing = 12
         gridStack.translatesAutoresizingMaskIntoConstraints = false
 
-        // Load real weekly stats from cache
-        let stats = AnalysisCache.loadWeeklyStats()
+        // Load scores from Gemini result (single source of truth)
+        let geminiScores = GeminiResultStore.load()?.scores
 
         // Format sleep value
         let sleepValue: String
-        if let s = stats?.sleepHours, s > 0 {
-            let hours = Int(s)
-            let minutes = Int((s - Double(hours)) * 60)
-            sleepValue = "\(hours)h \(minutes)m Ø"
+        if let s = geminiScores?.sleepScore {
+            sleepValue = "\(s)"
         } else {
-            sleepValue = "-- Ø"
+            sleepValue = "--"
         }
 
         // Format readiness value
         let readinessValue: String
-        if let r = stats?.readiness, r > 0 {
-            readinessValue = String(format: "%.0f", r)
+        if let r = geminiScores?.readinessScore {
+            readinessValue = "\(r)"
         } else {
             readinessValue = "--"
         }
 
         // Format strain value
         let strainValue: String
-        if let st = stats?.strain, st > 0 {
+        if let st = geminiScores?.trainingStrain {
             strainValue = String(format: "%.1f", st)
         } else {
             strainValue = "--"
         }
 
-        // Format HRV value
+        // Format HRV value (now nervousSystemBalance from Gemini)
         let hrvValue: String
-        if let h = stats?.hrv, h > 0 {
-            hrvValue = String(format: "%.0f ms", h)
+        if let h = geminiScores?.nervousSystemBalance {
+            hrvValue = "\(h)"
         } else {
-            hrvValue = "-- ms"
+            hrvValue = "--"
         }
 
         // Row 1
@@ -2676,7 +2663,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
 
             // Read parsed data from cache
-            if let insights = AnalysisCache.loadLatest() {
+            if let insights = GeminiResultStore.loadRawAnalysis() {
                 let parsed = CarAnalysisParser.parse(insights)
                 self.buildRevealedCarCard(in: container, parsed: parsed)
             } else {
@@ -3008,7 +2995,7 @@ private func showDiscoveryLoadingAnimation() {
         particleBackground?.stop()
 
         // Check if there are results
-        if let insights = AnalysisCache.loadLatest(), !insights.isEmpty {
+        if let insights = GeminiResultStore.loadRawAnalysis(), !insights.isEmpty {
             let parsed = CarAnalysisParser.parse(insights)
             showRevealAnimation(parsed: parsed)
         } else {
@@ -3048,19 +3035,8 @@ private func showDiscoveryLoadingAnimation() {
         discoveryMinHeightConstraint?.isActive = false
         discoveryMinHeightConstraint = nil
 
-        // Get score (for display only)
-        let stats = AnalysisCache.loadWeeklyStats()
-        let score: Int
-        if let savedScore = AnalysisCache.loadHealthScore() {
-            score = savedScore
-        } else {
-            score = CarTierEngine.computeHealthScore(
-                readinessAvg: stats?.readiness,
-                sleepHoursAvg: stats?.sleepHours,
-                hrvAvg: stats?.hrv,
-                strainAvg: stats?.strain
-            )
-        }
+        // Get score from Gemini (single source of truth)
+        let score: Int = GeminiResultStore.loadCarScore() ?? GeminiResultStore.loadHealthScore() ?? 0
 
         // Determine car name - priority: Gemini > Saved > Placeholder
         let carName: String
@@ -3116,157 +3092,164 @@ private func showDiscoveryLoadingAnimation() {
         default: tierColor = AIONDesign.accentDanger
         }
 
-        // Background card
+        // ═══ Glass Card reveal with floating car image ═══
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        // Glass card
         let card = UIView()
-        card.backgroundColor = cardBgColor
         card.layer.cornerRadius = 20
         card.clipsToBounds = true
         card.translatesAutoresizingMaskIntoConstraints = false
         card.alpha = 0
         card.transform = CGAffineTransform(scaleX: 0.5, y: 0.5).translatedBy(x: 0, y: -100)
+        card.layer.borderWidth = 1
+        card.layer.borderColor = UIColor.white.withAlphaComponent(0.12).cgColor
         container.addSubview(card)
         self.carCardView = card
 
-        // Background image - doesn't determine height, only fills the card
-        class NoIntrinsicImageView: UIImageView {
-            override var intrinsicContentSize: CGSize { CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric) }
-        }
-        let bgImageView = NoIntrinsicImageView()
-        bgImageView.contentMode = .scaleAspectFill
-        bgImageView.clipsToBounds = true
-        bgImageView.backgroundColor = UIColor(white: 0.15, alpha: 1)
-        bgImageView.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(bgImageView)
+        let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+        blurView.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(blurView)
 
-        // Add gradient overlay for better text readability on light car images
-        let gradientOverlay = GradientOverlayView()
-        gradientOverlay.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(gradientOverlay)
-
-        // Car name - large title at the top
+        // ── Car name ──
         let carNameLabel = UILabel()
-        carNameLabel.text = carName  // Display the name immediately!
-        carNameLabel.font = .systemFont(ofSize: 28, weight: .heavy)
+        carNameLabel.text = carName
+        carNameLabel.font = .systemFont(ofSize: 22, weight: .heavy)
         carNameLabel.textColor = .white
         carNameLabel.textAlignment = .center
         carNameLabel.numberOfLines = 1
         carNameLabel.adjustsFontSizeToFitWidth = true
         carNameLabel.minimumScaleFactor = 0.7
-        carNameLabel.layer.shadowColor = UIColor.black.cgColor
-        carNameLabel.layer.shadowOffset = CGSize(width: 0, height: 2)
-        carNameLabel.layer.shadowOpacity = 1
-        carNameLabel.layer.shadowRadius = 4
+        carNameLabel.alpha = 0
         carNameLabel.translatesAutoresizingMaskIntoConstraints = false
-        carNameLabel.alpha = 0  // Will appear with animation
-        card.addSubview(carNameLabel)
 
-        // Status badge (pill shape with dynamic corner radius)
+        // ── Score row (centered) ──
+        let scoreLabel = UILabel()
+        scoreLabel.text = "0"
+        scoreLabel.font = .monospacedDigitSystemFont(ofSize: 44, weight: .black)
+        scoreLabel.textColor = tierColor
+        scoreLabel.alpha = 0
+        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let maxScoreLabel = UILabel()
+        maxScoreLabel.text = "/100"
+        maxScoreLabel.font = .systemFont(ofSize: 18, weight: .medium)
+        maxScoreLabel.textColor = UIColor.white.withAlphaComponent(0.4)
+        maxScoreLabel.alpha = 0
+        maxScoreLabel.translatesAutoresizingMaskIntoConstraints = false
+
         let statusBadge = PaddedLabel()
         statusBadge.text = status
-        statusBadge.font = .systemFont(ofSize: 14, weight: .bold)
+        statusBadge.font = .systemFont(ofSize: 12, weight: .bold)
         statusBadge.textColor = .white
         statusBadge.backgroundColor = tierColor
         statusBadge.clipsToBounds = true
         statusBadge.alpha = 0
         statusBadge.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(statusBadge)
 
-        // Score (will count from 0)
-        let scoreLabel = UILabel()
-        scoreLabel.text = "0/100"
-        scoreLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        scoreLabel.textColor = tierColor
-        scoreLabel.layer.shadowColor = UIColor.black.cgColor
-        scoreLabel.layer.shadowOffset = CGSize(width: 0, height: 1)
-        scoreLabel.layer.shadowOpacity = 0.8
-        scoreLabel.layer.shadowRadius = 3
-        scoreLabel.alpha = 0
-        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(scoreLabel)
+        let scoreRow = UIStackView()
+        scoreRow.axis = .horizontal
+        scoreRow.alignment = .firstBaseline
+        scoreRow.spacing = 2
+        scoreRow.alpha = 0
+        scoreRow.translatesAutoresizingMaskIntoConstraints = false
+        scoreRow.addArrangedSubview(scoreLabel)
+        scoreRow.addArrangedSubview(maxScoreLabel)
+        scoreRow.setCustomSpacing(10, after: maxScoreLabel)
+        scoreRow.addArrangedSubview(statusBadge)
 
-        // Progress bar
+        let scoreCenterStack = UIStackView()
+        scoreCenterStack.axis = .horizontal
+        scoreCenterStack.alignment = .center
+        scoreCenterStack.distribution = .equalCentering
+        scoreCenterStack.translatesAutoresizingMaskIntoConstraints = false
+        let leftSpacer = UIView(); leftSpacer.translatesAutoresizingMaskIntoConstraints = false
+        let rightSpacer = UIView(); rightSpacer.translatesAutoresizingMaskIntoConstraints = false
+        scoreCenterStack.addArrangedSubview(leftSpacer)
+        scoreCenterStack.addArrangedSubview(scoreRow)
+        scoreCenterStack.addArrangedSubview(rightSpacer)
+        leftSpacer.widthAnchor.constraint(equalTo: rightSpacer.widthAnchor).isActive = true
+
+        // ── Progress bar ──
         let progressBar = AnimatedProgressBar()
         progressBar.progressColor = tierColor
         progressBar.alpha = 0
         progressBar.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(progressBar)
 
-        // Explanation
+        // ── Explanation ──
         let explanationLabel = UILabel()
         let rawExplanation = parsed?.carExplanation ?? "insights.carSelectedBased".localized
         explanationLabel.text = cleanExplanationText(rawExplanation, carName: carName)
-        explanationLabel.font = .systemFont(ofSize: 14, weight: .semibold)
-        explanationLabel.textColor = .white
-        explanationLabel.textAlignment = LocalizationManager.shared.textAlignment
+        explanationLabel.font = .systemFont(ofSize: 15, weight: .regular)
+        explanationLabel.textColor = UIColor.white.withAlphaComponent(0.85)
+        explanationLabel.textAlignment = .center
         explanationLabel.numberOfLines = 0
+        explanationLabel.lineBreakMode = .byWordWrapping
         explanationLabel.alpha = 0
         explanationLabel.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(explanationLabel)
 
-        // Buttons
-        let buttonsStack = UIStackView()
-        buttonsStack.axis = .horizontal
-        buttonsStack.spacing = 12
-        buttonsStack.distribution = .fillEqually
-        buttonsStack.alpha = 0
-        buttonsStack.translatesAutoresizingMaskIntoConstraints = false
-
+        // ── Button ──
         let refreshButton = createActionButton(title: "🔄 " + "insights.checkAgain".localized, action: #selector(rediscoverTapped))
-        let detailsButton = createActionButton(title: "📊 Details", action: #selector(showDetailsTapped))
+        refreshButton.alpha = 0
+        refreshButton.translatesAutoresizingMaskIntoConstraints = false
 
-        buttonsStack.addArrangedSubview(refreshButton)
-        buttonsStack.addArrangedSubview(detailsButton)
-        card.addSubview(buttonsStack)
+        // ── Content stack ──
+        let contentStack = UIStackView()
+        contentStack.axis = .vertical
+        contentStack.spacing = 6
+        contentStack.alignment = .fill
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
 
-        // Constraints - image at fixed height 200, card grows based on content
+        contentStack.addArrangedSubview(carNameLabel)
+        contentStack.addArrangedSubview(scoreCenterStack)
+        contentStack.addArrangedSubview(progressBar)
+        contentStack.setCustomSpacing(10, after: progressBar)
+        contentStack.addArrangedSubview(explanationLabel)
+        contentStack.setCustomSpacing(12, after: explanationLabel)
+        contentStack.addArrangedSubview(refreshButton)
+        card.addSubview(contentStack)
+
+        // ── Floating car image ──
+        let carImageView = UIImageView()
+        carImageView.contentMode = .scaleAspectFit
+        carImageView.clipsToBounds = false
+        carImageView.backgroundColor = .clear
+        carImageView.alpha = 0
+        carImageView.translatesAutoresizingMaskIntoConstraints = false
+        carImageView.layer.shadowColor = UIColor.black.cgColor
+        carImageView.layer.shadowOffset = CGSize(width: 0, height: 8)
+        carImageView.layer.shadowOpacity = 0.5
+        carImageView.layer.shadowRadius = 16
+        container.addSubview(carImageView)  // Add to container, not card
+
+        if !wikiName.isEmpty {
+            fetchCarImageFromWikipedia(carName: wikiName, into: carImageView, fallbackEmoji: "🚗")
+        }
+
         NSLayoutConstraint.activate([
-            card.topAnchor.constraint(equalTo: container.topAnchor),
+            card.topAnchor.constraint(equalTo: container.topAnchor, constant: 50),
             card.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             card.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            card.bottomAnchor.constraint(equalTo: container.bottomAnchor), // Attach to container
+            card.bottomAnchor.constraint(equalTo: container.bottomAnchor),
 
-            // Image - fill the entire card
-            bgImageView.topAnchor.constraint(equalTo: card.topAnchor),
-            bgImageView.leadingAnchor.constraint(equalTo: card.leadingAnchor),
-            bgImageView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
-            bgImageView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            blurView.topAnchor.constraint(equalTo: card.topAnchor),
+            blurView.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            blurView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            blurView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
 
-            // Gradient overlay for text readability
-            gradientOverlay.topAnchor.constraint(equalTo: card.topAnchor),
-            gradientOverlay.leadingAnchor.constraint(equalTo: card.leadingAnchor),
-            gradientOverlay.trailingAnchor.constraint(equalTo: card.trailingAnchor),
-            gradientOverlay.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            contentStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            contentStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            contentStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            contentStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
 
-            carNameLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),
-            carNameLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            carNameLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            progressBar.heightAnchor.constraint(equalToConstant: 5),
+            refreshButton.heightAnchor.constraint(equalToConstant: 38),
 
-            // Score and badge centered together
-            scoreLabel.topAnchor.constraint(equalTo: carNameLabel.bottomAnchor, constant: 12),
-            scoreLabel.centerXAnchor.constraint(equalTo: card.centerXAnchor, constant: -40),
-            statusBadge.centerYAnchor.constraint(equalTo: scoreLabel.centerYAnchor),
-            statusBadge.leadingAnchor.constraint(equalTo: scoreLabel.trailingAnchor, constant: 8),
-
-            progressBar.topAnchor.constraint(equalTo: statusBadge.bottomAnchor, constant: 8),
-            progressBar.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            progressBar.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            progressBar.heightAnchor.constraint(equalToConstant: 6),
-
-            explanationLabel.topAnchor.constraint(equalTo: progressBar.bottomAnchor, constant: 8),
-            explanationLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            explanationLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-
-            buttonsStack.topAnchor.constraint(equalTo: explanationLabel.bottomAnchor, constant: 8),
-            buttonsStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            buttonsStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            buttonsStack.heightAnchor.constraint(equalToConstant: 44),
-            buttonsStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+            carImageView.centerXAnchor.constraint(equalTo: container.trailingAnchor, constant: -90),
+            carImageView.bottomAnchor.constraint(equalTo: card.topAnchor, constant: 30),
+            carImageView.widthAnchor.constraint(equalToConstant: 160),
+            carImageView.heightAnchor.constraint(equalToConstant: 100),
         ])
-
-        // Load image
-        if !wikiName.isEmpty {
-            fetchCarImageFromWikipedia(carName: wikiName, into: bgImageView, fallbackEmoji: "🚗")
-        }
 
         // === Reveal animations ===
 
@@ -3280,52 +3263,55 @@ private func showDiscoveryLoadingAnimation() {
         ) {
             card.alpha = 1
             card.transform = .identity
-            container.superview?.layoutIfNeeded() // Update layout
+            container.superview?.layoutIfNeeded()
         }
 
-        // 2. Car name appears with fade-in
+        // 2. Car image drops in
+        carImageView.transform = CGAffineTransform(translationX: 40, y: -30)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            UIView.animate(withDuration: 0.6) {
+            UIView.animate(withDuration: 0.7, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.3, options: []) {
+                carImageView.alpha = 1
+                carImageView.transform = .identity
+            }
+        }
+
+        // 3. Car name
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            UIView.animate(withDuration: 0.5) {
                 carNameLabel.alpha = 1
             }
         }
 
-        // 3. Badge enters
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            UIView.animate(withDuration: 0.4) {
+        // 4. Score counter + badge
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            scoreCenterStack.alpha = 1
+            scoreRow.alpha = 1
+            scoreLabel.alpha = 1
+            maxScoreLabel.alpha = 1
+            let counterAnimator = NumberCounterAnimator(label: scoreLabel)
+            counterAnimator.animate(from: 0, to: score, duration: 1.2)
+            UIView.animate(withDuration: 0.3) {
                 statusBadge.alpha = 1
-                statusBadge.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
-            } completion: { _ in
-                UIView.animate(withDuration: 0.2) {
-                    statusBadge.transform = .identity
-                }
             }
         }
 
-        // 4. Score counter
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-            scoreLabel.alpha = 1
-            let counterAnimator = NumberCounterAnimator(label: scoreLabel)
-            counterAnimator.animate(from: 0, to: score, duration: 1.5, suffix: "/100")
-        }
-
         // 5. Progress bar
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             progressBar.alpha = 1
-            progressBar.animateProgress(to: CGFloat(score) / 100.0, duration: 1.5)
+            progressBar.animateProgress(to: CGFloat(score) / 100.0, duration: 1.2)
         }
 
-        // 6. Explanation fade in
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            UIView.animate(withDuration: 0.5) {
+        // 6. Explanation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            UIView.animate(withDuration: 0.4) {
                 explanationLabel.alpha = 1
             }
         }
 
-        // 7. Buttons
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+        // 7. Button
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             UIView.animate(withDuration: 0.4) {
-                buttonsStack.alpha = 1
+                refreshButton.alpha = 1
             }
         }
 
@@ -3341,8 +3327,6 @@ private func showDiscoveryLoadingAnimation() {
         UserDefaults.standard.set(true, forKey: "AION.HasDiscoveredCar")
 
         // Update widget with real activity data
-        let hrvValue = stats?.hrv ?? 0
-        let sleepValue = stats?.sleepHours ?? 0
         let dailyActivity = AnalysisCache.loadDailyActivity()
         let userName = Auth.auth().currentUser?.displayName ?? ""
         WidgetDataManager.shared.updateFromInsights(
@@ -3355,8 +3339,8 @@ private func showDiscoveryLoadingAnimation() {
             exerciseMinutes: dailyActivity?.exerciseMinutes ?? 0,
             standHours: dailyActivity?.standHours ?? 0,
             restingHR: dailyActivity?.restingHR ?? 0 > 0 ? dailyActivity?.restingHR : nil,
-            hrv: hrvValue > 0 ? Int(hrvValue) : nil,
-            sleepHours: sleepValue > 0 ? sleepValue : nil,
+            hrv: nil,
+            sleepHours: nil,
             userName: userName
         )
     }
@@ -3380,7 +3364,6 @@ private func showDiscoveryLoadingAnimation() {
         insertHeaderAboveCard()
 
         // Add all additional sections
-        addWeeklyDataGrid(parsed: parsed)
         addPerformanceSection(parsed: parsed)
         addBottlenecksCard(parsed: parsed)
         addOptimizationCard(parsed: parsed)
@@ -3412,7 +3395,7 @@ private func showDiscoveryLoadingAnimation() {
         subtitle.textColor = textGray
 
         let dateLabel = UILabel()
-        if let d = AnalysisCache.lastUpdateDate() {
+        if let d = GeminiResultStore.load()?.date {
             let f = DateFormatter()
             f.locale = Locale(identifier: LocalizationManager.shared.currentLanguage == .hebrew ? "he_IL" : "en_US")
             f.dateFormat = LocalizationManager.shared.currentLanguage == .hebrew ? "d בMMMM yyyy" : "MMMM d, yyyy"
@@ -3434,6 +3417,7 @@ private func showDiscoveryLoadingAnimation() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         // Delete cache and restart
+        GeminiResultStore.clear()
         AnalysisCache.clear()
         UserDefaults.standard.set(false, forKey: "AION.HasDiscoveredCar")
         isShowingDiscoveryFlow = false
@@ -3446,11 +3430,10 @@ private func showDiscoveryLoadingAnimation() {
 
         // If there's no additional content yet, add it
         if stack.arrangedSubviews.count <= 2 {
-            guard let insights = AnalysisCache.loadLatest(), !insights.isEmpty else { return }
+            guard let insights = GeminiResultStore.loadRawAnalysis(), !insights.isEmpty else { return }
             let parsed = CarAnalysisParser.parse(insights)
 
             // Add remaining sections
-            addWeeklyDataGrid(parsed: parsed)
             addPerformanceSection(parsed: parsed)
             addBottlenecksCard(parsed: parsed)
             addOptimizationCard(parsed: parsed)

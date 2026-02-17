@@ -2,8 +2,8 @@ import UIKit
 import HealthKit
 import FirebaseAuth
 
-/// Dynamic Splash Screen that loads data in the background
-/// Displayed instead of the static LaunchScreen.storyboard and performs data loading
+/// Dynamic Splash Screen that loads data and waits for Gemini analysis to complete
+/// Displayed instead of the static LaunchScreen.storyboard
 class SplashViewController: UIViewController {
 
     // MARK: - UI Elements
@@ -60,6 +60,22 @@ class SplashViewController: UIViewController {
         return label
     }()
 
+    private let progressBar: UIProgressView = {
+        let bar = UIProgressView(progressViewStyle: .default)
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        bar.progressTintColor = AIONDesign.accentSecondary
+        bar.trackTintColor = UIColor.white.withAlphaComponent(0.1)
+        bar.layer.cornerRadius = 2
+        bar.clipsToBounds = true
+        bar.progress = 0
+        bar.alpha = 0
+        return bar
+    }()
+
+    // MARK: - State
+    private var hasTransitioned = false
+    private var timeoutWorkItem: DispatchWorkItem?
+
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -81,6 +97,7 @@ class SplashViewController: UIViewController {
         view.addSubview(subtitleLabel)
         view.addSubview(loadingIndicator)
         view.addSubview(statusLabel)
+        view.addSubview(progressBar)
 
         NSLayoutConstraint.activate([
             // Logo - centered with upward offset
@@ -105,14 +122,34 @@ class SplashViewController: UIViewController {
             subtitleLabel.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
             subtitleLabel.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
 
-            // Loading indicator - below everything
+            // Progress bar - below subtitle
+            progressBar.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            progressBar.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 32),
+            progressBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 60),
+            progressBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -60),
+            progressBar.heightAnchor.constraint(equalToConstant: 4),
+
+            // Loading indicator - below progress bar
             loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            loadingIndicator.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 40),
+            loadingIndicator.topAnchor.constraint(equalTo: progressBar.bottomAnchor, constant: 16),
 
             // Status label - below indicator
             statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            statusLabel.topAnchor.constraint(equalTo: loadingIndicator.bottomAnchor, constant: 12),
+            statusLabel.topAnchor.constraint(equalTo: loadingIndicator.bottomAnchor, constant: 8),
+            statusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            statusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
         ])
+    }
+
+    // MARK: - Progress Helpers
+
+    private func updateProgress(_ value: Float, status: String, animated: Bool = true) {
+        DispatchQueue.main.async {
+            UIView.animate(withDuration: animated ? 0.4 : 0) {
+                self.progressBar.setProgress(value, animated: animated)
+                self.statusLabel.text = status
+            }
+        }
     }
 
     // MARK: - Loading
@@ -122,6 +159,7 @@ class SplashViewController: UIViewController {
         loadingIndicator.startAnimating()
         UIView.animate(withDuration: 0.3) {
             self.statusLabel.alpha = 1
+            self.progressBar.alpha = 1
         }
 
         #if DEBUG
@@ -162,52 +200,81 @@ class SplashViewController: UIViewController {
     }
 
     private func loadHealthData() {
-        DispatchQueue.main.async {
-            self.statusLabel.text = "splash.syncAppleHealth".localized
-        }
+        // Step 1: Fetch health data (0% → 20%)
+        updateProgress(0.05, status: "splash.syncAppleHealth".localized)
 
-        // Load health data
         HealthKitManager.shared.fetchAllHealthData(for: .week) { [weak self] data, _ in
             guard let self = self else { return }
 
             // Save to cache
             HealthDataCache.shared.healthData = data
 
-            DispatchQueue.main.async {
-                self.statusLabel.text = "splash.processingData".localized
-            }
+            // Step 2: Fetch chart data (20% → 40%)
+            self.updateProgress(0.2, status: "splash.processingData".localized)
 
-            // Calculate HealthScore and sync to Firestore in background
+            // Calculate HealthScore and sync to Firestore in background (non-blocking)
             self.calculateAndSyncHealthScore()
 
-            // Load chart data
             HealthKitManager.shared.fetchChartData(for: .week) { [weak self] bundle in
                 guard let self = self else { return }
 
                 // Save to cache
                 HealthDataCache.shared.chartBundle = bundle
 
-                // Trigger Gemini analysis in background (non-blocking UI)
-                self.triggerBackgroundGeminiAnalysis(healthData: data, chartBundle: bundle)
+                // Step 3: Run Gemini analysis via Orchestrator (40% → 90%)
+                self.updateProgress(0.4, status: "splash.analyzingAI".localized)
 
-                DispatchQueue.main.async {
-                    self.transitionToMain()
+                // Safety timeout — if Gemini takes >30s, transition anyway
+                let timeout = DispatchWorkItem { [weak self] in
+                    guard let self = self, !self.hasTransitioned else { return }
+                    print("⏰ [Splash] Gemini timeout (30s) — transitioning anyway")
+                    self.finishAndTransition()
+                }
+                self.timeoutWorkItem = timeout
+                DispatchQueue.main.asyncAfter(deadline: .now() + 30, execute: timeout)
+
+                // Run Gemini analysis (blocking — waits for completion)
+                AIONAnalysisOrchestrator.shared.ensureTodayResult { [weak self] result, _ in
+                    guard let self = self, !self.hasTransitioned else { return }
+
+                    // Cancel timeout
+                    self.timeoutWorkItem?.cancel()
+                    self.timeoutWorkItem = nil
+
+                    if let result = result {
+                        print("✅ [Splash] Gemini analysis complete — healthScore: \(result.scores.healthScore ?? -1)")
+                    } else {
+                        print("⚠️ [Splash] Gemini returned nil — will show empty state on Home")
+                    }
+
+                    // Step 4: Ready! (90% → 100%)
+                    self.updateProgress(0.95, status: "splash.ready".localized)
+
+                    // Brief pause to show "Ready!" before transitioning
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        self.finishAndTransition()
+                    }
                 }
             }
         }
     }
 
-    /// Calculate HealthScore from 90-day data and sync to Firestore
+    private func finishAndTransition() {
+        guard !hasTransitioned else { return }
+        hasTransitioned = true
+        updateProgress(1.0, status: "splash.ready".localized)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.transitionToMain()
+        }
+    }
+
+    /// Calculate HealthScore and sync to Firestore
     private func calculateAndSyncHealthScore() {
         HealthKitManager.shared.fetchDailyHealthData(days: 90) { dailyEntries in
-            let healthResult = HealthScoreEngine.shared.calculate(from: dailyEntries)
-            AnalysisCache.saveHealthScoreResult(healthResult)
-
-            // Sync to Firestore (leaderboard and friend search)
-            let score = healthResult.healthScoreInt
+            // Scores now come from Gemini — read from GeminiResultStore
+            let score = GeminiResultStore.loadHealthScore() ?? 0
             let tier = CarTierEngine.tierForScore(score)
-            // Use car name from Gemini if available in cache
-            let cachedCarName = AnalysisCache.loadSelectedCar()?.name
+            let cachedCarName = GeminiResultStore.loadCarName() ?? AnalysisCache.loadSelectedCar()?.name
             print("🚗 [Splash] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
             LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
 
@@ -239,26 +306,13 @@ class SplashViewController: UIViewController {
             }
             let todayModel = historicalData.last ?? HealthDataModel()
 
-            DailyMetricsEngine.shared.calculateDailyMetrics(
-                todayData: todayModel,
-                historicalData: historicalData,
-                period: .day
-            ) { [weak self] dailyMetrics in
+            // Use Gemini score directly — no local DailyMetrics calculation needed
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let self = self else { return }
 
-                // Save the fresh daily mainScore
-                let freshMainScore: Int
-                if let mainScore = dailyMetrics.mainScore {
-                    freshMainScore = Int(mainScore)
-                    let scoreLevel = RangeLevel.from(score: mainScore)
-                    let freshStatus = "score.description.\(scoreLevel.rawValue)".localized
-                    AnalysisCache.saveMainScore(freshMainScore, status: freshStatus)
-                    print("📱 [Splash] ✅ Calculated fresh dailyMainScore=\(freshMainScore) from DailyMetrics")
-                } else {
-                    // No enough data for mainScore - use 0
-                    freshMainScore = 0
-                    print("📱 [Splash] ⚠️ DailyMetrics.mainScore is nil (not enough data)")
-                }
+                // Use health score from Gemini (single source of truth)
+                let freshMainScore = GeminiResultStore.loadHealthScore() ?? 0
+                print("📱 [Splash] ✅ Using Gemini healthScore=\(freshMainScore)")
 
                 // Send to watch - latest day data with fresh daily score
                 let todayEntry = dailyEntries.last
@@ -283,17 +337,18 @@ class SplashViewController: UIViewController {
                             let exercise = Int(exerciseMinutes ?? 0)
                             let stand = Int(standHours ?? 0)
 
-                            // Check: if Gemini data exists in cache - use it for widget
-                            let geminiCar = AnalysisCache.loadSelectedCar()
-                            let geminiScore = AnalysisCache.loadHealthScore()
+                            // Check: if Gemini data exists - use it for widget
+                            let geminiCarName = GeminiResultStore.loadCarName()
+                            let geminiWikiName = GeminiResultStore.loadCarWikiName()
+                            let geminiScore = GeminiResultStore.loadHealthScore()
                             let userName = Auth.auth().currentUser?.displayName ?? ""
 
-                            if let geminiCarName = geminiCar?.name, let geminiScoreValue = geminiScore {
+                            if let geminiCarName = geminiCarName, let geminiScoreValue = geminiScore {
                                 // Has Gemini data - update widget with car name and score from Gemini
                                 let geminiTier = CarTierEngine.tierForScore(geminiScoreValue)
 
                                 // Prefetch car image for faster loading in Insights tab
-                                if let wikiName = geminiCar?.wikiName, !wikiName.isEmpty {
+                                if let wikiName = geminiWikiName, !wikiName.isEmpty {
                                     WidgetDataManager.shared.prefetchCarImage(wikiName: wikiName)
                                 }
                                 WidgetDataManager.shared.updateFromInsights(
@@ -400,102 +455,5 @@ class SplashViewController: UIViewController {
         // Existing user - go straight to main screen
         print("🧪 [Splash] Existing user - showing MainTabBarController")
         return MainTabBarController()
-    }
-
-    // MARK: - Background Gemini Analysis
-
-    /// Triggers Gemini analysis in the background immediately on app launch
-    /// The analysis runs in parallel with the transition to Dashboard and does not block the UI
-    private func triggerBackgroundGeminiAnalysis(healthData: HealthDataModel?, chartBundle: AIONChartDataBundle?) {
-        guard let data = healthData, data.hasRealData else {
-            return
-        }
-
-        // Create hash for cache check
-        let healthDataHash: String
-        if let bundle = chartBundle {
-            healthDataHash = AnalysisCache.generateHealthDataHash(from: bundle)
-        } else {
-            healthDataHash = AnalysisCache.generateHealthDataHash(from: data)
-        }
-
-        // Check if Gemini call is needed (has data changed?)
-        // Using hasSignificantChange like in Dashboard for consistency
-        let shouldRun: Bool
-        if let bundle = chartBundle {
-            shouldRun = AnalysisCache.hasSignificantChange(currentBundle: bundle)
-        } else {
-            shouldRun = AnalysisCache.shouldRunAnalysis(forceAnalysis: false, currentHealthDataHash: healthDataHash)
-        }
-
-        guard shouldRun else {
-            // Send notification to update UI from cache
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(
-                    name: HealthDashboardViewController.analysisDidCompleteNotification,
-                    object: nil
-                )
-            }
-            return
-        }
-
-        // Run on background thread
-        DispatchQueue.global(qos: .userInitiated).async {
-            let calendar = Calendar.current
-            let now = Date()
-
-            guard let curStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)),
-                  let curEnd = calendar.date(byAdding: .day, value: 6, to: curStart),
-                  let prevStart = calendar.date(byAdding: .weekOfYear, value: -1, to: curStart),
-                  let prevEnd = calendar.date(byAdding: .day, value: 6, to: prevStart) else {
-                return
-            }
-
-            let group = DispatchGroup()
-            var currentWeek: WeeklyHealthSnapshot?
-            var previousWeek: WeeklyHealthSnapshot?
-
-            group.enter()
-            HealthKitManager.shared.createWeeklySnapshot(weekStartDate: prevStart, weekEndDate: prevEnd) {
-                previousWeek = $0
-                group.leave()
-            }
-
-            group.enter()
-            HealthKitManager.shared.createWeeklySnapshot(weekStartDate: curStart, weekEndDate: curEnd, previousWeekSnapshot: nil) {
-                currentWeek = $0
-                group.leave()
-            }
-
-            group.notify(queue: .global(qos: .userInitiated)) {
-                guard let current = currentWeek, let previous = previousWeek else {
-                    return
-                }
-
-                GeminiService.shared.analyzeHealthDataWithWeeklyComparison(
-                    data,
-                    currentWeek: current,
-                    previousWeek: previous,
-                    chartBundle: chartBundle
-                ) { insights, _, _, error in
-                    if error != nil {
-                        return
-                    }
-
-                    if let insights = insights {
-                        AnalysisCache.save(insights: insights, healthDataHash: healthDataHash)
-                        AnalysisFirestoreSync.saveIfLoggedIn(insights: insights, recommendations: "")
-                    }
-
-                    // Send notification to update the UI
-                    DispatchQueue.main.async {
-                        NotificationCenter.default.post(
-                            name: HealthDashboardViewController.analysisDidCompleteNotification,
-                            object: nil
-                        )
-                    }
-                }
-            }
-        }
     }
 }

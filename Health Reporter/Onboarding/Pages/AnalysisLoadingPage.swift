@@ -381,16 +381,12 @@ final class AnalysisLoadingPage: UIViewController {
         progressContainer.layer.removeAllAnimations()
 
         // Check if we have Gemini data for car reveal
-        let healthScore = AnalysisCache.loadHealthScore() ?? 0
+        let healthScore = GeminiResultStore.loadHealthScore() ?? AnalysisCache.loadHealthScore() ?? 0
         let hasGeminiData = healthScore > 0
         let geminiCar = AnalysisCache.loadSelectedCar()
 
-        // Debug: check raw UserDefaults value
-        let rawScore = UserDefaults.standard.integer(forKey: "AION.WeeklyStats.HealthScore")
-        let healthScoreResult = AnalysisCache.loadHealthScoreResult()
         print("🎬 [AnalysisLoadingPage] completeOnboarding called")
-        print("🎬 [AnalysisLoadingPage] healthScore=\(healthScore), rawScore=\(rawScore), hasGeminiData=\(hasGeminiData)")
-        print("🎬 [AnalysisLoadingPage] healthScoreResult?.healthScoreInt=\(healthScoreResult?.healthScoreInt ?? -1)")
+        print("🎬 [AnalysisLoadingPage] healthScore=\(healthScore), hasGeminiData=\(hasGeminiData)")
         print("🎬 [AnalysisLoadingPage] geminiCar=\(geminiCar?.name ?? "nil")")
 
         // Celebration animation

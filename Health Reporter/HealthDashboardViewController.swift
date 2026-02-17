@@ -810,7 +810,7 @@ class HealthDashboardViewController: UIViewController {
             }
         } else {
             // Fallback: use daily mainScore (NOT loadHealthScore which is Gemini 90-day)
-            if let cachedScore = AnalysisCache.loadMainScore(), cachedScore > 0 {
+            if let cachedScore = GeminiResultStore.loadHealthScore(), cachedScore > 0 {
                 score = cachedScore
                 tier = CarTierEngine.tierForScore(score)
             }
