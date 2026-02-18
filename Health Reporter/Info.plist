@@ -20,6 +20,14 @@
 				<string>com.googleusercontent.apps.87919242294-1l3int0he5qk9b9i6egdtariam1j38nd</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>aion</string>
+			</array>
+		</dict>
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AION Health - Your Personal AI Health Coach</title>
+    <meta name="description" content="Track your health like a performance car. AI-powered health scoring, sleep analysis, recovery metrics, and personalized daily insights. Download now on the App Store.">
+    <meta property="og:title" content="AION Health - Your Personal AI Health Coach">
+    <meta property="og:description" content="Track your health like a performance car. AI-powered health scoring, sleep analysis, recovery metrics, and personalized daily insights.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aionapp.co">
+    <meta property="og:image" content="https://aionapp.co/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0D0D0F;
+            --surface: #1C1C1E;
+            --surface-hover: #2C2C2E;
+            --cyan: #00B4D8;
+            --turquoise: #00C9A7;
+            --lime: #7BED9F;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(235, 235, 245, 0.6);
+            --text-tertiary: rgba(235, 235, 245, 0.3);
+            --radius: 16px;
+            --max-width: 1100px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Nav */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(13, 13, 15, 0.75);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .nav-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-brand {
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none; color: var(--text-primary);
+            font-weight: 700; font-size: 18px;
+        }
+        .nav-brand span { font-size: 24px; }
+        .nav-download {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--cyan);
+            color: #000;
+            padding: 8px 18px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: opacity 0.2s;
+        }
+        .nav-download:hover { opacity: 0.85; }
+
+        /* Hero */
+        .hero {
+            padding: 140px 24px 80px;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(0,180,216,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero-badge {
+            display: inline-block;
+            background: rgba(0,180,216,0.1);
+            border: 1px solid rgba(0,180,216,0.2);
+            color: var(--cyan);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            letter-spacing: 0.5px;
+        }
+        .hero h1 {
+            font-size: clamp(36px, 7vw, 64px);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            letter-spacing: -1px;
+        }
+        .hero h1 .gradient {
+            background: linear-gradient(135deg, var(--cyan), var(--turquoise), var(--lime));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero p {
+            color: var(--text-secondary);
+            font-size: 18px;
+            max-width: 540px;
+            margin: 0 auto 36px;
+            line-height: 1.7;
+        }
+        .hero-cta {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: var(--text-primary);
+            color: var(--bg);
+            padding: 16px 32px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 17px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .hero-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0,180,216,0.2);
+        }
+        .hero-cta svg { width: 22px; height: 22px; }
+
+        /* Score Section */
+        .score-section {
+            padding: 60px 24px 80px;
+            text-align: center;
+        }
+        .score-visual {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 16px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        .tier-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 20px 16px;
+            width: 120px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .tier-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        }
+        .tier-card .emoji { font-size: 36px; margin-bottom: 8px; }
+        .tier-card .name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+        .tier-card .range { font-size: 11px; color: var(--text-tertiary); }
+        .tier-card.active {
+            border-color: var(--turquoise);
+            box-shadow: 0 0 30px rgba(0,201,167,0.15);
+        }
+
+        /* Section Shared */
+        .section-title {
+            font-size: clamp(28px, 5vw, 42px);
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+        .section-sub {
+            color: var(--text-secondary);
+            font-size: 16px;
+            max-width: 500px;
+            margin: 0 auto 48px;
+        }
+
+        /* Features Grid */
+        .features {
+            padding: 80px 24px;
+        }
+        .features-grid {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .feature-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 28px;
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: border-color 0.3s;
+        }
+        .feature-card:hover {
+            border-color: rgba(0,180,216,0.2);
+        }
+        .feature-icon {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px;
+            margin-bottom: 16px;
+        }
+        .feature-card h3 {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 80px 24px;
+            text-align: center;
+        }
+        .steps {
+            max-width: 700px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            text-align: left;
+        }
+        .step-num {
+            flex-shrink: 0;
+            width: 40px; height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--cyan), var(--turquoise));
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            color: #000;
+        }
+        .step h3 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+        .step p { color: var(--text-secondary); font-size: 14px; }
+
+        /* CTA Banner */
+        .cta-banner {
+            padding: 80px 24px;
+            text-align: center;
+        }
+        .cta-box {
+            max-width: 600px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, rgba(0,180,216,0.08), rgba(0,201,167,0.08));
+            border: 1px solid rgba(0,180,216,0.15);
+            border-radius: 24px;
+            padding: 48px 32px;
+        }
+        .cta-box h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .cta-box p {
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding: 32px 24px;
+            text-align: center;
+        }
+        .footer-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .footer-links {
+            display: flex;
+            gap: 24px;
+        }
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+        .footer-links a:hover { color: var(--text-primary); }
+        .footer-copy {
+            color: var(--text-tertiary);
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .tier-card { width: 90px; padding: 14px 10px; }
+            .tier-card .emoji { font-size: 28px; }
+            .step { flex-direction: column; align-items: center; text-align: center; }
+            .footer-inner { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Nav -->
+    <nav>
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">
+                <span>🏎️</span> AION Health
+            </a>
+            <a href="https://apps.apple.com/us/app/aion-app/id6758244788" class="nav-download">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                Download
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-badge">AI-POWERED HEALTH TRACKING</div>
+        <h1>Track Your Health<br>Like a <span class="gradient">Performance Car</span></h1>
+        <p>Get a daily 0-100 health score powered by AI. Understand your sleep, recovery, activity, and well-being with personalized insights delivered every morning.</p>
+        <a href="https://apps.apple.com/us/app/aion-app/id6758244788" class="hero-cta">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            Download on the App Store
+        </a>
+    </section>
+
+    <!-- Tier System -->
+    <section class="score-section">
+        <h2 class="section-title">Your Health, Your Tier</h2>
+        <p class="section-sub">AION analyzes your data from Apple Health and matches you with a car that represents your fitness level.</p>
+        <div class="score-visual">
+            <div class="tier-card">
+                <div class="emoji">🚗</div>
+                <div class="name" style="color:#9D0208">Fiat Panda</div>
+                <div class="range">0 - 25</div>
+            </div>
+            <div class="tier-card">
+                <div class="emoji">🚙</div>
+                <div class="name" style="color:#CA6702">Corolla</div>
+                <div class="range">25 - 45</div>
+            </div>
+            <div class="tier-card">
+                <div class="emoji">🏎️</div>
+                <div class="name" style="color:#00B4D8">BMW M3</div>
+                <div class="range">45 - 65</div>
+            </div>
+            <div class="tier-card active">
+                <div class="emoji">🏁</div>
+                <div class="name" style="color:#00C9A7">Porsche 911</div>
+                <div class="range">65 - 82</div>
+            </div>
+            <div class="tier-card">
+                <div class="emoji">🏆</div>
+                <div class="name" style="color:#7BED9F">Ferrari SF90</div>
+                <div class="range">82 - 100</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+        <div style="text-align:center">
+            <h2 class="section-title">Everything You Need</h2>
+            <p class="section-sub">Comprehensive health tracking powered by AI and Apple Health data.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(0,180,216,0.12)">🎯</div>
+                <h3>Daily Health Score</h3>
+                <p>A clear 0-100 score calculated from your sleep, activity, heart rate, and recovery data every single day.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(0,201,167,0.12)">🧠</div>
+                <h3>AI-Powered Insights</h3>
+                <p>Personalized analysis and recommendations generated by AI based on your unique health patterns.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(123,237,159,0.12)">😴</div>
+                <h3>Sleep Analysis</h3>
+                <p>Deep sleep tracking with quality scoring, bedtime recommendations, and recovery readiness metrics.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(0,180,216,0.12)">📊</div>
+                <h3>Trends & Activity</h3>
+                <p>Track your progress over time with detailed charts for steps, heart rate, energy expenditure, and more.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(0,201,167,0.12)">👥</div>
+                <h3>Social & Leaderboards</h3>
+                <p>Compete with friends, share your health score, and stay motivated through friendly competition.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:rgba(123,237,159,0.12)">🔔</div>
+                <h3>Smart Notifications</h3>
+                <p>Wake up to a personalized morning health briefing and receive tailored bedtime recommendations.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <h2 class="section-title">How It Works</h2>
+        <p class="section-sub">Start tracking in under a minute.</p>
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">1</div>
+                <div>
+                    <h3>Download & Connect</h3>
+                    <p>Install AION Health and grant access to Apple Health. We read your sleep, activity, heart rate, and more.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div>
+                    <h3>Get Your Score</h3>
+                    <p>Our AI analyzes your data and calculates a daily health score from 0 to 100, matched to a car tier.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div>
+                    <h3>Improve Every Day</h3>
+                    <p>Follow personalized recommendations, track your trends, and compete with friends to reach peak performance.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-banner">
+        <div class="cta-box">
+            <h2>Ready to Know Your Score?</h2>
+            <p>Join thousands tracking their health with AION. Free to download.</p>
+            <a href="https://apps.apple.com/us/app/aion-app/id6758244788" class="hero-cta">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                Download on the App Store
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-inner">
+            <span class="footer-copy">&copy; 2026 AION Health. All rights reserved.</span>
+            <div class="footer-links">
+                <a href="/privacy">Privacy Policy</a>
+                <a href="/terms">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

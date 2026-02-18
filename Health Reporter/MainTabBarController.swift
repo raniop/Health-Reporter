@@ -73,6 +73,9 @@ final class MainTabBarController: UITabBarController {
         // Listen for chat message notification tap
         NotificationCenter.default.addObserver(self, selector: #selector(handleOpenChat(_:)), name: NSNotification.Name("OpenChatFromNotification"), object: nil)
 
+        // Listen for profile deep links (aion://profile/{uid})
+        NotificationCenter.default.addObserver(self, selector: #selector(handleOpenUserProfile(_:)), name: NSNotification.Name("OpenUserProfile"), object: nil)
+
         // Refresh app icon badge when a new notification is saved
         NotificationCenter.default.addObserver(self, selector: #selector(handleNotificationItemSaved), name: NSNotification.Name("NotificationItemSaved"), object: nil)
 
@@ -151,6 +154,22 @@ final class MainTabBarController: UITabBarController {
             let nav = UINavigationController(rootViewController: vc)
             nav.modalPresentationStyle = .formSheet
             self.present(nav, animated: true)
+        }
+    }
+
+    // MARK: - Deep Link: User Profile
+
+    @objc private func handleOpenUserProfile(_ notification: Notification) {
+        guard let uid = notification.userInfo?["uid"] as? String else { return }
+        print("🔗 [DeepLink] Opening profile for uid=\(uid)")
+
+        // Switch to social tab and push profile
+        selectedIndex = 3
+        socialNavController?.popToRootViewController(animated: false)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            let vc = UserProfileViewController(userUid: uid)
+            self?.socialNavController?.pushViewController(vc, animated: true)
         }
     }
 

@@ -99,6 +99,24 @@ final class ChatListViewController: UIViewController {
         ]
         navigationItem.standardAppearance = appearance
         navigationItem.scrollEdgeAppearance = appearance
+
+        let composeButton = UIBarButtonItem(
+            image: UIImage(systemName: "square.and.pencil"),
+            style: .plain,
+            target: self,
+            action: #selector(composeTapped)
+        )
+        composeButton.tintColor = AIONDesign.accentPrimary
+        navigationItem.rightBarButtonItem = composeButton
+    }
+
+    @objc private func composeTapped() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let vc = NewMessageViewController()
+        vc.delegate = self
+        let nav = UINavigationController(rootViewController: vc)
+        nav.modalPresentationStyle = .formSheet
+        present(nav, animated: true)
     }
 
     // MARK: - Layout
@@ -254,5 +272,19 @@ extension ChatListViewController: UISearchBarDelegate {
         isSearchActive = false
         searchBar.resignFirstResponder()
         updateUI()
+    }
+}
+
+// MARK: - NewMessageViewControllerDelegate
+
+extension ChatListViewController: NewMessageViewControllerDelegate {
+
+    func newMessageViewController(_ vc: NewMessageViewController, didSelectUser user: UserSearchResult) {
+        vc.dismiss(animated: true) { [weak self] in
+            ChatFirestoreSync.getOrCreateConversation(with: user.uid) { conversation, error in
+                guard let self = self, let conversation = conversation else { return }
+                self.openChat(conversation)
+            }
+        }
     }
 }

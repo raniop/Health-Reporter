@@ -66,7 +66,7 @@
 "profile.editProfile" = "עריכת פרופיל";
 "profile.shareProfile" = "שיתוף פרופיל";
 "profile.score" = "ציון";
-"profile.shareText" = "בדקו את ציון הבריאות שלי - %d ב-AION Health!";
+"profile.shareText" = "%1$@ | ציון בריאות: %2$d %3$@ %4$@\n\nבדקו את הפרופיל שלי ב-AION Health!\n%5$@\n\nאין לכם את האפליקציה? הורידו כאן:\n%6$@";
 "profile.bodyMetrics" = "מדדי גוף";
 "profile.selectUserType" = "בחר סוג משתמש";
 
@@ -447,11 +447,11 @@
 "morning.sleep.line" = "😴 ישנת %d שעות ו-%d דקות (%@)";
 "morning.sleep.line.short" = "😴 ישנת %d שעות ו-%d דקות";
 "morning.sleep.line.average" = "😴 ממוצע שינה שבועי: %d שעות ו-%d דקות";
-"morning.readiness.line" = "💪 מוכנות: %d%% - %@";
-"morning.score.line.up" = "❤️ ציון בריאות: %d ↑ בשיפור";
-"morning.score.line.down" = "❤️ ציון בריאות: %d ↓";
-"morning.score.line.stable" = "❤️ ציון בריאות: %d → יציב";
-"morning.score.line.value" = "❤️ ציון בריאות: %d";
+"morning.readiness.line" = "💪 מוכנות: %d - %@";
+"morning.score.line.up" = "❤️ ציון בריאות: %1$d ↑ %2$@";
+"morning.score.line.down" = "❤️ ציון בריאות: %1$d ↓ %2$@";
+"morning.score.line.stable" = "❤️ ציון בריאות: %1$d → %2$@";
+"morning.score.line.value" = "❤️ ציון בריאות: %1$d - %2$@";
 "morning.steps.line" = "👟 אתמול: %@ צעדים | יעד היום: %@";
 "morning.streak.line" = "🔥 רצף צעדים: %d ימים!";
 
@@ -754,7 +754,7 @@
 "social.statAvg" = "ממוצע";
 "social.statDays80" = "ימים 80+";
 "social.invite" = "הזמן";
-"social.shareText" = "הצטרף אליי ב-AION Health!";
+"social.shareText" = "בואו נתחרה ב-AION Health! עקבו אחרי ציון הבריאות שלכם והתחרו עם חברים.\n\nהורידו כאן: %@";
 "social.searchUsers" = "חיפוש משתמשים";
 "social.unfollowConfirmTitle" = "הפסק לעקוב";
 "social.unfollowConfirmMessage" = "להפסיק לעקוב אחרי %@?";
@@ -789,6 +789,9 @@
 "chat.noMessages" = "עדיין אין הודעות";
 "chat.unknownUser" = "משתמש לא ידוע";
 "chat.mutualFollowRequired" = "שניכם צריכים לעקוב אחד אחרי השני כדי לשוחח";
+"chat.newMessage" = "הודעה חדשה";
+"chat.searchUsers" = "חפש משתמשים...";
+"chat.searchToStart" = "חפש מישהו לשלוח לו הודעה";
 
 /* מסך הגדרות */
 "settings.title" = "הגדרות";

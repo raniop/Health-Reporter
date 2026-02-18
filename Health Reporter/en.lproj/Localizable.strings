@@ -66,7 +66,7 @@
 "profile.editProfile" = "Edit Profile";
 "profile.shareProfile" = "Share Profile";
 "profile.score" = "Score";
-"profile.shareText" = "Check out my health score of %d on AION Health!";
+"profile.shareText" = "%1$@ | Health Score: %2$d %3$@ %4$@\n\nCheck out my profile on AION Health!\n%5$@\n\nDon't have the app? Download here:\n%6$@";
 "profile.bodyMetrics" = "Body Metrics";
 "profile.selectUserType" = "Select User Type";
 
@@ -463,11 +463,11 @@
 "morning.sleep.line" = "😴 You slept %dh %dm (%@)";
 "morning.sleep.line.short" = "😴 You slept %dh %dm";
 "morning.sleep.line.average" = "😴 Weekly average sleep: %dh %dm";
-"morning.readiness.line" = "💪 Readiness: %d%% - %@";
-"morning.score.line.up" = "❤️ Health score: %d ↑ improving";
-"morning.score.line.down" = "❤️ Health score: %d ↓";
-"morning.score.line.stable" = "❤️ Health score: %d → stable";
-"morning.score.line.value" = "❤️ Health score: %d";
+"morning.readiness.line" = "💪 Readiness: %d - %@";
+"morning.score.line.up" = "❤️ Health score: %1$d ↑ %2$@";
+"morning.score.line.down" = "❤️ Health score: %1$d ↓ %2$@";
+"morning.score.line.stable" = "❤️ Health score: %1$d → %2$@";
+"morning.score.line.value" = "❤️ Health score: %1$d - %2$@";
 "morning.steps.line" = "👟 Yesterday: %@ steps | Today's goal: %@";
 "morning.streak.line" = "🔥 Step streak: %d days!";
 
@@ -750,7 +750,7 @@
 "social.statAvg" = "Average";
 "social.statDays80" = "Days 80+";
 "social.invite" = "Invite";
-"social.shareText" = "Join me on AION Health!";
+"social.shareText" = "Join me on AION Health! Track your health score and compete with friends.\n\nDownload here: %@";
 "social.searchUsers" = "Search Users";
 "social.unfollowConfirmTitle" = "Unfollow";
 "social.unfollowConfirmMessage" = "Are you sure you want to unfollow %@?";
@@ -785,6 +785,9 @@
 "chat.noMessages" = "No messages yet";
 "chat.unknownUser" = "Unknown User";
 "chat.mutualFollowRequired" = "You both need to follow each other to chat";
+"chat.newMessage" = "New Message";
+"chat.searchUsers" = "Search users...";
+"chat.searchToStart" = "Search for someone to message";
 
 /* Settings Screen */
 "settings.title" = "Settings";

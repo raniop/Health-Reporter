@@ -320,10 +320,8 @@ exports.sendMorningNotifications = functions.pubsub
               return {uid, success: false};
             }
 
-            // Save morning notification to history
-            await saveNotification(uid, "morning_summary",
-                "Good morning!", "Your daily health report is ready",
-                {timestamp: now.toISOString()}, TAG);
+            // Note: no in-app notification saved here — the iOS app builds
+            // a rich local notification from HealthKit data when it wakes up.
 
             const res = await sendFCM(token, {
               token,

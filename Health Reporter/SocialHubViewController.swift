@@ -1157,7 +1157,8 @@ final class SocialHubViewController: UIViewController {
 
     @objc private func inviteTapped() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        let shareText = "social.shareText".localized
+        let appStoreLink = "https://apps.apple.com/us/app/aion-app/id6758244788"
+        let shareText = String(format: "social.shareText".localized, appStoreLink)
         let activityVC = UIActivityViewController(activityItems: [shareText], applicationActivities: nil)
         activityVC.popoverPresentationController?.sourceView = view
         present(activityVC, animated: true)

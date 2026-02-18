@@ -167,6 +167,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     // MARK: - Silent Push (Cloud Function triggers)
+    // Cloud Function triggers refresh the PENDING notification content.
+    // They do NOT send a new notification — just update what will fire at the scheduled time.
 
     func application(
         _ application: UIApplication,
@@ -176,11 +178,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if let type = userInfo["type"] as? String {
             switch type {
             case "morning_health_trigger":
-                MorningNotificationManager.shared.handleMorningTrigger { success in
+                MorningNotificationManager.shared.refreshPendingNotification { success in
                     completionHandler(success ? .newData : .failed)
                 }
             case "bedtime_trigger":
-                BedtimeNotificationManager.shared.handleBedtimeTrigger { success in
+                BedtimeNotificationManager.shared.refreshPendingNotification { success in
                     completionHandler(success ? .newData : .failed)
                 }
             default:
@@ -264,30 +266,26 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     ) {
         let userInfo = notification.request.content.userInfo
         let notifType = userInfo["type"] as? String ?? "unknown"
-        print("🔔 [Notif] FOREGROUND — type=\(notifType), title=\(notification.request.content.title), body=\(notification.request.content.body)")
-        print("🔔 [Notif] FOREGROUND — full userInfo=\(userInfo)")
+        print("🔔 [Notif] FOREGROUND — type=\(notifType), title=\(notification.request.content.title)")
 
-        // Save scheduled notifications to Firestore bell page (immediate ones already save themselves)
+        // Save to Firestore bell page when notification actually fires
         if let type = userInfo["type"] as? String {
             let content = notification.request.content
-            let isScheduled = notification.request.trigger is UNCalendarNotificationTrigger
-            if isScheduled {
-                let firestoreType: String
-                switch type {
-                case "morning_health":
-                    firestoreType = "morning_summary"
-                case "bedtime_recommendation":
-                    firestoreType = "bedtime_recommendation"
-                default:
-                    firestoreType = type
-                }
-                FriendsFirestoreSync.saveNotificationItem(
-                    type: firestoreType,
-                    title: content.title,
-                    body: content.body,
-                    data: ["fullTitle": content.title, "fullBody": content.body]
-                )
+            let firestoreType: String
+            switch type {
+            case "morning_health":
+                firestoreType = "morning_summary"
+            case "bedtime_recommendation":
+                firestoreType = "bedtime_recommendation"
+            default:
+                firestoreType = type
             }
+            FriendsFirestoreSync.saveNotificationItem(
+                type: firestoreType,
+                title: content.title,
+                body: content.body,
+                data: ["fullTitle": content.title, "fullBody": content.body]
+            )
         }
 
         // Show notification banner even when app is in foreground
@@ -302,29 +300,26 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     ) {
         let userInfo = response.notification.request.content.userInfo
         let notifType = userInfo["type"] as? String ?? "unknown"
-        print("🔔 [Notif] TAPPED — type=\(notifType), userInfo=\(userInfo)")
+        print("🔔 [Notif] TAPPED — type=\(notifType)")
 
-        // Save scheduled notifications to Firestore bell page when tapped (background delivery)
+        // Save to Firestore bell page when notification is tapped (background delivery)
         if let type = userInfo["type"] as? String {
             let content = response.notification.request.content
-            let isScheduled = response.notification.request.trigger is UNCalendarNotificationTrigger
-            if isScheduled {
-                let firestoreType: String
-                switch type {
-                case "morning_health":
-                    firestoreType = "morning_summary"
-                case "bedtime_recommendation":
-                    firestoreType = "bedtime_recommendation"
-                default:
-                    firestoreType = type
-                }
-                FriendsFirestoreSync.saveNotificationItem(
-                    type: firestoreType,
-                    title: content.title,
-                    body: content.body,
-                    data: ["fullTitle": content.title, "fullBody": content.body]
-                )
+            let firestoreType: String
+            switch type {
+            case "morning_health":
+                firestoreType = "morning_summary"
+            case "bedtime_recommendation":
+                firestoreType = "bedtime_recommendation"
+            default:
+                firestoreType = type
             }
+            FriendsFirestoreSync.saveNotificationItem(
+                type: firestoreType,
+                title: content.title,
+                body: content.body,
+                data: ["fullTitle": content.title, "fullBody": content.body]
+            )
 
             handleNotificationAction(type: type, userInfo: userInfo)
         }

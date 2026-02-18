@@ -622,9 +622,31 @@ final class ProfileViewController: UIViewController {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         AnalyticsService.shared.logEvent(.profileShareTapped)
 
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+
+        let name = Auth.auth().currentUser?.displayName ?? "AION User"
         let score = GeminiResultStore.loadHealthScore() ?? 0
-        let text = String(format: "profile.shareText".localized, score)
-        let ac = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        let tier = CarTierEngine.tierForScore(score)
+
+        // Use Gemini-selected car name, fall back to tier default
+        let carName = AnalysisCache.loadSelectedCar()?.name ?? tier.name
+
+        // Build share text with Universal Link (opens app if installed, web if not)
+        let profileLink = "https://aionapp.co/profile/\(uid)"
+        let appStoreLink = "https://apps.apple.com/us/app/aion-app/id6758244788"
+        let shareText = String(format: "profile.shareText".localized, name, score, tier.emoji, carName, profileLink, appStoreLink)
+
+        // Generate share card image
+        let cardImage = ShareCardRenderer.render(
+            name: name,
+            score: score,
+            carName: carName,
+            carEmoji: tier.emoji,
+            tierColor: tier.color
+        )
+
+        let items: [Any] = [shareText, cardImage]
+        let ac = UIActivityViewController(activityItems: items, applicationActivities: nil)
         ac.popoverPresentationController?.sourceView = shareProfileButton
         present(ac, animated: true)
     }

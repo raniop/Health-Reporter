@@ -987,7 +987,7 @@ final class UserProfileViewController: UIViewController {
             primaryButton.setTitle("Follow", for: .normal)
             primaryButton.backgroundColor = AIONDesign.accentPrimary
             primaryButton.setTitleColor(.white, for: .normal)
-            secondaryButton.isHidden = true
+            showMessageButton()
 
         case .following:
             primaryButton.isHidden = false
@@ -997,18 +997,7 @@ final class UserProfileViewController: UIViewController {
             primaryButton.setTitleColor(AIONDesign.textPrimary, for: .normal)
             primaryButton.layer.borderWidth = 1
             primaryButton.layer.borderColor = AIONDesign.separator.withAlphaComponent(0.4).cgColor
-            secondaryButton.isHidden = true
-
-            // Check for mutual follow to show Message button
-            ChatFirestoreSync.checkMutualFollow(with: userUid) { [weak self] isMutual in
-                guard let self = self, isMutual else { return }
-                self.secondaryButton.isHidden = false
-                self.secondaryButton.setTitle("chat.message".localized, for: .normal)
-                self.secondaryButton.setTitleColor(AIONDesign.accentPrimary, for: .normal)
-                self.secondaryButton.backgroundColor = .clear
-                self.secondaryButton.layer.borderWidth = 1
-                self.secondaryButton.layer.borderColor = AIONDesign.accentPrimary.withAlphaComponent(0.4).cgColor
-            }
+            showMessageButton()
 
         case .followRequestSent:
             primaryButton.isHidden = false
@@ -1018,7 +1007,7 @@ final class UserProfileViewController: UIViewController {
             primaryButton.setTitleColor(AIONDesign.accentDanger, for: .normal)
             primaryButton.layer.borderWidth = 1
             primaryButton.layer.borderColor = AIONDesign.accentDanger.withAlphaComponent(0.4).cgColor
-            secondaryButton.isHidden = true
+            showMessageButton()
 
         case .followRequestReceived:
             primaryButton.isHidden = false
@@ -1034,6 +1023,15 @@ final class UserProfileViewController: UIViewController {
             secondaryButton.backgroundColor = .clear
             secondaryButton.layer.borderColor = AIONDesign.accentDanger.withAlphaComponent(0.4).cgColor
         }
+    }
+
+    private func showMessageButton() {
+        secondaryButton.isHidden = false
+        secondaryButton.setTitle("chat.message".localized, for: .normal)
+        secondaryButton.setTitleColor(AIONDesign.accentPrimary, for: .normal)
+        secondaryButton.backgroundColor = .clear
+        secondaryButton.layer.borderWidth = 1
+        secondaryButton.layer.borderColor = AIONDesign.accentPrimary.withAlphaComponent(0.4).cgColor
     }
 
     // MARK: - Entrance Animations
@@ -1080,8 +1078,8 @@ final class UserProfileViewController: UIViewController {
             guard let self = self else { return }
             if case .followRequestReceived(let rid) = self.friendshipStatus {
                 self.performDecline(requestId: rid)
-            } else if case .following = self.friendshipStatus {
-                // Message button — open chat
+            } else {
+                // Message button — open chat (available from any follow state)
                 self.openChat()
             }
         }

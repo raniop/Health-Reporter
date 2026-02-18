@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TFG2H9C76N.com.rani.Health-Reporter",
+        "paths": ["/profile/*"]
+      }
+    ]
+  }
+}
