@@ -92,6 +92,7 @@
 "dashboard.noHealthDataSubtitle" = "Make sure Apple Health permissions are granted and that you have health data recorded";
 "dashboard.geminiFailed" = "Could not complete analysis";
 "dashboard.geminiFailedSubtitle" = "Check your internet connection and pull down to try again";
+"dashboard.retry" = "Try Again";
 
 /* Activity Extended */
 "activity.floors" = "Floors";

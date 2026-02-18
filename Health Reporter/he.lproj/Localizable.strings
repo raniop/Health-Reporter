@@ -512,6 +512,7 @@
 "dashboard.noHealthDataSubtitle" = "ודא שהרשאות Apple Health ניתנו ושיש לך נתוני בריאות מוקלטים";
 "dashboard.geminiFailed" = "לא ניתן להשלים את הניתוח";
 "dashboard.geminiFailedSubtitle" = "בדוק את חיבור האינטרנט ומשוך למטה כדי לנסות שוב";
+"dashboard.retry" = "נסה שוב";
 
 /* Activity Extended */
 "activity.floors" = "קומות";

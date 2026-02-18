@@ -28,8 +28,13 @@ final class InsightsDashboardViewController: UIViewController {
     private let secondaryGrid = UIStackView()   // 2x2 grid
     private let secondaryCards: [SecondaryMetricCardView] = (0..<4).map { _ in SecondaryMetricCardView() }
     private let recommendationsSection = AIRecommendationsSectionView()
-    private let loadingIndicator = UIActivityIndicatorView(style: .large)
     private let refreshControl = UIRefreshControl()
+
+    // Loading overlay (Splash-style)
+    private var loadingOverlay: UIView?
+    private var loadingProgressBar: UIProgressView?
+    private var loadingStatusLabel: UILabel?
+    private var loadingLogo: UIImageView?
 
     // MARK: - Lifecycle
 
@@ -46,6 +51,10 @@ final class InsightsDashboardViewController: UIViewController {
             self, selector: #selector(handleNotificationItemSaved),
             name: NSNotification.Name("NotificationItemSaved"), object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(languageDidChange),
+            name: .languageDidChange, object: nil
+        )
     }
 
     deinit { NotificationCenter.default.removeObserver(self) }
@@ -55,7 +64,14 @@ final class InsightsDashboardViewController: UIViewController {
         updateBellBadge()
     }
 
-    @objc private func handlePullToRefresh() { loadData() }
+    @objc private func handlePullToRefresh() { loadData(forceRefresh: true) }
+
+    @objc private func languageDidChange() {
+        // Language switched — force fresh Gemini analysis in the new language
+        view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        configureSemanticDirection()
+        loadData(forceRefresh: true)
+    }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -99,12 +115,6 @@ final class InsightsDashboardViewController: UIViewController {
             contentStack.addArrangedSubview($0)
         }
 
-        // Loading
-        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
-        loadingIndicator.hidesWhenStopped = true
-        loadingIndicator.color = AIONDesign.accentPrimary
-        view.addSubview(loadingIndicator)
-
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -116,9 +126,6 @@ final class InsightsDashboardViewController: UIViewController {
             contentStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
             contentStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -32),
             contentStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32),
-
-            loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
         ])
 
         // Callbacks
@@ -166,10 +173,7 @@ final class InsightsDashboardViewController: UIViewController {
 
     // MARK: - Data Loading
 
-    private func loadData() {
-        let isPullToRefresh = refreshControl.isRefreshing
-        let forceRefresh = isPullToRefresh
-
+    private func loadData(forceRefresh: Bool = false) {
         // On initial load, try cached result first (Splash already loaded it)
         if !forceRefresh, let cached = GeminiResultStore.load(), Calendar.current.isDateInToday(cached.date) {
             geminiResult = cached
@@ -177,17 +181,22 @@ final class InsightsDashboardViewController: UIViewController {
             isLoading = false
             contentStack.isHidden = false
             removeEmptyState()
+            hideLoadingOverlay()
             updateUI()
             playEntranceAnimationIfNeeded()
             loadChartData()
             return
         }
 
-        // Pull-to-refresh or no cached data — call orchestrator
+        // Show loading overlay with progress
         isLoading = true
-        if !isPullToRefresh {
-            loadingIndicator.startAnimating()
-            contentStack.isHidden = true
+        contentStack.isHidden = true
+        removeEmptyState()
+        showLoadingOverlay()
+        updateLoadingProgress(0.1, status: "splash.syncAppleHealth".localized)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.updateLoadingProgress(0.4, status: "splash.analyzingAI".localized)
         }
 
         AIONAnalysisOrchestrator.shared.ensureTodayResult(forceRefresh: forceRefresh) { [weak self] result, failureReason in
@@ -197,16 +206,22 @@ final class InsightsDashboardViewController: UIViewController {
                 self.lastFailureReason = failureReason
                 self.lastUpdatedTime = Date()
                 self.isLoading = false
-                self.loadingIndicator.stopAnimating()
                 self.refreshControl.endRefreshing()
-                self.contentStack.isHidden = false
 
                 if result != nil {
-                    self.removeEmptyState()
-                    self.updateUI()
-                    self.playEntranceAnimationIfNeeded()
-                    self.loadChartData()
+                    self.updateLoadingProgress(1.0, status: "splash.ready".localized)
+                    // Brief pause to show completion before revealing content
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        self.hideLoadingOverlay()
+                        self.contentStack.isHidden = false
+                        self.removeEmptyState()
+                        self.updateUI()
+                        self.playEntranceAnimationIfNeeded()
+                        self.loadChartData()
+                    }
                 } else {
+                    self.hideLoadingOverlay()
+                    self.contentStack.isHidden = true
                     self.showEmptyState()
                 }
             }
@@ -447,9 +462,10 @@ final class InsightsDashboardViewController: UIViewController {
 
     private func heroCardTapped() {
         guard let result = geminiResult else { return }
-        guard let m = geminiMetric(for: metricSelection.heroMetricId, from: result) else { return }
-        let explanation = geminiExplanation(for: metricSelection.heroMetricId, from: result)
-        let config = ScoreDetailConfig.from(metric: m, scoreHistory: [], explanation: explanation.isEmpty ? nil : explanation)
+        let metricId = metricSelection.heroMetricId
+        guard let m = geminiMetric(for: metricId, from: result) else { return }
+        let explanation = geminiExplanation(for: metricId, from: result)
+        let config = buildDetailConfig(metric: m, metricId: metricId, explanation: explanation)
         let detailVC = ScoreDetailWithGraphViewController(config: config)
         present(detailVC, animated: true)
     }
@@ -460,9 +476,34 @@ final class InsightsDashboardViewController: UIViewController {
         let metricId = metricSelection.secondaryMetricIds[index]
         guard let m = geminiMetric(for: metricId, from: result) else { return }
         let explanation = geminiExplanation(for: metricId, from: result)
-        let config = ScoreDetailConfig.from(metric: m, scoreHistory: [], explanation: explanation.isEmpty ? nil : explanation)
+        let config = buildDetailConfig(metric: m, metricId: metricId, explanation: explanation)
         let detailVC = ScoreDetailWithGraphViewController(config: config)
         present(detailVC, animated: true)
+    }
+
+    private func buildDetailConfig(metric m: any InsightMetric, metricId: String, explanation: String) -> ScoreDetailConfig {
+        let history = chartDataCache[metricId] ?? []
+        let validValues = history.map(\.value).filter { $0 > 0 }
+        let avg = validValues.isEmpty ? nil : validValues.reduce(0, +) / Double(validValues.count)
+        let metricColor = StarMetricsCalculator.color(for: m)
+        let metricIcon = StarMetricsCalculator.icon(for: metricId)
+
+        return ScoreDetailConfig(
+            title: m.nameKey.localized,
+            iconName: metricIcon,
+            iconColor: metricColor,
+            todayValue: m.displayValue,
+            todayValueColor: metricColor,
+            explanationText: explanation.isEmpty ? StarMetricsCalculator.whyItMatters(for: metricId) : explanation,
+            unit: nil,
+            subtitle: nil,
+            history: history,
+            barColor: metricColor,
+            averageValue: avg,
+            averageLabel: "chart.average".localized,
+            valueFormatter: { "\(Int($0))" },
+            scaleRange: 0...100
+        )
     }
 
     private func showMetricEditor() {
@@ -532,9 +573,19 @@ final class InsightsDashboardViewController: UIViewController {
         subtitle.numberOfLines = 0
         subtitle.translatesAutoresizingMaskIntoConstraints = false
 
+        let retryButton = UIButton(type: .system)
+        retryButton.setTitle("dashboard.retry".localized, for: .normal)
+        retryButton.setTitleColor(.white, for: .normal)
+        retryButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        retryButton.backgroundColor = AIONDesign.accentPrimary
+        retryButton.layer.cornerRadius = 12
+        retryButton.translatesAutoresizingMaskIntoConstraints = false
+        retryButton.addTarget(self, action: #selector(retryFromEmptyState), for: .touchUpInside)
+
         container.addSubview(icon)
         container.addSubview(title)
         container.addSubview(subtitle)
+        container.addSubview(retryButton)
 
         NSLayoutConstraint.activate([
             container.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -554,7 +605,12 @@ final class InsightsDashboardViewController: UIViewController {
             subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 8),
             subtitle.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             subtitle.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            subtitle.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+
+            retryButton.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 24),
+            retryButton.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            retryButton.widthAnchor.constraint(equalToConstant: 160),
+            retryButton.heightAnchor.constraint(equalToConstant: 44),
+            retryButton.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
 
         // Fade in
@@ -562,9 +618,99 @@ final class InsightsDashboardViewController: UIViewController {
         UIView.animate(withDuration: 0.3) { container.alpha = 1 }
     }
 
+    @objc private func retryFromEmptyState() {
+        removeEmptyState()
+        loadData(forceRefresh: true)
+    }
+
     private func removeEmptyState() {
         if let empty = view.viewWithTag(emptyStateTag) {
             empty.removeFromSuperview()
+        }
+    }
+
+    // MARK: - Loading Overlay (Splash-style)
+
+    private func showLoadingOverlay() {
+        guard loadingOverlay == nil else { return }
+
+        let overlay = UIView()
+        overlay.backgroundColor = AIONDesign.background
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(overlay)
+
+        let logo = UIImageView(image: UIImage(named: "LaunchLogoNew"))
+        logo.contentMode = .scaleAspectFit
+        logo.translatesAutoresizingMaskIntoConstraints = false
+        overlay.addSubview(logo)
+
+        let progressBar = UIProgressView(progressViewStyle: .default)
+        progressBar.translatesAutoresizingMaskIntoConstraints = false
+        progressBar.progressTintColor = AIONDesign.accentSecondary
+        progressBar.trackTintColor = UIColor.white.withAlphaComponent(0.1)
+        progressBar.layer.cornerRadius = 2
+        progressBar.clipsToBounds = true
+        progressBar.progress = 0
+        overlay.addSubview(progressBar)
+
+        let statusLabel = UILabel()
+        statusLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        statusLabel.textColor = UIColor(red: 0.612, green: 0.584, blue: 0.557, alpha: 1.0)
+        statusLabel.textAlignment = .center
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        overlay.addSubview(statusLabel)
+
+        NSLayoutConstraint.activate([
+            overlay.topAnchor.constraint(equalTo: view.topAnchor),
+            overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            logo.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            logo.centerYAnchor.constraint(equalTo: overlay.centerYAnchor, constant: -60),
+            logo.widthAnchor.constraint(equalToConstant: 80),
+            logo.heightAnchor.constraint(equalToConstant: 80),
+
+            progressBar.topAnchor.constraint(equalTo: logo.bottomAnchor, constant: 32),
+            progressBar.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            progressBar.leadingAnchor.constraint(equalTo: overlay.leadingAnchor, constant: 60),
+            progressBar.trailingAnchor.constraint(equalTo: overlay.trailingAnchor, constant: -60),
+            progressBar.heightAnchor.constraint(equalToConstant: 4),
+
+            statusLabel.topAnchor.constraint(equalTo: progressBar.bottomAnchor, constant: 12),
+            statusLabel.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            statusLabel.leadingAnchor.constraint(equalTo: overlay.leadingAnchor, constant: 24),
+            statusLabel.trailingAnchor.constraint(equalTo: overlay.trailingAnchor, constant: -24),
+        ])
+
+        self.loadingOverlay = overlay
+        self.loadingProgressBar = progressBar
+        self.loadingStatusLabel = statusLabel
+        self.loadingLogo = logo
+
+        overlay.alpha = 0
+        UIView.animate(withDuration: 0.25) { overlay.alpha = 1 }
+    }
+
+    private func updateLoadingProgress(_ value: Float, status: String) {
+        DispatchQueue.main.async {
+            UIView.animate(withDuration: 0.4) {
+                self.loadingProgressBar?.setProgress(value, animated: true)
+                self.loadingStatusLabel?.text = status
+            }
+        }
+    }
+
+    private func hideLoadingOverlay() {
+        guard let overlay = loadingOverlay else { return }
+        UIView.animate(withDuration: 0.3, animations: {
+            overlay.alpha = 0
+        }) { _ in
+            overlay.removeFromSuperview()
+            self.loadingOverlay = nil
+            self.loadingProgressBar = nil
+            self.loadingStatusLabel = nil
+            self.loadingLogo = nil
         }
     }
 
