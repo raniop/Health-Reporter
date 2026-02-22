@@ -2,14 +2,12 @@
 //  ScoreBreakdownView.swift
 //  Health Reporter Watch App
 //
-//  Shows breakdown of health score components (like iPhone's WhyScoreSection)
-//
+//  Shows breakdown of health score components
 
 import SwiftUI
 
 struct ScoreBreakdownView: View {
     @EnvironmentObject var dataManager: WatchDataManager
-    @Environment(\.dismiss) var dismiss
 
     private var data: WatchHealthData {
         dataManager.healthData
@@ -22,11 +20,11 @@ struct ScoreBreakdownView: View {
                 VStack(spacing: 4) {
                     Text("\(data.healthScore)")
                         .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
 
                     Text("watch.scoreBreakdown.title".localized)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                 }
                 .padding(.bottom, 8)
 
@@ -98,35 +96,32 @@ struct ScoreRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            // Icon
             Image(systemName: icon)
                 .font(.system(size: 12))
-                .foregroundColor(color)
+                .foregroundStyle(color)
                 .frame(width: 20)
 
-            // Name
             Text(name)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .lineLimit(1)
 
             Spacer()
 
-            // Value and weight
             HStack(spacing: 4) {
                 if let v = value {
                     Text("\(v)")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                 } else {
                     Text("--")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                 }
 
                 Text("(\(weight)%)")
                     .font(.system(size: 10))
-                    .foregroundColor(.gray)
+                    .foregroundStyle(.gray)
             }
         }
         .padding(.horizontal, 10)

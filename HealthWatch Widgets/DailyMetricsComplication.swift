@@ -36,73 +36,18 @@ struct DailyMetricsComplicationView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // Header with score
-            HStack {
-                Image(systemName: "heart.fill")
-                    .font(.caption2)
-                    .foregroundColor(.red)
-
-                Text("Health")
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundColor(.gray)
-
-                Spacer()
-
-                Text("\(data.healthScore)")
-                    .font(.system(.caption, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundColor(scoreColor)
-            }
-
-            // Divider
-            Rectangle()
-                .fill(Color.gray.opacity(0.3))
-                .frame(height: 1)
-
-            // Metrics Grid
-            HStack(spacing: 12) {
-                MetricItem(
-                    icon: "heart.fill",
-                    value: "\(data.heartRate)",
-                    unit: "bpm",
-                    color: .red
-                )
-
-                MetricItem(
-                    icon: "bed.double.fill",
-                    value: String(format: "%.1f", data.sleepHours),
-                    unit: "hrs",
-                    color: .purple
-                )
-
-                MetricItem(
-                    icon: "figure.walk",
-                    value: formatSteps(data.steps),
-                    unit: "steps",
-                    color: .green
-                )
-
-                MetricItem(
-                    icon: "waveform.path.ecg",
-                    value: "\(data.hrv)",
-                    unit: "ms",
-                    color: .cyan
-                )
-            }
+        HStack(spacing: 0) {
+            MetricItem(icon: "heart.fill", value: "\(data.heartRate)", unit: "bpm", color: .red)
+                .frame(maxWidth: .infinity)
+            MetricItem(icon: "bed.double.fill", value: String(format: "%.1f", data.sleepHours), unit: "hrs", color: .purple)
+                .frame(maxWidth: .infinity)
+            MetricItem(icon: "figure.walk", value: formatSteps(data.steps), unit: "steps", color: .green)
+                .frame(maxWidth: .infinity)
+            MetricItem(icon: "waveform.path.ecg", value: "\(data.hrv)", unit: "ms", color: .cyan)
+                .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .containerBackground(.fill.tertiary, for: .widget)
-    }
-
-    private var scoreColor: Color {
-        switch data.healthScore {
-        case 0..<25: return .red
-        case 25..<45: return .orange
-        case 45..<65: return .yellow
-        case 65..<82: return .green
-        default: return .mint
-        }
     }
 
     private func formatSteps(_ steps: Int) -> String {
@@ -122,22 +67,23 @@ struct MetricItem: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: 0) {
             Image(systemName: icon)
-                .font(.system(size: 10))
+                .font(.system(size: 15))
                 .foregroundColor(color)
-                .frame(height: 12)
+                .frame(maxHeight: .infinity, alignment: .bottom)
 
             Text(value)
-                .font(.system(.caption2, design: .rounded))
-                .fontWeight(.medium)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
-                .frame(height: 14)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .frame(maxHeight: .infinity, alignment: .center)
 
             Text(unit.isEmpty ? " " : unit)
-                .font(.system(size: 8))
+                .font(.system(size: 9))
                 .foregroundColor(.gray)
-                .frame(height: 10)
+                .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 }

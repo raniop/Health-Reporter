@@ -574,12 +574,11 @@ class HealthDashboardViewController: UIViewController {
         let rhrTake = Array(bundle.rhrTrend.points.suffix(n))
         let sleepTake = Array(bundle.sleep.points.suffix(n)).filter { ($0.totalHours ?? 0) > 0 }
 
-        // Compute CarTier score - using score from HealthScoreEngine
-        // If there's no saved score or not enough data, show placeholder
+        // Compute tier from score — score itself comes from Gemini
         let healthResult = AnalysisCache.loadHealthScoreResult()
         let hasValidScore = healthResult != nil && healthResult!.reliabilityScoreInt > 0
         let score = hasValidScore ? (AnalysisCache.loadHealthScore() ?? 0) : 0
-        let tier = CarTierEngine.tierForScore(max(1, score)) // min 1 to prevent crash
+        let tier = HealthTier.forScore(max(1, score)) // min 1 to prevent crash
 
         // Sleep text
         let sleepText: String
@@ -635,7 +634,7 @@ class HealthDashboardViewController: UIViewController {
 
         // Analytics: Update user properties with current tier and score
         if hasValidScore {
-            AnalyticsService.shared.setCarTier(tier)
+            AnalyticsService.shared.setCarTier(tier, carName: GeminiResultStore.loadCarName() ?? AnalysisCache.loadSelectedCar()?.name)
             AnalyticsService.shared.setHealthScoreRange(score: score)
         }
 
@@ -802,19 +801,11 @@ class HealthDashboardViewController: UIViewController {
         // Get current score, status and car tier from chartBundle
         // If no Gemini data - use 0 (will display "--" instead of a fictitious score)
         var score = 0
-        var tier: CarTier = CarTierEngine.tierForScore(1) // Minimum tier for no data
-        if let bundle = chartBundle {
-            if let eval = CarTierEngine.evaluate(bundle: bundle) {
-                score = eval.score
-                tier = eval.tier
-            }
-        } else {
-            // Fallback: use daily mainScore (NOT loadHealthScore which is Gemini 90-day)
-            if let cachedScore = GeminiResultStore.loadHealthScore(), cachedScore > 0 {
-                score = cachedScore
-                tier = CarTierEngine.tierForScore(score)
-            }
+        // Score always comes from Gemini — no local evaluate()
+        if let cachedScore = GeminiResultStore.loadHealthScore(), cachedScore > 0 {
+            score = cachedScore
         }
+        let tier = HealthTier.forScore(max(1, score))
 
         // Get sleep hours - prefer healthData (today's data) over chartBundle
         let sleepHours: Double
@@ -874,7 +865,9 @@ class HealthDashboardViewController: UIViewController {
             calories: Int(data.activeEnergy ?? 0),
             exerciseMinutes: Int(data.exerciseMinutes ?? 0),
             standHours: Int(data.standHours ?? 0),
-            restingHR: rhr > 0 ? rhr : nil
+            restingHR: rhr > 0 ? rhr : nil,
+            hrv: hrv > 0 ? hrv : nil,
+            sleepHours: sleepHours > 0 ? sleepHours : nil
         )
     }
 
@@ -1076,7 +1069,7 @@ class HealthDashboardViewController: UIViewController {
     private func syncScoreFromCache() {
         if let healthResult = AnalysisCache.loadHealthScoreResult() {
             let score = healthResult.healthScoreInt
-            let tier = CarTierEngine.tierForScore(score)
+            let tier = HealthTier.forScore(score)
             // Use car name from Gemini if available in cache
             let cachedCarName = AnalysisCache.loadSelectedCar()?.name
             print("🚗 [Dashboard.syncScoreFromCache] Syncing with cachedCarName: \(cachedCarName ?? "nil")")
@@ -1106,7 +1099,7 @@ class HealthDashboardViewController: UIViewController {
 
                 // Sync score to leaderboard
                 let score = healthResult.healthScoreInt
-                let tier = CarTierEngine.tierForScore(score)
+                let tier = HealthTier.forScore(score)
                 // Use car name from Gemini if available in cache
                 let cachedCarName = AnalysisCache.loadSelectedCar()?.name
                 print("🚗 [Dashboard.loadData] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
@@ -1118,7 +1111,7 @@ class HealthDashboardViewController: UIViewController {
 
             // Sync score to leaderboard
             let score = healthResult.healthScoreInt
-            let tier = CarTierEngine.tierForScore(score)
+            let tier = HealthTier.forScore(score)
             // Use car name from Gemini if available in cache
             let cachedCarName = AnalysisCache.loadSelectedCar()?.name
             print("🚗 [Dashboard.loadData] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")

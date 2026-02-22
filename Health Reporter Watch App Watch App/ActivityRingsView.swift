@@ -3,7 +3,6 @@
 //  Health Reporter Watch App
 //
 //  Displays Activity Rings (Move, Exercise, Stand)
-//
 
 import SwiftUI
 
@@ -15,7 +14,6 @@ struct ActivityRingsView: View {
     }
 
     var body: some View {
-        let _ = print("⌚️ ActivityRingsView: move=\(data.moveCalories)/\(data.moveGoal), exercise=\(data.exerciseMinutes)/\(data.exerciseGoal), stand=\(data.standHours)/\(data.standGoal)")
         ScrollView {
             VStack(spacing: 16) {
                 // Activity Rings
@@ -50,7 +48,7 @@ struct ActivityRingsView: View {
                 VStack(spacing: 8) {
                     RingStatRow(
                         color: .red,
-                        label: "Move",
+                        label: "watch.activity.move".localized,
                         value: "\(data.moveCalories)",
                         goal: "\(data.moveGoal)",
                         unit: "cal"
@@ -58,7 +56,7 @@ struct ActivityRingsView: View {
 
                     RingStatRow(
                         color: .green,
-                        label: "Exercise",
+                        label: "watch.activity.exercise".localized,
                         value: "\(data.exerciseMinutes)",
                         goal: "\(data.exerciseGoal)",
                         unit: "min"
@@ -66,7 +64,7 @@ struct ActivityRingsView: View {
 
                     RingStatRow(
                         color: .cyan,
-                        label: "Stand",
+                        label: "watch.activity.stand".localized,
                         value: "\(data.standHours)",
                         goal: "\(data.standGoal)",
                         unit: "hrs"
@@ -88,11 +86,9 @@ struct RingProgressView: View {
 
     var body: some View {
         ZStack {
-            // Background ring
             Circle()
                 .stroke(color.opacity(0.2), lineWidth: lineWidth)
 
-            // Progress ring
             Circle()
                 .trim(from: 0, to: min(progress, 1.0))
                 .stroke(
@@ -101,7 +97,6 @@ struct RingProgressView: View {
                 )
                 .rotationEffect(.degrees(-90))
 
-            // Overflow indicator (when progress > 100%)
             if progress > 1.0 {
                 Circle()
                     .trim(from: 0, to: min(progress - 1.0, 1.0))
@@ -132,18 +127,18 @@ struct RingStatRow: View {
 
             Text(label)
                 .font(.system(.caption2, design: .rounded))
-                .foregroundColor(.gray)
+                .foregroundStyle(.gray)
 
             Spacer()
 
             Text("\(value)/\(goal)")
                 .font(.system(.caption, design: .rounded))
                 .fontWeight(.medium)
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
 
             Text(unit)
                 .font(.system(.caption2, design: .rounded))
-                .foregroundColor(.gray)
+                .foregroundStyle(.gray)
         }
     }
 }

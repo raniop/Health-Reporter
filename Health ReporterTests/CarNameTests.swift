@@ -64,21 +64,18 @@ struct CarNameTests {
         Self.clearSelectedCar()
     }
 
-    // MARK: - CarTierEngine Tests
+    // MARK: - HealthTier Tests
 
-    @Test func carTierEngine_tierNames_areOnlyUsedInternally() async throws {
-        // Verify that CarTierEngine tiers exist (for internal use)
+    @Test func healthTier_forScore_returnsValidTier() async throws {
+        // Verify that HealthTier.forScore works correctly
         let scores = [20, 40, 60, 75, 95]
+        let expectedIndices = [0, 1, 2, 3, 4]
 
-        for score in scores {
-            let tier = CarTierEngine.tierForScore(score)
-
-            // The tier should have a name (for internal/analytics use)
-            #expect(!tier.name.isEmpty, "Tier should have a name for internal use")
-
-            // But we verify these are the expected generic names
-            #expect(Self.forbiddenGenericNames.contains(tier.name),
-                   "Tier name '\(tier.name)' should be one of the known generic names (for analytics only)")
+        for (score, expectedIndex) in zip(scores, expectedIndices) {
+            let tier = HealthTier.forScore(score)
+            #expect(tier.tierIndex == expectedIndex, "Score \(score) should map to tier \(expectedIndex)")
+            #expect(!tier.emoji.isEmpty, "Tier should have an emoji")
+            #expect(!tier.tierLabel.isEmpty, "Tier should have a label")
         }
     }
 
@@ -118,19 +115,10 @@ struct CarNameTests {
     // MARK: - Code Search Tests (Static Analysis)
 
     @Test func codebase_shouldNotUseTierNameForDisplay() async throws {
-        // This is a reminder test - the actual check is done during code review
-        // The following patterns should NOT exist in display code:
-        // - tier.name (except in AnalyticsService)
-        // - CarTierEngine.tierForScore(...).name (except in AnalyticsService)
-
-        // This test always passes but serves as documentation
+        // This is a reminder test - car names should always come from Gemini
         #expect(true, """
-            IMPORTANT: Verify manually that these patterns don't exist in display code:
-            1. tier.name (only allowed in AnalyticsService.swift)
-            2. CarTierEngine.tierForScore(...).name (only allowed in AnalyticsService.swift)
-
-            Run this grep to check:
-            grep -r "tier\\.name" --include="*.swift" | grep -v AnalyticsService | grep -v "// Use Gemini"
+            IMPORTANT: Car names must always come from Gemini (GeminiResultStore.loadCarName()).
+            HealthTier only provides visual tier properties (emoji, color, tierLabel, tierIndex).
             """)
     }
 }

@@ -49,6 +49,12 @@ struct AIONLongitudinalInsights: Codable, Sendable {
     var persistentWeaknesses: [String] // e.g. ["Deep sleep below optimal", "High RHR trend"]
     var supplementHistory: String?    // e.g. "Previously recommended Mg, Omega-3"
     var notableEvents: [String]       // e.g. ["Jan 2026: significant HRV drop, recovered in 2 weeks"]
+
+    // Weekly Goals Statistics
+    var goalCompletionRate: Double?    // e.g. 0.85 (85% completion over all weeks)
+    var goalsCompletedTotal: Int?      // total goals completed
+    var strongCategories: [String]?    // categories where user excels
+    var weakCategories: [String]?      // categories needing improvement
 }
 
 // MARK: - Single Analysis Summary (compressed)

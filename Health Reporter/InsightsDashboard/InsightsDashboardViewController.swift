@@ -25,16 +25,19 @@ final class InsightsDashboardViewController: UIViewController {
     private let contentStack = UIStackView()
     private let headerView = HomeHeaderView()
     private let heroCard = HeroMetricCardView()
-    private let secondaryGrid = UIStackView()   // 2x2 grid
-    private let secondaryCards: [SecondaryMetricCardView] = (0..<4).map { _ in SecondaryMetricCardView() }
+    private let secondaryGrid = UIStackView()   // 2×2 or 2×3 dynamic grid
+    private let secondaryCards: [SecondaryMetricCardView] = (0..<HomeMetricSelection.maxSecondaryCount).map { _ in SecondaryMetricCardView() }
+    private var secondaryGridConstraints: [NSLayoutConstraint] = []
+    private let weeklyGoalsSection = WeeklyGoalsSectionView()
     private let recommendationsSection = AIRecommendationsSectionView()
-    private let refreshControl = UIRefreshControl()
 
     // Loading overlay (Splash-style)
     private var loadingOverlay: UIView?
     private var loadingProgressBar: UIProgressView?
     private var loadingStatusLabel: UILabel?
     private var loadingLogo: UIImageView?
+    private var loadingProgressTimer: Timer?
+    private var loadingCurrentProgress: Float = 0
 
     // MARK: - Lifecycle
 
@@ -63,8 +66,6 @@ final class InsightsDashboardViewController: UIViewController {
         loadData()
         updateBellBadge()
     }
-
-    @objc private func handlePullToRefresh() { loadData(forceRefresh: true) }
 
     @objc private func languageDidChange() {
         // Language switched — force fresh Gemini analysis in the new language
@@ -96,22 +97,17 @@ final class InsightsDashboardViewController: UIViewController {
         scrollView.delegate = self
         view.addSubview(scrollView)
 
-        // Pull-to-refresh
-        refreshControl.tintColor = AIONDesign.accentPrimary
-        refreshControl.addTarget(self, action: #selector(handlePullToRefresh), for: .valueChanged)
-        scrollView.refreshControl = refreshControl
-
         // Content stack
         contentStack.axis = .vertical
         contentStack.spacing = 20
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentStack)
 
-        // Build 2x2 grid for secondary cards
-        setupSecondaryGrid()
+        // Build dynamic grid for secondary cards (2×2 or 2×3)
+        rebuildSecondaryGrid()
 
-        // Add sections
-        [headerView, heroCard, secondaryGrid, recommendationsSection].forEach {
+        // Add sections (goals between hero and secondary grid)
+        [headerView, heroCard, weeklyGoalsSection, secondaryGrid, recommendationsSection].forEach {
             contentStack.addArrangedSubview($0)
         }
 
@@ -131,7 +127,6 @@ final class InsightsDashboardViewController: UIViewController {
         // Callbacks
         headerView.onEditTapped = { [weak self] in self?.showMetricEditor() }
         headerView.onBellTapped = { [weak self] in self?.bellTapped() }
-
         heroCard.onTap = { [weak self] in self?.heroCardTapped() }
 
         for (i, card) in secondaryCards.enumerated() {
@@ -142,33 +137,69 @@ final class InsightsDashboardViewController: UIViewController {
             self?.retryRecommendations()
         }
 
+        weeklyGoalsSection.onHistoryTapped = { [weak self] in
+            let nav = UINavigationController(rootViewController: GoalHistoryViewController())
+            self?.present(nav, animated: true)
+        }
+
+        weeklyGoalsSection.onGenerateGoalsTapped = { [weak self] in
+            self?.generateGoalsInline()
+        }
+
+        weeklyGoalsSection.onRefreshGoalsTapped = { [weak self] in
+            self?.refreshGoalsInline()
+        }
+
         // Initially hidden for entrance animation
         contentStack.alpha = 0
     }
 
-    private func setupSecondaryGrid() {
+    private func rebuildSecondaryGrid() {
+        // Remove existing rows
+        NSLayoutConstraint.deactivate(secondaryGridConstraints)
+        secondaryGridConstraints.removeAll()
+        secondaryGrid.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
         secondaryGrid.axis = .vertical
         secondaryGrid.spacing = 12
-        secondaryGrid.distribution = .fillEqually
+        secondaryGrid.distribution = .fill
 
-        let row1 = UIStackView(arrangedSubviews: [secondaryCards[0], secondaryCards[1]])
-        row1.axis = .horizontal
-        row1.spacing = 12
-        row1.distribution = .fillEqually
+        let count = metricSelection.secondaryMetricIds.count
+        let rowCount = (count + 1) / 2  // 4→2 rows, 5→3 rows, 6→3 rows
 
-        let row2 = UIStackView(arrangedSubviews: [secondaryCards[2], secondaryCards[3]])
-        row2.axis = .horizontal
-        row2.spacing = 12
-        row2.distribution = .fillEqually
+        for rowIndex in 0..<rowCount {
+            let firstIndex = rowIndex * 2
+            let secondIndex = firstIndex + 1
 
-        secondaryGrid.addArrangedSubview(row1)
-        secondaryGrid.addArrangedSubview(row2)
+            var views: [UIView] = [secondaryCards[firstIndex]]
 
-        // Card heights
-        NSLayoutConstraint.activate([
-            row1.heightAnchor.constraint(equalToConstant: 170),
-            row2.heightAnchor.constraint(equalToConstant: 170),
-        ])
+            if secondIndex < count {
+                views.append(secondaryCards[secondIndex])
+            } else {
+                // Odd count — add invisible spacer for symmetry
+                let spacer = UIView()
+                spacer.isHidden = false
+                spacer.backgroundColor = .clear
+                views.append(spacer)
+            }
+
+            let row = UIStackView(arrangedSubviews: views)
+            row.axis = .horizontal
+            row.spacing = 12
+            row.distribution = .fillEqually
+
+            secondaryGrid.addArrangedSubview(row)
+
+            let heightConstraint = row.heightAnchor.constraint(equalToConstant: 170)
+            secondaryGridConstraints.append(heightConstraint)
+        }
+
+        NSLayoutConstraint.activate(secondaryGridConstraints)
+
+        // Hide unused cards, show used ones
+        for (i, card) in secondaryCards.enumerated() {
+            card.isHidden = i >= count
+        }
     }
 
     // MARK: - Data Loading
@@ -188,25 +219,27 @@ final class InsightsDashboardViewController: UIViewController {
             return
         }
 
-        // Show loading overlay with progress
+        // Show loading overlay with smooth progress
         isLoading = true
         contentStack.isHidden = true
         removeEmptyState()
         showLoadingOverlay()
         updateLoadingProgress(0.1, status: "splash.syncAppleHealth".localized)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.updateLoadingProgress(0.4, status: "splash.analyzingAI".localized)
+        // Start smooth progress animation (0.1 → 0.9 over 25 seconds, ease-out)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.updateLoadingProgress(0.15, status: "splash.analyzingAI".localized)
+            self?.startLoadingSmoothProgress(from: 0.15, to: 0.9, duration: 25)
         }
 
         AIONAnalysisOrchestrator.shared.ensureTodayResult(forceRefresh: forceRefresh) { [weak self] result, failureReason in
             guard let self = self else { return }
             DispatchQueue.main.async {
+                self.stopLoadingSmoothProgress()
                 self.geminiResult = result
                 self.lastFailureReason = failureReason
                 self.lastUpdatedTime = Date()
                 self.isLoading = false
-                self.refreshControl.endRefreshing()
 
                 if result != nil {
                     self.updateLoadingProgress(1.0, status: "splash.ready".localized)
@@ -255,6 +288,9 @@ final class InsightsDashboardViewController: UIViewController {
             cardView.configure(metric: metric, metricId: metricId, chartData: chartDataCache[metricId] ?? [], explanationText: explanation)
         }
 
+        // Weekly Goals
+        refreshWeeklyGoals()
+
         // Recommendations (from Gemini result — no separate API call)
         let recs = HomeRecommendations(
             medical: result.homeRecommendationMedical,
@@ -265,6 +301,78 @@ final class InsightsDashboardViewController: UIViewController {
         recommendationsSection.isHidden = !hasRecs
         if hasRecs {
             recommendationsSection.configure(recommendations: recs)
+        }
+    }
+
+    private func refreshWeeklyGoals() {
+        if let goalSet = WeeklyGoalStore.currentWeek() {
+            weeklyGoalsSection.isHidden = false
+            weeklyGoalsSection.configure(goals: goalSet.goals)
+
+            // Check if all goals just got completed — snapshot after metrics
+            if goalSet.isAllCompleted, let result = geminiResult {
+                let updatedGoals = WeeklyGoalEngine.snapshotAfterMetrics(
+                    goals: goalSet.goals,
+                    scores: result.scores
+                )
+                // Save updated goals with after metrics
+                var allSets = WeeklyGoalStore.loadAll()
+                if let idx = allSets.lastIndex(where: {
+                    Calendar.current.isDate($0.weekStartDate, equalTo: goalSet.weekStartDate, toGranularity: .weekOfYear)
+                }) {
+                    allSets[idx].goals = updatedGoals
+                    WeeklyGoalStore.save(allSets)
+                }
+            }
+        } else {
+            weeklyGoalsSection.showEmpty()
+        }
+    }
+
+    // MARK: - Inline Goal Generation
+
+    /// Runs a full Gemini analysis in the background while showing an in-place loading animation.
+    /// The rest of the app stays interactive — only the generate container shows a spinner.
+    private func generateGoalsInline() {
+        weeklyGoalsSection.showGenerateLoading()
+
+        AIONAnalysisOrchestrator.shared.ensureTodayResult(forceRefresh: true) { [weak self] result, failureReason in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                if let result = result {
+                    self.geminiResult = result
+                    self.lastUpdatedTime = Date()
+                    self.updateUI()  // Refreshes all sections including goals
+                    self.loadChartData()
+                } else {
+                    // Show button again on failure
+                    self.weeklyGoalsSection.hideGenerateLoading()
+                }
+            }
+        }
+    }
+
+    /// Regenerates goals when the user taps the small refresh button in the title row.
+    /// Clears current goals first so Gemini generates fresh ones.
+    private func refreshGoalsInline() {
+        weeklyGoalsSection.showRefreshLoading()
+
+        // Clear current week so Gemini generates new goals
+        WeeklyGoalStore.clearCurrentWeek()
+
+        AIONAnalysisOrchestrator.shared.ensureTodayResult(forceRefresh: true) { [weak self] result, failureReason in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                if let result = result {
+                    self.geminiResult = result
+                    self.lastUpdatedTime = Date()
+                    self.updateUI()
+                    self.loadChartData()
+                } else {
+                    // Stop spinning on failure
+                    self.weeklyGoalsSection.hideRefreshLoading()
+                }
+            }
         }
     }
 
@@ -292,6 +400,20 @@ final class InsightsDashboardViewController: UIViewController {
             return GeminiMetricProxy(id: metricId, nameKey: "metric.activity_score", value: scores.activityScore.map { Double($0) }, category: .habit)
         case "load_balance":
             return GeminiMetricProxy(id: metricId, nameKey: "metric.load_balance", value: scores.loadBalance.map { Double($0) }, category: .load)
+        case "stress_load_index":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.stress_load_index", value: scores.stressLoadIndex.map { Double($0) }, category: .load)
+        case "morning_freshness":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.morning_freshness", value: scores.morningFreshness.map { Double($0) }, category: .recovery)
+        case "sleep_consistency":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.sleep_consistency", value: scores.sleepConsistency.map { Double($0) }, category: .sleep)
+        case "sleep_debt":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.sleep_debt", value: scores.sleepDebt.map { Double($0) }, category: .sleep)
+        case "workout_readiness":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.workout_readiness", value: scores.workoutReadiness.map { Double($0) }, category: .performance)
+        case "daily_goals":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.daily_goals", value: scores.dailyGoals.map { Double($0) }, category: .habit)
+        case "cardio_fitness_trend":
+            return GeminiMetricProxy(id: metricId, nameKey: "metric.cardio_fitness_trend", value: scores.cardioFitnessTrend.map { Double($0) }, category: .performance)
         default:
             return nil
         }
@@ -319,6 +441,20 @@ final class InsightsDashboardViewController: UIViewController {
             return scores.activityScoreExplanation ?? ""
         case "load_balance":
             return scores.loadBalanceExplanation ?? ""
+        case "stress_load_index":
+            return scores.stressLoadIndexExplanation ?? ""
+        case "morning_freshness":
+            return scores.morningFreshnessExplanation ?? ""
+        case "sleep_consistency":
+            return scores.sleepConsistencyExplanation ?? ""
+        case "sleep_debt":
+            return scores.sleepDebtExplanation ?? ""
+        case "workout_readiness":
+            return scores.workoutReadinessExplanation ?? ""
+        case "daily_goals":
+            return scores.dailyGoalsExplanation ?? ""
+        case "cardio_fitness_trend":
+            return scores.cardioFitnessTrendExplanation ?? ""
         default:
             return ""
         }
@@ -347,7 +483,9 @@ final class InsightsDashboardViewController: UIViewController {
                 "main_score", "health_score",
                 "sleep_quality", "recovery_readiness", "energy_forecast",
                 "training_strain", "nervous_system_balance", "recovery_debt",
-                "activity_score", "load_balance"
+                "activity_score", "load_balance",
+                "stress_load_index", "morning_freshness", "sleep_consistency",
+                "sleep_debt", "workout_readiness", "daily_goals", "cardio_fitness_trend"
             ]
 
             var charts: [String: [BarChartDataPoint]] = [:]
@@ -426,6 +564,38 @@ final class InsightsDashboardViewController: UIViewController {
             return min(100.0, ((entry.steps ?? 0) / 10000.0) * 100.0)
         case "load_balance":
             return min(100.0, ((entry.activeCalories ?? 0) / 500.0) * 100.0)
+        case "stress_load_index":
+            // HRV depression + RHR elevation proxy (inverted: lower HRV = more stress)
+            let hrvStress = max(0, 100.0 - ((entry.hrvMs ?? 30) / 60.0) * 100.0)
+            let rhrStress = min(100.0, ((entry.restingHR ?? 60) / 80.0) * 100.0)
+            return (hrvStress + rhrStress) / 2.0
+        case "morning_freshness":
+            // Sleep quality + HRV composite
+            let sleepPart = min(100.0, ((entry.sleepHours ?? 0) / 8.0) * 100.0)
+            let hrvPart = min(100.0, ((entry.hrvMs ?? 0) / 60.0) * 100.0)
+            return (sleepPart * 0.6 + hrvPart * 0.4)
+        case "sleep_consistency":
+            // Approximation from sleep hours deviation from 7.5h target
+            let deviation = abs((entry.sleepHours ?? 7.5) - 7.5)
+            return max(0, 100.0 - deviation * 30.0)
+        case "sleep_debt":
+            // Hours below 7.5h target → higher debt
+            let deficit = max(0, 7.5 - (entry.sleepHours ?? 0))
+            return min(100.0, deficit * 25.0)
+        case "workout_readiness":
+            // Average of HRV-readiness + sleep quality
+            let hrvReady = min(100.0, ((entry.hrvMs ?? 0) / 60.0) * 100.0)
+            let sleepReady = min(100.0, ((entry.sleepHours ?? 0) / 8.0) * 100.0)
+            return (hrvReady + sleepReady) / 2.0
+        case "daily_goals":
+            // Approximation from steps and active calories
+            let stepGoal = min(100.0, ((entry.steps ?? 0) / 10000.0) * 100.0)
+            let calGoal = min(100.0, ((entry.activeCalories ?? 0) / 500.0) * 100.0)
+            return (stepGoal + calGoal) / 2.0
+        case "cardio_fitness_trend":
+            // VO2max scaled (30-60 range → 0-100)
+            let vo2 = entry.vo2max ?? 0
+            return min(100.0, max(0, ((vo2 - 30.0) / 30.0) * 100.0))
         default:
             return 0
         }
@@ -453,6 +623,20 @@ final class InsightsDashboardViewController: UIViewController {
             return scores.activityScore.map { Double($0) }
         case "load_balance":
             return scores.loadBalance.map { Double($0) }
+        case "stress_load_index":
+            return scores.stressLoadIndex.map { Double($0) }
+        case "morning_freshness":
+            return scores.morningFreshness.map { Double($0) }
+        case "sleep_consistency":
+            return scores.sleepConsistency.map { Double($0) }
+        case "sleep_debt":
+            return scores.sleepDebt.map { Double($0) }
+        case "workout_readiness":
+            return scores.workoutReadiness.map { Double($0) }
+        case "daily_goals":
+            return scores.dailyGoals.map { Double($0) }
+        case "cardio_fitness_trend":
+            return scores.cardioFitnessTrend.map { Double($0) }
         default:
             return nil
         }
@@ -511,7 +695,9 @@ final class InsightsDashboardViewController: UIViewController {
         let nav = UINavigationController(rootViewController: editorVC)
         editorVC.onSave = { [weak self] newSelection in
             self?.metricSelection = newSelection
+            self?.rebuildSecondaryGrid()
             self?.updateUI()
+            self?.loadChartData()
         }
         present(nav, animated: true)
     }
@@ -701,6 +887,31 @@ final class InsightsDashboardViewController: UIViewController {
         }
     }
 
+    /// Smoothly animates progress from `from` to `to` over `duration` seconds with ease-out curve.
+    private func startLoadingSmoothProgress(from: Float, to: Float, duration: TimeInterval) {
+        stopLoadingSmoothProgress()
+        loadingCurrentProgress = from
+        let startTime = Date()
+        loadingProgressTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] timer in
+            guard let self = self, self.isLoading else {
+                timer.invalidate()
+                return
+            }
+            let elapsed = Date().timeIntervalSince(startTime)
+            let fraction = min(elapsed / duration, 1.0)
+            // Ease-out: fast start, slow end
+            let eased = 1.0 - pow(1.0 - fraction, 2.5)
+            let newProgress = from + Float(eased) * (to - from)
+            self.loadingCurrentProgress = newProgress
+            self.updateLoadingProgress(newProgress, status: "splash.analyzingAI".localized)
+        }
+    }
+
+    private func stopLoadingSmoothProgress() {
+        loadingProgressTimer?.invalidate()
+        loadingProgressTimer = nil
+    }
+
     private func hideLoadingOverlay() {
         guard let overlay = loadingOverlay else { return }
         UIView.animate(withDuration: 0.3, animations: {
@@ -721,7 +932,7 @@ final class InsightsDashboardViewController: UIViewController {
         hasPlayedEntrance = true
 
         // Prepare views
-        let animatableViews: [UIView] = [headerView, heroCard, secondaryGrid, recommendationsSection]
+        let animatableViews: [UIView] = [headerView, heroCard, weeklyGoalsSection, secondaryGrid, recommendationsSection]
         for (i, view) in animatableViews.enumerated() {
             view.alpha = 0
             view.transform = CGAffineTransform(translationX: 0, y: 30)

@@ -2,15 +2,24 @@
 //  HomeMetricSelection.swift
 //  Health Reporter
 //
-//  Persists which 5 metrics the user chose for the home screen
-//  (1 hero + 4 secondary).
+//  Persists which metrics the user chose for the home screen
+//  (1 hero + 4–6 secondary).
 //
 
 import Foundation
 
 struct HomeMetricSelection: Codable, Equatable {
     var heroMetricId: String
-    var secondaryMetricIds: [String]   // exactly 4
+    var secondaryMetricIds: [String]   // 4–6 items
+
+    // MARK: - Limits
+
+    static let minSecondaryCount = 4
+    static let maxSecondaryCount = 6
+
+    var isValid: Bool {
+        (Self.minSecondaryCount...Self.maxSecondaryCount).contains(secondaryMetricIds.count)
+    }
 
     // MARK: - Defaults
 

@@ -8,6 +8,18 @@
 import UIKit
 import FirebaseAuth
 
+// MARK: - Debug Gating
+
+private let _debugAllowedEmails: Set<String> = ["ranioph@gmail.com", "amit@minute-ly.com"]
+
+private func debugLog(_ message: @autoclosure () -> String) {
+    #if DEBUG
+    if let email = Auth.auth().currentUser?.email, _debugAllowedEmails.contains(email) {
+        print(message())
+    }
+    #endif
+}
+
 // MARK: - AIONDesign Extensions for InsightsDashboard
 
 private extension AIONDesign {
@@ -944,12 +956,7 @@ final class HeroScoreSection: UIView {
     func configure(mainScore: Double?, energyForecast: EnergyForecast, parentVC: UIViewController? = nil) {
         // Calculate car score from weekly stats
         let stats = AnalysisCache.loadWeeklyStats()
-        let carScore = CarTierEngine.computeHealthScore(
-            readinessAvg: stats?.readiness,
-            sleepHoursAvg: stats?.sleepHours,
-            hrvAvg: stats?.hrv,
-            strainAvg: stats?.strain
-        )
+        let carScore = GeminiResultStore.loadCarScore() ?? GeminiResultStore.loadHealthScore() ?? 0
         // ONLY use Gemini car name - NEVER use generic tier names!
         let savedCar = AnalysisCache.loadSelectedCar()
         let carName = savedCar?.name  // nil if no Gemini data - don't show generic names
@@ -1858,7 +1865,7 @@ final class SleepSectionView: UIView {
         container.addSubview(avgStack)
 
         // Layout - chart on the right side, average on the left side
-        print("📊 [SleepHighlightCard] isRTL=\(isRTL)")
+        debugLog("📊 [SleepHighlightCard] isRTL=\(isRTL)")
 
         NSLayoutConstraint.activate([
             // Title - always on the right side
@@ -1910,7 +1917,7 @@ final class SleepSectionView: UIView {
         let displayMax = maxDataHours + range * 0.3
 
         // Debug log
-        print("📊 [BarChart Apple] actualAvg=\(actualAvg), range=[\(displayMin)-\(displayMax)]")
+        debugLog("📊 [BarChart Apple] actualAvg=\(actualAvg), range=[\(displayMin)-\(displayMax)]")
 
         // Stack for bars
         let barsStack = UIStackView()
@@ -1948,7 +1955,7 @@ final class SleepSectionView: UIView {
                 let normalizedValue = (entry.hours - displayMin) / (displayMax - displayMin)
                 barHeight = max(chartHeight * CGFloat(normalizedValue), 8)
             }
-            print("📊 [BarChart Apple] \(entry.dayOfWeekShort): \(entry.hours)h → barHeight=\(barHeight)px")
+            debugLog("📊 [BarChart Apple] \(entry.dayOfWeekShort): \(entry.hours)h → barHeight=\(barHeight)px")
 
             NSLayoutConstraint.activate([
                 barContainer.widthAnchor.constraint(equalToConstant: barWidth),
@@ -1976,7 +1983,7 @@ final class SleepSectionView: UIView {
         // Horizontal average line - Apple Style (spans full width)
         let avgNormalized = (actualAvg - displayMin) / (displayMax - displayMin)
         let avgLineY = CGFloat(avgNormalized) * chartHeight
-        print("📊 [BarChart Apple] avgLineY=\(avgLineY)px")
+        debugLog("📊 [BarChart Apple] avgLineY=\(avgLineY)px")
 
         let avgLine = UIView()
         avgLine.backgroundColor = targetLineColor

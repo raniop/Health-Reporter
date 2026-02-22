@@ -16,11 +16,10 @@
 "watch.status.waitingForData" = "ממתין לנתונים...";
 "watch.status.waiting" = "ממתין...";
 
-/* Period Selector */
-"period.day" = "היום";
-"period.week" = "שבוע";
-"period.month" = "חודש";
-"watch.period.title" = "תקופה";
+/* Activity Rings */
+"watch.activity.move" = "תנועה";
+"watch.activity.exercise" = "אימון";
+"watch.activity.stand" = "עמידה";
 
 /* Home View */
 "watch.home.dataStale" = "נתונים לא מעודכנים";

@@ -2,7 +2,9 @@
 //  WatchTimelineProvider.swift
 //  HealthWatch Widgets
 //
-//  Timeline provider for Watch complications
+//  Timeline provider for Watch complications.
+//  Decodes directly from WatchHealthData format (same JSON as the Watch app uses).
+//  Eliminated the duplicate WatchHealthDataDecoder middleman.
 //
 
 import WidgetKit
@@ -17,7 +19,7 @@ struct WatchHealthEntry: TimelineEntry {
 
 // MARK: - Complication Data Model
 
-struct WatchComplicationData: Codable {
+struct WatchComplicationData {
     var healthScore: Int
     var healthStatus: String
     var reliabilityScore: Int
@@ -27,7 +29,6 @@ struct WatchComplicationData: Codable {
     var carEmoji: String
     var carTierLabel: String
 
-    // Gemini car data (for complications)
     var geminiCarName: String?
     var geminiCarScore: Int?
     var geminiCarTierIndex: Int?
@@ -48,7 +49,8 @@ struct WatchComplicationData: Codable {
     var lastUpdated: Date
     var isFromPhone: Bool
 
-    // Computed properties
+    // MARK: - Computed Properties
+
     var moveProgress: Double {
         guard moveGoal > 0 else { return 0 }
         return Double(moveCalories) / Double(moveGoal)
@@ -73,44 +75,92 @@ struct WatchComplicationData: Codable {
         return "\(hours)h"
     }
 
-    /// Display emoji - prefers gemini car if available
     var displayCarEmoji: String {
         if let geminiName = geminiCarName, !geminiName.isEmpty {
-            return carEmojiForName(geminiName)
+            return carEmoji.isEmpty ? "🚗" : carEmoji
         }
-        return carEmoji
+        return carEmoji.isEmpty ? "🚗" : carEmoji
     }
 
-    /// Display car name - prefers gemini car if available
     var displayCarName: String {
         return geminiCarName ?? carName
     }
 
-    /// Display tier index - prefers gemini tier if available
     var displayTierIndex: Int {
         return geminiCarTierIndex ?? carTierIndex
     }
 
-    /// Get car emoji based on car name
-    private func carEmojiForName(_ name: String) -> String {
-        let lowercased = name.lowercased()
-        if lowercased.contains("f1") || lowercased.contains("formula") {
-            return "🏎️"
-        } else if lowercased.contains("lambo") || lowercased.contains("ferrari") || lowercased.contains("porsche") {
-            return "🏎️"
-        } else if lowercased.contains("tesla") || lowercased.contains("electric") {
-            return "🚗"
-        } else if lowercased.contains("truck") || lowercased.contains("pickup") {
-            return "🛻"
-        } else if lowercased.contains("suv") || lowercased.contains("jeep") {
-            return "🚙"
-        } else if lowercased.contains("bicycle") || lowercased.contains("bike") {
-            return "🚲"
-        } else if lowercased.contains("broken") || lowercased.contains("junk") {
-            return "🚗"
+    /// Score color matching WatchHealthData.scoreColor(for:)
+    var scoreColor: Color {
+        switch healthScore {
+        case ..<25:  return .red
+        case 25..<45: return .orange
+        case 45..<65: return .yellow
+        case 65..<82: return .green
+        default:      return .mint
         }
-        return "🚗"
     }
+
+    /// Tier color matching WatchHealthData.tierColor(for:)
+    var tierColor: Color {
+        switch displayTierIndex {
+        case 0:  return .red
+        case 1:  return .orange
+        case 2:  return .yellow
+        case 3:  return .green
+        default: return .mint
+        }
+    }
+
+    // MARK: - Init from decoded JSON (WatchHealthData format)
+
+    /// Initialize from the raw decoded JSON that matches WatchHealthData's Codable format.
+    /// This eliminates the need for a separate WatchHealthDataDecoder struct.
+    init(from decoded: DecodedWatchData) {
+        self.healthScore = decoded.healthScore
+        self.healthStatus = decoded.healthStatus
+        self.reliabilityScore = decoded.reliabilityScore
+        self.carTierIndex = decoded.carTierIndex
+        self.carName = decoded.carName
+        self.carEmoji = decoded.carEmoji
+        self.carTierLabel = decoded.carTierLabel
+        self.geminiCarName = decoded.geminiCarName
+        self.geminiCarScore = decoded.geminiCarScore
+        self.geminiCarTierIndex = decoded.geminiCarTierIndex
+        self.moveCalories = decoded.moveCalories
+        self.moveGoal = decoded.moveGoal
+        self.exerciseMinutes = decoded.exerciseMinutes
+        self.exerciseGoal = decoded.exerciseGoal
+        self.standHours = decoded.standHours
+        self.standGoal = decoded.standGoal
+        self.steps = decoded.steps
+        self.heartRate = decoded.heartRate
+        self.restingHeartRate = decoded.restingHeartRate
+        self.hrv = decoded.hrv
+        self.sleepHours = decoded.sleepHours
+        self.lastUpdated = decoded.lastUpdated
+        self.isFromPhone = decoded.isFromPhone
+    }
+
+    // MARK: - Memberwise init
+
+    init(healthScore: Int, healthStatus: String, reliabilityScore: Int,
+         carTierIndex: Int, carName: String, carEmoji: String, carTierLabel: String,
+         geminiCarName: String?, geminiCarScore: Int?, geminiCarTierIndex: Int?,
+         moveCalories: Int, moveGoal: Int, exerciseMinutes: Int, exerciseGoal: Int,
+         standHours: Int, standGoal: Int,
+         steps: Int, heartRate: Int, restingHeartRate: Int, hrv: Int, sleepHours: Double,
+         lastUpdated: Date, isFromPhone: Bool) {
+        self.healthScore = healthScore; self.healthStatus = healthStatus; self.reliabilityScore = reliabilityScore
+        self.carTierIndex = carTierIndex; self.carName = carName; self.carEmoji = carEmoji; self.carTierLabel = carTierLabel
+        self.geminiCarName = geminiCarName; self.geminiCarScore = geminiCarScore; self.geminiCarTierIndex = geminiCarTierIndex
+        self.moveCalories = moveCalories; self.moveGoal = moveGoal; self.exerciseMinutes = exerciseMinutes; self.exerciseGoal = exerciseGoal
+        self.standHours = standHours; self.standGoal = standGoal
+        self.steps = steps; self.heartRate = heartRate; self.restingHeartRate = restingHeartRate; self.hrv = hrv; self.sleepHours = sleepHours
+        self.lastUpdated = lastUpdated; self.isFromPhone = isFromPhone
+    }
+
+    // MARK: - Placeholder
 
     static var placeholder: WatchComplicationData {
         WatchComplicationData(
@@ -141,9 +191,11 @@ struct WatchComplicationData: Codable {
     }
 }
 
-// MARK: - Watch Health Data (matches Watch App's WatchHealthData)
+// MARK: - Codable decoder (matches WatchHealthData's JSON exactly)
 
-struct WatchHealthDataForWidget: Codable {
+/// Decodes the same JSON format as WatchHealthData, with fallback defaults for all fields.
+/// This is the SINGLE decoder — no duplication with the Watch app's WatchHealthData.
+struct DecodedWatchData: Codable {
     var healthScore: Int
     var healthStatus: String
     var reliabilityScore: Int
@@ -165,17 +217,44 @@ struct WatchHealthDataForWidget: Codable {
     var restingHeartRate: Int
     var hrv: Int
     var sleepHours: Double
-
-    // Score breakdown (optional - for "Why" screen on Watch)
-    var recoveryScore: Int?
-    var sleepScore: Int?
-    var nervousSystemScore: Int?
-    var energyScore: Int?
-    var activityScore: Int?
-    var loadBalanceScore: Int?
-
     var lastUpdated: Date
     var isFromPhone: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case healthScore, healthStatus, reliabilityScore
+        case carTierIndex, carName, carEmoji, carTierLabel
+        case geminiCarName, geminiCarScore, geminiCarTierIndex
+        case moveCalories, moveGoal, exerciseMinutes, exerciseGoal, standHours, standGoal
+        case steps, heartRate, restingHeartRate, hrv, sleepHours
+        case lastUpdated, isFromPhone
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        healthScore = (try? c.decode(Int.self, forKey: .healthScore)) ?? 0
+        healthStatus = (try? c.decode(String.self, forKey: .healthStatus)) ?? ""
+        reliabilityScore = (try? c.decode(Int.self, forKey: .reliabilityScore)) ?? 0
+        carTierIndex = (try? c.decode(Int.self, forKey: .carTierIndex)) ?? 0
+        carName = (try? c.decode(String.self, forKey: .carName)) ?? "--"
+        carEmoji = (try? c.decode(String.self, forKey: .carEmoji)) ?? "🚗"
+        carTierLabel = (try? c.decode(String.self, forKey: .carTierLabel)) ?? ""
+        geminiCarName = try? c.decode(String.self, forKey: .geminiCarName)
+        geminiCarScore = try? c.decode(Int.self, forKey: .geminiCarScore)
+        geminiCarTierIndex = try? c.decode(Int.self, forKey: .geminiCarTierIndex)
+        moveCalories = (try? c.decode(Int.self, forKey: .moveCalories)) ?? 0
+        moveGoal = (try? c.decode(Int.self, forKey: .moveGoal)) ?? 0
+        exerciseMinutes = (try? c.decode(Int.self, forKey: .exerciseMinutes)) ?? 0
+        exerciseGoal = (try? c.decode(Int.self, forKey: .exerciseGoal)) ?? 0
+        standHours = (try? c.decode(Int.self, forKey: .standHours)) ?? 0
+        standGoal = (try? c.decode(Int.self, forKey: .standGoal)) ?? 0
+        steps = (try? c.decode(Int.self, forKey: .steps)) ?? 0
+        heartRate = (try? c.decode(Int.self, forKey: .heartRate)) ?? 0
+        restingHeartRate = (try? c.decode(Int.self, forKey: .restingHeartRate)) ?? 0
+        hrv = (try? c.decode(Int.self, forKey: .hrv)) ?? 0
+        sleepHours = (try? c.decode(Double.self, forKey: .sleepHours)) ?? 0
+        lastUpdated = (try? c.decode(Date.self, forKey: .lastUpdated)) ?? Date.distantPast
+        isFromPhone = (try? c.decode(Bool.self, forKey: .isFromPhone)) ?? false
+    }
 }
 
 // MARK: - Data Loader
@@ -184,55 +263,21 @@ struct WatchWidgetDataLoader {
     static let appGroupID = "group.com.rani.Health-Reporter"
     static let watchDataKey = "watchHealthData"
 
-    /// Serial queue to synchronize access with WatchDataStorage (same queue label pattern)
-    private static let storageQueue = DispatchQueue(label: "com.rani.Health-Reporter.watchWidgetStorage", qos: .userInitiated)
-
     static func loadData() -> WatchComplicationData {
-        return storageQueue.sync {
-            guard let userDefaults = UserDefaults(suiteName: appGroupID) else {
-                print("WatchWidget: Failed to access App Group")
-                return .placeholder
-            }
+        guard let userDefaults = UserDefaults(suiteName: appGroupID),
+              let data = userDefaults.data(forKey: watchDataKey) else {
+            print("🔧 [Complication] No data in App Group, using placeholder")
+            return .placeholder
+        }
 
-            guard let data = userDefaults.data(forKey: watchDataKey) else {
-                print("WatchWidget: No data found, using placeholder")
-                return .placeholder
-            }
-
-            do {
-                // Decode as WatchHealthData (from Watch App) and convert to WatchComplicationData
-                let watchData = try JSONDecoder().decode(WatchHealthDataForWidget.self, from: data)
-                print("⌚️ Widget: Loaded - score=\(watchData.healthScore), move=\(watchData.moveCalories), exercise=\(watchData.exerciseMinutes), stand=\(watchData.standHours)")
-
-                return WatchComplicationData(
-                    healthScore: watchData.healthScore,
-                    healthStatus: watchData.healthStatus,
-                    reliabilityScore: watchData.reliabilityScore,
-                    carTierIndex: watchData.carTierIndex,
-                    carName: watchData.carName,
-                    carEmoji: watchData.carEmoji,
-                    carTierLabel: watchData.carTierLabel,
-                    geminiCarName: watchData.geminiCarName,
-                    geminiCarScore: watchData.geminiCarScore,
-                    geminiCarTierIndex: watchData.geminiCarTierIndex,
-                    moveCalories: watchData.moveCalories,
-                    moveGoal: watchData.moveGoal,
-                    exerciseMinutes: watchData.exerciseMinutes,
-                    exerciseGoal: watchData.exerciseGoal,
-                    standHours: watchData.standHours,
-                    standGoal: watchData.standGoal,
-                    steps: watchData.steps,
-                    heartRate: watchData.heartRate,
-                    restingHeartRate: watchData.restingHeartRate,
-                    hrv: watchData.hrv,
-                    sleepHours: watchData.sleepHours,
-                    lastUpdated: watchData.lastUpdated,
-                    isFromPhone: watchData.isFromPhone
-                )
-            } catch {
-                print("WatchWidget: Decode error: \(error)")
-                return .placeholder
-            }
+        do {
+            let decoded = try JSONDecoder().decode(DecodedWatchData.self, from: data)
+            let result = WatchComplicationData(from: decoded)
+            print("🔧 [Complication] ✅ Loaded: score=\(result.healthScore), steps=\(result.steps), car=\(result.carName)")
+            return result
+        } catch {
+            print("🔧 [Complication] ❌ Decode error: \(error.localizedDescription)")
+            return .placeholder
         }
     }
 }
@@ -246,17 +291,17 @@ struct WatchHealthTimelineProvider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (WatchHealthEntry) -> Void) {
         let data = WatchWidgetDataLoader.loadData()
-        let entry = WatchHealthEntry(date: Date(), data: data)
-        completion(entry)
+        print("🔧 [Complication] Snapshot requested: score=\(data.healthScore)")
+        completion(WatchHealthEntry(date: Date(), data: data))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WatchHealthEntry>) -> Void) {
         let data = WatchWidgetDataLoader.loadData()
         let entry = WatchHealthEntry(date: Date(), data: data)
 
-        // Update every 15 minutes
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-        completion(timeline)
+        // Refresh every 5 minutes (was 15 min — too stale)
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 5, to: Date()) ?? Date(timeIntervalSinceNow: 300)
+        print("🔧 [Complication] Timeline: score=\(data.healthScore), next refresh in 5 min")
+        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
     }
 }

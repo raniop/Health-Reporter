@@ -16,11 +16,10 @@
 "watch.status.waitingForData" = "Waiting for data...";
 "watch.status.waiting" = "Waiting...";
 
-/* Period Selector */
-"period.day" = "Today";
-"period.week" = "Week";
-"period.month" = "Month";
-"watch.period.title" = "Period";
+/* Activity Rings */
+"watch.activity.move" = "Move";
+"watch.activity.exercise" = "Exercise";
+"watch.activity.stand" = "Stand";
 
 /* Home View */
 "watch.home.dataStale" = "Data not updated";

@@ -81,16 +81,6 @@ struct CircularScoreView: View {
 struct RectangularScoreView: View {
     let data: WatchComplicationData
 
-    private var scoreColor: Color {
-        switch data.healthScore {
-        case 0..<25: return .red
-        case 25..<45: return .orange
-        case 45..<65: return .yellow
-        case 65..<82: return .green
-        default: return .mint
-        }
-    }
-
     var body: some View {
         HStack(spacing: 8) {
             // Score Gauge
@@ -102,7 +92,7 @@ struct RectangularScoreView: View {
                     .fontWeight(.bold)
             }
             .gaugeStyle(.accessoryCircular)
-            .tint(scoreColor)
+            .tint(data.scoreColor)
             .frame(width: 40, height: 40)
 
             // Details
@@ -143,26 +133,16 @@ struct InlineScoreView: View {
 struct CornerScoreView: View {
     let data: WatchComplicationData
 
-    private var scoreColor: Color {
-        switch data.healthScore {
-        case 0..<25: return .red
-        case 25..<45: return .orange
-        case 45..<65: return .yellow
-        case 65..<82: return .green
-        default: return .mint
-        }
-    }
-
     var body: some View {
         Text("\(data.healthScore)")
             .font(.system(.title3, design: .rounded))
             .fontWeight(.bold)
-            .foregroundColor(scoreColor)
+            .foregroundStyle(data.scoreColor)
             .widgetLabel {
                 Gauge(value: Double(data.healthScore), in: 0...100) {
                     Text("Score")
                 }
-                .tint(scoreColor)
+                .tint(data.scoreColor)
             }
     }
 }

@@ -38,6 +38,9 @@ struct CarAnalysisJSONResponse: Codable {
 
     // Home Recommendations (merged into main call)
     let homeRecommendations: HomeRecommendationsJSON?
+
+    // Weekly Goals (actionable improvement goals)
+    let weeklyGoals: WeeklyGoalsResponseJSON?
 }
 
 // MARK: - Scores (Gemini-calculated)
@@ -73,6 +76,27 @@ struct ScoresJSON: Codable {
     let carScore: Double?
     let carScoreExplanation_he: String?
     let carScoreExplanation_en: String?
+    let stressLoadIndex: Double?
+    let stressLoadIndexExplanation_he: String?
+    let stressLoadIndexExplanation_en: String?
+    let morningFreshness: Double?
+    let morningFreshnessExplanation_he: String?
+    let morningFreshnessExplanation_en: String?
+    let sleepConsistency: Double?
+    let sleepConsistencyExplanation_he: String?
+    let sleepConsistencyExplanation_en: String?
+    let sleepDebt: Double?
+    let sleepDebtExplanation_he: String?
+    let sleepDebtExplanation_en: String?
+    let workoutReadiness: Double?
+    let workoutReadinessExplanation_he: String?
+    let workoutReadinessExplanation_en: String?
+    let dailyGoals: Double?
+    let dailyGoalsExplanation_he: String?
+    let dailyGoalsExplanation_en: String?
+    let cardioFitnessTrend: Double?
+    let cardioFitnessTrendExplanation_he: String?
+    let cardioFitnessTrendExplanation_en: String?
 }
 
 // MARK: - Home Recommendations (merged into main Gemini call)
@@ -329,6 +353,12 @@ struct CarAnalysisResponse {
     var homeRecommendationNutritionHe: String
     var homeRecommendationNutritionEn: String
 
+    // 12. Weekly Goals (actionable improvement goals)
+    var weeklyGoals: [WeeklyGoalJSON]
+    var weeklyGoalsShouldGenerate: Bool
+    var weeklyGoalsProgressAssessmentHe: String
+    var weeklyGoalsProgressAssessmentEn: String
+
     // The original response (for fallback purposes)
     var rawResponse: String
 
@@ -553,8 +583,28 @@ enum CarAnalysisParser {
             homeRecommendationSportsHe: "", homeRecommendationSportsEn: "",
             homeRecommendationNutritionHe: "", homeRecommendationNutritionEn: "",
 
+            weeklyGoals: parseWeeklyGoalsManually(from: root),
+            weeklyGoalsShouldGenerate: (root["weeklyGoals"] as? [String: Any])?["shouldGenerateNewGoals"] as? Bool ?? true,
+            weeklyGoalsProgressAssessmentHe: (root["weeklyGoals"] as? [String: Any])?["progressAssessment_he"] as? String ?? "",
+            weeklyGoalsProgressAssessmentEn: (root["weeklyGoals"] as? [String: Any])?["progressAssessment_en"] as? String ?? "",
+
             rawResponse: rawResponse
         )
+    }
+
+    /// Parse weekly goals from manual JSON dictionary
+    private static func parseWeeklyGoalsManually(from root: [String: Any]) -> [WeeklyGoalJSON] {
+        guard let wg = root["weeklyGoals"] as? [String: Any],
+              let goalsArray = wg["goals"] as? [[String: Any]] else { return [] }
+        return goalsArray.map { g in
+            WeeklyGoalJSON(
+                text_he: g["text_he"] as? String,
+                text_en: g["text_en"] as? String,
+                category: g["category"] as? String,
+                difficulty: g["difficulty"] as? String,
+                linkedMetrics: g["linkedMetrics"] as? [String]
+            )
+        }
     }
 
     /// Parse scores from manual JSON dictionary
@@ -590,7 +640,28 @@ enum CarAnalysisParser {
             loadBalanceExplanation_en: s["loadBalanceExplanation_en"] as? String,
             carScore: s["carScore"] as? Double,
             carScoreExplanation_he: s["carScoreExplanation_he"] as? String,
-            carScoreExplanation_en: s["carScoreExplanation_en"] as? String
+            carScoreExplanation_en: s["carScoreExplanation_en"] as? String,
+            stressLoadIndex: s["stressLoadIndex"] as? Double,
+            stressLoadIndexExplanation_he: s["stressLoadIndexExplanation_he"] as? String,
+            stressLoadIndexExplanation_en: s["stressLoadIndexExplanation_en"] as? String,
+            morningFreshness: s["morningFreshness"] as? Double,
+            morningFreshnessExplanation_he: s["morningFreshnessExplanation_he"] as? String,
+            morningFreshnessExplanation_en: s["morningFreshnessExplanation_en"] as? String,
+            sleepConsistency: s["sleepConsistency"] as? Double,
+            sleepConsistencyExplanation_he: s["sleepConsistencyExplanation_he"] as? String,
+            sleepConsistencyExplanation_en: s["sleepConsistencyExplanation_en"] as? String,
+            sleepDebt: s["sleepDebt"] as? Double,
+            sleepDebtExplanation_he: s["sleepDebtExplanation_he"] as? String,
+            sleepDebtExplanation_en: s["sleepDebtExplanation_en"] as? String,
+            workoutReadiness: s["workoutReadiness"] as? Double,
+            workoutReadinessExplanation_he: s["workoutReadinessExplanation_he"] as? String,
+            workoutReadinessExplanation_en: s["workoutReadinessExplanation_en"] as? String,
+            dailyGoals: s["dailyGoals"] as? Double,
+            dailyGoalsExplanation_he: s["dailyGoalsExplanation_he"] as? String,
+            dailyGoalsExplanation_en: s["dailyGoalsExplanation_en"] as? String,
+            cardioFitnessTrend: s["cardioFitnessTrend"] as? Double,
+            cardioFitnessTrendExplanation_he: s["cardioFitnessTrendExplanation_he"] as? String,
+            cardioFitnessTrendExplanation_en: s["cardioFitnessTrendExplanation_en"] as? String
         )
     }
 
@@ -716,6 +787,11 @@ enum CarAnalysisParser {
             homeRecommendationSportsHe: homeSports.0, homeRecommendationSportsEn: homeSports.1,
             homeRecommendationNutritionHe: homeNutrition.0, homeRecommendationNutritionEn: homeNutrition.1,
 
+            weeklyGoals: json.weeklyGoals?.goals ?? [],
+            weeklyGoalsShouldGenerate: json.weeklyGoals?.shouldGenerateNewGoals ?? true,
+            weeklyGoalsProgressAssessmentHe: json.weeklyGoals?.progressAssessment_he ?? "",
+            weeklyGoalsProgressAssessmentEn: json.weeklyGoals?.progressAssessment_en ?? "",
+
             rawResponse: rawResponse
         )
     }
@@ -825,6 +901,11 @@ enum CarAnalysisParser {
             homeRecommendationMedicalHe: "", homeRecommendationMedicalEn: "",
             homeRecommendationSportsHe: "", homeRecommendationSportsEn: "",
             homeRecommendationNutritionHe: "", homeRecommendationNutritionEn: "",
+
+            weeklyGoals: [],
+            weeklyGoalsShouldGenerate: true,
+            weeklyGoalsProgressAssessmentHe: "",
+            weeklyGoalsProgressAssessmentEn: "",
 
             rawResponse: response
         )

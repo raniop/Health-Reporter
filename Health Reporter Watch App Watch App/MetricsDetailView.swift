@@ -3,7 +3,6 @@
 //  Health Reporter Watch App
 //
 //  Scrollable list of detailed health metrics
-//
 
 import SwiftUI
 
@@ -14,8 +13,38 @@ struct MetricsDetailView: View {
         dataManager.healthData
     }
 
+    private var isEmpty: Bool {
+        !data.isFromPhone &&
+        data.heartRate == 0 && data.steps == 0 &&
+        data.moveCalories == 0 && data.sleepHours == 0
+    }
+
     var body: some View {
-        let _ = print("⌚️ MetricsDetailView: exercise=\(data.exerciseMinutes), stand=\(data.standHours), isFromPhone=\(data.isFromPhone)")
+        Group {
+            if dataManager.isLoading {
+                VStack(spacing: 8) {
+                    ProgressView()
+                    Text("watch.status.waiting".localized)
+                        .font(.caption)
+                        .foregroundStyle(.gray)
+                }
+            } else if isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "heart.slash")
+                        .font(.title2)
+                        .foregroundStyle(.gray)
+                    Text("watch.status.waitingForData".localized)
+                        .font(.caption)
+                        .foregroundStyle(.gray)
+                        .multilineTextAlignment(.center)
+                }
+            } else {
+                metricsList
+            }
+        }
+    }
+
+    private var metricsList: some View {
         List {
             // Heart Section
             Section {
@@ -44,7 +73,7 @@ struct MetricsDetailView: View {
                 )
             } header: {
                 Label("watch.metrics.sectionHeart".localized, systemImage: "heart.fill")
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
             }
 
             // Sleep Section
@@ -58,7 +87,7 @@ struct MetricsDetailView: View {
                 )
             } header: {
                 Label("watch.metrics.sectionSleep".localized, systemImage: "moon.fill")
-                    .foregroundColor(.purple)
+                    .foregroundStyle(.purple)
             }
 
             // Activity Section
@@ -96,7 +125,7 @@ struct MetricsDetailView: View {
                 )
             } header: {
                 Label("watch.metrics.sectionActivity".localized, systemImage: "figure.walk")
-                    .foregroundColor(.green)
+                    .foregroundStyle(.green)
             }
 
             // Score Section
@@ -118,7 +147,7 @@ struct MetricsDetailView: View {
                 )
             } header: {
                 Label("watch.metrics.sectionScore".localized, systemImage: "chart.bar.fill")
-                    .foregroundColor(.blue)
+                    .foregroundStyle(.blue)
             }
         }
         .listStyle(.carousel)
@@ -144,12 +173,12 @@ struct MetricRow: View {
         HStack {
             Image(systemName: icon)
                 .font(.body)
-                .foregroundColor(iconColor)
+                .foregroundStyle(iconColor)
                 .frame(width: 24)
 
             Text(label)
                 .font(.system(.caption, design: .rounded))
-                .foregroundColor(.gray)
+                .foregroundStyle(.gray)
 
             Spacer()
 
@@ -157,12 +186,12 @@ struct MetricRow: View {
                 Text(value)
                     .font(.system(.body, design: .rounded))
                     .fontWeight(.semibold)
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
 
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.system(.caption2, design: .rounded))
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                 }
             }
         }

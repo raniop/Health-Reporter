@@ -2,8 +2,9 @@
 //  BedtimeRecommendationService.swift
 //  Health Reporter
 //
-//  Calls Gemini at 19:00 with last 48h health data to compute a recommended bedtime.
-//  Self-contained Gemini call (independent of GeminiService/AION analysis).
+//  Two-phase bedtime recommendation:
+//  1. Swift (BedtimeCalculator) computes the bedtime deterministically
+//  2. Gemini generates only the notification text
 //
 
 import Foundation
@@ -61,154 +62,42 @@ final class BedtimeRecommendationService {
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     private let maxRetries = 2
 
-    // MARK: - System Instruction
+    // MARK: - Gemini Prompt (text generation only)
 
     private static let systemInstruction = """
-    You are a professional sports monitor, strength & conditioning coach, sleep coach, and sports nutrition coach.
-    Your mission: compute the user's recommended bedtime for tonight using the last 48 hours of data, and generate a concise notification message + the exact logic outputs used.
+    You are a professional sleep coach.
+    Given pre-computed bedtime recommendation data, generate a concise, friendly notification message.
     Return ONLY valid JSON. No text before or after.
-    All notification text fields must have both Hebrew (_he) and English (_en) versions.
+    All text fields must have both Hebrew (_he) and English (_en) versions.
     """
 
-    // MARK: - Prompt Template
+    private static let textPromptTemplate = """
+    The app has already calculated the user's recommended bedtime using health data.
+    Your job is ONLY to write the notification text. Do NOT recalculate anything.
 
-    private static let promptTemplate = """
-    ROLE
-    You are a professional sports monitor, strength & conditioning coach, sleep coach, and sports nutrition coach.
-    Your mission: At 19:00 local time, compute the user's recommended bedtime for tonight using the last 48 hours of data, and generate a concise notification message + the exact logic outputs used.
+    CALCULATED RESULTS:
+    {{RESULTS_JSON}}
 
-    CONTEXT
-    The app tracks health and training data from Apple Watch / HealthKit and other sources.
-    Data quality varies; you must handle missing fields safely and explain what was assumed.
+    Write a short, friendly notification message as a sleep coach would say.
+    - Body: 1-2 sentences explaining the 2-3 main drivers and one actionable tip.
+    - Do NOT start with "Because:" or "בגלל:".
+    - Cite specific metrics like sleep debt, HRV drop, RHR rise, short sleep, high activity.
 
-    INPUTS (JSON)
-    {{PAYLOAD}}
-
-    REQUIREMENTS
-    1) Output EXACT bedtime recommendation as local time: "HH:MM".
-    2) Compute "sleepNeedTonightMinutes" using: baseNeed + sleepDebt + recoveryPenalty + riskAdjustment.
-    3) Use only last 48h + baselines21d. Do not use older raw data.
-    4) Handle missing fields:
-       - If hrvMs missing: rely more on restingHR + sleep + training load.
-       - If restingHR missing: rely more on HRV + sleep.
-       - If sleep stages missing: use total sleep only.
-    5) If data is inconsistent or flagged as sensor error, down-weight that metric and note it.
-
-    ALGORITHM (must follow)
-    A) Determine wakeTimeTarget (tomorrow)
-    Priority:
-      1. upcoming.wakeTimeTomorrow
-      2. userProfile.preferredWakeTime
-      3. baselines21d.wakeTimeBaseline
-      4. default 07:00
-    Return wakeTimeTarget in local time.
-
-    B) Determine baseSleepNeedMinutes
-    Priority:
-      1. userProfile.typicalSleepNeedHours * 60
-      2. baselines21d.sleepBaselineHours * 60
-      3. default 450 (7h30m)
-
-    C) Sleep Debt from last 48h
-    sleepDebtMinutes = clamp(
-      max(0, baseSleepNeedMinutes - sleepHoursYesterday*60) +
-      max(0, baseSleepNeedMinutes - sleepHoursTwoDaysAgo*60),
-      0,
-      90
-    )
-
-    D) Recovery penalty (physiology) using baselines21d
-    Compute:
-      hrvDeltaPct = (hrvMsYesterday - hrvBaselineMs) / hrvBaselineMs
-      rhrDelta = restingHRYesterday - rhrBaselineBpm
-
-    Rules (additive, clamp 0..90):
-      penalty = 0
-      - If hrv available and hrvDeltaPct <= -0.15: penalty += 30
-      - Else if hrv available and hrvDeltaPct <= -0.10: penalty += 20
-      - If rhr available and rhrDelta >= +5: penalty += 25
-      - Else if rhr available and rhrDelta >= +3: penalty += 15
-      - If deepSleepHoursYesterday available and deepSleepHoursYesterday < (deepSleepHoursTwoDaysAgo * 0.6): penalty += 15
-      - If sleepHoursYesterday < 6.0: penalty += 20
-      - If there was a workout ending after 19:00 in last 48h: penalty += 20
-      penalty = clamp(penalty, 0, 90)
-
-    E) Training/Activity load adjustment (last 48h)
-    Compute a simple load score:
-      loadScore = normalize( activeCaloriesYesterday + activeCaloriesTwoDaysAgo, using a reasonable range 600..2000 per day )
-    Rules:
-      - If totalActiveCalories48h is very high OR steps48h very high: add 10-20 minutes to sleepNeedTonight
-      - If very low load and good recovery: add 0
-
-    F) Sleep-onset latency (how long it will take the user to fall asleep)
-    Default latency = 20 minutes.
-    Clamp latency to 20..60 minutes.
-
-    G) Compute final bedtime
-    sleepNeedTonightMinutes =
-      baseSleepNeedMinutes +
-      sleepDebtMinutes +
-      recoveryPenaltyMinutes +
-      loadAdjustmentMinutes
-
-    bedtimeTime =
-      wakeTimeTarget - sleepNeedTonightMinutes - latencyMinutes
-
-    If bedtimeTime would be earlier than 20:30, do not push earlier than 20:30 unless:
-      (sleepDebtMinutes >= 60 AND recoveryPenaltyMinutes >= 40).
-    Otherwise cap at 20:30 and warn user.
-
-    If bedtimeTime would be later than 01:00, cap at 01:00 and warn user.
-
-    H) Create notification content
-    Must be short, actionable, and explain 2-3 main drivers.
-    IMPORTANT: All notification text must be bilingual (Hebrew + English).
-    Format:
-      Title: "Recommended bedtime: HH:MM" (in both languages)
-      Body: A natural, friendly 1-2 sentence message explaining why this bedtime was chosen and one actionable tip. Do NOT start with "Because:" or "בגלל:". Write it as a normal sentence a coach would say. Example EN: "You accumulated sleep debt and your deep sleep dropped. Try winding down earlier tonight." Example HE: "צברת חוב שינה ושינה עמוקה ירדה. נסה להירגע מוקדם יותר הערב."
-    Reasons should cite metrics like HRV drop, RHR rise, short sleep, late workout.
-
-    OUTPUT FORMAT (JSON ONLY)
+    OUTPUT FORMAT (JSON ONLY):
     {
-      "recommendedBedtimeLocal": "HH:MM",
-      "wakeTimeTargetLocal": "HH:MM",
-      "sleepNeedTonightMinutes": 0,
-      "components": {
-        "baseSleepNeedMinutes": 0,
-        "sleepDebtMinutes": 0,
-        "recoveryPenaltyMinutes": 0,
-        "loadAdjustmentMinutes": 0,
-        "latencyMinutes": 0
-      },
-      "drivers": [
-        {"key":"hrv","value":"...", "impactMinutes":0},
-        {"key":"rhr","value":"...", "impactMinutes":0},
-        {"key":"sleep","value":"...", "impactMinutes":0},
-        {"key":"training","value":"...", "impactMinutes":0}
-      ],
-      "notification": {
-        "title_en": "Recommended bedtime: HH:MM",
-        "title_he": "שעת שינה מומלצת: HH:MM",
-        "body_en": "Natural friendly message explaining why and a tip.",
-        "body_he": "הודעה טבעית וידידותית שמסבירה למה ונותנת טיפ."
-      },
-      "assumptions": [
-        "List any assumptions due to missing data"
-      ],
-      "dataQualityNotes": [
-        "If any metric appears inconsistent or flagged as sensor error, note it here"
-      ]
+      "title_en": "Recommended bedtime: HH:MM",
+      "title_he": "שעת שינה מומלצת: HH:MM",
+      "body_en": "...",
+      "body_he": "..."
     }
-
-    NOW DO IT
-    Use the provided JSON inputs, apply the algorithm exactly, and return JSON only.
     """
 
-    // MARK: - Generate Recommendation
+    // MARK: - Generate Recommendation (Two-Phase)
 
     func generateRecommendation(completion: @escaping (BedtimeRecommendation?, Error?) -> Void) {
-        print("🌙 [Bedtime] generateRecommendation() called")
-        // Fetch 21 days of health data (enough for baselines + last 48h)
+        print("🌙 [Bedtime] generateRecommendation() called (two-phase)")
+
+        // Fetch 21 days of health data
         HealthKitManager.shared.fetchDailyHealthData(days: 21) { [weak self] entries in
             print("🌙 [Bedtime] HealthKit returned \(entries.count) daily entries")
             guard let self = self else {
@@ -222,60 +111,91 @@ final class BedtimeRecommendationService {
                 return
             }
 
-            // Build payload
-            let builder = BedtimePayloadBuilder()
-            let payload = builder.build(from: entries)
+            // --- PHASE 1: Swift calculation (deterministic) ---
+            let calculator = BedtimeCalculator()
+            let sleepGoal = BedtimeNotificationManager.shared.sleepGoalHours
+            let calcResult = calculator.calculate(entries: entries, sleepGoalHours: sleepGoal)
 
-            guard let payloadJSON = payload.toJSONString() else {
-                print("🌙 [Bedtime] ERROR: Failed to serialize payload to JSON")
-                completion(nil, NSError(domain: "BedtimeService", code: -3, userInfo: [NSLocalizedDescriptionKey: "Failed to build payload JSON"]))
-                return
-            }
+            print("🌙 [Bedtime] ✅ Swift calc: bedtime=\(calcResult.recommendedBedtimeLocal), wake=\(calcResult.wakeTimeTargetLocal), need=\(calcResult.sleepNeedTonightMinutes)min")
+            print("🌙 [Bedtime] Components: base=\(calcResult.components.baseSleepNeedMinutes) debt=\(calcResult.components.sleepDebtMinutes) recovery=\(calcResult.components.recoveryPenaltyMinutes) load=\(calcResult.components.loadAdjustmentMinutes) latency=\(calcResult.components.latencyMinutes)")
+            print("🌙 [Bedtime] Drivers: \(calcResult.drivers.map { "\($0.key)(\($0.impactMinutes)min)" }.joined(separator: ", "))")
 
-            print("🌙 [Bedtime] Payload built (\(payloadJSON.count) chars), calling Gemini...")
+            // --- PHASE 2: Gemini text generation ---
+            let resultsJSON = self.buildResultsJSON(from: calcResult)
+            let prompt = Self.textPromptTemplate.replacingOccurrences(of: "{{RESULTS_JSON}}", with: resultsJSON)
 
-            // Build prompt
-            let prompt = Self.promptTemplate.replacingOccurrences(of: "{{PAYLOAD}}", with: payloadJSON)
-
-            // Call Gemini
             self.callGemini(prompt: prompt, retryCount: 0) { responseText, error in
-                if let error = error {
-                    print("🌙 [Bedtime] ERROR from Gemini call: \(error.localizedDescription)")
-                    completion(nil, error)
-                    return
+                let notification: BedtimeRecommendation.BedtimeNotificationContent
+
+                if let text = responseText {
+                    print("🌙 [Bedtime] Gemini text response: \(String(text.prefix(300)))")
+                    if let parsed = try? self.parseNotificationResponse(text) {
+                        notification = parsed
+                        print("🌙 [Bedtime] ✅ Gemini text parsed: \(notification.body_he)")
+                    } else {
+                        print("🌙 [Bedtime] ⚠️ Gemini text parse failed, using fallback")
+                        notification = self.buildFallbackNotification(from: calcResult)
+                    }
+                } else {
+                    print("🌙 [Bedtime] ⚠️ Gemini call failed (\(error?.localizedDescription ?? "unknown")), using fallback text")
+                    notification = self.buildFallbackNotification(from: calcResult)
                 }
 
-                guard let text = responseText else {
-                    print("🌙 [Bedtime] ERROR: Gemini returned nil responseText")
-                    completion(nil, NSError(domain: "BedtimeService", code: -4, userInfo: [NSLocalizedDescriptionKey: "No response from Gemini"]))
-                    return
-                }
+                // Assemble BedtimeRecommendation (unchanged struct)
+                let recommendation = BedtimeRecommendation(
+                    recommendedBedtimeLocal: calcResult.recommendedBedtimeLocal,
+                    wakeTimeTargetLocal: calcResult.wakeTimeTargetLocal,
+                    sleepNeedTonightMinutes: calcResult.sleepNeedTonightMinutes,
+                    components: BedtimeRecommendation.BedtimeComponents(
+                        baseSleepNeedMinutes: calcResult.components.baseSleepNeedMinutes,
+                        sleepDebtMinutes: calcResult.components.sleepDebtMinutes,
+                        recoveryPenaltyMinutes: calcResult.components.recoveryPenaltyMinutes,
+                        loadAdjustmentMinutes: calcResult.components.loadAdjustmentMinutes,
+                        latencyMinutes: calcResult.components.latencyMinutes
+                    ),
+                    drivers: calcResult.drivers.map {
+                        BedtimeRecommendation.BedtimeDriver(key: $0.key, value: $0.value, impactMinutes: $0.impactMinutes)
+                    },
+                    notification: notification,
+                    assumptions: calcResult.assumptions.isEmpty ? nil : calcResult.assumptions,
+                    dataQualityNotes: nil
+                )
 
-                print("🌙 [Bedtime] Gemini response received (\(text.count) chars)")
-                print("🌙 [Bedtime] Raw response preview: \(String(text.prefix(300)))")
-
-                // Parse JSON response
-                do {
-                    let recommendation = try self.parseResponse(text)
-                    print("🌙 [Bedtime] ✅ Parsed successfully: bedtime=\(recommendation.recommendedBedtimeLocal), sleepNeed=\(recommendation.sleepNeedTonightMinutes)min")
-                    print("🌙 [Bedtime] Notification title_he: \(recommendation.notification.title_he)")
-                    print("🌙 [Bedtime] Notification body_he: \(recommendation.notification.body_he)")
-                    // Cache the result
-                    AnalysisCache.saveBedtimeRecommendation(recommendation)
-                    completion(recommendation, nil)
-                } catch {
-                    print("🌙 [Bedtime] ❌ Failed to parse Gemini response: \(error)")
-                    print("🌙 [Bedtime] Raw response: \(text.prefix(500))")
-                    completion(nil, error)
-                }
+                print("🌙 [Bedtime] ✅ Final recommendation: bedtime=\(recommendation.recommendedBedtimeLocal)")
+                AnalysisCache.saveBedtimeRecommendation(recommendation)
+                completion(recommendation, nil)
             }
         }
     }
 
-    // MARK: - Parse Response
+    // MARK: - Build Results JSON for Gemini
 
-    private func parseResponse(_ text: String) throws -> BedtimeRecommendation {
-        // Strip markdown code fences if present
+    private func buildResultsJSON(from result: BedtimeCalculationResult) -> String {
+        let driversArray = result.drivers.map { driver -> [String: Any] in
+            ["key": driver.key, "value": driver.value, "impactMinutes": driver.impactMinutes]
+        }
+        let dict: [String: Any] = [
+            "recommendedBedtimeLocal": result.recommendedBedtimeLocal,
+            "wakeTimeTargetLocal": result.wakeTimeTargetLocal,
+            "sleepNeedTonightMinutes": result.sleepNeedTonightMinutes,
+            "components": [
+                "baseSleepNeedMinutes": result.components.baseSleepNeedMinutes,
+                "sleepDebtMinutes": result.components.sleepDebtMinutes,
+                "recoveryPenaltyMinutes": result.components.recoveryPenaltyMinutes,
+                "loadAdjustmentMinutes": result.components.loadAdjustmentMinutes,
+                "latencyMinutes": result.components.latencyMinutes
+            ],
+            "drivers": driversArray,
+            "assumptions": result.assumptions
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: .prettyPrinted),
+              let str = String(data: data, encoding: .utf8) else { return "{}" }
+        return str
+    }
+
+    // MARK: - Parse Gemini Notification Text Response
+
+    private func parseNotificationResponse(_ text: String) throws -> BedtimeRecommendation.BedtimeNotificationContent {
         var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if cleaned.hasPrefix("```json") {
             cleaned = String(cleaned.dropFirst(7))
@@ -291,7 +211,46 @@ final class BedtimeRecommendationService {
             throw NSError(domain: "BedtimeService", code: -5, userInfo: [NSLocalizedDescriptionKey: "Invalid UTF-8 in response"])
         }
 
-        return try JSONDecoder().decode(BedtimeRecommendation.self, from: data)
+        return try JSONDecoder().decode(BedtimeRecommendation.BedtimeNotificationContent.self, from: data)
+    }
+
+    // MARK: - Fallback Notification Text
+
+    private func buildFallbackNotification(from result: BedtimeCalculationResult) -> BedtimeRecommendation.BedtimeNotificationContent {
+        let bedtime = result.recommendedBedtimeLocal
+
+        // Build context-aware fallback from drivers
+        let hasDebt = result.drivers.contains { $0.key == "sleep_debt" }
+        let hasShortSleep = result.drivers.contains { $0.key == "short_sleep" }
+        let hasHrvDrop = result.drivers.contains { $0.key == "hrv" }
+        let hasHighLoad = result.drivers.contains { $0.key == "training_load" }
+
+        let bodyEn: String
+        let bodyHe: String
+
+        if hasDebt && hasShortSleep {
+            bodyEn = "You've accumulated significant sleep debt over the last two days. Your body needs extra recovery, so try to wind down by \(bedtime) tonight."
+            bodyHe = "צברת חוב שינה משמעותי ביומיים האחרונים. הגוף שלך צריך התאוששות נוספת, נסה להירגע עד \(bedtime) הערב."
+        } else if hasDebt {
+            bodyEn = "You accumulated sleep debt recently. Try to get to bed by \(bedtime) to start catching up."
+            bodyHe = "צברת חוב שינה לאחרונה. נסה ללכת לישון עד \(bedtime) כדי להתחיל להשלים."
+        } else if hasHrvDrop {
+            bodyEn = "Your HRV dropped below baseline, suggesting your body needs more recovery. Aim for bed by \(bedtime)."
+            bodyHe = "ה-HRV שלך ירד מתחת לבסיס, מה שמרמז שהגוף שלך צריך יותר התאוששות. כדאי לישון עד \(bedtime)."
+        } else if hasHighLoad {
+            bodyEn = "High activity levels in the last 48 hours mean your body needs extra rest. Try to be in bed by \(bedtime)."
+            bodyHe = "רמת פעילות גבוהה ב-48 השעות האחרונות, הגוף שלך צריך מנוחה נוספת. נסה לישון עד \(bedtime)."
+        } else {
+            bodyEn = "Based on your health data, we recommend getting to bed by \(bedtime) for optimal recovery."
+            bodyHe = "על סמך נתוני הבריאות שלך, מומלץ ללכת לישון עד \(bedtime) לשיקום מיטבי."
+        }
+
+        return BedtimeRecommendation.BedtimeNotificationContent(
+            title_en: "Recommended bedtime: \(bedtime)",
+            title_he: "שעת שינה מומלצת: \(bedtime)",
+            body_en: bodyEn,
+            body_he: bodyHe
+        )
     }
 
     // MARK: - Gemini API Call (self-contained)
@@ -305,7 +264,7 @@ final class BedtimeRecommendationService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 120
+        request.timeoutInterval = 60
 
         let requestBody: [String: Any] = [
             "contents": [
@@ -315,9 +274,9 @@ final class BedtimeRecommendationService {
                 "parts": [["text": Self.systemInstruction]]
             ],
             "generationConfig": [
-                "temperature": 0.2,
+                "temperature": 0.4,
                 "topP": 0.95,
-                "maxOutputTokens": 8192,
+                "maxOutputTokens": 1024,
                 "responseMimeType": "text/plain"
             ]
         ]
@@ -329,7 +288,7 @@ final class BedtimeRecommendationService {
             return
         }
 
-        print("🌙 [Bedtime] Sending Gemini request (attempt \(retryCount + 1)/\(maxRetries + 1))...")
+        print("🌙 [Bedtime] Sending Gemini text request (attempt \(retryCount + 1)/\(maxRetries + 1))...")
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
 
@@ -341,7 +300,6 @@ final class BedtimeRecommendationService {
                 let ns = error as NSError
                 if ns.code == NSURLErrorCancelled { return }
 
-                // Retry on network errors
                 if retryCount < self.maxRetries && self.isRetryableError(error) {
                     let delay = Double(retryCount + 1) * 2.0
                     DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -356,7 +314,6 @@ final class BedtimeRecommendationService {
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
                 let statusCode = httpResponse.statusCode
 
-                // Retry on server errors
                 if retryCount < self.maxRetries && [500, 502, 503, 429].contains(statusCode) {
                     let delay = Double(retryCount + 1) * 2.0
                     DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -374,7 +331,6 @@ final class BedtimeRecommendationService {
                 return
             }
 
-            // Parse Gemini response envelope
             do {
                 guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let candidates = json["candidates"] as? [[String: Any]],

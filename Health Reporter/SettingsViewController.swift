@@ -532,6 +532,10 @@ final class SettingsViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
 
         alert.addAction(UIAlertAction(title: "ok".localized, style: .default) { _ in
+            // Flag that language changed — Splash will force re-analysis in the new language.
+            // Don't clear GeminiResultStore: the score consistency block reads previous scores
+            // from it so Gemini returns identical numbers (only text language changes).
+            UserDefaults.standard.set(true, forKey: "AION.LanguageChangeNeedsReanalysis")
             LocalizationManager.shared.setLanguage(selectedLanguage)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 exit(0)

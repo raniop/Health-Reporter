@@ -34,6 +34,8 @@ final class AIONAnalysisOrchestrator {
         if !forceRefresh, let existing = GeminiResultStore.load(), Calendar.current.isDateInToday(existing.date) {
             print("✅ [Orchestrator] Today's result already exists — returning cached")
             completion(existing, nil)
+            // Still notify so Watch sync fires on every app launch
+            NotificationCenter.default.post(name: Self.analysisDidCompleteNotification, object: existing)
             return
         }
 
@@ -58,75 +60,98 @@ final class AIONAnalysisOrchestrator {
             isRunning = true
         }
 
-        print("🚀 [Orchestrator] Starting fresh Gemini analysis...")
+        print("🚀 [Orchestrator] Starting fresh Gemini analysis (parallel fetch)...")
 
-        // 1. Fetch health data
-        HealthKitManager.shared.fetchAllHealthData(for: .month) { [weak self] data, error in
-            guard let self = self, let data = data, data.hasRealData else {
-                print("⚠️ [Orchestrator] No health data available")
-                self?.completeAll(with: nil, reason: .noHealthData)
-                return
+        // Compute week dates upfront (no async needed)
+        let calendar = Calendar.current
+        let now = Date()
+        guard let curStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)),
+              let curEnd = calendar.date(byAdding: .day, value: 6, to: curStart),
+              let prevStart = calendar.date(byAdding: .weekOfYear, value: -1, to: curStart),
+              let prevEnd = calendar.date(byAdding: .day, value: 6, to: prevStart) else {
+            print("⚠️ [Orchestrator] Failed to compute week dates")
+            completeAll(with: nil, reason: .noHealthData)
+            return
+        }
+
+        // ── Launch ALL fetches in parallel ──
+        let group = DispatchGroup()
+        var healthData: HealthDataModel?
+        var currentWeek: WeeklyHealthSnapshot?
+        var previousWeek: WeeklyHealthSnapshot?
+
+        // 1. AION Memory from Firestore
+        group.enter()
+        AIONMemoryManager.load { memory in
+            if let memory = memory {
+                AIONMemoryManager.saveToCache(memory)
+                print("🧠 [Orchestrator] AION Memory loaded (interaction #\(memory.interactionCount))")
+            } else {
+                print("🧠 [Orchestrator] No AION Memory found")
             }
+            group.leave()
+        }
 
-            // 2. Build weekly snapshots (same pattern as SplashViewController)
-            let calendar = Calendar.current
-            let now = Date()
-            guard let curStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)),
-                  let curEnd = calendar.date(byAdding: .day, value: 6, to: curStart),
-                  let prevStart = calendar.date(byAdding: .weekOfYear, value: -1, to: curStart),
-                  let prevEnd = calendar.date(byAdding: .day, value: 6, to: prevStart) else {
-                print("⚠️ [Orchestrator] Failed to compute week dates")
+        // 2. Health data (month)
+        group.enter()
+        HealthKitManager.shared.fetchAllHealthData(for: .month) { data, _ in
+            healthData = data
+            group.leave()
+        }
+
+        // 3. Current week snapshot
+        group.enter()
+        HealthKitManager.shared.createWeeklySnapshot(weekStartDate: curStart, weekEndDate: curEnd, previousWeekSnapshot: nil) {
+            currentWeek = $0
+            group.leave()
+        }
+
+        // 4. Previous week snapshot
+        group.enter()
+        HealthKitManager.shared.createWeeklySnapshot(weekStartDate: prevStart, weekEndDate: prevEnd) {
+            previousWeek = $0
+            group.leave()
+        }
+
+        // ── All parallel fetches complete → call Gemini ──
+        group.notify(queue: .global(qos: .userInitiated)) { [weak self] in
+            guard let self = self else { return }
+
+            guard let data = healthData, data.hasRealData else {
+                print("⚠️ [Orchestrator] No health data available")
                 self.completeAll(with: nil, reason: .noHealthData)
                 return
             }
 
-            let group = DispatchGroup()
-            var currentWeek: WeeklyHealthSnapshot?
-            var previousWeek: WeeklyHealthSnapshot?
-
-            group.enter()
-            HealthKitManager.shared.createWeeklySnapshot(weekStartDate: prevStart, weekEndDate: prevEnd) {
-                previousWeek = $0
-                group.leave()
+            guard let current = currentWeek, let previous = previousWeek else {
+                print("⚠️ [Orchestrator] Failed to create weekly snapshots")
+                self.completeAll(with: nil, reason: .noHealthData)
+                return
             }
 
-            group.enter()
-            HealthKitManager.shared.createWeeklySnapshot(weekStartDate: curStart, weekEndDate: curEnd, previousWeekSnapshot: nil) {
-                currentWeek = $0
-                group.leave()
-            }
-
-            group.notify(queue: .global(qos: .userInitiated)) { [weak self] in
-                guard let self = self, let current = currentWeek, let previous = previousWeek else {
-                    print("⚠️ [Orchestrator] Failed to create weekly snapshots")
-                    self?.completeAll(with: nil, reason: .noHealthData)
+            // 5. Call Gemini (this also fetches 90-day daily data internally)
+            GeminiService.shared.analyzeHealthDataWithWeeklyComparison(
+                data,
+                currentWeek: current,
+                previousWeek: previous,
+                chartBundle: nil
+            ) { [weak self] insights, _, _, error in
+                if let error = error {
+                    print("❌ [Orchestrator] Gemini failed: \(error.localizedDescription)")
+                    self?.completeAll(with: nil, reason: .geminiFailed)
                     return
                 }
 
-                // 3. Call Gemini
-                GeminiService.shared.analyzeHealthDataWithWeeklyComparison(
-                    data,
-                    currentWeek: current,
-                    previousWeek: previous,
-                    chartBundle: nil
-                ) { [weak self] insights, _, _, error in
-                    if let error = error {
-                        print("❌ [Orchestrator] Gemini failed: \(error.localizedDescription)")
-                        self?.completeAll(with: nil, reason: .geminiFailed)
-                        return
-                    }
+                // 6. Load the result that GeminiService already saved to GeminiResultStore
+                let result = GeminiResultStore.load()
 
-                    // 4. Load the result that GeminiService already saved to GeminiResultStore
-                    let result = GeminiResultStore.load()
-
-                    // 5. Also save to legacy AnalysisCache for backwards compatibility during migration
-                    if let insights = insights {
-                        AnalysisCache.save(insights: insights, healthDataHash: "gemini-orchestrator")
-                    }
-
-                    print("✅ [Orchestrator] Analysis complete — healthScore: \(result?.scores.healthScore ?? -1)")
-                    self?.completeAll(with: result, reason: nil)
+                // 7. Also save to legacy AnalysisCache for backwards compatibility
+                if let insights = insights {
+                    AnalysisCache.save(insights: insights, healthDataHash: "gemini-orchestrator")
                 }
+
+                print("✅ [Orchestrator] Analysis complete — healthScore: \(result?.scores.healthScore ?? -1)")
+                self?.completeAll(with: result, reason: nil)
             }
         }
     }

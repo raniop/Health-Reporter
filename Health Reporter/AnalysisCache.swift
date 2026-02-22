@@ -41,6 +41,8 @@ enum AnalysisCache {
     static let keyDailyExercise = "AION.DailyActivity.ExerciseMinutes"
     static let keyDailyStandHours = "AION.DailyActivity.StandHours"
     static let keyDailyRestingHR = "AION.DailyActivity.RestingHR"
+    static let keyDailyHRV = "AION.DailyActivity.HRV"
+    static let keyDailySleepHours = "AION.DailyActivity.SleepHours"
 
     // Yesterday Activity Keys (for morning notification)
     static let keyYesterdaySteps = "AION.YesterdayActivity.Steps"
@@ -286,7 +288,7 @@ enum AnalysisCache {
     // MARK: - Daily Activity (for sharing with widget)
 
     /// Saves daily activity data from the Dashboard
-    static func saveDailyActivity(steps: Int, calories: Int, exerciseMinutes: Int, standHours: Int, restingHR: Int?) {
+    static func saveDailyActivity(steps: Int, calories: Int, exerciseMinutes: Int, standHours: Int, restingHR: Int?, hrv: Int? = nil, sleepHours: Double? = nil) {
         UserDefaults.standard.set(steps, forKey: keyDailySteps)
         UserDefaults.standard.set(calories, forKey: keyDailyCalories)
         UserDefaults.standard.set(exerciseMinutes, forKey: keyDailyExercise)
@@ -294,22 +296,30 @@ enum AnalysisCache {
         if let hr = restingHR {
             UserDefaults.standard.set(hr, forKey: keyDailyRestingHR)
         }
+        if let hrv = hrv {
+            UserDefaults.standard.set(hrv, forKey: keyDailyHRV)
+        }
+        if let sleep = sleepHours {
+            UserDefaults.standard.set(sleep, forKey: keyDailySleepHours)
+        }
     }
 
     /// Loads daily activity data
-    static func loadDailyActivity() -> (steps: Int, calories: Int, exerciseMinutes: Int, standHours: Int, restingHR: Int)? {
+    static func loadDailyActivity() -> (steps: Int, calories: Int, exerciseMinutes: Int, standHours: Int, restingHR: Int, hrv: Int, sleepHours: Double)? {
         let steps = UserDefaults.standard.integer(forKey: keyDailySteps)
         let calories = UserDefaults.standard.integer(forKey: keyDailyCalories)
         let exerciseMinutes = UserDefaults.standard.integer(forKey: keyDailyExercise)
         let standHours = UserDefaults.standard.integer(forKey: keyDailyStandHours)
         let restingHR = UserDefaults.standard.integer(forKey: keyDailyRestingHR)
+        let hrv = UserDefaults.standard.integer(forKey: keyDailyHRV)
+        let sleepHours = UserDefaults.standard.double(forKey: keyDailySleepHours)
 
         // Return nil if no meaningful data was saved
         if steps == 0 && calories == 0 && exerciseMinutes == 0 {
             return nil
         }
 
-        return (steps, calories, exerciseMinutes, standHours, restingHR)
+        return (steps, calories, exerciseMinutes, standHours, restingHR, hrv, sleepHours)
     }
 
     /// Saves yesterday's activity data (for morning notification)

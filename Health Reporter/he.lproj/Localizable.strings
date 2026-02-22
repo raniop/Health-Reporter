@@ -68,6 +68,15 @@
 "profile.score" = "ציון";
 "profile.shareText" = "%1$@ | ציון בריאות: %2$d %3$@ %4$@\n\nבדקו את הפרופיל שלי ב-AION Health!\n%5$@\n\nאין לכם את האפליקציה? הורידו כאן:\n%6$@";
 "profile.bodyMetrics" = "מדדי גוף";
+"profile.todayActivity" = "הפעילות של היום";
+"profile.thisWeek" = "השבוע";
+"profile.healthBreakdown" = "פירוט בריאות";
+"profile.globalRank" = "דירוג עולמי";
+"profile.peakTier" = "ביצועי שיא — הדרגה הגבוהה!";
+"metric.recovery" = "התאוששות";
+"metric.energy" = "אנרגיה";
+"metric.activity" = "פעילות";
+"metric.balance" = "איזון";
 "profile.selectUserType" = "בחר סוג משתמש";
 
 /* Home (מסך ראשי) */
@@ -334,6 +343,7 @@
 "insights.okay" = "בסדר";
 "insights.needsAttention" = "צריך טיפול";
 "insights.carSelectedBased" = "הרכב נבחר על סמך ניתוח נתוני הבריאות שלך.";
+"insights.personalGreeting" = "%@, הנה מה שאנחנו רואים:";
 "insights.weeklyData" = "נתוני השבוע";
 "insights.sleep" = "שינה";
 "insights.sleepExplanation" = "ממוצע שעות שינה בשבוע האחרון. 7-9 שעות נחשב אופטימלי להתאוששות.";
@@ -1123,9 +1133,40 @@
 "home.recommendations.nutrition" = "תזונה";
 "home.recommendations.error" = "לא ניתן לטעון המלצות";
 "home.recommendations.retry" = "שלח שוב לניתוח AI";
+
+/* Weekly Goals */
+"goals.title" = "המטרות השבוע";
+"goals.progress" = "%d/%d הושלמו";
+"goals.allDone" = "כל המטרות הושלמו!";
+"goals.allDone.subtitle" = "מטרות חדשות יופיעו בניתוח הבא";
+"goals.waiting" = "השלם את המטרות הנוכחיות כדי לקבל חדשות";
+"goals.noGoals" = "המטרות המותאמות אישית שלך יופיעו כאן לאחר הניתוח הראשון";
+"goals.history" = "הצג היסטוריה";
+"goals.completed" = "הושלם";
+"goals.pending" = "ממתין";
+"goals.skipped" = "דילוג";
+"goals.midweekReminder.title" = "בדיקת מטרות שבועיות";
+"goals.midweekReminder.body" = "יש לך %d מטרות שעדיין ממתינות השבוע. המשך כך!";
+"goals.endweekSummary.title" = "סיכום שבועי";
+"goals.endweekSummary.body" = "השלמת %d מתוך %d מטרות השבוע.";
+"goals.category.sleep" = "שינה";
+"goals.category.exercise" = "אימון";
+"goals.category.nutrition" = "תזונה";
+"goals.category.recovery" = "התאוששות";
+"goals.category.stress" = "מתח";
+"goals.improvement" = "שיפור!";
+"goals.noImprovement" = "המשך לנסות";
+"goals.history.title" = "היסטוריית מטרות";
+"goals.history.empty" = "אין היסטוריית מטרות עדיין";
+"goals.generate.subtitle" = "הפעל ניתוח AI כדי לקבל מטרות שבועיות מותאמות אישית";
+"goals.generate.button" = "צור מטרות";
+"goals.generate.loading" = "מנתח את נתוני הבריאות שלך...";
+"goals.refresh" = "רענן מטרות";
+
 "home.reset.defaults" = "איפוס לברירת מחדל";
 "home.select.hero" = "בחר מדד מרכזי";
-"home.select.secondary" = "בחר 4 מדדים משניים";
+"home.select.secondary" = "בחר מדדים משניים";
+"home.select.secondary.range" = "יש לבחור בין %d ל-%d מדדים משניים";
 
 /* הסברי מדדים */
 "explanation.main_score" = "ציון משוקלל המבוסס על התאוששות, שינה, אנרגיה, פעילות ואיזון עומסים";

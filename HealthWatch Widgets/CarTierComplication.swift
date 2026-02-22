@@ -56,23 +56,8 @@ struct CarTierComplicationView: View {
 struct CircularCarView: View {
     let data: WatchComplicationData
 
-    /// Car score - uses gemini score if available, otherwise health score
     private var carScore: Int {
-        return data.geminiCarScore ?? data.healthScore
-    }
-
-    private var tierColor: Color {
-        switch data.displayTierIndex {
-        case 0: return .red
-        case 1: return .orange
-        case 2: return .yellow
-        case 3: return .green
-        default: return .mint
-        }
-    }
-
-    private var scoreGradient: Gradient {
-        Gradient(colors: [.red, .orange, .yellow, .green, .mint])
+        data.geminiCarScore ?? data.healthScore
     }
 
     var body: some View {
@@ -85,7 +70,7 @@ struct CircularCarView: View {
                 .fontWeight(.bold)
         }
         .gaugeStyle(.accessoryCircular)
-        .tint(scoreGradient)
+        .tint(Gradient(colors: [.red, .orange, .yellow, .green, .mint]))
     }
 }
 
@@ -94,44 +79,30 @@ struct CircularCarView: View {
 struct RectangularCarView: View {
     let data: WatchComplicationData
 
-    private var tierColor: Color {
-        switch data.displayTierIndex {
-        case 0: return .red
-        case 1: return .orange
-        case 2: return .yellow
-        case 3: return .green
-        default: return .mint
-        }
-    }
-
     var body: some View {
         HStack(spacing: 8) {
-            // Car emoji with glow
             Text(data.displayCarEmoji)
                 .font(.system(size: 32))
-                .shadow(color: tierColor.opacity(0.5), radius: 8)
+                .shadow(color: data.tierColor.opacity(0.5), radius: 8)
 
             VStack(alignment: .leading, spacing: 2) {
-                // Car name
                 Text(data.displayCarName)
                     .font(.system(.caption, design: .rounded))
                     .fontWeight(.semibold)
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .lineLimit(1)
 
-                // Tier progress
                 HStack(spacing: 4) {
                     ForEach(0..<5, id: \.self) { index in
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(index <= data.displayTierIndex ? tierColor : Color.gray.opacity(0.3))
+                            .fill(index <= data.displayTierIndex ? data.tierColor : Color.gray.opacity(0.3))
                             .frame(width: 12, height: 4)
                     }
                 }
 
-                // Score
                 Text("Score: \(data.healthScore)")
                     .font(.system(.caption2, design: .rounded))
-                    .foregroundColor(.gray)
+                    .foregroundStyle(.gray)
             }
 
             Spacer()

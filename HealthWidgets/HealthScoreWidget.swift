@@ -2,7 +2,8 @@
 //  HealthScoreWidget.swift
 //  HealthWidgets
 //
-//  Small widget showing the health score with circular progress
+//  Circular health score widget with gradient ring and lock screen support.
+//  Rebuilt from scratch.
 //
 
 import WidgetKit
@@ -20,18 +21,17 @@ struct HealthScoreWidget: Widget {
                     .containerBackground(.black, for: .widget)
             } else {
                 HealthScoreWidgetView(entry: entry)
-                    .padding()
                     .background(Color.black)
             }
         }
         .configurationDisplayName("Health Score")
-        .description("Your overall score for today")
+        .description("Your overall AION health score")
         .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular])
         .contentMarginsDisabled()
     }
 }
 
-// MARK: - Health Score Widget View
+// MARK: - Router View
 
 struct HealthScoreWidgetView: View {
     var entry: HealthEntry
@@ -51,71 +51,65 @@ struct HealthScoreWidgetView: View {
     }
 }
 
-// MARK: - Small Widget View
+// MARK: - Small Widget (Home Screen)
 
 struct SmallHealthScoreView: View {
     let data: HealthWidgetData
 
-    var scoreColor: Color {
-        switch data.healthScore {
-        case 80...100: return .green
-        case 60..<80: return .cyan
-        case 40..<60: return .orange
-        default: return .red
-        }
-    }
+    private var scoreColor: Color { .scoreColor(for: data.healthScore) }
+    private var progress: Double { Double(data.healthScore) / 100.0 }
 
     var body: some View {
         ZStack {
-            // Pure black background
             Color.black
 
-            VStack(spacing: 8) {
-                // Score circle
+            VStack(spacing: 6) {
+                // Score ring
                 ZStack {
-                    // Background circle
-                    Circle()
-                        .stroke(Color.gray.opacity(0.3), lineWidth: 8)
+                    ArcRing(
+                        progress: progress,
+                        gradient: [scoreColor.opacity(0.4), scoreColor, scoreColor],
+                        lineWidth: 9
+                    )
 
-                    // Progress circle
-                    Circle()
-                        .trim(from: 0, to: CGFloat(data.healthScore) / 100)
-                        .stroke(
-                            AngularGradient(
-                                colors: [scoreColor.opacity(0.6), scoreColor],
-                                center: .center,
-                                startAngle: .degrees(0),
-                                endAngle: .degrees(360)
-                            ),
-                            style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-
-                    // Score number
-                    VStack(spacing: 0) {
+                    VStack(spacing: -2) {
                         Text("\(data.healthScore)")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
+                        Text("/ 100")
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundColor(.gray)
                     }
                 }
-                .frame(width: 80, height: 80)
+                .frame(width: 90, height: 90)
 
-                // Status text
+                // Status
                 Text(data.healthStatus)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(scoreColor)
+                    .lineLimit(1)
 
-                // App name
-                Text("AION")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(.gray)
+                // Key metrics or stale badge
+                if data.isStale {
+                    StaleDataBadge()
+                } else {
+                    HStack(spacing: 14) {
+                        Label(data.heartRate > 0 ? "\(data.heartRate)" : "--", systemImage: "heart.fill")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.red.opacity(0.8))
+                        Label(data.sleepHours > 0 ? formatSleep(data.sleepHours) : "--", systemImage: "moon.fill")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.indigo.opacity(0.8))
+                    }
+                    .labelStyle(.titleAndIcon)
+                }
             }
-            .padding(12)
+            .padding(10)
         }
     }
 }
 
-// MARK: - Circular Accessory View (Watch/Lock Screen)
+// MARK: - Circular Accessory (Lock Screen)
 
 struct CircularHealthScoreView: View {
     let data: HealthWidgetData
@@ -123,66 +117,44 @@ struct CircularHealthScoreView: View {
     var body: some View {
         Gauge(value: Double(data.healthScore), in: 0...100) {
             Text("AION")
+                .font(.system(size: 7))
         } currentValueLabel: {
             Text("\(data.healthScore)")
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
         }
         .gaugeStyle(.accessoryCircular)
     }
 }
 
-// MARK: - Rectangular Accessory View
+// MARK: - Rectangular Accessory (Lock Screen)
 
 struct RectangularHealthScoreView: View {
     let data: HealthWidgetData
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Health Score")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                Text("\(data.healthScore)")
-                    .font(.system(size: 28, weight: .bold))
-                Text(data.healthStatus)
-                    .font(.caption2)
-                    .foregroundColor(.cyan)
-            }
-            Spacer()
+        HStack(spacing: 8) {
             Gauge(value: Double(data.healthScore), in: 0...100) {
                 EmptyView()
+            } currentValueLabel: {
+                Text("\(data.healthScore)")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
             }
             .gaugeStyle(.accessoryCircular)
+            .frame(width: 44, height: 44)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("AION Score")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(data.healthStatus)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 6) {
+                    Label("\(data.heartRate)", systemImage: "heart.fill")
+                    Label(formatSleep(data.sleepHours), systemImage: "moon.fill")
+                }
+                .font(.system(size: 9))
+                .foregroundColor(.secondary)
+            }
         }
     }
-}
-
-// MARK: - Preview
-
-@available(iOS 17.0, *)
-#Preview(as: .systemSmall) {
-    HealthScoreWidget()
-} timeline: {
-    HealthEntry(date: .now, data: .placeholder, carImage: nil)
-    HealthEntry(date: .now, data: HealthWidgetData(
-        healthScore: 85,
-        healthStatus: "Excellent",
-        steps: 8500,
-        stepsGoal: 10000,
-        calories: 420,
-        caloriesGoal: 500,
-        exerciseMinutes: 35,
-        exerciseGoal: 30,
-        standHours: 10,
-        standGoal: 12,
-        heartRate: 62,
-        hrv: 52,
-        sleepHours: 8.0,
-        lastUpdated: Date(),
-        carName: "Porsche 911 Turbo",
-        carEmoji: "🏁",
-        carImageName: "CarPorsche911",
-        carTierIndex: 3,
-        userName: ""
-    ), carImage: nil)
 }

@@ -234,6 +234,32 @@ enum AIONMemoryExtractor {
             let firstSentence = recovery.components(separatedBy: ".").first ?? recovery
             memory.longitudinalInsights.recoveryPattern = String(firstSentence.prefix(100))
         }
+
+        // Update weekly goals statistics
+        let allGoalSets = WeeklyGoalStore.loadAll()
+        let allGoals = allGoalSets.flatMap { $0.goals }
+        let completed = allGoals.filter { $0.status == .completed }
+        if !allGoals.isEmpty {
+            memory.longitudinalInsights.goalsCompletedTotal = completed.count
+            memory.longitudinalInsights.goalCompletionRate = Double(completed.count) / Double(allGoals.count)
+
+            // Determine strong/weak categories
+            var categoryCompleted: [String: Int] = [:]
+            var categoryTotal: [String: Int] = [:]
+            for goal in allGoals {
+                let cat = goal.category.rawValue
+                categoryTotal[cat, default: 0] += 1
+                if goal.status == .completed { categoryCompleted[cat, default: 0] += 1 }
+            }
+            memory.longitudinalInsights.strongCategories = categoryTotal.compactMap { cat, total in
+                let done = categoryCompleted[cat] ?? 0
+                return total >= 2 && Double(done) / Double(total) >= 0.8 ? cat : nil
+            }
+            memory.longitudinalInsights.weakCategories = categoryTotal.compactMap { cat, total in
+                let done = categoryCompleted[cat] ?? 0
+                return total >= 2 && Double(done) / Double(total) < 0.5 ? cat : nil
+            }
+        }
     }
 
     // MARK: - Helpers

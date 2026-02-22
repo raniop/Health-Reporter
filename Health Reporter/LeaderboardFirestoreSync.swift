@@ -61,7 +61,7 @@ enum LeaderboardFirestoreSync {
     ///   - score: Health score
     ///   - tier: The tier from the fixed array (for tierIndex and tierLabel)
     ///   - geminiCarName: The real car name from Gemini (optional)
-    static func syncScore(score: Int, tier: CarTier, geminiCarName: String? = nil, completion: ((Error?) -> Void)? = nil) {
+    static func syncScore(score: Int, tier: HealthTier, geminiCarName: String? = nil, completion: ((Error?) -> Void)? = nil) {
         guard let currentUser = Auth.auth().currentUser,
               let currentUid = currentUser.uid as String?,
               !currentUid.isEmpty else {
@@ -254,7 +254,7 @@ enum LeaderboardFirestoreSync {
 
         let lastUpdated = (data["lastUpdated"] as? Timestamp)?.dateValue() ?? Date()
         let isPublic = data["isPublic"] as? Bool ?? false
-        let carTierLabel = data["carTierLabel"] as? String ?? CarTierEngine.tiers[safe: carTierIndex]?.tierLabel ?? ""
+        let carTierLabel = data["carTierLabel"] as? String ?? HealthTier.forIndex(carTierIndex)?.tierLabel ?? ""
 
         return LeaderboardEntry(
             uid: uid,

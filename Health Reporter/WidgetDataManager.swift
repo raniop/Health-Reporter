@@ -26,6 +26,7 @@ struct SharedWidgetData: Codable {
     var standHours: Int
     var standGoal: Int
     var heartRate: Int
+    var restingHeartRate: Int     // Separate from heartRate
     var hrv: Int
     var sleepHours: Double
     var lastUpdated: Date
@@ -49,39 +50,46 @@ final class WidgetDataManager {
 
     private init() {}
 
-    /// Updates widget data from current health metrics
-    /// - Parameter syncToWatch: Whether to also send data to Apple Watch (default true)
+    /// Updates widget data from current health metrics.
+    /// Goal parameters have sensible defaults so existing callers don't break.
     func updateWidgetData(
         healthScore: Int,
         dailyScore: Int? = nil,
         healthStatus: String,
         steps: Int,
+        stepsGoal: Int = 10000,
         calories: Int,
+        caloriesGoal: Int = 500,
         exerciseMinutes: Int,
+        exerciseGoal: Int = 30,
         standHours: Int,
+        standGoal: Int = 12,
         heartRate: Int,
+        restingHeartRate: Int = 0,
         hrv: Int,
         sleepHours: Double,
         carName: String,
         carEmoji: String,
         carImageName: String,
         carTierIndex: Int,
-        userName: String = "",
-        syncToWatch: Bool = true
+        userName: String = ""
     ) {
+        print("📱 [WidgetData] 🔄 Updating: score=\(healthScore), steps=\(steps), cal=\(calories)/\(caloriesGoal), ex=\(exerciseMinutes)/\(exerciseGoal), stand=\(standHours)/\(standGoal), hr=\(heartRate), sleep=\(sleepHours)h, car=\(carName)")
+
         let data = SharedWidgetData(
             healthScore: healthScore,
             dailyScore: dailyScore,
             healthStatus: healthStatus,
             steps: steps,
-            stepsGoal: 10000,
+            stepsGoal: stepsGoal,
             calories: calories,
-            caloriesGoal: 500,
+            caloriesGoal: caloriesGoal,
             exerciseMinutes: exerciseMinutes,
-            exerciseGoal: 30,
+            exerciseGoal: exerciseGoal,
             standHours: standHours,
-            standGoal: 12,
+            standGoal: standGoal,
             heartRate: heartRate,
+            restingHeartRate: restingHeartRate,
             hrv: hrv,
             sleepHours: sleepHours,
             lastUpdated: Date(),
@@ -94,15 +102,9 @@ final class WidgetDataManager {
 
         saveData(data)
         refreshWidgets()
-
-        // Send to Apple Watch only if requested (Home screen only)
-        if syncToWatch {
-            sendToWatch(data)
-        }
     }
 
     /// Convenience method to update from HealthDashboard data
-    /// Sends all data to Watch including score, status, steps, sleep, and car tier
     func updateFromDashboard(
         score: Int,
         status: String,
@@ -113,9 +115,9 @@ final class WidgetDataManager {
         restingHR: Int?,
         hrv: Int?,
         sleepHours: Double?,
-        carTier: CarTier? = nil,
+        carTier: HealthTier? = nil,
         userName: String = "",
-        // Score breakdown for Watch
+        // Score breakdown (kept for compatibility, stored for callers that read it)
         recoveryScore: Int? = nil,
         sleepScore: Int? = nil,
         nervousSystemScore: Int? = nil,
@@ -123,43 +125,32 @@ final class WidgetDataManager {
         activityScore: Int? = nil,
         loadBalanceScore: Int? = nil
     ) {
-        // Get car tier from score if not provided
-        let tier = carTier ?? CarTierEngine.tierForScore(score)
+        let tier = carTier ?? HealthTier.forScore(score)
 
-        // Store score breakdown for Watch BEFORE sending
-        scoreBreakdown = (recoveryScore, sleepScore, nervousSystemScore, energyScore, activityScore, loadBalanceScore)
-
-        // ALWAYS use Gemini car name if available, NEVER use generic tier name
         let carName = GeminiResultStore.loadCarName() ?? AnalysisCache.loadSelectedCar()?.name ?? ""
         let carEmoji = carName.isEmpty ? "" : tier.emoji
 
-        // Save to widgets AND sync to Watch with all data
-        // score IS the daily score here (from Dashboard daily view)
         updateWidgetData(
             healthScore: score,
-            dailyScore: score,  // Explicitly set dailyScore = score (this IS the daily health score)
+            dailyScore: score,
             healthStatus: status,
             steps: steps,
             calories: activeCalories,
             exerciseMinutes: exerciseMinutes,
             standHours: standHours,
             heartRate: restingHR ?? 0,
+            restingHeartRate: restingHR ?? 0,
             hrv: hrv ?? 0,
             sleepHours: sleepHours ?? 0,
             carName: carName,
             carEmoji: carEmoji,
             carImageName: tier.imageName,
             carTierIndex: tier.tierIndex,
-            userName: userName,
-            syncToWatch: true  // Sync all data to Watch
+            userName: userName
         )
     }
 
-    /// Score breakdown for Watch - stored separately
-    private(set) var scoreBreakdown: (recovery: Int?, sleep: Int?, nervousSystem: Int?, energy: Int?, activity: Int?, loadBalance: Int?)?
-
     /// Update widget with Gemini car data (from Insights)
-    /// Note: Does NOT sync to Watch - only Home screen syncs to Watch
     func updateFromInsights(
         score: Int,
         dailyScore: Int? = nil,
@@ -175,11 +166,8 @@ final class WidgetDataManager {
         sleepHours: Double? = nil,
         userName: String = ""
     ) {
-        // Get tier index from score for the progress bar
-        let tier = CarTierEngine.tierForScore(score)
+        let tier = HealthTier.forScore(score)
 
-        // Don't sync to Watch - Insights uses different score (car tier, 90-day average)
-        // Only Home screen (InsightsDashboard) should sync to Watch with daily mainScore
         updateWidgetData(
             healthScore: score,
             dailyScore: dailyScore,
@@ -189,14 +177,14 @@ final class WidgetDataManager {
             exerciseMinutes: exerciseMinutes,
             standHours: standHours,
             heartRate: restingHR ?? 0,
+            restingHeartRate: restingHR ?? 0,
             hrv: hrv ?? 0,
             sleepHours: sleepHours ?? 0,
             carName: carName,
             carEmoji: carEmoji,
-            carImageName: "",  // Will use emoji instead
+            carImageName: "",
             carTierIndex: tier.tierIndex,
-            userName: userName,
-            syncToWatch: false  // Don't override Home screen data
+            userName: userName
         )
     }
 
@@ -223,13 +211,15 @@ final class WidgetDataManager {
         print("WidgetDataManager: Widgets refreshed")
     }
 
-    /// Loads current widget data (for debugging)
+    /// Loads current widget data (used by Watch communication + debugging)
     func loadCurrentData() -> SharedWidgetData? {
         guard let userDefaults = UserDefaults(suiteName: appGroupID),
               let data = userDefaults.data(forKey: dataKey),
               let widgetData = try? JSONDecoder().decode(SharedWidgetData.self, from: data) else {
+            print("📱 [WidgetData] ⚠️ loadCurrentData() returned nil")
             return nil
         }
+        print("📱 [WidgetData] Loaded: score=\(widgetData.healthScore), steps=\(widgetData.steps), car=\(widgetData.carName)")
         return widgetData
     }
 }
@@ -246,54 +236,14 @@ extension WidgetDataManager {
 // MARK: - Apple Watch Integration
 
 extension WidgetDataManager {
-    /// Sends only car tier data to Apple Watch (score/status calculated locally on Watch)
-    /// ALWAYS uses Gemini car name - never generic tier names
-    func sendCarDataToWatch(tier: CarTier) {
-        // ALWAYS use Gemini car name if available
+    /// Sends only car tier data to Apple Watch
+    func sendCarDataToWatch(tier: HealthTier) {
         let carName = GeminiResultStore.loadCarName() ?? AnalysisCache.loadSelectedCar()?.name ?? ""
-
-        print("📱➡️⌚️ Sending car data to Watch: car=\(carName), tier=\(tier.tierIndex)")
         WatchConnectivityManager.shared.sendCarDataToWatch(
             carName: carName,
             carEmoji: carName.isEmpty ? "" : tier.emoji,
             carTierIndex: tier.tierIndex,
             carTierLabel: tier.tierLabel
-        )
-    }
-
-    /// Sends full data to Apple Watch via WatchConnectivity
-    private func sendToWatch(_ data: SharedWidgetData) {
-        // Get Gemini car data from store
-        let geminiCarName = GeminiResultStore.loadCarName()
-        let geminiScore = GeminiResultStore.loadHealthScore()
-
-        // Use dailyScore (real health score) for Watch, NOT healthScore (which is Gemini 90-day)
-        let watchHealthScore = data.dailyScore ?? geminiScore ?? 0
-        print("📱➡️⌚️ WidgetDataManager.sendToWatch DEBUG: data.healthScore=\(data.healthScore), data.dailyScore=\(String(describing: data.dailyScore)), geminiScore=\(String(describing: geminiScore)), SENDING=\(watchHealthScore)")
-        WatchConnectivityManager.shared.sendWidgetDataToWatch(
-            healthScore: watchHealthScore,
-            healthStatus: data.healthStatus,
-            steps: data.steps,
-            calories: data.calories,
-            exerciseMinutes: data.exerciseMinutes,
-            standHours: data.standHours,
-            heartRate: data.heartRate,
-            hrv: data.hrv,
-            sleepHours: data.sleepHours,
-            carName: data.carName,
-            carEmoji: data.carEmoji,
-            carTierIndex: data.carTierIndex,
-            carTierLabel: CarTierEngine.tierForScore(data.healthScore).tierLabel,
-            // Score breakdown
-            recoveryScore: scoreBreakdown?.recovery,
-            sleepScore: scoreBreakdown?.sleep,
-            nervousSystemScore: scoreBreakdown?.nervousSystem,
-            energyScore: scoreBreakdown?.energy,
-            activityScore: scoreBreakdown?.activity,
-            loadBalanceScore: scoreBreakdown?.loadBalance,
-            // Gemini car data (for CarTierView on Watch)
-            geminiCarName: geminiCarName,
-            geminiCarScore: geminiScore
         )
     }
 }

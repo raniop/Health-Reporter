@@ -25,6 +25,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Register Background Tasks
         MorningNotificationManager.shared.registerBackgroundTask()
         BedtimeNotificationManager.shared.registerBackgroundTask()
+        MorningAnalysisManager.shared.registerBackgroundTask()
 
         // Schedule morning notification if enabled
         if MorningNotificationManager.shared.isEnabled {
@@ -52,6 +53,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         if Auth.auth().currentUser != nil {
             print("[FCM] App launch: user logged in, FCM token will refresh after APNS token arrives")
+            // Schedule pre-analysis BGTask for tomorrow morning
+            MorningAnalysisManager.shared.scheduleIfNeeded()
         } else {
             print("[FCM] App launch: no user logged in, skipping FCM refresh")
         }

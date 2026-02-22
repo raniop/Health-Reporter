@@ -2,7 +2,8 @@
 //  CarTierWidget.swift
 //  HealthWidgets
 //
-//  Widget showing your health status as a car tier - from Fiat Panda to Ferrari!
+//  Your health as a car — from Fiat Panda to Ferrari!
+//  Rebuilt from scratch.
 //
 
 import WidgetKit
@@ -20,18 +21,17 @@ struct CarTierWidget: Widget {
                     .containerBackground(.black, for: .widget)
             } else {
                 CarTierWidgetView(entry: entry)
-                    .padding()
                     .background(Color.black)
             }
         }
-        .configurationDisplayName("Your Car Meter")
+        .configurationDisplayName("Car Meter")
         .description("Your health as a car - from Fiat Panda to Ferrari!")
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }
 }
 
-// MARK: - Car Tier Widget View
+// MARK: - Router View
 
 struct CarTierWidgetView: View {
     var entry: HealthEntry
@@ -55,53 +55,68 @@ struct SmallCarTierView: View {
     let data: HealthWidgetData
     let carImage: UIImage?
 
-    var tierColor: Color {
-        switch data.carTierIndex {
-        case 0: return .red
-        case 1: return .orange
-        case 2: return .cyan
-        case 3: return .blue
-        case 4: return .green
-        default: return .cyan
-        }
-    }
+    private var tierColor: Color { .tierColor(for: data.carTierIndex) }
 
     var body: some View {
         ZStack {
-            // Pure black background
             Color.black
 
-            VStack(spacing: 6) {
-                // Car image or emoji fallback
+            // Subtle tier-colored glow at top
+            VStack {
+                Ellipse()
+                    .fill(
+                        RadialGradient(
+                            colors: [tierColor.opacity(0.25), .clear],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 60
+                        )
+                    )
+                    .frame(width: 120, height: 60)
+                    .offset(y: -10)
+                Spacer()
+            }
+
+            VStack(spacing: 4) {
+                // Car visual
                 if let uiImage = carImage {
                     Image(uiImage: uiImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 60, height: 40)
-                        .cornerRadius(6)
-                        .shadow(color: tierColor.opacity(0.5), radius: 10)
+                        .frame(width: 70, height: 46)
                 } else {
-                    Text(data.carEmoji)
-                        .font(.system(size: 50))
-                        .shadow(color: tierColor.opacity(0.5), radius: 10)
+                    Text(data.displayCarEmoji)
+                        .font(.system(size: 46))
                 }
 
                 // Score
                 Text("\(data.healthScore)")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
 
-                // Status
-                Text(data.healthStatus)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(tierColor)
-
                 // Car name
-                Text(data.carName)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(.gray)
+                Text(data.displayCarName)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(tierColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                // Stale indicator
+                if data.isStale {
+                    StaleDataBadge()
+                }
+
+                // Tier dots
+                HStack(spacing: 4) {
+                    ForEach(0..<5, id: \.self) { i in
+                        Circle()
+                            .fill(i <= data.carTierIndex ? Color.tierColor(for: i) : Color.white.opacity(0.1))
+                            .frame(width: 6, height: 6)
+                    }
+                }
+                .padding(.top, 2)
             }
-            .padding(8)
+            .padding(10)
         }
     }
 }
@@ -112,162 +127,111 @@ struct MediumCarTierView: View {
     let data: HealthWidgetData
     let carImage: UIImage?
 
-    var tierColor: Color {
-        switch data.carTierIndex {
-        case 0: return .red
-        case 1: return .orange
-        case 2: return .cyan
-        case 3: return .blue
-        case 4: return .green
-        default: return .cyan
-        }
-    }
+    private var tierColor: Color { .tierColor(for: data.carTierIndex) }
 
     var body: some View {
         ZStack {
-            // Pure black background
             Color.black
 
-            HStack(spacing: 16) {
-                // Left side - Car visual
-                VStack(spacing: 8) {
-                    // Car image with glow or emoji fallback
-                    ZStack {
-                        // Glow effect
-                        Circle()
-                            .fill(tierColor.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .blur(radius: 10)
+            HStack(spacing: 14) {
+                // Left: Car visual with glow
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [tierColor.opacity(0.3), .clear],
+                                center: .center,
+                                startRadius: 5,
+                                endRadius: 55
+                            )
+                        )
+                        .frame(width: 100, height: 100)
 
-                        if let uiImage = carImage {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 80, height: 55)
-                                .cornerRadius(8)
-                        } else {
-                            Text(data.carEmoji)
-                                .font(.system(size: 55))
-                        }
+                    if let uiImage = carImage {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 90, height: 60)
+                    } else {
+                        Text(data.displayCarEmoji)
+                            .font(.system(size: 54))
                     }
-
-                    // Car name
-                    Text(data.carName)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white)
                 }
                 .frame(width: 110)
 
-                // Right side - Stats
-                VStack(alignment: .trailing, spacing: 10) {
-                    // Score with gauge
-                    HStack(spacing: 12) {
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(data.healthScore)")
-                                .font(.system(size: 36, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                            Text(data.healthStatus)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(tierColor)
+                // Right: Info
+                VStack(alignment: .leading, spacing: 6) {
+                    // Car name + stale badge
+                    HStack(spacing: 6) {
+                        Text(data.displayCarName)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        if data.isStale {
+                            StaleDataBadge()
                         }
+                    }
 
-                        // Mini gauge
-                        ZStack {
-                            Circle()
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 6)
-                            Circle()
-                                .trim(from: 0, to: CGFloat(data.healthScore) / 100)
-                                .stroke(tierColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
+                    // Score row
+                    HStack(spacing: 10) {
+                        Text("\(data.healthScore)")
+                            .font(.system(size: 34, weight: .heavy, design: .rounded))
+                            .foregroundColor(.white)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(data.healthStatus)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(tierColor)
+                                .lineLimit(1)
+                            Text("Level \(data.carTierIndex + 1) / 5")
+                                .font(.system(size: 10))
+                                .foregroundColor(.gray)
                         }
-                        .frame(width: 40, height: 40)
                     }
 
                     // Tier progress bar
-                    VStack(alignment: .trailing, spacing: 4) {
-                        HStack(spacing: 4) {
-                            ForEach(0..<5, id: \.self) { index in
-                                Rectangle()
-                                    .fill(index <= data.carTierIndex ? tierColorForIndex(index) : Color.gray.opacity(0.3))
-                                    .frame(height: 6)
-                                    .cornerRadius(3)
-                            }
+                    HStack(spacing: 3) {
+                        ForEach(0..<5, id: \.self) { i in
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(i <= data.carTierIndex ? Color.tierColor(for: i) : Color.white.opacity(0.08))
+                                .frame(height: 5)
                         }
-                        Text("Level \(data.carTierIndex + 1) of 5")
-                            .font(.system(size: 9))
-                            .foregroundColor(.gray)
                     }
 
-                    // Key stats
+                    // Quick stats
                     HStack(spacing: 12) {
-                        MiniStat(icon: "heart.fill", value: "\(data.heartRate)", color: .red)
-                        MiniStat(icon: "bed.double.fill", value: String(format: "%.1f", data.sleepHours), color: .indigo)
-                        MiniStat(icon: "waveform.path.ecg", value: "\(data.hrv)", color: .purple)
+                        CarStatPill(icon: "heart.fill", value: "\(data.heartRate)", color: .red)
+                        CarStatPill(icon: "moon.fill", value: formatSleep(data.sleepHours), color: .indigo)
+                        CarStatPill(icon: "waveform.path.ecg", value: "\(data.hrv)", color: .purple)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(16)
-        }
-    }
-
-    func tierColorForIndex(_ index: Int) -> Color {
-        switch index {
-        case 0: return .red
-        case 1: return .orange
-        case 2: return .cyan
-        case 3: return .blue
-        case 4: return .green
-        default: return .gray
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
     }
 }
 
-// MARK: - Mini Stat Component
+// MARK: - Car Stat Pill
 
-struct MiniStat: View {
+private struct CarStatPill: View {
     let icon: String
     let value: String
     let color: Color
 
     var body: some View {
-        VStack(spacing: 2) {
+        HStack(spacing: 3) {
             Image(systemName: icon)
-                .font(.system(size: 10))
+                .font(.system(size: 9))
                 .foregroundColor(color)
             Text(value)
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
                 .foregroundColor(.white)
         }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(color.opacity(0.12))
+        .clipShape(Capsule())
     }
-}
-
-// MARK: - Preview
-
-@available(iOS 17.0, *)
-#Preview(as: .systemMedium) {
-    CarTierWidget()
-} timeline: {
-    HealthEntry(date: .now, data: .placeholder, carImage: nil)
-    HealthEntry(date: .now, data: HealthWidgetData(
-        healthScore: 88,
-        healthStatus: "Peak Performance",
-        steps: 12000,
-        stepsGoal: 10000,
-        calories: 550,
-        caloriesGoal: 500,
-        exerciseMinutes: 45,
-        exerciseGoal: 30,
-        standHours: 11,
-        standGoal: 12,
-        heartRate: 58,
-        hrv: 65,
-        sleepHours: 8.2,
-        lastUpdated: Date(),
-        carName: "Ferrari SF90 Stradale",
-        carEmoji: "🏆",
-        carImageName: "CarFerrariSF90",
-        carTierIndex: 4,
-        userName: ""
-    ), carImage: nil)
 }

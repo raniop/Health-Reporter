@@ -328,8 +328,8 @@ final class AnalyticsService {
     }
 
     /// Update car tier user property
-    func setCarTier(_ tier: CarTier) {
-        setUserProperty(.carTier, value: tier.name)
+    func setCarTier(_ tier: HealthTier, carName: String? = nil) {
+        setUserProperty(.carTier, value: carName ?? "Unknown")
         setUserProperty(.carTierIndex, value: String(tier.tierIndex))
     }
 

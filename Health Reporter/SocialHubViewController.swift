@@ -411,7 +411,7 @@ final class SocialHubViewController: UIViewController {
         avatar.ringWidth = 3
 
         // Ring colors from tier
-        let tier = CarTierEngine.tiers[safe: tierIndex]
+        let tier = HealthTier.forIndex(tierIndex)
         if isCurrentUser {
             avatar.ringColors = [AIONDesign.accentPrimary, AIONDesign.accentSecondary]
             avatar.isAnimated = true
@@ -496,7 +496,7 @@ final class SocialHubViewController: UIViewController {
         let avatar = AvatarRingView(size: 44)
         avatar.translatesAutoresizingMaskIntoConstraints = false
         avatar.ringWidth = 2
-        let tier = CarTierEngine.tiers[safe: entry.carTierIndex]
+        let tier = HealthTier.forIndex(entry.carTierIndex)
         let tierColor = tier?.color ?? AIONDesign.accentPrimary
         avatar.ringColors = [tierColor, tierColor.withAlphaComponent(0.6)]
         avatar.loadImage(from: entry.photoURL)

@@ -74,7 +74,7 @@ struct GeminiHealthPayload: Codable {
 
     func toJSONString() -> String? {
         let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.outputFormatting = [.sortedKeys]
         guard let data = try? encoder.encode(self) else { return nil }
         return String(data: data, encoding: .utf8)
     }
@@ -97,6 +97,7 @@ struct RawDailyHealthEntry {
     var weightKg: Double?
     var bodyFatPercent: Double?
     var workoutCount: Int?
+    var wakeTime: Date?
 }
 
 // MARK: - Builder

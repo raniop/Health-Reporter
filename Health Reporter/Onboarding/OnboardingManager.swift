@@ -78,6 +78,47 @@ enum OnboardingManager {
         UserDefaults.standard.removeObject(forKey: keyCurrentStep)
     }
 
+    // MARK: - Firestore Restore (for reinstall recovery)
+
+    /// Checks Firestore for onboarding completion status.
+    /// Used when UserDefaults is cleared (app reinstall) but Firebase Auth survives (Keychain).
+    /// Has a 3-second timeout to avoid blocking if offline.
+    static func checkFirestoreCompletion(completion: @escaping (Bool) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            completion(false)
+            return
+        }
+
+        let db = Firestore.firestore()
+        let doc = db.collection("users").document(uid)
+
+        // Timeout after 3 seconds — if Firestore is unreachable, assume onboarding needed
+        var didComplete = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            guard !didComplete else { return }
+            didComplete = true
+            print("⏰ [Onboarding] Firestore check timed out — assuming onboarding needed")
+            completion(false)
+        }
+
+        doc.getDocument { snap, err in
+            guard !didComplete else { return }
+            didComplete = true
+
+            if let data = snap?.data(),
+               let completed = data["onboardingCompleted"] as? Bool,
+               completed {
+                // Existing user on new device — restore locally
+                print("✅ [Onboarding] Restored from Firestore — onboarding already completed")
+                markOnboardingComplete()
+                completion(true)
+            } else {
+                print("ℹ️ [Onboarding] Firestore says onboarding not completed")
+                completion(false)
+            }
+        }
+    }
+
     // MARK: - Reset (for testing)
 
     /// Resets the Onboarding state (for testing)

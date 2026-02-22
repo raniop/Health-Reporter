@@ -602,7 +602,7 @@ final class UserProfileViewController: UIViewController {
         // Clear previous content
         carTierCard.subviews.forEach { $0.removeFromSuperview() }
 
-        let tier = CarTierEngine.tiers[safe: tierIndex]
+        let tier = HealthTier.forIndex(tierIndex)
         let emoji = tier?.emoji ?? "\u{1F697}"
         let tierLabel = tier?.tierLabel ?? ""
         let tierColor = tier?.color ?? AIONDesign.accentPrimary
@@ -723,7 +723,7 @@ final class UserProfileViewController: UIViewController {
 
                 let displayName = data["displayName"] as? String ?? "Unknown User"
                 let carTierName = data["carTierName"] as? String
-                    ?? CarTierEngine.tiers[safe: carTierIndex]?.tierLabel
+                    ?? HealthTier.forIndex(carTierIndex)?.tierLabel
                     ?? ""
 
                 self.userData = (
@@ -747,7 +747,7 @@ final class UserProfileViewController: UIViewController {
                        let displayName = data["displayName"] as? String, !displayName.isEmpty {
                         let healthScore = data["healthScore"] as? Int ?? 0
                         let carTierIndex = data["carTierIndex"] as? Int ?? 0
-                        let carTierName = CarTierEngine.tiers[safe: carTierIndex]?.tierLabel ?? ""
+                        let carTierName = HealthTier.forIndex(carTierIndex)?.tierLabel ?? ""
                         self.userData = (
                             displayName: displayName,
                             photoURL: data["photoURL"] as? String,
@@ -875,7 +875,7 @@ final class UserProfileViewController: UIViewController {
         followingStatValue.text = "\(followingCount)"
 
         if hasScoreData {
-            let tier = CarTierEngine.tiers[safe: data.carTierIndex]
+            let tier = HealthTier.forIndex(data.carTierIndex)
             let tierColor = tier?.color ?? AIONDesign.accentPrimary
 
             // Tier chip

@@ -145,12 +145,13 @@ final class OnboardingPageViewController: UIViewController {
         OnboardingManager.markOnboardingComplete()
         OnboardingCoordinator.shared.reset()
 
-        // Transition to MainTabBarController
+        // Transition through SplashViewController to ensure data is properly loaded
+        // (HealthKit fetch, Gemini analysis, caches) before showing the home screen
         guard let window = view.window else { return }
 
-        let mainVC = MainTabBarController()
+        let splashVC = SplashViewController()
         UIView.transition(with: window, duration: 0.4, options: .transitionCrossDissolve, animations: {
-            window.rootViewController = mainVC
+            window.rootViewController = splashVC
         }, completion: nil)
     }
 }

@@ -2,8 +2,7 @@
 //  HomeView.swift
 //  Health Reporter Watch App
 //
-//  Main dashboard showing health score and quick stats (like iPhone main screen)
-//
+//  Main dashboard showing health score and quick stats
 
 import SwiftUI
 
@@ -11,29 +10,11 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var dataManager: WatchDataManager
-    @State private var showPeriodPicker = false
     @State private var showScoreBreakdown = false
-    @State private var selectedPeriod: TimePeriod = .today
+    @State private var animatedProgress: Double = 0
 
     private var data: WatchHealthData {
         dataManager.healthData
-    }
-
-    // Computed values based on period
-    private var displaySteps: Int {
-        switch selectedPeriod {
-        case .today: return data.steps
-        case .week: return data.steps * 7
-        case .month: return data.steps * 30
-        }
-    }
-
-    private var displaySleepHours: Double {
-        switch selectedPeriod {
-        case .today: return data.sleepHours
-        case .week: return data.sleepHours * 7
-        case .month: return data.sleepHours * 30
-        }
     }
 
     var body: some View {
@@ -41,28 +22,24 @@ struct HomeView: View {
             Spacer()
                 .frame(height: 10)
 
-            // Health Score Ring (like iPhone)
-            // Tap to show breakdown, long-press kept for period picker
+            // Health Score Ring - tap to show breakdown
             HealthScoreRing(
                 score: data.healthScore,
-                status: data.healthStatus
+                animatedProgress: animatedProgress
             )
             .frame(width: 125, height: 125)
             .onTapGesture {
                 showScoreBreakdown = true
-            }
-            .onLongPressGesture {
-                showPeriodPicker = true
             }
             .sheet(isPresented: $showScoreBreakdown) {
                 ScoreBreakdownView()
                     .environmentObject(dataManager)
             }
 
-            // Health Status Label (like iPhone main screen)
+            // Health Status Label
             Text(data.healthStatus)
                 .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundColor(.gray)
+                .foregroundStyle(.gray)
                 .multilineTextAlignment(.center)
 
             // Quick Stats Row
@@ -75,28 +52,17 @@ struct HomeView: View {
 
                 QuickStat(
                     icon: "bed.double.fill",
-                    value: formatSleep(displaySleepHours),
+                    value: formatSleep(data.sleepHours),
                     color: .purple
                 )
 
                 QuickStat(
                     icon: "figure.walk",
-                    value: formatSteps(displaySteps),
+                    value: formatSteps(data.steps),
                     color: .green
                 )
             }
             .padding(.top, 2)
-
-            // Period indicator - always visible, tappable to change
-            Button(action: { showPeriodPicker = true }) {
-                Text(selectedPeriod.localizedName)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.blue.opacity(0.2)))
-            }
-            .buttonStyle(.plain)
 
             // Sync Status
             if data.isStale {
@@ -106,14 +72,21 @@ struct HomeView: View {
                     Text("watch.home.dataStale".localized)
                         .font(.caption2)
                 }
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
             }
 
             Spacer()
         }
         .padding(.horizontal, 8)
-        .sheet(isPresented: $showPeriodPicker) {
-            PeriodPickerView(selectedPeriod: $selectedPeriod)
+        .onChange(of: data.healthScore) { _, newScore in
+            withAnimation(.easeInOut(duration: 0.8)) {
+                animatedProgress = Double(newScore) / 100.0
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.8)) {
+                animatedProgress = Double(data.healthScore) / 100.0
+            }
         }
     }
 
@@ -134,68 +107,14 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Period Picker View
-
-struct PeriodPickerView: View {
-    @Binding var selectedPeriod: TimePeriod
-    @Environment(\.dismiss) var dismiss
-
-    var body: some View {
-        List {
-            ForEach(TimePeriod.allCases, id: \.self) { period in
-                Button(action: {
-                    selectedPeriod = period
-                    dismiss()
-                }) {
-                    HStack {
-                        Text(period.localizedName)
-                            .foregroundColor(.white)
-                        Spacer()
-                        if selectedPeriod == period {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.blue)
-                        }
-                    }
-                }
-            }
-        }
-        .navigationTitle("watch.period.title".localized)
-    }
-}
-
-// MARK: - Period Enum
-
-enum TimePeriod: String, CaseIterable {
-    case today = "Today"
-    case week = "Week"
-    case month = "Month"
-
-    var localizedName: String {
-        switch self {
-        case .today: return "period.day".localized
-        case .week: return "period.week".localized
-        case .month: return "period.month".localized
-        }
-    }
-}
-
-// MARK: - Health Score Ring (like iPhone)
+// MARK: - Health Score Ring
 
 struct HealthScoreRing: View {
     let score: Int
-    let status: String
+    let animatedProgress: Double
 
-    private var progress: Double {
-        Double(score) / 100.0
-    }
-
-    private var ringGradient: AngularGradient {
-        AngularGradient(
-            gradient: Gradient(colors: [.red, .orange, .yellow, .green, .mint]),
-            center: .center,
-            startAngle: .degrees(-90),
-            endAngle: .degrees(270)
-        )
+    private var scoreColor: Color {
+        WatchHealthData.scoreColor(for: score)
     }
 
     var body: some View {
@@ -204,19 +123,24 @@ struct HealthScoreRing: View {
             Circle()
                 .stroke(Color.gray.opacity(0.3), lineWidth: 10)
 
-            // Progress ring with gradient
+            // Progress ring
             Circle()
-                .trim(from: 0, to: progress)
+                .trim(from: 0, to: animatedProgress)
                 .stroke(
-                    ringGradient,
+                    AngularGradient(
+                        gradient: Gradient(colors: [.red, .orange, .yellow, .green, .mint]),
+                        center: .center,
+                        startAngle: .degrees(-90),
+                        endAngle: .degrees(270)
+                    ),
                     style: StrokeStyle(lineWidth: 10, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
 
-            // Score only in center (larger)
+            // Score in center
             Text("\(score)")
                 .font(.system(size: 44, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
         }
         .padding(4)
     }
@@ -233,12 +157,12 @@ struct QuickStat: View {
         VStack(spacing: 2) {
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundColor(color)
+                .foregroundStyle(color)
                 .frame(height: 16, alignment: .center)
 
             Text(value)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .frame(height: 14, alignment: .center)
         }
         .frame(width: 55)

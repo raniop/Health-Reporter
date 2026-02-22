@@ -409,7 +409,7 @@ final class UserCardView: UIView {
             }
         } else {
             if let tierName = result.carTierName, !tierName.isEmpty {
-                let tier = result.carTierIndex.flatMap { CarTierEngine.tiers[safe: $0] }
+                let tier = result.carTierIndex.flatMap { HealthTier.forIndex($0) }
                 let emoji = tier?.emoji ?? "🚗"
                 let color = tier?.color ?? AIONDesign.textSecondary
                 statusLabel.text = "\(emoji) \(tierName)"
@@ -430,7 +430,7 @@ final class UserCardView: UIView {
         avatarRing.loadImage(from: friend.photoURL)
 
         if let tierName = friend.carTierName, !tierName.isEmpty {
-            let tier = friend.carTierIndex.flatMap { CarTierEngine.tiers[safe: $0] }
+            let tier = friend.carTierIndex.flatMap { HealthTier.forIndex($0) }
             let emoji = tier?.emoji ?? "🚗"
             let color = tier?.color ?? AIONDesign.textSecondary
             statusLabel.text = "\(emoji) \(tierName)"

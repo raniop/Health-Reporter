@@ -49,6 +49,7 @@ class GeminiService {
     - Car model MUST be a REAL car searchable on Wikipedia (e.g., "Porsche 911 GT3")
     - NOT concepts like "Zone 2", "Recovery Mode", "Base Model", etc.
     - Keep the same car unless significant performance changes (detailed rules in prompt)
+    - When choosing a car for the FIRST TIME, base it on the user's unique data fingerprint — their specific combination of HRV, sleep patterns, training load, VO2max, and recovery style. Two users with different profiles should NEVER get the same car. Be creative and use the full range of real car brands and models worldwide.
 
     # PERSONALIZATION & MEMORY
     - You have persistent memory of this user's health journey (provided in AION MEMORY block)
@@ -280,14 +281,63 @@ class GeminiService {
                 "loadBalance": 55,
                 "loadBalanceExplanation_\(langCode)": "1-2 sentence explanation of load balance",
                 "carScore": 72,
-                "carScoreExplanation_\(langCode)": "1-2 sentence explanation of car score"
+                "carScoreExplanation_\(langCode)": "1-2 sentence explanation of car score",
+                "stressLoadIndex": 45,
+                "stressLoadIndexExplanation_\(langCode)": "1-2 sentence explanation of stress load based on HRV depression, RHR elevation, and sleep deficit",
+                "morningFreshness": 70,
+                "morningFreshnessExplanation_\(langCode)": "1-2 sentence explanation of morning freshness based on sleep quality and autonomic recovery",
+                "sleepConsistency": 80,
+                "sleepConsistencyExplanation_\(langCode)": "1-2 sentence explanation of sleep schedule consistency over the past 2 weeks",
+                "sleepDebt": 35,
+                "sleepDebtExplanation_\(langCode)": "1-2 sentence explanation of accumulated sleep debt vs 7.5h target",
+                "workoutReadiness": 65,
+                "workoutReadinessExplanation_\(langCode)": "1-2 sentence explanation of readiness for training based on recovery, sleep, and nervous system balance",
+                "dailyGoals": 60,
+                "dailyGoalsExplanation_\(langCode)": "1-2 sentence explanation of daily activity goals progress (move, exercise, stand)",
+                "cardioFitnessTrend": 50,
+                "cardioFitnessTrendExplanation_\(langCode)": "1-2 sentence explanation of VO2max trend comparing 7-day vs 28-day average"
               },
               "homeRecommendations": {
                 "medical_\(langCode)": "2-3 sentences: health/medical observation and advice based on today's data",
                 "sports_\(langCode)": "2-3 sentences: training and exercise recommendation for today",
                 "nutrition_\(langCode)": "2-3 sentences: dietary recommendation based on today's activity and recovery"
+              },
+              "weeklyGoals": {
+                "shouldGenerateNewGoals": true,
+                "progressAssessment_\(langCode)": "1-2 sentences assessing previous goals progress and metric changes",
+                "goals": [
+                  {
+                    "text_\(langCode)": "Specific, measurable weekly goal referencing actual data (e.g. 'Go to bed before 23:30 at least 4 nights this week — your avg bedtime was 00:15')",
+                    "category": "sleep|exercise|nutrition|recovery|stress",
+                    "difficulty": "easy|moderate|challenging",
+                    "linkedMetrics": ["sleepScore", "sleepConsistency"]
+                  }
+                ]
               }
             }
+
+            ==================================================
+            WEEKLY GOALS RULES
+            ==================================================
+
+            - Generate 2-3 SPECIFIC, MEASURABLE weekly goals (NOT generic advice like "sleep more")
+            - Each goal MUST reference the user's actual data (e.g. "Your avg bedtime was 00:30 last week. Go to bed before 23:30 at least 4 nights.")
+            - Focus on the user's weakest areas based on the health data scores
+            - Only generate NEW goals when shouldGenerateNewGoals is true in the goals context below
+            - If shouldGenerateNewGoals is false, return "weeklyGoals": null
+            - If previous goals were completed but metrics didn't improve, suggest modified approaches for the same areas
+            - Each goal must link to 1-2 measurable metric IDs from the scores (e.g. sleepScore, readinessScore)
+            - difficulty: easy (small change), moderate (noticeable effort), challenging (significant lifestyle shift)
+            - CRITICAL: Each goal MUST be from a DIFFERENT category. Never generate two goals in the same category.
+            - Valid categories: sleep, exercise, nutrition, recovery, stress
+
+            \(WeeklyGoalStore.buildGoalHistoryForPrompt())
+
+            ==================================================
+            SCORE CONSISTENCY (SAME-DAY RE-ANALYSIS)
+            ==================================================
+
+            \(self.buildScoreConsistencyBlock(memory: memory))
 
             CRITICAL RULES:
             - Return JSON ONLY, no text before or after
@@ -299,6 +349,7 @@ class GeminiService {
             - scores: ALL numerical scores MUST be calculated from the provided health data
             - scores: Use 0-100 scale (except trainingStrain which is 0-10)
             - homeRecommendations: Provide personalized daily advice in each of the 3 categories
+            - weeklyGoals: Follow the WEEKLY GOALS RULES above
 
             ==================================================
             DATA
@@ -351,6 +402,30 @@ class GeminiService {
                     )
                     GeminiResultStore.save(dailyResult)
 
+                    // Save weekly goals if generated
+                    if !parsed.weeklyGoals.isEmpty {
+                        self.saveWeeklyGoals(from: parsed, scores: geminiScores)
+                    }
+
+                    // Auto-verify existing pending goals against latest scores
+                    if let currentGoalSet = WeeklyGoalStore.currentWeek() {
+                        let verifiedGoals = WeeklyGoalEngine.autoVerifyGoals(
+                            goals: currentGoalSet.goals,
+                            currentScores: geminiScores
+                        )
+                        if verifiedGoals != currentGoalSet.goals {
+                            var allSets = WeeklyGoalStore.loadAll()
+                            if let idx = allSets.lastIndex(where: {
+                                Calendar.current.isDate($0.weekStartDate, equalTo: currentGoalSet.weekStartDate, toGranularity: .weekOfYear)
+                            }) {
+                                allSets[idx].goals = verifiedGoals
+                                WeeklyGoalStore.save(allSets)
+                                print("✅ [WeeklyGoals] Auto-verified goals based on metric improvements")
+                            }
+                            GoalReminderManager.shared.refreshAfterGoalUpdate()
+                        }
+                    }
+
                     // Update AION Memory in the background
                     let score = geminiScores.healthScore ?? 0
                     DispatchQueue.global(qos: .utility).async {
@@ -374,6 +449,76 @@ class GeminiService {
         }
     }
     
+    // MARK: - Weekly Goals Saving
+
+    private func saveWeeklyGoals(from parsed: CarAnalysisResponse, scores: GeminiScores) {
+        let calendar = Calendar.current
+        // Get the start of the current week (Sunday/Monday depending on locale)
+        let weekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+
+        let goals: [WeeklyGoal] = parsed.weeklyGoals.compactMap { json in
+            guard let textHe = json.text_he, !textHe.isEmpty,
+                  let textEn = json.text_en, !textEn.isEmpty else {
+                // Try to use whichever language is available
+                let he = json.text_he ?? json.text_en ?? ""
+                let en = json.text_en ?? json.text_he ?? ""
+                guard !he.isEmpty || !en.isEmpty else { return nil }
+                let catStr = (json.category ?? "exercise").lowercased()
+                let category = GoalCategory(rawValue: catStr) ?? .exercise
+                let diffStr = (json.difficulty ?? "moderate").lowercased()
+                let difficulty = GoalDifficulty(rawValue: diffStr) ?? .moderate
+                let metricIds = json.linkedMetrics ?? []
+                let baselines = WeeklyGoalEngine.captureBaselines(for: metricIds, from: scores)
+                return WeeklyGoal(
+                    id: UUID().uuidString,
+                    textHe: he, textEn: en,
+                    category: category, difficulty: difficulty,
+                    weekStartDate: weekStart,
+                    linkedMetricIds: metricIds,
+                    status: .pending,
+                    baselineMetrics: baselines
+                )
+            }
+            let catStr = (json.category ?? "exercise").lowercased()
+            let category = GoalCategory(rawValue: catStr) ?? .exercise
+            let diffStr = (json.difficulty ?? "moderate").lowercased()
+            let difficulty = GoalDifficulty(rawValue: diffStr) ?? .moderate
+            let metricIds = json.linkedMetrics ?? []
+            let baselines = WeeklyGoalEngine.captureBaselines(for: metricIds, from: scores)
+            return WeeklyGoal(
+                id: UUID().uuidString,
+                textHe: textHe, textEn: textEn,
+                category: category, difficulty: difficulty,
+                weekStartDate: weekStart,
+                linkedMetricIds: metricIds,
+                status: .pending,
+                baselineMetrics: baselines
+            )
+        }
+
+        guard !goals.isEmpty else { return }
+
+        // Deduplicate: keep only first goal per category
+        var seenCategories: Set<String> = []
+        let uniqueGoals = goals.filter { goal in
+            if seenCategories.contains(goal.category.rawValue) { return false }
+            seenCategories.insert(goal.category.rawValue)
+            return true
+        }
+
+        let goalSet = WeeklyGoalSet(
+            weekStartDate: weekStart,
+            goals: uniqueGoals,
+            generatedDate: Date(),
+            progressAssessmentHe: parsed.weeklyGoalsProgressAssessmentHe,
+            progressAssessmentEn: parsed.weeklyGoalsProgressAssessmentEn
+        )
+
+        WeeklyGoalStore.saveNewGoalSet(goalSet)
+        GoalReminderManager.shared.scheduleReminders()
+        print("🎯 [WeeklyGoals] Saved \(uniqueGoals.count) unique goals for week of \(weekStart)")
+    }
+
     private static func parseAPIError(statusCode: Int, data: Data?) -> String {
         if statusCode == 429 {
             let quotaMessage = "You've exceeded the daily Gemini quota (20 free requests). Try again tomorrow, or upgrade to a paid plan on Google AI Studio."
@@ -615,6 +760,41 @@ class GeminiService {
         """
 
         return block
+    }
+
+    /// Builds a score consistency block when re-analyzing the same day (e.g., language change).
+    /// If AION Memory contains an analysis from TODAY, instructs Gemini to keep the exact same scores and car.
+    private func buildScoreConsistencyBlock(memory: AIONMemory?) -> String {
+        guard let memory = memory,
+              let lastAnalysis = memory.recentAnalyses.first,
+              Calendar.current.isDateInToday(lastAnalysis.date) else {
+            return "No previous analysis today. Calculate all scores fresh from the health data."
+        }
+
+        // Build locked scores string from the last stored result (has all scores)
+        var lockedScores = "healthScore=\(lastAnalysis.healthScore)"
+        if let result = GeminiResultStore.load(), Calendar.current.isDateInToday(result.date) {
+            let s = result.scores
+            if let v = s.sleepScore { lockedScores += ", sleepScore=\(v)" }
+            if let v = s.readinessScore { lockedScores += ", readinessScore=\(v)" }
+            if let v = s.energyScore { lockedScores += ", energyScore=\(v)" }
+            if let v = s.trainingStrain { lockedScores += ", trainingStrain=\(v)" }
+            if let v = s.nervousSystemBalance { lockedScores += ", nervousSystemBalance=\(v)" }
+            if let v = s.recoveryDebt { lockedScores += ", recoveryDebt=\(v)" }
+            if let v = s.activityScore { lockedScores += ", activityScore=\(v)" }
+            if let v = s.loadBalance { lockedScores += ", loadBalance=\(v)" }
+            if let v = s.carScore { lockedScores += ", carScore=\(v)" }
+        }
+
+        return """
+        IMPORTANT: An analysis was ALREADY completed today (car: \(lastAnalysis.carModel)).
+        This is a RE-ANALYSIS of the SAME data (only the language changed).
+        You MUST return the EXACT SAME numerical scores and the SAME car model.
+        Only translate/rewrite the text fields in the requested language.
+        LOCKED SCORES (use these exact values): \(lockedScores)
+        LOCKED CAR: \(lastAnalysis.carModel)
+        Do NOT recalculate — copy these numbers exactly.
+        """
     }
 
     private func sendRequest(prompt: String, systemInstruction: String? = nil, temperature: Double = 0.2, completion: @escaping (String?, Error?) -> Void) {

@@ -316,7 +316,7 @@ final class HeroScoreCardView: UIView {
 
     func configure(
         score: Int,
-        tier: CarTier,
+        tier: HealthTier,
         sleepText: String,
         hrvText: String,
         strainText: String,

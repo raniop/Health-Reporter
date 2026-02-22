@@ -2,7 +2,8 @@
 //  WatchConnectivityManager.swift
 //  Health Reporter Watch App
 //
-//  Handles Watch <-> iPhone communication via WatchConnectivity
+//  Handles Watch <-> iPhone communication via WatchConnectivity.
+//  Includes retry logic for data requests and comprehensive logging.
 //
 
 import Foundation
@@ -19,55 +20,84 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
 
     private var session: WCSession?
 
+    /// Retry state for data requests
+    private var retryCount = 0
+    private let maxRetries = 3
+
     private override init() {
         super.init()
     }
 
+    // MARK: - Session Setup
+
     /// Activates the WatchConnectivity session
     func activateSession() {
         guard WCSession.isSupported() else {
-            print("WatchConnectivity: Not supported on this device")
+            print("⌚ [WC] WCSession NOT supported on this device")
             return
         }
-
         session = WCSession.default
         session?.delegate = self
         session?.activate()
-        print("WatchConnectivity: Session activation requested")
+        print("⌚ [WC] Session activation requested")
     }
 
-    /// Requests ALL health data from iPhone
+    // MARK: - Data Request with Retry
+
+    /// Requests scores/car/tier data from iPhone with retry logic.
+    /// NOTE: HealthKit metrics are NOT requested — Watch fetches those locally.
+    /// On failure, retries up to 3 times with exponential backoff (2s, 4s, 6s).
     func requestDataFromPhone() {
         guard let session = session, session.isReachable else {
-            print("WatchConnectivity: iPhone not reachable")
+            print("⌚ [WC] Cannot request data — phone not reachable")
             return
         }
 
-        let message: [String: Any] = ["request": "healthData"]
-        session.sendMessage(message, replyHandler: { reply in
-            DispatchQueue.main.async {
-                // Handle full data response
-                if let _ = reply["watchHealthData"] as? Data {
-                    Task { @MainActor in
-                        WatchDataManager.shared.updateFromContext(reply)
-                    }
+        print("⌚ [WC] 📡 Requesting scores/car from iPhone (attempt \(retryCount + 1)/\(maxRetries + 1))")
+
+        session.sendMessage(["request": "healthData"], replyHandler: { [weak self] reply in
+            guard let self = self else { return }
+            self.retryCount = 0  // Reset on success
+
+            if let data = reply["watchHealthData"] as? Data {
+                print("⌚ [WC] ✅ Received scores/car from iPhone (\(data.count) bytes)")
+                WatchDataManager.shared.updateFromContext(reply)
+                DispatchQueue.main.async {
+                    self.lastSyncDate = Date()
                 }
+            } else if let error = reply["error"] as? String {
+                print("⌚ [WC] ❌ iPhone replied with error: \(error)")
+            } else {
+                print("⌚ [WC] ⚠️ iPhone reply had no recognizable data (keys: \(reply.keys.joined(separator: ", ")))")
             }
-        }, errorHandler: { error in
-            print("WatchConnectivity: Failed to request data: \(error.localizedDescription)")
+        }, errorHandler: { [weak self] error in
+            guard let self = self else { return }
+            print("⌚ [WC] ❌ Request failed: \(error.localizedDescription)")
+
+            if self.retryCount < self.maxRetries {
+                self.retryCount += 1
+                let delay = Double(self.retryCount) * 2.0
+                print("⌚ [WC] 🔄 Retrying in \(delay)s (attempt \(self.retryCount + 1)/\(self.maxRetries + 1))")
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    self?.requestDataFromPhone()
+                }
+            } else {
+                print("⌚ [WC] ❌ All \(self.maxRetries) retries exhausted")
+                self.retryCount = 0
+            }
         })
     }
 
     /// Sends a message to iPhone (fire and forget)
     func sendToPhone(_ message: [String: Any]) {
         guard let session = session, session.isReachable else {
-            print("WatchConnectivity: iPhone not reachable for message")
+            print("⌚ [WC] Cannot send — phone not reachable")
             return
         }
-
-        session.sendMessage(message, replyHandler: nil) { error in
-            print("WatchConnectivity: Send message failed: \(error.localizedDescription)")
-        }
+        print("⌚ [WC] 📤 Sending message to iPhone (keys: \(message.keys.joined(separator: ", ")))")
+        session.sendMessage(message, replyHandler: nil, errorHandler: { error in
+            print("⌚ [WC] ❌ Send failed: \(error.localizedDescription)")
+        })
     }
 }
 
@@ -75,24 +105,26 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
 
 extension WatchConnectivityManager: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        let stateStr: String
+        switch activationState {
+        case .activated: stateStr = "activated"
+        case .inactive: stateStr = "inactive"
+        case .notActivated: stateStr = "notActivated"
+        @unknown default: stateStr = "unknown(\(activationState.rawValue))"
+        }
+        print("⌚ [WC] Activation complete: \(stateStr), error=\(error?.localizedDescription ?? "none")")
+
         DispatchQueue.main.async {
             self.isConnected = activationState == .activated
-
-            if let error = error {
-                print("WatchConnectivity: Activation failed - \(error.localizedDescription)")
-            } else {
-                print("WatchConnectivity: Activated with state \(activationState.rawValue)")
-            }
         }
     }
 
     func sessionReachabilityDidChange(_ session: WCSession) {
+        print("⌚ [WC] 📶 Reachability changed: \(session.isReachable)")
         DispatchQueue.main.async {
             self.isReachable = session.isReachable
-            print("WatchConnectivity: Reachability changed to \(session.isReachable)")
-
             if session.isReachable {
-                // Request fresh data when iPhone becomes reachable
+                print("⌚ [WC] Phone became reachable — auto-requesting data")
                 self.requestDataFromPhone()
             }
         }
@@ -100,52 +132,70 @@ extension WatchConnectivityManager: WCSessionDelegate {
 
     /// Receives application context updates from iPhone
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        print("WatchConnectivity: Received application context")
+        let hasHealthData = applicationContext["watchHealthData"] != nil
+        print("⌚ [WC] 📥 Received application context (hasHealthData: \(hasHealthData), keys: \(applicationContext.keys.joined(separator: ", ")))")
         DispatchQueue.main.async {
             self.lastSyncDate = Date()
         }
-        // WatchDataManager handles serialization internally
-        Task { @MainActor in
-            WatchDataManager.shared.updateFromContext(applicationContext)
-        }
+        WatchDataManager.shared.updateFromContext(applicationContext)
     }
 
-    /// Receives direct messages from iPhone
+    /// Receives direct messages from iPhone (no reply)
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
-        print("WatchConnectivity: Received message")
-        guard message["type"] as? String == "healthDataUpdate" else { return }
-        // WatchDataManager handles serialization internally
-        Task { @MainActor in
+        let type = message["type"] as? String ?? "unknown"
+        print("⌚ [WC] 📥 Received message (type: \(type))")
+
+        // Handle full health data update
+        if type == "healthDataUpdate" {
             WatchDataManager.shared.updateFromContext(message)
+            DispatchQueue.main.async { self.lastSyncDate = Date() }
+            return
         }
+
+        // Handle car-only update
+        if type == "carDataUpdate",
+           let carName = message["carName"] as? String,
+           let carEmoji = message["carEmoji"] as? String,
+           let carTierIndex = message["carTierIndex"] as? Int,
+           let carTierLabel = message["carTierLabel"] as? String {
+            print("⌚ [WC] 🚗 Car update: \(carName) (tier \(carTierIndex))")
+            WatchDataManager.shared.updateCarDataOnly(
+                carName: carName,
+                carEmoji: carEmoji,
+                carTierIndex: carTierIndex,
+                carTierLabel: carTierLabel
+            )
+            DispatchQueue.main.async { self.lastSyncDate = Date() }
+            return
+        }
+
+        print("⌚ [WC] ⚠️ Unhandled message type: \(type)")
     }
 
     /// Receives messages with reply handler
     func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
-        print("WatchConnectivity: Received message with reply handler")
+        let type = message["type"] as? String ?? "unknown"
+        print("⌚ [WC] 📥 Received message with reply (type: \(type))")
 
-        // Handle ping requests
-        if message["type"] as? String == "ping" {
+        if type == "ping" {
             replyHandler(["status": "alive", "timestamp": Date().timeIntervalSince1970])
             return
         }
 
-        // Handle full data updates
-        if message["type"] as? String == "healthDataUpdate" {
-            // WatchDataManager handles serialization internally
-            Task { @MainActor in
-                WatchDataManager.shared.updateFromContext(message)
-            }
+        if type == "healthDataUpdate" {
+            WatchDataManager.shared.updateFromContext(message)
+            DispatchQueue.main.async { self.lastSyncDate = Date() }
             replyHandler(["status": "received"])
+            return
         }
+
+        replyHandler(["status": "received"])
     }
 
     /// Receives user info transfers
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        print("WatchConnectivity: Received user info")
-        // WatchDataManager handles serialization internally
-        Task { @MainActor in
-            WatchDataManager.shared.updateFromContext(userInfo)
-        }
+        print("⌚ [WC] 📥 Received user info (keys: \(userInfo.keys.joined(separator: ", ")))")
+        WatchDataManager.shared.updateFromContext(userInfo)
+        DispatchQueue.main.async { self.lastSyncDate = Date() }
     }
 }

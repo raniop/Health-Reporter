@@ -188,6 +188,10 @@ final class InsightsTabViewController: UIViewController {
     private var notesTextView: UITextView?
     private var notesPlaceholderLabel: UILabel?
 
+    // Car card tap state
+    private var currentCarScore: Int = 0
+    private var currentCarName: String = ""
+
     // Language tracking – triggers auto-refresh when system language changes
     private var lastContentLanguage: AppLanguage?
 
@@ -200,7 +204,7 @@ final class InsightsTabViewController: UIViewController {
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupUI()
-        setupRefreshButton()
+        setupDebugButton()
         setupAnalysisObserver()
         // Note: refreshContent is called in viewWillAppear, not here, to prevent double calling
 
@@ -341,13 +345,16 @@ final class InsightsTabViewController: UIViewController {
         }
     }
 
-    private func setupRefreshButton() {
-        // Refresh button on the left side
-        let refreshBtn = UIBarButtonItem(image: UIImage(systemName: "arrow.clockwise"), style: .plain, target: self, action: #selector(refreshTapped))
-        refreshBtn.tintColor = accentCyan
-        navigationItem.leftBarButtonItem = refreshBtn
+    /// Admin emails that can see refresh + debug buttons
+    private static let adminEmails: Set<String> = ["ranioph@gmail.com", "amit@minute-ly.com", "rani@ophirins.co.il"]
 
-        // Debug button on the right side
+    private func setupDebugButton() {
+        // Only show debug button for admin users
+        guard let email = Auth.auth().currentUser?.email,
+              Self.adminEmails.contains(email) else {
+            return
+        }
+
         let debugBtn = UIBarButtonItem(image: UIImage(systemName: "ant"), style: .plain, target: self, action: #selector(debugTapped))
         debugBtn.tintColor = .systemOrange
         navigationItem.rightBarButtonItem = debugBtn
@@ -388,16 +395,6 @@ final class InsightsTabViewController: UIViewController {
         let alert = UIAlertController(title: "dashboard.explanation".localized, message: sender.explanation, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "understand".localized, style: .default))
         present(alert, animated: true)
-    }
-
-    @objc private func refreshTapped() {
-        // Always allow refresh — triggers fresh Gemini call via orchestrator
-        showLoading()
-        AIONAnalysisOrchestrator.shared.refresh { [weak self] _, _ in
-            DispatchQueue.main.async {
-                self?.refreshContent()
-            }
-        }
     }
 
     // MARK: - Loading
@@ -694,14 +691,23 @@ final class InsightsTabViewController: UIViewController {
         btn.setImage(checkImage, for: .normal)
         btn.tintColor = .white
 
-        // Bounce back after a moment
+        // Bounce back after a moment, then trigger Gemini re-analysis
         UIView.animate(withDuration: 0.3, delay: 1.0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.3) {
             btn.transform = .identity
             btn.backgroundColor = originalBg
-        } completion: { _ in
+        } completion: { [weak self] _ in
             btn.setImage(nil, for: .normal)
             btn.setTitle(originalTitle, for: .normal)
             btn.tintColor = .white
+
+            // Trigger fresh Gemini analysis with the new notes
+            guard let self = self, !text.isEmpty else { return }
+            self.showLoading()
+            AIONAnalysisOrchestrator.shared.ensureTodayResult(forceRefresh: true) { [weak self] _, _ in
+                DispatchQueue.main.async {
+                    self?.refreshContent()
+                }
+            }
         }
     }
 
@@ -750,8 +756,8 @@ final class InsightsTabViewController: UIViewController {
 // MARK: - Hero Car Card (Like Dashboard)
 
 private func addHeroCarCard(parsed: CarAnalysisResponse) {
-    // Get score from Gemini (single source of truth)
-    let score: Int = GeminiResultStore.loadCarScore() ?? GeminiResultStore.loadHealthScore() ?? 0
+    // Get score from Gemini — daily health score is PRIMARY display
+    let score: Int = GeminiResultStore.loadHealthScore() ?? GeminiResultStore.loadCarScore() ?? 0
 
     // Determine car name - priority: Gemini > Saved > Placeholder
     let cleanedGeminiCar = cleanCarName(parsed.carModel)
@@ -780,7 +786,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         }
 
         // Update car name from Gemini to Firestore (leaderboard and friends)
-        let tier = CarTierEngine.tierForScore(score)
+        let tier = HealthTier.forScore(score)
         LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: carName)
     } else if let savedCar = AnalysisCache.loadSelectedCar() {
         // Gemini didn't return valid car - use saved car
@@ -825,8 +831,8 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         exerciseMinutes: dailyActivity?.exerciseMinutes ?? 0,
         standHours: dailyActivity?.standHours ?? 0,
         restingHR: dailyActivity?.restingHR ?? 0 > 0 ? dailyActivity?.restingHR : nil,
-        hrv: nil,
-        sleepHours: nil,
+        hrv: dailyActivity?.hrv ?? 0 > 0 ? dailyActivity?.hrv : nil,
+        sleepHours: dailyActivity?.sleepHours ?? 0 > 0 ? dailyActivity?.sleepHours : nil,
         userName: userName
     )
 
@@ -868,54 +874,114 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     carNameLabel.minimumScaleFactor = 0.7
     carNameLabel.translatesAutoresizingMaskIntoConstraints = false
 
-    // ── Score + badge row (centered) ──
+    // ── Arc Gauge with score inside ──
+    let arcSize: CGFloat = 140
+    let arcLineWidth: CGFloat = 10
+    let arcRadius = (arcSize - arcLineWidth) / 2
+    // Arc spans from 7 o'clock (-210°) to 5 o'clock (30°) = 240° sweep
+    let startAngle: CGFloat = -.pi * 7 / 6   // -210° = 7 o'clock
+    let endAngle: CGFloat = .pi / 6           // 30° = 5 o'clock
+
+    let gaugeContainer = UIView()
+    gaugeContainer.translatesAutoresizingMaskIntoConstraints = false
+    gaugeContainer.clipsToBounds = false
+
+    // Score label (inside the arc)
     let scoreLabel = UILabel()
     scoreLabel.text = "\(score)"
-    scoreLabel.font = .monospacedDigitSystemFont(ofSize: 44, weight: .black)
+    scoreLabel.font = .monospacedDigitSystemFont(ofSize: 42, weight: .black)
     scoreLabel.textColor = tierColor
+    scoreLabel.textAlignment = .center
     scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+    gaugeContainer.addSubview(scoreLabel)
 
-    let maxScoreLabel = UILabel()
-    maxScoreLabel.text = "/100"
-    maxScoreLabel.font = .systemFont(ofSize: 18, weight: .medium)
-    maxScoreLabel.textColor = UIColor.white.withAlphaComponent(0.4)
-    maxScoreLabel.translatesAutoresizingMaskIntoConstraints = false
-
+    // Status badge (below score, inside arc)
     let statusBadge = PaddedLabel()
     statusBadge.text = status
-    statusBadge.font = .systemFont(ofSize: 12, weight: .bold)
+    statusBadge.font = .systemFont(ofSize: 11, weight: .bold)
     statusBadge.textColor = .white
     statusBadge.backgroundColor = tierColor
     statusBadge.clipsToBounds = true
     statusBadge.translatesAutoresizingMaskIntoConstraints = false
+    gaugeContainer.addSubview(statusBadge)
 
-    let scoreRow = UIStackView()
-    scoreRow.axis = .horizontal
-    scoreRow.alignment = .firstBaseline
-    scoreRow.spacing = 2
-    scoreRow.translatesAutoresizingMaskIntoConstraints = false
-    scoreRow.addArrangedSubview(scoreLabel)
-    scoreRow.addArrangedSubview(maxScoreLabel)
-    scoreRow.setCustomSpacing(10, after: maxScoreLabel)
-    scoreRow.addArrangedSubview(statusBadge)
+    NSLayoutConstraint.activate([
+        gaugeContainer.heightAnchor.constraint(equalToConstant: arcSize + 8),
+        scoreLabel.centerXAnchor.constraint(equalTo: gaugeContainer.centerXAnchor),
+        scoreLabel.centerYAnchor.constraint(equalTo: gaugeContainer.centerYAnchor, constant: -4),
+        statusBadge.centerXAnchor.constraint(equalTo: gaugeContainer.centerXAnchor),
+        statusBadge.topAnchor.constraint(equalTo: scoreLabel.bottomAnchor, constant: 2),
+    ])
 
-    // Center the score row
-    let scoreCenterStack = UIStackView()
-    scoreCenterStack.axis = .horizontal
-    scoreCenterStack.alignment = .center
-    scoreCenterStack.distribution = .equalCentering
-    scoreCenterStack.translatesAutoresizingMaskIntoConstraints = false
-    let leftSpacer = UIView(); leftSpacer.translatesAutoresizingMaskIntoConstraints = false
-    let rightSpacer = UIView(); rightSpacer.translatesAutoresizingMaskIntoConstraints = false
-    scoreCenterStack.addArrangedSubview(leftSpacer)
-    scoreCenterStack.addArrangedSubview(scoreRow)
-    scoreCenterStack.addArrangedSubview(rightSpacer)
-    leftSpacer.widthAnchor.constraint(equalTo: rightSpacer.widthAnchor).isActive = true
+    // Draw arc layers after layout pass completes
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        gaugeContainer.superview?.layoutIfNeeded()
+        let size = gaugeContainer.bounds.size.width > 0 ? gaugeContainer.bounds.size : CGSize(width: arcSize, height: arcSize + 8)
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
 
-    // ── Progress bar ──
-    let progressBar = AnimatedProgressBar()
-    progressBar.progressColor = tierColor
-    progressBar.translatesAutoresizingMaskIntoConstraints = false
+        // Background track
+        let bgPath = UIBezierPath(arcCenter: center, radius: arcRadius, startAngle: startAngle, endAngle: endAngle, clockwise: true)
+        let bgLayer = CAShapeLayer()
+        bgLayer.path = bgPath.cgPath
+        bgLayer.fillColor = UIColor.clear.cgColor
+        bgLayer.strokeColor = UIColor.white.withAlphaComponent(0.08).cgColor
+        bgLayer.lineWidth = arcLineWidth
+        bgLayer.lineCap = .round
+        gaugeContainer.layer.insertSublayer(bgLayer, at: 0)
+
+        // Progress arc (white stroke, will be masked by gradient)
+        let progressPath = UIBezierPath(arcCenter: center, radius: arcRadius, startAngle: startAngle, endAngle: endAngle, clockwise: true)
+        let progressLayer = CAShapeLayer()
+        progressLayer.path = progressPath.cgPath
+        progressLayer.fillColor = UIColor.clear.cgColor
+        progressLayer.strokeColor = UIColor.white.cgColor
+        progressLayer.lineWidth = arcLineWidth
+        progressLayer.lineCap = .round
+        progressLayer.strokeEnd = CGFloat(score) / 100.0
+
+        // Gradient overlay on the arc
+        let gradient = CAGradientLayer()
+        gradient.frame = gaugeContainer.bounds
+        gradient.colors = [
+            tierColor.withAlphaComponent(0.4).cgColor,
+            tierColor.cgColor,
+            tierColor.cgColor,
+        ]
+        gradient.startPoint = CGPoint(x: 0, y: 1)
+        gradient.endPoint = CGPoint(x: 1, y: 0)
+        gradient.mask = progressLayer
+        gaugeContainer.layer.insertSublayer(gradient, above: bgLayer)
+
+        // Glow effect behind the arc
+        let glowLayer = CAShapeLayer()
+        glowLayer.path = progressPath.cgPath
+        glowLayer.fillColor = UIColor.clear.cgColor
+        glowLayer.strokeColor = tierColor.withAlphaComponent(0.3).cgColor
+        glowLayer.lineWidth = arcLineWidth + 8
+        glowLayer.lineCap = .round
+        glowLayer.strokeEnd = CGFloat(score) / 100.0
+        gaugeContainer.layer.insertSublayer(glowLayer, at: 0)
+
+        // Animate the arc filling
+        let animation = CABasicAnimation(keyPath: "strokeEnd")
+        animation.fromValue = 0
+        animation.toValue = CGFloat(score) / 100.0
+        animation.duration = 1.5
+        animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        progressLayer.add(animation, forKey: "arcFill")
+        glowLayer.add(animation, forKey: "glowFill")
+    }
+
+    // Wrap gauge in a centered container
+    let gaugeWrapper = UIView()
+    gaugeWrapper.translatesAutoresizingMaskIntoConstraints = false
+    gaugeWrapper.addSubview(gaugeContainer)
+    NSLayoutConstraint.activate([
+        gaugeContainer.centerXAnchor.constraint(equalTo: gaugeWrapper.centerXAnchor),
+        gaugeContainer.topAnchor.constraint(equalTo: gaugeWrapper.topAnchor),
+        gaugeContainer.bottomAnchor.constraint(equalTo: gaugeWrapper.bottomAnchor),
+        gaugeContainer.widthAnchor.constraint(equalToConstant: arcSize),
+    ])
 
     // ── Explanation ──
     let rawExplanation = explanation.isEmpty ? "insights.carSelectedBased".localized : explanation
@@ -930,10 +996,6 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     explanationLabel.lineBreakMode = .byWordWrapping
     explanationLabel.translatesAutoresizingMaskIntoConstraints = false
 
-    // ── Action button ──
-    let refreshButton = createActionButton(title: "🔄 " + "insights.checkAgain".localized, action: #selector(rediscoverTapped))
-    refreshButton.translatesAutoresizingMaskIntoConstraints = false
-
     // ── Content stack (inside glass card) ──
     let contentStack = UIStackView()
     contentStack.axis = .vertical
@@ -942,12 +1004,10 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     contentStack.translatesAutoresizingMaskIntoConstraints = false
 
     contentStack.addArrangedSubview(carNameLabel)
-    contentStack.addArrangedSubview(scoreCenterStack)
-    contentStack.addArrangedSubview(progressBar)
-    contentStack.setCustomSpacing(10, after: progressBar)
+    contentStack.setCustomSpacing(4, after: carNameLabel)
+    contentStack.addArrangedSubview(gaugeWrapper)
+    contentStack.setCustomSpacing(4, after: gaugeWrapper)
     contentStack.addArrangedSubview(explanationLabel)
-    contentStack.setCustomSpacing(12, after: explanationLabel)
-    contentStack.addArrangedSubview(refreshButton)
 
     card.addSubview(contentStack)
 
@@ -994,9 +1054,6 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         contentStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
         contentStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
 
-        progressBar.heightAnchor.constraint(equalToConstant: 5),
-        refreshButton.heightAnchor.constraint(equalToConstant: 38),
-
         // Floating car image - centered at top, overlapping the card
         carImageView.centerXAnchor.constraint(equalTo: wrapper.trailingAnchor, constant: -90),
         carImageView.bottomAnchor.constraint(equalTo: card.topAnchor, constant: 30),
@@ -1004,14 +1061,50 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         carImageView.heightAnchor.constraint(equalToConstant: 100),
     ])
 
-    // Update progress bar
-    DispatchQueue.main.async {
-        progressBar.setProgress(CGFloat(score) / 100.0)
-    }
+    // Tap to show score detail bottom sheet
+    card.isUserInteractionEnabled = true
+    let tap = UITapGestureRecognizer(target: self, action: #selector(carCardTapped))
+    card.addGestureRecognizer(tap)
+    self.currentCarScore = score
+    self.currentCarName = carName
 
     stack.addArrangedSubview(wrapper)
 }
 
+    // MARK: - Car Card Tap → Score Detail Bottom Sheet
+
+    @objc private func carCardTapped() {
+        let score = currentCarScore
+        guard score > 0 else { return }
+
+        let tierColor: UIColor
+        switch score {
+        case 80...100: tierColor = AIONDesign.accentSuccess
+        case 65..<80:  tierColor = AIONDesign.accentSecondary
+        case 45..<65:  tierColor = AIONDesign.accentPrimary
+        case 25..<45:  tierColor = AIONDesign.accentWarning
+        default:       tierColor = AIONDesign.accentDanger
+        }
+
+        let config = ScoreDetailConfig(
+            title: "carScore.detail.title".localized,
+            iconName: "car.fill",
+            iconColor: tierColor,
+            todayValue: "\(score)",
+            todayValueColor: tierColor,
+            explanationText: "carScore.detail.explanation".localized,
+            unit: nil,
+            subtitle: currentCarName,
+            history: [],
+            barColor: tierColor,
+            averageValue: nil,
+            averageLabel: nil,
+            valueFormatter: nil,
+            scaleRange: nil
+        )
+        let detailVC = ScoreDetailWithGraphViewController(config: config)
+        present(detailVC, animated: true)
+    }
 
     // MARK: - Car Name Cleaning
 
@@ -3035,8 +3128,8 @@ private func showDiscoveryLoadingAnimation() {
         discoveryMinHeightConstraint?.isActive = false
         discoveryMinHeightConstraint = nil
 
-        // Get score from Gemini (single source of truth)
-        let score: Int = GeminiResultStore.loadCarScore() ?? GeminiResultStore.loadHealthScore() ?? 0
+        // Get score from Gemini — daily health score is PRIMARY display
+        let score: Int = GeminiResultStore.loadHealthScore() ?? GeminiResultStore.loadCarScore() ?? 0
 
         // Determine car name - priority: Gemini > Saved > Placeholder
         let carName: String
@@ -3188,11 +3281,6 @@ private func showDiscoveryLoadingAnimation() {
         explanationLabel.alpha = 0
         explanationLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // ── Button ──
-        let refreshButton = createActionButton(title: "🔄 " + "insights.checkAgain".localized, action: #selector(rediscoverTapped))
-        refreshButton.alpha = 0
-        refreshButton.translatesAutoresizingMaskIntoConstraints = false
-
         // ── Content stack ──
         let contentStack = UIStackView()
         contentStack.axis = .vertical
@@ -3205,8 +3293,6 @@ private func showDiscoveryLoadingAnimation() {
         contentStack.addArrangedSubview(progressBar)
         contentStack.setCustomSpacing(10, after: progressBar)
         contentStack.addArrangedSubview(explanationLabel)
-        contentStack.setCustomSpacing(12, after: explanationLabel)
-        contentStack.addArrangedSubview(refreshButton)
         card.addSubview(contentStack)
 
         // ── Floating car image ──
@@ -3243,7 +3329,6 @@ private func showDiscoveryLoadingAnimation() {
             contentStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
 
             progressBar.heightAnchor.constraint(equalToConstant: 5),
-            refreshButton.heightAnchor.constraint(equalToConstant: 38),
 
             carImageView.centerXAnchor.constraint(equalTo: container.trailingAnchor, constant: -90),
             carImageView.bottomAnchor.constraint(equalTo: card.topAnchor, constant: 30),
@@ -3308,14 +3393,7 @@ private func showDiscoveryLoadingAnimation() {
             }
         }
 
-        // 7. Button
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            UIView.animate(withDuration: 0.4) {
-                refreshButton.alpha = 1
-            }
-        }
-
-        // 8. Add remaining content after 4 seconds
+        // 7. Add remaining content after 4 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
             guard let self = self else { return }
             self.isShowingDiscoveryFlow = false
@@ -3339,8 +3417,8 @@ private func showDiscoveryLoadingAnimation() {
             exerciseMinutes: dailyActivity?.exerciseMinutes ?? 0,
             standHours: dailyActivity?.standHours ?? 0,
             restingHR: dailyActivity?.restingHR ?? 0 > 0 ? dailyActivity?.restingHR : nil,
-            hrv: nil,
-            sleepHours: nil,
+            hrv: dailyActivity?.hrv ?? 0 > 0 ? dailyActivity?.hrv : nil,
+            sleepHours: dailyActivity?.sleepHours ?? 0 > 0 ? dailyActivity?.sleepHours : nil,
             userName: userName
         )
     }
@@ -3411,17 +3489,6 @@ private func showDiscoveryLoadingAnimation() {
 
         // Add at the beginning of the stack (above the car card)
         stack.insertArrangedSubview(headerStack, at: 0)
-    }
-
-    @objc private func rediscoverTapped() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-
-        // Delete cache and restart
-        GeminiResultStore.clear()
-        AnalysisCache.clear()
-        UserDefaults.standard.set(false, forKey: "AION.HasDiscoveredCar")
-        isShowingDiscoveryFlow = false
-        refreshContent()
     }
 
     @objc private func showDetailsTapped() {

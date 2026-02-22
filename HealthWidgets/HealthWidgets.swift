@@ -2,7 +2,8 @@
 //  HealthWidgets.swift
 //  HealthWidgets
 //
-//  Widget Extension for Health Reporter - displays health data on home screen
+//  Widget Extension for Health Reporter — shared data model, loader, and components.
+//  Rebuilt from scratch.
 //
 
 import WidgetKit
@@ -12,9 +13,12 @@ import UIKit
 // MARK: - Shared Data Model
 
 struct HealthWidgetData: Codable {
-    var healthScore: Int          // Gemini score (90-day average) - main display
-    var dailyScore: Int?          // Daily health score - secondary display
+    // Core scores
+    var healthScore: Int
+    var dailyScore: Int?
     var healthStatus: String
+
+    // Activity rings
     var steps: Int
     var stepsGoal: Int
     var calories: Int
@@ -23,19 +27,97 @@ struct HealthWidgetData: Codable {
     var exerciseGoal: Int
     var standHours: Int
     var standGoal: Int
+
+    // Health metrics
     var heartRate: Int
+    var restingHeartRate: Int
     var hrv: Int
     var sleepHours: Double
+
+    // Metadata
     var lastUpdated: Date
 
-    // Car tier info
+    // Car tier
     var carName: String
     var carEmoji: String
     var carImageName: String
     var carTierIndex: Int
 
-    // User info
+    // User
     var userName: String
+
+    // MARK: - Backward-Compatible Decoding
+
+    enum CodingKeys: String, CodingKey {
+        case healthScore, dailyScore, healthStatus
+        case steps, stepsGoal, calories, caloriesGoal
+        case exerciseMinutes, exerciseGoal, standHours, standGoal
+        case heartRate, restingHeartRate, hrv, sleepHours
+        case lastUpdated
+        case carName, carEmoji, carImageName, carTierIndex
+        case userName
+    }
+
+    init(healthScore: Int, dailyScore: Int?, healthStatus: String,
+         steps: Int, stepsGoal: Int, calories: Int, caloriesGoal: Int,
+         exerciseMinutes: Int, exerciseGoal: Int, standHours: Int, standGoal: Int,
+         heartRate: Int, restingHeartRate: Int, hrv: Int, sleepHours: Double,
+         lastUpdated: Date,
+         carName: String, carEmoji: String, carImageName: String, carTierIndex: Int,
+         userName: String) {
+        self.healthScore = healthScore; self.dailyScore = dailyScore; self.healthStatus = healthStatus
+        self.steps = steps; self.stepsGoal = stepsGoal
+        self.calories = calories; self.caloriesGoal = caloriesGoal
+        self.exerciseMinutes = exerciseMinutes; self.exerciseGoal = exerciseGoal
+        self.standHours = standHours; self.standGoal = standGoal
+        self.heartRate = heartRate; self.restingHeartRate = restingHeartRate
+        self.hrv = hrv; self.sleepHours = sleepHours
+        self.lastUpdated = lastUpdated
+        self.carName = carName; self.carEmoji = carEmoji
+        self.carImageName = carImageName; self.carTierIndex = carTierIndex
+        self.userName = userName
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        healthScore = (try? c.decode(Int.self, forKey: .healthScore)) ?? 0
+        dailyScore = try? c.decode(Int.self, forKey: .dailyScore)
+        healthStatus = (try? c.decode(String.self, forKey: .healthStatus)) ?? ""
+        steps = (try? c.decode(Int.self, forKey: .steps)) ?? 0
+        stepsGoal = (try? c.decode(Int.self, forKey: .stepsGoal)) ?? 10000
+        calories = (try? c.decode(Int.self, forKey: .calories)) ?? 0
+        caloriesGoal = (try? c.decode(Int.self, forKey: .caloriesGoal)) ?? 500
+        exerciseMinutes = (try? c.decode(Int.self, forKey: .exerciseMinutes)) ?? 0
+        exerciseGoal = (try? c.decode(Int.self, forKey: .exerciseGoal)) ?? 30
+        standHours = (try? c.decode(Int.self, forKey: .standHours)) ?? 0
+        standGoal = (try? c.decode(Int.self, forKey: .standGoal)) ?? 12
+        heartRate = (try? c.decode(Int.self, forKey: .heartRate)) ?? 0
+        restingHeartRate = (try? c.decode(Int.self, forKey: .restingHeartRate)) ?? 0
+        hrv = (try? c.decode(Int.self, forKey: .hrv)) ?? 0
+        sleepHours = (try? c.decode(Double.self, forKey: .sleepHours)) ?? 0
+        lastUpdated = (try? c.decode(Date.self, forKey: .lastUpdated)) ?? Date.distantPast
+        carName = (try? c.decode(String.self, forKey: .carName)) ?? "--"
+        carEmoji = (try? c.decode(String.self, forKey: .carEmoji)) ?? "🚗"
+        carImageName = (try? c.decode(String.self, forKey: .carImageName)) ?? ""
+        carTierIndex = (try? c.decode(Int.self, forKey: .carTierIndex)) ?? 0
+        userName = (try? c.decode(String.self, forKey: .userName)) ?? ""
+    }
+
+    // MARK: - Computed Properties
+
+    var isStale: Bool {
+        Date().timeIntervalSince(lastUpdated) > 14400 // 4 hours
+    }
+
+    var displayCarEmoji: String {
+        carEmoji.isEmpty ? "🚗" : carEmoji
+    }
+
+    var displayCarName: String {
+        carName.isEmpty ? "--" : carName
+    }
+
+    // MARK: - Placeholder
 
     static var placeholder: HealthWidgetData {
         HealthWidgetData(
@@ -51,6 +133,7 @@ struct HealthWidgetData: Codable {
             standHours: 8,
             standGoal: 12,
             heartRate: 68,
+            restingHeartRate: 62,
             hrv: 45,
             sleepHours: 7.5,
             lastUpdated: Date(),
@@ -70,41 +153,27 @@ struct WidgetDataLoader {
     static let carImageFileName = "widget_car_image.png"
 
     static func loadData() -> HealthWidgetData {
-        guard let userDefaults = UserDefaults(suiteName: appGroupID) else {
-            print("Widget: Failed to access App Group")
+        guard let userDefaults = UserDefaults(suiteName: appGroupID),
+              let data = userDefaults.data(forKey: "widgetData") else {
             return .placeholder
         }
-
-        guard let data = userDefaults.data(forKey: "widgetData") else {
-            print("Widget: No data found in App Group, using placeholder")
-            return .placeholder
-        }
-
         do {
-            let widgetData = try JSONDecoder().decode(HealthWidgetData.self, from: data)
-            print("Widget: Loaded data - Score: \(widgetData.healthScore), Car: \(widgetData.carName)")
-            return widgetData
+            return try JSONDecoder().decode(HealthWidgetData.self, from: data)
         } catch {
-            print("Widget: Decode error: \(error)")
             return .placeholder
         }
     }
 
-    /// Loads car image from App Group if available
     static func loadCarImage() -> UIImage? {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else {
             return nil
         }
-
         let imageURL = containerURL.appendingPathComponent(carImageFileName)
-
         guard FileManager.default.fileExists(atPath: imageURL.path),
               let imageData = try? Data(contentsOf: imageURL),
               let image = UIImage(data: imageData) else {
             return nil
         }
-
-        print("Widget: Loaded car image from App Group")
         return image
     }
 }
@@ -119,16 +188,13 @@ struct HealthTimelineProvider: TimelineProvider {
     func getSnapshot(in context: Context, completion: @escaping (HealthEntry) -> Void) {
         let data = WidgetDataLoader.loadData()
         let carImage = WidgetDataLoader.loadCarImage()
-        let entry = HealthEntry(date: Date(), data: data, carImage: carImage)
-        completion(entry)
+        completion(HealthEntry(date: Date(), data: data, carImage: carImage))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<HealthEntry>) -> Void) {
         let data = WidgetDataLoader.loadData()
         let carImage = WidgetDataLoader.loadCarImage()
         let entry = HealthEntry(date: Date(), data: data, carImage: carImage)
-
-        // Update every 5 minutes for more frequent updates
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 5, to: Date())!
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
@@ -141,9 +207,70 @@ struct HealthEntry: TimelineEntry {
     let carImage: UIImage?
 }
 
+// MARK: - Color Helpers (matched to Watch + HealthTier)
+
+extension Color {
+    /// Score color — identical to WatchHealthData.scoreColor(for:)
+    static func scoreColor(for score: Int) -> Color {
+        switch score {
+        case ..<25:  return .red
+        case 25..<45: return .orange
+        case 45..<65: return .yellow
+        case 65..<82: return .green
+        default:      return .mint
+        }
+    }
+
+    /// Tier color — identical to WatchHealthData.tierColor(for:) and HealthTier
+    static func tierColor(for index: Int) -> Color {
+        switch index {
+        case 0:  return .red
+        case 1:  return .orange
+        case 2:  return .yellow
+        case 3:  return .green
+        default: return .mint
+        }
+    }
+}
+
 // MARK: - Shared UI Components
 
-/// Ring progress view for activity rings
+/// Arc progress ring with gradient
+struct ArcRing: View {
+    let progress: Double
+    let gradient: [Color]
+    let lineWidth: CGFloat
+    let lineCap: CGLineCap
+
+    init(progress: Double, gradient: [Color], lineWidth: CGFloat = 8, lineCap: CGLineCap = .round) {
+        self.progress = progress
+        self.gradient = gradient
+        self.lineWidth = lineWidth
+        self.lineCap = lineCap
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.08), lineWidth: lineWidth)
+
+            Circle()
+                .trim(from: 0, to: min(progress, 1.0))
+                .stroke(
+                    AngularGradient(
+                        colors: gradient,
+                        center: .center,
+                        startAngle: .degrees(0),
+                        endAngle: .degrees(360 * min(progress, 1.0))
+                    ),
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: lineCap)
+                )
+                .rotationEffect(.degrees(-90))
+        }
+    }
+}
+
+/// Simple solid color ring
 struct RingView: View {
     let progress: Double
     let color: Color
@@ -152,7 +279,7 @@ struct RingView: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(color.opacity(0.3), lineWidth: lineWidth)
+                .stroke(color.opacity(0.2), lineWidth: lineWidth)
 
             Circle()
                 .trim(from: 0, to: min(progress, 1.0))
@@ -165,113 +292,81 @@ struct RingView: View {
     }
 }
 
-/// Small stat label for compact displays
-struct StatLabel: View {
-    let value: String
-    let unit: String
-    let color: Color
+/// Concentric activity rings (Move / Exercise / Stand)
+struct ActivityRings: View {
+    let data: HealthWidgetData
+    let outerSize: CGFloat
+    let lineWidth: CGFloat
 
     var body: some View {
-        VStack(spacing: 2) {
-            Text(value)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.white)
-            Text(unit)
-                .font(.system(size: 8))
-                .foregroundColor(color)
+        ZStack {
+            RingView(
+                progress: Double(data.calories) / Double(max(data.caloriesGoal, 1)),
+                color: .pink,
+                lineWidth: lineWidth
+            )
+            .frame(width: outerSize, height: outerSize)
+
+            RingView(
+                progress: Double(data.exerciseMinutes) / Double(max(data.exerciseGoal, 1)),
+                color: .green,
+                lineWidth: lineWidth
+            )
+            .frame(width: outerSize - lineWidth * 2.5, height: outerSize - lineWidth * 2.5)
+
+            RingView(
+                progress: Double(data.standHours) / Double(max(data.standGoal, 1)),
+                color: .cyan,
+                lineWidth: lineWidth
+            )
+            .frame(width: outerSize - lineWidth * 5, height: outerSize - lineWidth * 5)
         }
     }
 }
 
-/// Activity stat row for medium widget
-struct ActivityStatRow: View {
-    let icon: String
-    let title: String
-    let value: String
-    let unit: String
-    let color: Color
+// MARK: - Number Formatting
 
-    var body: some View {
-        HStack(spacing: 8) {
-            Text("\(value) \(unit)")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.white)
-
-            Text(title)
-                .font(.system(size: 11))
-                .foregroundColor(.gray)
-
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundColor(color)
-        }
+func formatSteps(_ number: Int) -> String {
+    if number >= 10000 {
+        return String(format: "%.1fK", Double(number) / 1000)
+    } else if number >= 1000 {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = ","
+        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
     }
+    return "\(number)"
 }
 
-/// Mini stat row for daily summary
-struct MiniStatRow: View {
-    let label: String
-    let value: String
-    let color: Color
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Text(value)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white)
-            Text(label)
-                .font(.system(size: 10))
-                .foregroundColor(.gray)
-            Circle()
-                .fill(color)
-                .frame(width: 6, height: 6)
-        }
-    }
+func formatSleep(_ hours: Double) -> String {
+    let h = Int(hours)
+    let m = Int((hours - Double(h)) * 60)
+    if m > 0 { return "\(h)h\(m)m" }
+    return "\(h)h"
 }
 
-/// Stat card for grid display
-struct StatCard: View {
-    let icon: String
-    let value: String
-    let label: String
-    let color: Color
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(color)
-            Text(value)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
-            Text(label)
-                .font(.system(size: 9))
-                .foregroundColor(.gray)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(8)
-    }
+func timeAgoString(from date: Date) -> String {
+    let interval = Date().timeIntervalSince(date)
+    if interval < 60 { return "just now" }
+    if interval < 3600 { return "\(Int(interval / 60))m ago" }
+    if interval < 86400 { return "\(Int(interval / 3600))h ago" }
+    return "1d+ ago"
 }
 
-/// Mini stat box for medium summary widget
-struct MiniStatBox: View {
-    let icon: String
-    let value: String
-    let color: Color
+// MARK: - Stale Data Badge
 
+struct StaleDataBadge: View {
     var body: some View {
-        VStack(spacing: 2) {
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundColor(color)
-            Text(value)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.white)
+        HStack(spacing: 2) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 7))
+            Text("Stale")
+                .font(.system(size: 7, weight: .medium))
         }
-        .frame(width: 44, height: 36)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(6)
+        .foregroundColor(.orange)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 2)
+        .background(Color.orange.opacity(0.15))
+        .clipShape(Capsule())
     }
 }

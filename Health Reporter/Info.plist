@@ -35,6 +35,7 @@
 	<array>
 		<string>com.rani.Health-Reporter.morningRefresh</string>
 		<string>com.rani.Health-Reporter.bedtimeRefresh</string>
+		<string>com.rani.Health-Reporter.morningAnalysis</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

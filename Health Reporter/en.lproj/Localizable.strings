@@ -68,6 +68,15 @@
 "profile.score" = "Score";
 "profile.shareText" = "%1$@ | Health Score: %2$d %3$@ %4$@\n\nCheck out my profile on AION Health!\n%5$@\n\nDon't have the app? Download here:\n%6$@";
 "profile.bodyMetrics" = "Body Metrics";
+"profile.todayActivity" = "Today's Activity";
+"profile.thisWeek" = "This Week";
+"profile.healthBreakdown" = "Health Breakdown";
+"profile.globalRank" = "Global Rank";
+"profile.peakTier" = "Peak Performance — Top Tier!";
+"metric.recovery" = "Recovery";
+"metric.energy" = "Energy";
+"metric.activity" = "Activity";
+"metric.balance" = "Balance";
 "profile.selectUserType" = "Select User Type";
 
 /* Home (main screen) */
@@ -350,6 +359,7 @@
 "insights.okay" = "Okay";
 "insights.needsAttention" = "Needs Attention";
 "insights.carSelectedBased" = "The car was chosen based on analysis of your health data.";
+"insights.personalGreeting" = "%@, here's what we see:";
 "insights.weeklyData" = "Weekly Data";
 "insights.sleep" = "Sleep";
 "insights.sleepExplanation" = "Average sleep hours in the last week. 7-9 hours is considered optimal for recovery.";
@@ -1119,9 +1129,40 @@
 "home.recommendations.nutrition" = "Nutrition";
 "home.recommendations.error" = "Could not load recommendations";
 "home.recommendations.retry" = "Retry AI Analysis";
+
+/* Weekly Goals */
+"goals.title" = "This Week's Goals";
+"goals.progress" = "%d/%d completed";
+"goals.allDone" = "All goals completed!";
+"goals.allDone.subtitle" = "New goals will appear with your next analysis";
+"goals.waiting" = "Complete your current goals to unlock new ones";
+"goals.noGoals" = "Your personalized goals will appear here after the first analysis";
+"goals.history" = "View History";
+"goals.completed" = "Completed";
+"goals.pending" = "Pending";
+"goals.skipped" = "Skipped";
+"goals.midweekReminder.title" = "Weekly Goals Check-in";
+"goals.midweekReminder.body" = "You have %d goals still pending this week. Keep going!";
+"goals.endweekSummary.title" = "Weekly Summary";
+"goals.endweekSummary.body" = "You completed %d out of %d goals this week.";
+"goals.category.sleep" = "Sleep";
+"goals.category.exercise" = "Exercise";
+"goals.category.nutrition" = "Nutrition";
+"goals.category.recovery" = "Recovery";
+"goals.category.stress" = "Stress";
+"goals.improvement" = "Improved!";
+"goals.noImprovement" = "Keep trying";
+"goals.history.title" = "Goal History";
+"goals.history.empty" = "No goal history yet";
+"goals.generate.subtitle" = "Run AI analysis to get personalized weekly goals";
+"goals.generate.button" = "Generate Goals";
+"goals.generate.loading" = "Analyzing your health data...";
+"goals.refresh" = "Refresh Goals";
+
 "home.reset.defaults" = "Reset to Defaults";
 "home.select.hero" = "Choose Main Metric";
-"home.select.secondary" = "Choose 4 Secondary Metrics";
+"home.select.secondary" = "Choose Secondary Metrics";
+"home.select.secondary.range" = "Please select between %d and %d secondary metrics";
 
 /* Metric Explanations */
 "explanation.main_score" = "Composite score based on recovery, sleep, energy, activity and load balance";

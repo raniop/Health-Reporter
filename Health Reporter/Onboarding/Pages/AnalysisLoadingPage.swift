@@ -399,7 +399,7 @@ final class AnalysisLoadingPage: UIViewController {
                 if hasGeminiData {
                     // Get actual Gemini car name - NEVER use generic tier names!
                     let geminiCar = AnalysisCache.loadSelectedCar()
-                    let tier = CarTierEngine.tierForScore(healthScore)
+                    let tier = HealthTier.forScore(healthScore)
 
                     // Only proceed with car reveal if we have actual Gemini car name
                     guard let carName = geminiCar?.name, !carName.isEmpty else {

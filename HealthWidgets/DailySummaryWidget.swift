@@ -2,7 +2,7 @@
 //  DailySummaryWidget.swift
 //  HealthWidgets
 //
-//  Large widget showing comprehensive daily health summary
+//  Comprehensive daily health dashboard widget.
 //
 
 import WidgetKit
@@ -20,18 +20,17 @@ struct DailySummaryWidget: Widget {
                     .containerBackground(.black, for: .widget)
             } else {
                 DailySummaryWidgetView(entry: entry)
-                    .padding()
                     .background(Color.black)
             }
         }
         .configurationDisplayName("Daily Summary")
-        .description("All your health data at a glance")
+        .description("Complete daily health overview")
         .supportedFamilies([.systemLarge, .systemMedium])
         .contentMarginsDisabled()
     }
 }
 
-// MARK: - Daily Summary Widget View
+// MARK: - Router View
 
 struct DailySummaryWidgetView: View {
     var entry: HealthEntry
@@ -54,151 +53,110 @@ struct DailySummaryWidgetView: View {
 struct LargeDailySummaryView: View {
     let data: HealthWidgetData
 
-    var scoreColor: Color {
-        switch data.healthScore {
-        case 80...100: return .green
-        case 60..<80: return .cyan
-        case 40..<60: return .orange
-        default: return .red
-        }
-    }
-
-    var dailyScoreColor: Color {
-        guard let daily = data.dailyScore else { return .gray }
-        switch daily {
-        case 80...100: return .green
-        case 60..<80: return .cyan
-        case 40..<60: return .orange
-        default: return .red
-        }
-    }
+    private var scoreColor: Color { .scoreColor(for: data.healthScore) }
 
     var body: some View {
         ZStack {
-            // Pure black background
             Color.black
 
-            VStack(spacing: 12) {
-                // Header with score
-                HStack {
-                    VStack(alignment: .trailing, spacing: 4) {
+            VStack(spacing: 0) {
+                // Header: Greeting + Score ring
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text(greeting)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(.white)
                         Text(dateString)
-                            .font(.system(size: 12))
+                            .font(.system(size: 11))
                             .foregroundColor(.gray)
                     }
 
                     Spacer()
 
-                    // Score badges - Gemini score (main) + Daily score (secondary)
-                    HStack(spacing: 8) {
-                        // Daily score (smaller, secondary) - if available
-                        if let dailyScore = data.dailyScore {
-                            ZStack {
-                                Circle()
-                                    .fill(dailyScoreColor.opacity(0.15))
-                                Circle()
-                                    .trim(from: 0, to: CGFloat(dailyScore) / 100)
-                                    .stroke(dailyScoreColor.opacity(0.7), style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                                    .rotationEffect(.degrees(-90))
-                                Text("\(dailyScore)")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.gray)
-                            }
-                            .frame(width: 36, height: 36)
-                        }
-
-                        // Main Gemini score (larger)
-                        ZStack {
-                            Circle()
-                                .fill(scoreColor.opacity(0.2))
-                            Circle()
-                                .trim(from: 0, to: CGFloat(data.healthScore) / 100)
-                                .stroke(scoreColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                            Text("\(data.healthScore)")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.white)
-                        }
-                        .frame(width: 50, height: 50)
-                    }
-                    .padding(.top, 4)  // Move the score down slightly
-                }
-
-                Divider()
-                    .background(Color.gray.opacity(0.3))
-
-                // Activity Rings Section
-                HStack(spacing: 20) {
-                    // Mini rings
+                    // Score ring
                     ZStack {
-                        RingView(
-                            progress: Double(data.calories) / Double(data.caloriesGoal),
+                        ArcRing(
+                            progress: Double(data.healthScore) / 100.0,
+                            gradient: [scoreColor.opacity(0.4), scoreColor, scoreColor],
+                            lineWidth: 3.5
+                        )
+
+                        Text("\(data.healthScore)")
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                    .frame(width: 46, height: 46)
+                }
+                .padding(.bottom, 12)
+
+                // Activity Rings + Ring Stats
+                HStack(spacing: 14) {
+                    ActivityRings(data: data, outerSize: 70, lineWidth: 9)
+                        .frame(width: 70, height: 70)
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        RingStatRow(
                             color: .pink,
-                            lineWidth: 8
+                            value: "\(data.calories)/\(data.caloriesGoal)",
+                            unit: "kcal",
+                            progress: Double(data.calories) / Double(max(data.caloriesGoal, 1))
                         )
-                        .frame(width: 60, height: 60)
-
-                        RingView(
-                            progress: Double(data.exerciseMinutes) / Double(data.exerciseGoal),
+                        RingStatRow(
                             color: .green,
-                            lineWidth: 8
+                            value: "\(data.exerciseMinutes)/\(data.exerciseGoal)",
+                            unit: "min",
+                            progress: Double(data.exerciseMinutes) / Double(max(data.exerciseGoal, 1))
                         )
-                        .frame(width: 44, height: 44)
-
-                        RingView(
-                            progress: Double(data.standHours) / Double(data.standGoal),
+                        RingStatRow(
                             color: .cyan,
-                            lineWidth: 8
+                            value: "\(data.standHours)/\(data.standGoal)",
+                            unit: "hrs",
+                            progress: Double(data.standHours) / Double(max(data.standGoal, 1))
                         )
-                        .frame(width: 28, height: 28)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.bottom, 12)
+
+                // Metrics Grid (3x2 cards)
+                VStack(spacing: 6) {
+                    HStack(spacing: 6) {
+                        GlassMetricCard(icon: "figure.walk", value: formatSteps(data.steps), label: "Steps", color: .orange)
+                        GlassMetricCard(icon: "heart.fill", value: "\(data.heartRate)", label: "Heart Rate", color: .red)
+                        GlassMetricCard(icon: "waveform.path.ecg", value: data.hrv > 0 ? "\(data.hrv)" : "--", label: "HRV", color: .purple)
                     }
 
-                    VStack(alignment: .trailing, spacing: 8) {
-                        MiniStatRow(label: "Move", value: "\(data.calories)/\(data.caloriesGoal) kcal", color: .pink)
-                        MiniStatRow(label: "Exercise", value: "\(data.exerciseMinutes)/\(data.exerciseGoal) min", color: .green)
-                        MiniStatRow(label: "Stand", value: "\(data.standHours)/\(data.standGoal) hr", color: .cyan)
+                    HStack(spacing: 6) {
+                        GlassMetricCard(icon: "moon.fill", value: data.sleepHours > 0 ? formatSleep(data.sleepHours) : "--", label: "Sleep", color: .indigo)
+                        GlassMetricCard(icon: "flame.fill", value: "\(data.calories)", label: "Calories", color: .pink)
+                        GlassMetricCard(icon: "figure.run", value: "\(data.exerciseMinutes)m", label: "Exercise", color: .green)
                     }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
-                Divider()
-                    .background(Color.gray.opacity(0.3))
-
-                // Stats Grid
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 12) {
-                    StatCard(icon: "figure.walk", value: formatNumber(data.steps), label: "Steps", color: .orange)
-                    StatCard(icon: "heart.fill", value: "\(data.heartRate)", label: "Heart Rate", color: .red)
-                    StatCard(icon: "waveform.path.ecg", value: "\(data.hrv)", label: "HRV", color: .purple)
-                    StatCard(icon: "bed.double.fill", value: String(format: "%.1f", data.sleepHours), label: "Sleep", color: .indigo)
-                    StatCard(icon: "flame.fill", value: "\(data.calories)", label: "Calories", color: .pink)
-                    StatCard(icon: "figure.run", value: "\(data.exerciseMinutes)", label: "Exercise", color: .green)
-                }
-
-                Spacer()
+                Spacer(minLength: 0)
 
                 // Footer
                 HStack {
-                    Text("AION Health")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.gray)
+                    Text("AION")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.3))
+                    if data.isStale {
+                        StaleDataBadge()
+                    }
                     Spacer()
-                    Text("Updated: \(timeString)")
-                        .font(.system(size: 10))
-                        .foregroundColor(.gray.opacity(0.7))
+                    Text(timeAgoString(from: data.lastUpdated))
+                        .font(.system(size: 9))
+                        .foregroundColor(.white.opacity(0.2))
                 }
+                .padding(.top, 6)
             }
-            .padding(16)
+            .padding(14)
         }
     }
 
-    var greeting: String {
+    // MARK: - Greeting (time-based)
+
+    private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
         let timeGreeting: String
         if hour < 5 { timeGreeting = "Good Night" }
@@ -207,7 +165,6 @@ struct LargeDailySummaryView: View {
         else if hour < 21 { timeGreeting = "Good Evening" }
         else { timeGreeting = "Good Night" }
 
-        // Add user's first name if available
         if !data.userName.isEmpty {
             let firstName = data.userName.components(separatedBy: " ").first ?? data.userName
             return "\(timeGreeting), \(firstName)"
@@ -215,24 +172,13 @@ struct LargeDailySummaryView: View {
         return timeGreeting
     }
 
-    var dateString: String {
+    // MARK: - Date string (uses device locale)
+
+    private var dateString: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US")
-        formatter.dateFormat = "EEEE, MMMM d"
+        formatter.locale = Locale.current
+        formatter.dateFormat = "EEEE, MMM d"
         return formatter.string(from: Date())
-    }
-
-    var timeString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: data.lastUpdated)
-    }
-
-    func formatNumber(_ number: Int) -> String {
-        if number >= 1000 {
-            return String(format: "%.1fK", Double(number) / 1000)
-        }
-        return "\(number)"
     }
 }
 
@@ -241,82 +187,148 @@ struct LargeDailySummaryView: View {
 struct MediumDailySummaryView: View {
     let data: HealthWidgetData
 
-    var scoreColor: Color {
-        switch data.healthScore {
-        case 80...100: return .green
-        case 60..<80: return .cyan
-        case 40..<60: return .orange
-        default: return .red
-        }
-    }
+    private var scoreColor: Color { .scoreColor(for: data.healthScore) }
 
     var body: some View {
         ZStack {
-            // Pure black background
             Color.black
 
-            HStack(spacing: 16) {
-                // Left side - Score
-                VStack(spacing: 8) {
+            HStack(spacing: 14) {
+                // Left: Score ring
+                VStack(spacing: 6) {
                     ZStack {
-                        Circle()
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 6)
-                        Circle()
-                            .trim(from: 0, to: CGFloat(data.healthScore) / 100)
-                            .stroke(scoreColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                        VStack(spacing: 0) {
+                        ArcRing(
+                            progress: Double(data.healthScore) / 100.0,
+                            gradient: [scoreColor.opacity(0.4), scoreColor, scoreColor],
+                            lineWidth: 7
+                        )
+
+                        VStack(spacing: -2) {
                             Text("\(data.healthScore)")
-                                .font(.system(size: 28, weight: .bold))
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                             Text(data.healthStatus)
-                                .font(.system(size: 10))
+                                .font(.system(size: 8, weight: .medium))
                                 .foregroundColor(scoreColor)
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.7)
+                                .minimumScaleFactor(0.6)
                         }
                         .padding(.horizontal, 4)
                     }
-                    .frame(width: 105, height: 105)
+                    .frame(width: 90, height: 90)
 
                     Text("AION")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.gray)
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.3))
                 }
+                .frame(width: 100)
 
-                // Right side - Stats
-                VStack(alignment: .trailing, spacing: 8) {
-                    HStack(spacing: 16) {
-                        MiniStatBox(icon: "figure.walk", value: formatNumber(data.steps), color: .orange)
-                        MiniStatBox(icon: "heart.fill", value: "\(data.heartRate)", color: .red)
-                        MiniStatBox(icon: "bed.double.fill", value: String(format: "%.1f", data.sleepHours), color: .indigo)
+                // Right: Metric grid (2x3)
+                VStack(spacing: 6) {
+                    HStack(spacing: 6) {
+                        CompactMetricPill(icon: "figure.walk", value: formatSteps(data.steps), color: .orange)
+                        CompactMetricPill(icon: "heart.fill", value: "\(data.heartRate)", color: .red)
+                        CompactMetricPill(icon: "waveform.path.ecg", value: data.hrv > 0 ? "\(data.hrv)" : "--", color: .purple)
                     }
 
-                    HStack(spacing: 16) {
-                        MiniStatBox(icon: "flame.fill", value: "\(data.calories)", color: .pink)
-                        MiniStatBox(icon: "figure.run", value: "\(data.exerciseMinutes)", color: .green)
-                        MiniStatBox(icon: "waveform.path.ecg", value: "\(data.hrv)", color: .purple)
+                    HStack(spacing: 6) {
+                        CompactMetricPill(icon: "moon.fill", value: data.sleepHours > 0 ? formatSleep(data.sleepHours) : "--", color: .indigo)
+                        CompactMetricPill(icon: "flame.fill", value: "\(data.calories)", color: .pink)
+                        CompactMetricPill(icon: "figure.run", value: "\(data.exerciseMinutes)m", color: .green)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .frame(maxWidth: .infinity)
             }
-            .padding(16)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
-    }
-
-    func formatNumber(_ number: Int) -> String {
-        if number >= 1000 {
-            return String(format: "%.1fK", Double(number) / 1000)
-        }
-        return "\(number)"
     }
 }
 
-// MARK: - Preview
+// MARK: - Ring Stat Row (compact, for large widget)
 
-@available(iOS 17.0, *)
-#Preview(as: .systemLarge) {
-    DailySummaryWidget()
-} timeline: {
-    HealthEntry(date: .now, data: .placeholder, carImage: nil)
+private struct RingStatRow: View {
+    let color: Color
+    let value: String
+    let unit: String
+    let progress: Double
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 5, height: 5)
+
+            Text(value)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+
+            Text(unit)
+                .font(.system(size: 9))
+                .foregroundColor(.gray)
+
+            Spacer()
+
+            Text("\(min(Int(progress * 100), 999))%")
+                .font(.system(size: 9, weight: .medium, design: .rounded))
+                .foregroundColor(progress >= 1.0 ? color : .gray)
+        }
+    }
+}
+
+// MARK: - Glass Metric Card (large widget)
+
+private struct GlassMetricCard: View {
+    let icon: String
+    let value: String
+    let label: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 13))
+                .foregroundColor(color)
+
+            Text(value)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            Text(label)
+                .font(.system(size: 8, weight: .medium))
+                .foregroundColor(.gray)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(color.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+// MARK: - Compact Metric Pill (medium widget)
+
+private struct CompactMetricPill: View {
+    let icon: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(color)
+
+            Text(value)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(color.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
 }

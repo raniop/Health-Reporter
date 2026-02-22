@@ -75,6 +75,8 @@ class SplashViewController: UIViewController {
     // MARK: - State
     private var hasTransitioned = false
     private var timeoutWorkItem: DispatchWorkItem?
+    private var progressTimer: Timer?
+    private var currentProgress: Float = 0
 
     // MARK: - Lifecycle
 
@@ -176,6 +178,32 @@ class SplashViewController: UIViewController {
         }
         #endif
 
+        // Check if onboarding is needed BEFORE doing any heavy work (HealthKit / Gemini)
+        // This handles reinstall: Firebase Auth survives (Keychain) but UserDefaults is cleared
+        if !OnboardingManager.hasCompletedOnboarding() {
+            print("🔍 [Splash] Onboarding not completed locally — checking Firestore...")
+            OnboardingManager.checkFirestoreCompletion { [weak self] wasCompleted in
+                guard let self = self else { return }
+                if wasCompleted {
+                    print("✅ [Splash] Onboarding restored from Firestore — proceeding with normal load")
+                    self.proceedWithHealthKitAndGemini()
+                } else {
+                    print("➡️ [Splash] Onboarding needed — skipping HealthKit/Gemini, going to Onboarding")
+                    // Show brief splash (logo visible) then go to Onboarding
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        self.finishAndTransition()
+                    }
+                }
+            }
+            return
+        }
+
+        // Onboarding already completed — normal flow
+        proceedWithHealthKitAndGemini()
+    }
+
+    /// Normal loading flow: request HealthKit, fetch data, run Gemini
+    private func proceedWithHealthKitAndGemini() {
         // Check if HealthKit is available
         guard HealthKitManager.shared.isHealthDataAvailable() else {
             transitionToMain()
@@ -200,7 +228,7 @@ class SplashViewController: UIViewController {
     }
 
     private func loadHealthData() {
-        // Step 1: Fetch health data (0% → 20%)
+        // Step 1: Fetch health data (0% → 15%)
         updateProgress(0.05, status: "splash.syncAppleHealth".localized)
 
         HealthKitManager.shared.fetchAllHealthData(for: .week) { [weak self] data, _ in
@@ -209,8 +237,8 @@ class SplashViewController: UIViewController {
             // Save to cache
             HealthDataCache.shared.healthData = data
 
-            // Step 2: Fetch chart data (20% → 40%)
-            self.updateProgress(0.2, status: "splash.processingData".localized)
+            // Step 2: Fetch chart data (15% → 30%)
+            self.updateProgress(0.15, status: "splash.processingData".localized)
 
             // Calculate HealthScore and sync to Firestore in background (non-blocking)
             self.calculateAndSyncHealthScore()
@@ -221,25 +249,23 @@ class SplashViewController: UIViewController {
                 // Save to cache
                 HealthDataCache.shared.chartBundle = bundle
 
-                // Step 3: Run Gemini analysis via Orchestrator (40% → 90%)
-                self.updateProgress(0.4, status: "splash.analyzingAI".localized)
+                // Step 3: Run Gemini analysis with smooth progress (30% → 90%)
+                self.updateProgress(0.3, status: "splash.analyzingAI".localized)
+                self.startSmoothProgress(from: 0.3, to: 0.9, duration: 25)
 
-                // Safety timeout — if Gemini takes >30s, transition anyway
-                let timeout = DispatchWorkItem { [weak self] in
-                    guard let self = self, !self.hasTransitioned else { return }
-                    print("⏰ [Splash] Gemini timeout (30s) — transitioning anyway")
-                    self.finishAndTransition()
+                // Check if this is a language-change restart (force re-analysis)
+                let languageChanged = UserDefaults.standard.bool(forKey: "AION.LanguageChangeNeedsReanalysis")
+                if languageChanged {
+                    UserDefaults.standard.removeObject(forKey: "AION.LanguageChangeNeedsReanalysis")
+                    print("🌐 [Splash] Language changed — forcing Gemini re-analysis")
                 }
-                self.timeoutWorkItem = timeout
-                DispatchQueue.main.asyncAfter(deadline: .now() + 30, execute: timeout)
 
-                // Run Gemini analysis (blocking — waits for completion)
-                AIONAnalysisOrchestrator.shared.ensureTodayResult { [weak self] result, _ in
+                // Run Gemini analysis — wait for completion (no timeout, let it finish)
+                AIONAnalysisOrchestrator.shared.ensureTodayResult(forceRefresh: languageChanged) { [weak self] result, _ in
                     guard let self = self, !self.hasTransitioned else { return }
 
-                    // Cancel timeout
-                    self.timeoutWorkItem?.cancel()
-                    self.timeoutWorkItem = nil
+                    // Stop smooth progress
+                    self.stopSmoothProgress()
 
                     if let result = result {
                         print("✅ [Splash] Gemini analysis complete — healthScore: \(result.scores.healthScore ?? -1)")
@@ -247,7 +273,7 @@ class SplashViewController: UIViewController {
                         print("⚠️ [Splash] Gemini returned nil — will show empty state on Home")
                     }
 
-                    // Step 4: Ready! (90% → 100%)
+                    // Step 4: Ready! (→ 100%)
                     self.updateProgress(0.95, status: "splash.ready".localized)
 
                     // Brief pause to show "Ready!" before transitioning
@@ -257,6 +283,34 @@ class SplashViewController: UIViewController {
                 }
             }
         }
+    }
+
+    // MARK: - Smooth Progress Animation
+
+    /// Smoothly animates progress from `from` to `to` over `duration` seconds.
+    /// Uses an ease-out curve so it starts fast and slows as it approaches the target.
+    private func startSmoothProgress(from: Float, to: Float, duration: TimeInterval) {
+        stopSmoothProgress()
+        currentProgress = from
+        let startTime = Date()
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] timer in
+            guard let self = self, !self.hasTransitioned else {
+                timer.invalidate()
+                return
+            }
+            let elapsed = Date().timeIntervalSince(startTime)
+            let fraction = min(elapsed / duration, 1.0)
+            // Ease-out: fast start, slow end (never reaches 'to' until Gemini completes)
+            let eased = 1.0 - pow(1.0 - fraction, 2.5)
+            let newProgress = from + Float(eased) * (to - from)
+            self.currentProgress = newProgress
+            self.updateProgress(newProgress, status: "splash.analyzingAI".localized)
+        }
+    }
+
+    private func stopSmoothProgress() {
+        progressTimer?.invalidate()
+        progressTimer = nil
     }
 
     private func finishAndTransition() {
@@ -273,7 +327,7 @@ class SplashViewController: UIViewController {
         HealthKitManager.shared.fetchDailyHealthData(days: 90) { dailyEntries in
             // Scores now come from Gemini — read from GeminiResultStore
             let score = GeminiResultStore.loadHealthScore() ?? 0
-            let tier = CarTierEngine.tierForScore(score)
+            let tier = HealthTier.forScore(score)
             let cachedCarName = GeminiResultStore.loadCarName() ?? AnalysisCache.loadSelectedCar()?.name
             print("🚗 [Splash] Syncing score with cachedCarName: \(cachedCarName ?? "nil")")
             LeaderboardFirestoreSync.syncScore(score: score, tier: tier, geminiCarName: cachedCarName)
@@ -340,20 +394,20 @@ class SplashViewController: UIViewController {
                             // Check: if Gemini data exists - use it for widget
                             let geminiCarName = GeminiResultStore.loadCarName()
                             let geminiWikiName = GeminiResultStore.loadCarWikiName()
-                            let geminiScore = GeminiResultStore.loadHealthScore()
+                            let geminiScore = GeminiResultStore.loadCarScore()
                             let userName = Auth.auth().currentUser?.displayName ?? ""
 
                             if let geminiCarName = geminiCarName, let geminiScoreValue = geminiScore {
                                 // Has Gemini data - update widget with car name and score from Gemini
-                                let geminiTier = CarTierEngine.tierForScore(geminiScoreValue)
+                                let geminiTier = HealthTier.forScore(geminiScoreValue)
 
                                 // Prefetch car image for faster loading in Insights tab
                                 if let wikiName = geminiWikiName, !wikiName.isEmpty {
                                     WidgetDataManager.shared.prefetchCarImage(wikiName: wikiName)
                                 }
                                 WidgetDataManager.shared.updateFromInsights(
-                                    score: geminiScoreValue,
-                                    dailyScore: displayScore,  // Daily score for secondary display
+                                    score: displayScore,              // Daily health score as PRIMARY display
+                                    dailyScore: nil,                  // No secondary score in widgets
                                     status: healthStatus,
                                     carName: geminiCarName,
                                     carEmoji: geminiTier.emoji,
@@ -366,27 +420,8 @@ class SplashViewController: UIViewController {
                                     sleepHours: todayEntry?.sleepHours,
                                     userName: userName
                                 )
-                                print("📱 [Splash] Widget updated with Gemini data: car=\(geminiCarName), score=\(geminiScoreValue), user=\(userName)")
-
-                                // Send to watch - with daily score (not Gemini!) to maintain consistency
-                                // ALWAYS use Gemini car name - never generic tier names
-                                WatchConnectivityManager.shared.sendWidgetDataToWatch(
-                                    healthScore: displayScore,
-                                    healthStatus: healthStatus,
-                                    steps: Int(todayEntry?.steps ?? 0),
-                                    calories: Int(todayEntry?.activeCalories ?? 0),
-                                    exerciseMinutes: exercise,
-                                    standHours: stand,
-                                    heartRate: todayEntry?.restingHR.map { Int($0) } ?? 0,
-                                    hrv: todayEntry?.hrvMs.map { Int($0) } ?? 0,
-                                    sleepHours: todayEntry?.sleepHours ?? 0,
-                                    carName: geminiCarName,  // Use Gemini car name, not tier.name
-                                    carEmoji: geminiTier.emoji,
-                                    carTierIndex: geminiTier.tierIndex,
-                                    carTierLabel: geminiTier.tierLabel,
-                                    geminiCarName: geminiCarName,
-                                    geminiCarScore: geminiScoreValue
-                                )
+                                print("📱 [Splash] Widget updated with Gemini data: car=\(geminiCarName), dailyScore=\(displayScore), gemini90d=\(geminiScoreValue), user=\(userName)")
+                                // Watch sync is now handled by SceneDelegate's analysisDidComplete observer
                             } else {
                                 // No Gemini data - use regular score (calculated from HealthScore)
                                 // Note: updateFromDashboard will use empty car name since no Gemini data
@@ -400,12 +435,12 @@ class SplashViewController: UIViewController {
                                     restingHR: todayEntry?.restingHR.map { Int($0) },
                                     hrv: todayEntry?.hrvMs.map { Int($0) },
                                     sleepHours: todayEntry?.sleepHours,
-                                    carTier: CarTierEngine.tierForScore(displayScore),
+                                    carTier: HealthTier.forScore(displayScore),
                                     userName: userName
                                 )
                                 print("📱 [Splash] Widget updated - no Gemini data yet, score=\(displayScore), user=\(userName)")
                             }
-                            print("📱 [Splash] Sent to Watch: score=\(displayScore), steps=\(Int(todayEntry?.steps ?? 0)), exercise=\(exercise), stand=\(stand)")
+                            print("📱 [Splash] Widget data synced: score=\(displayScore), steps=\(Int(todayEntry?.steps ?? 0)), exercise=\(exercise), stand=\(stand)")
                         }
                     }
                 }

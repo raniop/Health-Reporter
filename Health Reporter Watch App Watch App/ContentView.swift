@@ -2,7 +2,8 @@
 //  ContentView.swift
 //  Health Reporter Watch App
 //
-//  Main navigation view with tabbed pages
+//  Main navigation view with tabbed pages.
+//  NOTE: Refresh is handled by the App struct's scenePhase handler — not here.
 //
 
 import SwiftUI
@@ -27,11 +28,8 @@ struct ContentView: View {
                 .tag(3)
         }
         .tabViewStyle(.verticalPage)
-        .onAppear {
-            // Always request fresh data when app appears
-            print("⌚️ ContentView appeared - requesting refresh from iPhone")
-            dataManager.requestRefresh()
-        }
+        // NOTE: No onAppear or onChange(scenePhase) here.
+        // The App struct handles all refresh triggers to avoid duplicate requests.
     }
 }
 

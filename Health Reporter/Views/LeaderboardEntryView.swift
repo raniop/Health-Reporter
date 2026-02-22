@@ -188,7 +188,7 @@ final class LeaderboardEntryView: UIView {
         nameLabel.text = entry.displayName
 
         // Tier with emoji
-        let tier = CarTierEngine.tiers[safe: entry.carTierIndex]
+        let tier = HealthTier.forIndex(entry.carTierIndex)
         tierLabel.text = "\(tier?.emoji ?? "") \(entry.carTierLabel)"
         tierLabel.textColor = tier?.color ?? AIONDesign.textSecondary
 

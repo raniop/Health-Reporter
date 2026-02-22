@@ -204,7 +204,7 @@ final class HeroMetricCardView: UIView {
     private let glassBlur: UIVisualEffectView = {
         let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
         blur.translatesAutoresizingMaskIntoConstraints = false
-        blur.layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        blur.layer.cornerRadius = 16
         blur.clipsToBounds = true
         return blur
     }()
@@ -266,7 +266,7 @@ final class HeroMetricCardView: UIView {
 
         borderShapeLayer.fillColor = UIColor.clear.cgColor
         borderShapeLayer.strokeColor = UIColor.white.cgColor
-        borderShapeLayer.lineWidth = 2.0
+        borderShapeLayer.lineWidth = 1.5
         borderGradientLayer.mask = borderShapeLayer
 
         // Glow
@@ -355,7 +355,7 @@ final class HeroMetricCardView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let path = UIBezierPath(roundedRect: bounds, cornerRadius: AIONDesign.cornerRadiusLarge)
+        let path = UIBezierPath(roundedRect: bounds, cornerRadius: 16)
         borderShapeLayer.path = path.cgPath
         borderGradientLayer.frame = bounds
         glowLayer.frame = bounds
@@ -1165,13 +1165,22 @@ final class MetricSelectionViewController: UIViewController {
     var onSave: ((HomeMetricSelection) -> Void)?
 
     private var selection: HomeMetricSelection
-    private let tableView = UITableView(frame: .zero, style: .insetGrouped)
+    private let scrollView = UIScrollView()
+    private let contentStack = UIStackView()
 
-    private struct Section {
-        let title: String
-        let metrics: [(id: String, nameKey: String, iconName: String, category: String)]
-    }
-    private var sections: [Section] = []
+    // Section headers
+    private let heroSectionHeader = UILabel()
+    private let secondarySectionHeader = UILabel()
+
+    // Card containers
+    private let heroGrid = UIStackView()
+    private let secondaryGrid = UIStackView()
+
+    // All card views (reused)
+    private var heroCardViews: [MetricPickerCardView] = []
+    private var secondaryCardViews: [MetricPickerCardView] = []
+
+    private let allMetrics = HomeMetricSelection.allAvailableMetrics
 
     init(current: HomeMetricSelection) {
         self.selection = current
@@ -1190,33 +1199,202 @@ final class MetricSelectionViewController: UIViewController {
         view.backgroundColor = AIONDesign.background
         title = "home.edit".localized
 
-        buildSections()
-        setupTableView()
         setupNavBar()
+        setupScrollView()
+        buildCards()
+        updateSelectionStates()
     }
 
-    private func buildSections() {
-        let all = HomeMetricSelection.allAvailableMetrics
-        sections = [
-            Section(title: "home.select.hero".localized, metrics: all),
-            Section(title: "home.select.secondary".localized, metrics: all.filter { $0.id != selection.heroMetricId }),
-        ]
-    }
+    // MARK: - Layout
 
-    private func setupTableView() {
-        tableView.delegate = self
-        tableView.dataSource = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
-        tableView.backgroundColor = AIONDesign.background
-        tableView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(tableView)
+    private func setupScrollView() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.alwaysBounceVertical = true
+        scrollView.showsVerticalScrollIndicator = false
+        view.addSubview(scrollView)
+
+        contentStack.axis = .vertical
+        contentStack.spacing = 12
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(contentStack)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        let attr: UISemanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
+        contentStack.semanticContentAttribute = attr
+
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            contentStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 16),
+            contentStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 16),
+            contentStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -16),
+            contentStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -32),
+            contentStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -32),
         ])
     }
+
+    private func buildCards() {
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        let attr: UISemanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
+
+        // ── Hero Section ──
+        configureSectionHeader(heroSectionHeader, text: "home.select.hero".localized)
+        contentStack.addArrangedSubview(heroSectionHeader)
+
+        heroGrid.axis = .vertical
+        heroGrid.spacing = 10
+        heroGrid.semanticContentAttribute = attr
+        contentStack.addArrangedSubview(heroGrid)
+
+        heroCardViews = allMetrics.map { metric in
+            let card = MetricPickerCardView(mode: .hero)
+            card.configure(iconName: metric.iconName, name: metric.nameKey.localized, category: metric.category)
+            card.onTap = { [weak self] in self?.heroTapped(metric.id) }
+            return card
+        }
+        layoutGrid(heroGrid, cards: heroCardViews)
+
+        // ── Spacer ──
+        let spacer = UIView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.heightAnchor.constraint(equalToConstant: 8).isActive = true
+        contentStack.addArrangedSubview(spacer)
+
+        // ── Secondary Section ──
+        configureSectionHeader(secondarySectionHeader, text: secondaryHeaderText())
+        contentStack.addArrangedSubview(secondarySectionHeader)
+
+        secondaryGrid.axis = .vertical
+        secondaryGrid.spacing = 10
+        secondaryGrid.semanticContentAttribute = attr
+        contentStack.addArrangedSubview(secondaryGrid)
+
+        let secondaryMetrics = allMetrics.filter { $0.id != selection.heroMetricId }
+        secondaryCardViews = secondaryMetrics.map { metric in
+            let card = MetricPickerCardView(mode: .secondary)
+            card.configure(iconName: metric.iconName, name: metric.nameKey.localized, category: metric.category)
+            card.onTap = { [weak self] in self?.secondaryTapped(metric.id) }
+            card.metricId = metric.id
+            return card
+        }
+        layoutGrid(secondaryGrid, cards: secondaryCardViews)
+    }
+
+    private func layoutGrid(_ grid: UIStackView, cards: [MetricPickerCardView]) {
+        grid.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        let attr: UISemanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
+
+        for i in stride(from: 0, to: cards.count, by: 2) {
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.spacing = 10
+            row.distribution = .fillEqually
+            row.semanticContentAttribute = attr
+
+            row.addArrangedSubview(cards[i])
+            if i + 1 < cards.count {
+                row.addArrangedSubview(cards[i + 1])
+            } else {
+                let spacer = UIView()
+                row.addArrangedSubview(spacer)
+            }
+            grid.addArrangedSubview(row)
+        }
+    }
+
+    private func configureSectionHeader(_ label: UILabel, text: String) {
+        label.text = text
+        label.font = .systemFont(ofSize: 15, weight: .semibold)
+        label.textColor = AIONDesign.textSecondary
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        label.textAlignment = isRTL ? .right : .left
+    }
+
+    // MARK: - Selection Logic
+
+    private func heroTapped(_ metricId: String) {
+        let oldHero = selection.heroMetricId
+        selection.heroMetricId = metricId
+        selection.secondaryMetricIds.removeAll { $0 == metricId }
+
+        // Rebuild secondary grid since available metrics changed
+        rebuildSecondarySection(oldHero: oldHero)
+        updateSelectionStates()
+    }
+
+    private func secondaryTapped(_ metricId: String) {
+        if selection.secondaryMetricIds.contains(metricId) {
+            selection.secondaryMetricIds.removeAll { $0 == metricId }
+        } else {
+            guard selection.secondaryMetricIds.count < HomeMetricSelection.maxSecondaryCount else {
+                shakeMaxReached()
+                return
+            }
+            selection.secondaryMetricIds.append(metricId)
+        }
+        updateSelectionStates()
+    }
+
+    private func rebuildSecondarySection(oldHero: String) {
+        let secondaryMetrics = allMetrics.filter { $0.id != selection.heroMetricId }
+        secondaryCardViews = secondaryMetrics.map { metric in
+            let card = MetricPickerCardView(mode: .secondary)
+            card.configure(iconName: metric.iconName, name: metric.nameKey.localized, category: metric.category)
+            card.onTap = { [weak self] in self?.secondaryTapped(metric.id) }
+            card.metricId = metric.id
+            return card
+        }
+        layoutGrid(secondaryGrid, cards: secondaryCardViews)
+        updateSelectionStates()
+    }
+
+    private func updateSelectionStates() {
+        // Hero cards
+        for (i, metric) in allMetrics.enumerated() {
+            guard i < heroCardViews.count else { break }
+            heroCardViews[i].setSelected(metric.id == selection.heroMetricId, animated: true)
+        }
+
+        // Secondary cards
+        for card in secondaryCardViews {
+            guard let metricId = card.metricId else { continue }
+            card.setSelected(selection.secondaryMetricIds.contains(metricId), animated: true)
+        }
+
+        // Update header counter
+        secondarySectionHeader.text = secondaryHeaderText()
+    }
+
+    private func secondaryHeaderText() -> String {
+        let base = "home.select.secondary".localized
+        let count = selection.secondaryMetricIds.count
+        let max = HomeMetricSelection.maxSecondaryCount
+        return "\(base) (\(count)/\(max))"
+    }
+
+    private func shakeMaxReached() {
+        let animation = CAKeyframeAnimation(keyPath: "transform.translation.x")
+        animation.timingFunction = CAMediaTimingFunction(name: .linear)
+        animation.values = [-6, 6, -4, 4, -2, 2, 0]
+        animation.duration = 0.4
+        secondarySectionHeader.layer.add(animation, forKey: "shake")
+
+        // Brief flash the header
+        UIView.animate(withDuration: 0.15) {
+            self.secondarySectionHeader.textColor = AIONDesign.accentWarning
+        } completion: { _ in
+            UIView.animate(withDuration: 0.3) {
+                self.secondarySectionHeader.textColor = AIONDesign.textSecondary
+            }
+        }
+    }
+
+    // MARK: - Nav Bar
 
     private func setupNavBar() {
         let saveBtn = UIBarButtonItem(title: "save".localized, style: .done, target: self, action: #selector(saveTapped))
@@ -1229,11 +1407,13 @@ final class MetricSelectionViewController: UIViewController {
     }
 
     @objc private func saveTapped() {
-        // Validate: need exactly 4 secondary metrics
-        guard selection.secondaryMetricIds.count == 4 else {
+        guard selection.isValid else {
+            let min = HomeMetricSelection.minSecondaryCount
+            let max = HomeMetricSelection.maxSecondaryCount
+            let message = String(format: "home.select.secondary.range".localized, min, max)
             let alert = UIAlertController(
                 title: nil,
-                message: "home.select.secondary".localized,
+                message: message,
                 preferredStyle: .alert
             )
             alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
@@ -1247,70 +1427,256 @@ final class MetricSelectionViewController: UIViewController {
 
     @objc private func resetTapped() {
         selection = .defaultSelection
-        buildSections()
-        tableView.reloadData()
+        rebuildSecondarySection(oldHero: "")
+        updateSelectionStates()
     }
 }
 
-extension MetricSelectionViewController: UITableViewDelegate, UITableViewDataSource {
+// ═══════════════════════════════════════════════════════════════════
+// MARK: - MetricPickerCardView (Glass card for metric selection)
+// ═══════════════════════════════════════════════════════════════════
 
-    func numberOfSections(in tableView: UITableView) -> Int { sections.count }
+private final class MetricPickerCardView: UIView {
 
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        sections[section].metrics.count
+    enum Mode { case hero, secondary }
+
+    var onTap: (() -> Void)?
+    var metricId: String?
+
+    private let mode: Mode
+    private var isSelectedState = false
+
+    // Layers & views
+    private let glassBlur: UIVisualEffectView = {
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        blur.layer.cornerRadius = AIONDesign.cornerRadius
+        blur.clipsToBounds = true
+        return blur
+    }()
+
+    private let iconView = UIImageView()
+    private let nameLabel = UILabel()
+    private let categoryLabel = UILabel()
+    private let selectionIndicator = UIView()
+    private let indicatorIcon = UIImageView()
+    private let borderLayer = CAGradientLayer()
+
+    // Category → color mapping
+    private static let categoryColors: [String: UIColor] = [
+        "hero": AIONDesign.accentPrimary,
+        "recovery": UIColor(hex: "#00B4D8")!,
+        "sleep": UIColor(hex: "#5C4D7D")!,
+        "stress": UIColor(hex: "#CA6702")!,
+        "load": UIColor(hex: "#00C9A7")!,
+        "performance": UIColor(hex: "#7BED9F")!,
+        "activity": UIColor(hex: "#FFB74D")!,
+        "habit": UIColor(hex: "#4FC3F7")!,
+    ]
+
+    init(mode: Mode) {
+        self.mode = mode
+        super.init(frame: .zero)
+        setupUI()
     }
 
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        sections[section].title
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func setupUI() {
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+        let attr: UISemanticContentAttribute = isRTL ? .forceRightToLeft : .forceLeftToRight
+        semanticContentAttribute = attr
+
+        layer.cornerRadius = AIONDesign.cornerRadius
+        clipsToBounds = false
+
+        // Glass background
+        addSubview(glassBlur)
+        NSLayoutConstraint.activate([
+            glassBlur.topAnchor.constraint(equalTo: topAnchor),
+            glassBlur.leadingAnchor.constraint(equalTo: leadingAnchor),
+            glassBlur.trailingAnchor.constraint(equalTo: trailingAnchor),
+            glassBlur.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+
+        // Gradient border (hidden by default)
+        borderLayer.colors = AIONDesign.primaryGradient
+        borderLayer.startPoint = CGPoint(x: 0, y: 0)
+        borderLayer.endPoint = CGPoint(x: 1, y: 1)
+        borderLayer.opacity = 0
+        layer.addSublayer(borderLayer)
+
+        // Content stack
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 6
+        stack.alignment = .fill
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.semanticContentAttribute = attr
+        addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+        ])
+
+        // Top row: icon + selection indicator
+        let topRow = UIStackView()
+        topRow.axis = .horizontal
+        topRow.alignment = .center
+        topRow.semanticContentAttribute = attr
+
+        iconView.contentMode = .scaleAspectFit
+        iconView.tintColor = AIONDesign.accentPrimary
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 28),
+            iconView.heightAnchor.constraint(equalToConstant: 28),
+        ])
+
+        // Selection indicator (circle with checkmark)
+        selectionIndicator.translatesAutoresizingMaskIntoConstraints = false
+        selectionIndicator.layer.cornerRadius = 11
+        selectionIndicator.layer.borderWidth = 2
+        selectionIndicator.layer.borderColor = AIONDesign.textTertiary.cgColor
+        selectionIndicator.backgroundColor = .clear
+        NSLayoutConstraint.activate([
+            selectionIndicator.widthAnchor.constraint(equalToConstant: 22),
+            selectionIndicator.heightAnchor.constraint(equalToConstant: 22),
+        ])
+
+        indicatorIcon.contentMode = .scaleAspectFit
+        indicatorIcon.tintColor = .white
+        indicatorIcon.translatesAutoresizingMaskIntoConstraints = false
+        selectionIndicator.addSubview(indicatorIcon)
+        NSLayoutConstraint.activate([
+            indicatorIcon.centerXAnchor.constraint(equalTo: selectionIndicator.centerXAnchor),
+            indicatorIcon.centerYAnchor.constraint(equalTo: selectionIndicator.centerYAnchor),
+            indicatorIcon.widthAnchor.constraint(equalToConstant: 12),
+            indicatorIcon.heightAnchor.constraint(equalToConstant: 12),
+        ])
+
+        topRow.addArrangedSubview(iconView)
+        topRow.addArrangedSubview(UIView()) // flexible spacer
+        topRow.addArrangedSubview(selectionIndicator)
+
+        // Name
+        nameLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        nameLabel.textColor = AIONDesign.textPrimary
+        nameLabel.numberOfLines = 2
+        nameLabel.adjustsFontSizeToFitWidth = true
+        nameLabel.minimumScaleFactor = 0.75
+        let isHebrew = LocalizationManager.shared.currentLanguage.isRTL
+        nameLabel.textAlignment = isHebrew ? .right : .left
+
+        // Category pill
+        categoryLabel.font = .systemFont(ofSize: 10, weight: .medium)
+        categoryLabel.textColor = AIONDesign.textTertiary
+        categoryLabel.textAlignment = isHebrew ? .right : .left
+
+        stack.addArrangedSubview(topRow)
+        stack.addArrangedSubview(nameLabel)
+        stack.addArrangedSubview(categoryLabel)
+
+        // Fixed height
+        heightAnchor.constraint(equalToConstant: 88).isActive = true
+
+        // Tap gesture
+        let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
+        addGestureRecognizer(tap)
+        isUserInteractionEnabled = true
     }
 
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        let metric = sections[indexPath.section].metrics[indexPath.row]
+    func configure(iconName: String, name: String, category: String) {
+        let cfg = UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
+        iconView.image = UIImage(systemName: iconName, withConfiguration: cfg)
 
-        var content = cell.defaultContentConfiguration()
-        content.text = metric.nameKey.localized
-        let cfg = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
-        content.image = UIImage(systemName: metric.iconName, withConfiguration: cfg)
-        content.imageProperties.tintColor = AIONDesign.accentPrimary
-        content.textProperties.color = AIONDesign.textPrimary
-        cell.contentConfiguration = content
-        cell.backgroundColor = AIONDesign.surface
+        let color = Self.categoryColors[category] ?? AIONDesign.accentPrimary
+        iconView.tintColor = color
 
-        // Selection state
-        if indexPath.section == 0 {
-            // Hero: radio
-            cell.accessoryType = metric.id == selection.heroMetricId ? .checkmark : .none
-        } else {
-            // Secondary: checkbox
-            cell.accessoryType = selection.secondaryMetricIds.contains(metric.id) ? .checkmark : .none
-        }
-        cell.tintColor = AIONDesign.accentPrimary
+        nameLabel.text = name
+        categoryLabel.text = category.capitalized
 
-        return cell
+        borderLayer.colors = [color.cgColor, color.withAlphaComponent(0.4).cgColor]
     }
 
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        let metric = sections[indexPath.section].metrics[indexPath.row]
+    func setSelected(_ selected: Bool, animated: Bool) {
+        guard selected != isSelectedState else { return }
+        isSelectedState = selected
 
-        if indexPath.section == 0 {
-            // Hero: single select
-            selection.heroMetricId = metric.id
-            // Remove from secondary if it was there
-            selection.secondaryMetricIds.removeAll { $0 == metric.id }
-            buildSections()
-            tableView.reloadData()
-        } else {
-            // Secondary: toggle
-            if selection.secondaryMetricIds.contains(metric.id) {
-                selection.secondaryMetricIds.removeAll { $0 == metric.id }
+        let update = {
+            if selected {
+                // Glowing border
+                self.borderLayer.opacity = 1
+                let accentCG: CGColor = {
+                    if let colors = self.borderLayer.colors, let first = colors.first {
+                        return first as! CGColor
+                    }
+                    return AIONDesign.accentPrimary.cgColor
+                }()
+                self.layer.shadowColor = accentCG
+                self.layer.shadowOpacity = 0.35
+                self.layer.shadowRadius = 8
+                self.layer.shadowOffset = .zero
+
+                // Filled indicator
+                let color = UIColor(cgColor: accentCG)
+                self.selectionIndicator.backgroundColor = color
+                self.selectionIndicator.layer.borderColor = color.cgColor
+                let iconCfg = UIImage.SymbolConfiguration(pointSize: 10, weight: .bold)
+                self.indicatorIcon.image = UIImage(systemName: "checkmark", withConfiguration: iconCfg)
+                self.indicatorIcon.alpha = 1
             } else {
-                if selection.secondaryMetricIds.count < 4 {
-                    selection.secondaryMetricIds.append(metric.id)
+                // No border
+                self.borderLayer.opacity = 0
+                self.layer.shadowOpacity = 0
+
+                // Empty indicator
+                self.selectionIndicator.backgroundColor = .clear
+                self.selectionIndicator.layer.borderColor = AIONDesign.textTertiary.cgColor
+                self.indicatorIcon.image = nil
+                self.indicatorIcon.alpha = 0
+            }
+        }
+
+        if animated {
+            UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.5) {
+                update()
+                if selected {
+                    self.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
+                } else {
+                    self.transform = .identity
+                }
+            } completion: { _ in
+                if selected {
+                    UIView.animate(withDuration: 0.2, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.3) {
+                        self.transform = .identity
+                    }
                 }
             }
-            tableView.reloadData()
+        } else {
+            update()
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+
+        // Update gradient border mask
+        borderLayer.frame = bounds
+        let mask = CAShapeLayer()
+        mask.lineWidth = 2
+        mask.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), cornerRadius: AIONDesign.cornerRadius).cgPath
+        mask.strokeColor = UIColor.black.cgColor
+        mask.fillColor = UIColor.clear.cgColor
+        borderLayer.mask = mask
+    }
+
+    @objc private func tapped() {
+        springAnimation {
+            self.onTap?()
         }
     }
 }

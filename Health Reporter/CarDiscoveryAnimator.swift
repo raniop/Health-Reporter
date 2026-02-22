@@ -461,4 +461,10 @@ final class AnimatedProgressBar: UIView {
         layoutIfNeeded()
         fillWidthConstraint?.constant = bounds.width * percentage
     }
+
+    /// Adds a shimmer animation to the filled portion of the progress bar.
+    func addShimmer() {
+        fillBar.clipsToBounds = true
+        fillBar.addShimmerEffect()
+    }
 }

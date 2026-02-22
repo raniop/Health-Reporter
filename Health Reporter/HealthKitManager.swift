@@ -2002,6 +2002,7 @@ class HealthKitManager {
                 entries[dayStart]?.sleepHours = data.totalHours
                 entries[dayStart]?.deepSleepHours = data.deepHours
                 entries[dayStart]?.remSleepHours = data.remHours
+                entries[dayStart]?.wakeTime = data.wakeTime
             }
             group.leave()
         }
@@ -2216,6 +2217,7 @@ class HealthKitManager {
         var totalHours: Double
         var deepHours: Double?
         var remHours: Double?
+        var wakeTime: Date?
     }
 
     /// Fetch daily sleep data - simple and correct logic
@@ -2260,7 +2262,7 @@ class HealthKitManager {
             var currentDate = calendar.startOfDay(for: startDate)
             let finalDate = calendar.startOfDay(for: endDate)
             while currentDate <= finalDate {
-                dailyResults[currentDate] = DailySleepData(totalHours: 0, deepHours: nil, remHours: nil)
+                dailyResults[currentDate] = DailySleepData(totalHours: 0, deepHours: nil, remHours: nil, wakeTime: nil)
                 currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate.addingTimeInterval(86400)
             }
 
@@ -2280,7 +2282,7 @@ class HealthKitManager {
                 }
 
                 guard !daySamples.isEmpty else {
-                    finalResults.append((day, DailySleepData(totalHours: 0, deepHours: nil, remHours: nil)))
+                    finalResults.append((day, DailySleepData(totalHours: 0, deepHours: nil, remHours: nil, wakeTime: nil)))
                     continue
                 }
 
@@ -2330,7 +2332,8 @@ class HealthKitManager {
                 finalResults.append((day, DailySleepData(
                     totalHours: totalHours,
                     deepHours: deepHours > 0 ? deepHours : nil,
-                    remHours: remHours > 0 ? remHours : nil
+                    remHours: remHours > 0 ? remHours : nil,
+                    wakeTime: sessionEnd
                 )))
             }
 

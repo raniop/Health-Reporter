@@ -13,6 +13,7 @@ import GoogleSignIn
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
+    private var analysisObserver: NSObjectProtocol?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
@@ -20,9 +21,25 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.overrideUserInterfaceStyle = .dark
         setRootByAuth()
         window?.makeKeyAndVisible()
+
+        // Send data to Watch when Gemini analysis completes
+        analysisObserver = NotificationCenter.default.addObserver(
+            forName: AIONAnalysisOrchestrator.analysisDidCompleteNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            let result = notification.object as? GeminiDailyResult
+            WatchConnectivityManager.shared.sendPostGeminiDataToWatch(result: result)
+        }
     }
 
     func setRootByAuth() {
+        // First launch ever — show language selection before anything else
+        if LanguageSelectionViewController.needsLanguageSelection {
+            window?.rootViewController = LanguageSelectionViewController()
+            return
+        }
+
         let root: UIViewController
         if let user = Auth.auth().currentUser {
             // User logged in - show Splash Screen that will load data then transition to Main
