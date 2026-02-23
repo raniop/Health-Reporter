@@ -33,13 +33,14 @@ final class ProfileViewController: UIViewController {
         iv.contentMode = .scaleAspectFill
         iv.clipsToBounds = true
         iv.translatesAutoresizingMaskIntoConstraints = false
-        iv.backgroundColor = AIONDesign.surface
+        iv.backgroundColor = AIONDesign.background
         return iv
     }()
 
     private let blurEffectView: UIVisualEffectView = {
-        let blur = UIBlurEffect(style: .systemThinMaterialDark)
+        let blur = UIBlurEffect(style: .dark)
         let v = UIVisualEffectView(effect: blur)
+        v.alpha = 0.7  // Let photo show through more
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
     }()
@@ -243,10 +244,11 @@ final class ProfileViewController: UIViewController {
 
         gradientOverlayLayer.colors = [
             UIColor.clear.cgColor,
-            AIONDesign.background.withAlphaComponent(0.5).cgColor,
+            AIONDesign.background.withAlphaComponent(0.3).cgColor,
+            AIONDesign.background.withAlphaComponent(0.85).cgColor,
             AIONDesign.background.cgColor,
         ]
-        gradientOverlayLayer.locations = [0, 0.55, 1.0]
+        gradientOverlayLayer.locations = [0, 0.4, 0.75, 1.0]
         gradientOverlayView.layer.insertSublayer(gradientOverlayLayer, at: 0)
 
         // --- Scroll view ---
@@ -333,8 +335,10 @@ final class ProfileViewController: UIViewController {
 
         // Tier chip
         tierChip.translatesAutoresizingMaskIntoConstraints = false
-        tierChip.backgroundColor = AIONDesign.surfaceElevated.withAlphaComponent(0.6)
+        tierChip.backgroundColor = UIColor.white.withAlphaComponent(0.1)
         tierChip.layer.cornerRadius = 14
+        tierChip.layer.borderWidth = 0.5
+        tierChip.layer.borderColor = UIColor.white.withAlphaComponent(0.25).cgColor
         tierChip.isHidden = true
         headerSection.addSubview(tierChip)
 
@@ -386,12 +390,15 @@ final class ProfileViewController: UIViewController {
 
     private func buildStatsBadgeRow() {
         statsBadgeCard.translatesAutoresizingMaskIntoConstraints = false
-        statsBadgeCard.backgroundColor = AIONDesign.surface.withAlphaComponent(0.6)
+        statsBadgeCard.backgroundColor = AIONDesign.glassCardBackground
         statsBadgeCard.layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        statsBadgeCard.layer.borderWidth = 1
+        statsBadgeCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
         statsBadgeCard.clipsToBounds = true
 
-        // Add blur for glass effect
+        // Glass blur
         let blurView = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blurView.alpha = AIONDesign.glassBlurAlpha
         blurView.translatesAutoresizingMaskIntoConstraints = false
         statsBadgeCard.addSubview(blurView)
 
@@ -548,9 +555,23 @@ final class ProfileViewController: UIViewController {
                                    valueLabel: UILabel, caption: String) -> UIView {
         let card = UIView()
         card.translatesAutoresizingMaskIntoConstraints = false
-        card.backgroundColor = AIONDesign.surface
+        card.backgroundColor = AIONDesign.glassCardBackground
         card.layer.cornerRadius = AIONDesign.cornerRadius
+        card.layer.borderWidth = 1
+        card.layer.borderColor = AIONDesign.glassCardBorder.cgColor
         card.clipsToBounds = true
+
+        // Glass blur
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(blur)
+        NSLayoutConstraint.activate([
+            blur.topAnchor.constraint(equalTo: card.topAnchor),
+            blur.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            blur.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            blur.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+        ])
 
         let iconView = UIImageView(image: UIImage(systemName: icon,
                                                     withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)))
@@ -640,9 +661,23 @@ final class ProfileViewController: UIViewController {
 
     private func buildMetricsCard() {
         metricsCard.translatesAutoresizingMaskIntoConstraints = false
-        metricsCard.backgroundColor = AIONDesign.surface
+        metricsCard.backgroundColor = AIONDesign.glassCardBackground
         metricsCard.layer.cornerRadius = 22
+        metricsCard.layer.borderWidth = 1
+        metricsCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
         metricsCard.clipsToBounds = true
+
+        // Glass blur
+        let metricsBlur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        metricsBlur.alpha = AIONDesign.glassBlurAlpha
+        metricsBlur.translatesAutoresizingMaskIntoConstraints = false
+        metricsCard.addSubview(metricsBlur)
+        NSLayoutConstraint.activate([
+            metricsBlur.topAnchor.constraint(equalTo: metricsCard.topAnchor),
+            metricsBlur.leadingAnchor.constraint(equalTo: metricsCard.leadingAnchor),
+            metricsBlur.trailingAnchor.constraint(equalTo: metricsCard.trailingAnchor),
+            metricsBlur.bottomAnchor.constraint(equalTo: metricsCard.bottomAnchor),
+        ])
 
         let sectionTitle = UILabel()
         sectionTitle.text = "profile.bodyMetrics".localized.uppercased()
@@ -766,10 +801,24 @@ final class ProfileViewController: UIViewController {
 
     private func buildRankCard() {
         rankCard.translatesAutoresizingMaskIntoConstraints = false
-        rankCard.backgroundColor = AIONDesign.surface
+        rankCard.backgroundColor = AIONDesign.glassCardBackground
         rankCard.layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        rankCard.layer.borderWidth = 1
+        rankCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
         rankCard.clipsToBounds = true
         rankCard.isHidden = true
+
+        // Glass blur
+        let rankBlur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        rankBlur.alpha = AIONDesign.glassBlurAlpha
+        rankBlur.translatesAutoresizingMaskIntoConstraints = false
+        rankCard.addSubview(rankBlur)
+        NSLayoutConstraint.activate([
+            rankBlur.topAnchor.constraint(equalTo: rankCard.topAnchor),
+            rankBlur.leadingAnchor.constraint(equalTo: rankCard.leadingAnchor),
+            rankBlur.trailingAnchor.constraint(equalTo: rankCard.trailingAnchor),
+            rankBlur.bottomAnchor.constraint(equalTo: rankCard.bottomAnchor),
+        ])
 
         rankBadge.translatesAutoresizingMaskIntoConstraints = false
         rankCard.addSubview(rankBadge)
