@@ -73,6 +73,13 @@
 "profile.healthBreakdown" = "Health Breakdown";
 "profile.globalRank" = "Global Rank";
 "profile.peakTier" = "Peak Performance — Top Tier!";
+"profile.last30Days" = "Last 30 Days";
+"profile.allTime" = "All Time";
+"profile.activities" = "Activities";
+"profile.avgScore" = "Avg Score";
+"profile.bestDay" = "Best Day";
+"profile.streak" = "Streak";
+"profile.rank" = "Rank";
 "metric.recovery" = "Recovery";
 "metric.energy" = "Energy";
 "metric.activity" = "Activity";

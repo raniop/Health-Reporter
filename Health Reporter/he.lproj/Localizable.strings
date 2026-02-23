@@ -73,6 +73,13 @@
 "profile.healthBreakdown" = "פירוט בריאות";
 "profile.globalRank" = "דירוג עולמי";
 "profile.peakTier" = "ביצועי שיא — הדרגה הגבוהה!";
+"profile.last30Days" = "30 ימים";
+"profile.allTime" = "כל הזמן";
+"profile.activities" = "אימונים";
+"profile.avgScore" = "ציון ממוצע";
+"profile.bestDay" = "יום שיא";
+"profile.streak" = "רצף";
+"profile.rank" = "דירוג";
 "metric.recovery" = "התאוששות";
 "metric.energy" = "אנרגיה";
 "metric.activity" = "פעילות";

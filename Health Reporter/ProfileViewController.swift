@@ -2,9 +2,9 @@
 //  ProfileViewController.swift
 //  Health Reporter
 //
-//  "Full Premium Dashboard" — 7 rich sections packed with existing
-//  premium components: HeroScoreCardView, ActivityRingsView, WeeklyBarChart,
-//  BioTrendCardView, RankBadgeView, ProgressToNextRankView.
+//  WHOOP-inspired profile page — blurred background photo, avatar,
+//  stats badges, tab selector, key stats, health breakdown,
+//  body metrics, rank card.
 //
 
 import UIKit
@@ -20,23 +20,43 @@ final class ProfileViewController: UIViewController {
 
     private var hasAppearedOnce = false
     private var currentScore: Int = 0
+    private var selectedPeriodIndex: Int = 0  // 0 = Last 30 Days, 1 = All Time
 
     // MARK: - UI — Chrome
 
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
 
-    // Pinned gradient header (280pt, behind scroll)
-    private let headerGradientView = UIView()
-    private let headerGradientLayer = CAGradientLayer()
+    // Blurred background photo (replaces old gradient header)
+    private let backgroundImageView: UIImageView = {
+        let iv = UIImageView()
+        iv.contentMode = .scaleAspectFill
+        iv.clipsToBounds = true
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        iv.backgroundColor = AIONDesign.surface
+        return iv
+    }()
 
-    // MARK: - UI — Section 1: Header Card
+    private let blurEffectView: UIVisualEffectView = {
+        let blur = UIBlurEffect(style: .systemThinMaterialDark)
+        let v = UIVisualEffectView(effect: blur)
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
 
-    private let headerCard = UIView()
-    private let ambientGlowLayer = CAGradientLayer()
+    private let gradientOverlayView: UIView = {
+        let v = UIView()
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+    private let gradientOverlayLayer = CAGradientLayer()
+
+    // MARK: - UI — Section 1: Header (transparent, over blur)
+
+    private let headerSection = UIView()
 
     private let avatarRing: AvatarRingView = {
-        let v = AvatarRingView(size: 100)
+        let v = AvatarRingView(size: 110)
         v.ringWidth = 3
         v.isAnimated = true
         v.translatesAutoresizingMaskIntoConstraints = false
@@ -49,7 +69,7 @@ final class ProfileViewController: UIViewController {
                            withConfiguration: UIImage.SymbolConfiguration(pointSize: 10, weight: .bold)), for: .normal)
         b.tintColor = .white
         b.backgroundColor = AIONDesign.accentPrimary
-        b.layer.cornerRadius = 13
+        b.layer.cornerRadius = 14
         b.layer.borderWidth = 2.5
         b.layer.borderColor = AIONDesign.surface.cgColor
         b.translatesAutoresizingMaskIntoConstraints = false
@@ -58,8 +78,8 @@ final class ProfileViewController: UIViewController {
 
     private let nameLabel: UILabel = {
         let l = UILabel()
-        l.font = .systemFont(ofSize: 24, weight: .black)
-        l.textColor = AIONDesign.textPrimary
+        l.font = .systemFont(ofSize: 26, weight: .black)
+        l.textColor = .white
         l.textAlignment = .center
         l.numberOfLines = 2
         l.adjustsFontSizeToFitWidth = true
@@ -73,36 +93,37 @@ final class ProfileViewController: UIViewController {
     private let tierDot = UIView()
     private let tierTextLabel = UILabel()
 
-    // Stats row (2 columns: Followers | Following)
-    private let statsContainer = UIView()
+    // MARK: - UI — Section 2: Stats Badge Row
+
+    private let statsBadgeCard = UIView()
+    private let rankStatValue = UILabel()
+    private let rankStatLabel = UILabel()
+    private let scoreStatValue = UILabel()
+    private let scoreStatLabel = UILabel()
     private let followersStatValue = UILabel()
     private let followersStatLabel = UILabel()
-    private let followingStatValue = UILabel()
-    private let followingStatLabel = UILabel()
+    private let streakStatValue = UILabel()
+    private let streakStatLabel = UILabel()
 
-    private let editProfileButton: UIButton = {
-        let b = UIButton(type: .system)
-        b.setTitle("profile.editProfile".localized, for: .normal)
-        b.titleLabel?.font = .systemFont(ofSize: 14, weight: .bold)
-        b.setTitleColor(AIONDesign.textPrimary, for: .normal)
-        b.layer.cornerRadius = 10
-        b.layer.borderWidth = 1
-        b.layer.borderColor = AIONDesign.separator.withAlphaComponent(0.4).cgColor
-        b.clipsToBounds = true
-        b.translatesAutoresizingMaskIntoConstraints = false
-        return b
+    // MARK: - UI — Section 3: Tab Selector
+
+    private lazy var periodTabControl: AnimatedTabBarControl = {
+        let tabs = AnimatedTabBarControl(titles: [
+            "profile.last30Days".localized,
+            "profile.allTime".localized,
+        ])
+        tabs.translatesAutoresizingMaskIntoConstraints = false
+        return tabs
     }()
 
-    // MARK: - UI — Section 2: Hero Score Card
+    // MARK: - UI — Section 4: Key Stats Row
 
-    private let heroScoreCard = HeroScoreCardView()
+    private let keyStatsRow = UIStackView()
+    private let activityCountLabel = UILabel()
+    private let avgScoreLabel = UILabel()
+    private let bestDayLabel = UILabel()
 
-    // MARK: - UI — Section 3: Activity Rings
-
-    private let activitySectionLabel = UILabel()
-    private let activityRings = ActivityRingsView()
-
-    // MARK: - UI — Section 4: Health Breakdown Grid
+    // MARK: - UI — Section 5: Health Breakdown Grid
 
     private let breakdownSectionLabel = UILabel()
     private let breakdownContainer = UIView()
@@ -112,12 +133,6 @@ final class ProfileViewController: UIViewController {
     private let activityCard = BioTrendCardView()
     private let nervousCard = BioTrendCardView()
     private let balanceCard = BioTrendCardView()
-
-    // MARK: - UI — Section 5: Weekly Trend
-
-    private let weeklySectionLabel = UILabel()
-    private let weeklyCard = UIView()
-    private let weeklyChart = WeeklyBarChart()
 
     // MARK: - UI — Section 6: Body Metrics
 
@@ -161,7 +176,6 @@ final class ProfileViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // Ensure transparent nav bar (parent may override)
         navigationController?.navigationBar.prefersLargeTitles = false
         navigationItem.largeTitleDisplayMode = .never
 
@@ -170,10 +184,10 @@ final class ProfileViewController: UIViewController {
         loadSocialData()
         loadHealthScoreData()
         loadProfileMetrics()
-        loadActivityData()
         loadScoreBreakdown()
-        loadWeeklyTrend()
         loadRankData()
+        loadKeyStats()
+        loadStreakData()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -186,8 +200,7 @@ final class ProfileViewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        headerGradientLayer.frame = headerGradientView.bounds
-        ambientGlowLayer.frame = headerCard.bounds
+        gradientOverlayLayer.frame = gradientOverlayView.bounds
     }
 
     // MARK: - Navigation Bar
@@ -223,20 +236,18 @@ final class ProfileViewController: UIViewController {
     // MARK: - Master Layout
 
     private func buildLayout() {
-        // --- Pinned header gradient ---
-        headerGradientView.translatesAutoresizingMaskIntoConstraints = false
-        headerGradientView.isUserInteractionEnabled = false
-        view.addSubview(headerGradientView)
+        // --- Blurred background photo (pinned behind scroll) ---
+        view.addSubview(backgroundImageView)
+        backgroundImageView.addSubview(blurEffectView)
+        backgroundImageView.addSubview(gradientOverlayView)
 
-        headerGradientLayer.colors = [
-            AIONDesign.accentPrimary.withAlphaComponent(0.28).cgColor,
-            AIONDesign.accentSecondary.withAlphaComponent(0.12).cgColor,
+        gradientOverlayLayer.colors = [
+            UIColor.clear.cgColor,
+            AIONDesign.background.withAlphaComponent(0.5).cgColor,
             AIONDesign.background.cgColor,
         ]
-        headerGradientLayer.locations = [0, 0.4, 1]
-        headerGradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
-        headerGradientLayer.endPoint   = CGPoint(x: 0.5, y: 1)
-        headerGradientView.layer.insertSublayer(headerGradientLayer, at: 0)
+        gradientOverlayLayer.locations = [0, 0.55, 1.0]
+        gradientOverlayView.layer.insertSublayer(gradientOverlayLayer, at: 0)
 
         // --- Scroll view ---
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -244,6 +255,7 @@ final class ProfileViewController: UIViewController {
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.backgroundColor = .clear
         scrollView.alwaysBounceVertical = true
+        scrollView.delegate = self
         view.addSubview(scrollView)
 
         // --- Content stack ---
@@ -253,14 +265,14 @@ final class ProfileViewController: UIViewController {
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentStack)
 
-        // Build all 7 sections
-        buildHeaderCard()          // Section 1
-        buildHeroScoreCard()       // Section 2
-        buildActivityRingsSection() // Section 3
-        buildBreakdownGrid()       // Section 4
-        buildWeeklyTrend()         // Section 5
-        buildMetricsCard()         // Section 6
-        buildRankCard()            // Section 7
+        // Build all sections
+        buildHeaderSection()         // Section 1: Avatar + Name + Tier
+        buildStatsBadgeRow()         // Section 2: 4-column stats
+        buildTabSelector()           // Section 3: Period tab
+        buildKeyStatsRow()           // Section 4: 3 key stats
+        buildBreakdownGrid()         // Section 5: 6 health cards
+        buildMetricsCard()           // Section 6: Body metrics
+        buildRankCard()              // Section 7: Rank
 
         // Bottom spacer
         let spacer = UIView()
@@ -271,17 +283,27 @@ final class ProfileViewController: UIViewController {
         let hPad: CGFloat = 16
 
         NSLayoutConstraint.activate([
-            headerGradientView.topAnchor.constraint(equalTo: view.topAnchor),
-            headerGradientView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            headerGradientView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerGradientView.heightAnchor.constraint(equalToConstant: 280),
+            backgroundImageView.topAnchor.constraint(equalTo: view.topAnchor),
+            backgroundImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            backgroundImageView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            backgroundImageView.heightAnchor.constraint(equalToConstant: 380),
+
+            blurEffectView.topAnchor.constraint(equalTo: backgroundImageView.topAnchor),
+            blurEffectView.leadingAnchor.constraint(equalTo: backgroundImageView.leadingAnchor),
+            blurEffectView.trailingAnchor.constraint(equalTo: backgroundImageView.trailingAnchor),
+            blurEffectView.bottomAnchor.constraint(equalTo: backgroundImageView.bottomAnchor),
+
+            gradientOverlayView.topAnchor.constraint(equalTo: backgroundImageView.topAnchor),
+            gradientOverlayView.leadingAnchor.constraint(equalTo: backgroundImageView.leadingAnchor),
+            gradientOverlayView.trailingAnchor.constraint(equalTo: backgroundImageView.trailingAnchor),
+            gradientOverlayView.bottomAnchor.constraint(equalTo: backgroundImageView.bottomAnchor),
 
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            contentStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 110),
+            contentStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 90),
             contentStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: hPad),
             contentStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -hPad),
             contentStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
@@ -289,46 +311,32 @@ final class ProfileViewController: UIViewController {
         ])
     }
 
-    // MARK: - Section 1: Header Card
+    // MARK: - Section 1: Header (Avatar + Name + Tier)
 
-    private func buildHeaderCard() {
-        headerCard.translatesAutoresizingMaskIntoConstraints = false
-        headerCard.backgroundColor = AIONDesign.surface
-        headerCard.layer.cornerRadius = 28
-        headerCard.clipsToBounds = true
-
-        // Ambient conic glow
-        ambientGlowLayer.type = .conic
-        ambientGlowLayer.colors = [
-            AIONDesign.accentPrimary.withAlphaComponent(0.18).cgColor,
-            AIONDesign.accentSecondary.withAlphaComponent(0.12).cgColor,
-            AIONDesign.accentSuccess.withAlphaComponent(0.08).cgColor,
-            AIONDesign.accentPrimary.withAlphaComponent(0.18).cgColor,
-        ]
-        ambientGlowLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-        ambientGlowLayer.endPoint = CGPoint(x: 0.5, y: 0)
-        headerCard.layer.insertSublayer(ambientGlowLayer, at: 0)
+    private func buildHeaderSection() {
+        headerSection.translatesAutoresizingMaskIntoConstraints = false
+        headerSection.backgroundColor = .clear
 
         // Avatar
         avatarRing.isUserInteractionEnabled = true
         avatarRing.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(changePhotoTapped)))
-        headerCard.addSubview(avatarRing)
+        headerSection.addSubview(avatarRing)
 
         // Camera button
         cameraButton.addTarget(self, action: #selector(changePhotoTapped), for: .touchUpInside)
-        headerCard.addSubview(cameraButton)
+        headerSection.addSubview(cameraButton)
 
         // Name
         nameLabel.text = "profile.user".localized
         nameLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(nameTapped)))
-        headerCard.addSubview(nameLabel)
+        headerSection.addSubview(nameLabel)
 
         // Tier chip
         tierChip.translatesAutoresizingMaskIntoConstraints = false
-        tierChip.backgroundColor = AIONDesign.surfaceElevated
+        tierChip.backgroundColor = AIONDesign.surfaceElevated.withAlphaComponent(0.6)
         tierChip.layer.cornerRadius = 14
         tierChip.isHidden = true
-        headerCard.addSubview(tierChip)
+        headerSection.addSubview(tierChip)
 
         tierDot.translatesAutoresizingMaskIntoConstraints = false
         tierDot.layer.cornerRadius = 3
@@ -336,47 +344,30 @@ final class ProfileViewController: UIViewController {
         tierChip.addSubview(tierDot)
 
         tierTextLabel.font = .systemFont(ofSize: 12, weight: .bold)
-        tierTextLabel.textColor = AIONDesign.textSecondary
+        tierTextLabel.textColor = .white
         tierTextLabel.translatesAutoresizingMaskIntoConstraints = false
         tierChip.addSubview(tierTextLabel)
 
-        // Stats row (2 columns: Followers | Following)
-        statsContainer.translatesAutoresizingMaskIntoConstraints = false
-        headerCard.addSubview(statsContainer)
-
-        let statColumns = buildStatsColumns()
-        statsContainer.addSubview(statColumns)
-        statColumns.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            statColumns.topAnchor.constraint(equalTo: statsContainer.topAnchor),
-            statColumns.leadingAnchor.constraint(equalTo: statsContainer.leadingAnchor),
-            statColumns.trailingAnchor.constraint(equalTo: statsContainer.trailingAnchor),
-            statColumns.bottomAnchor.constraint(equalTo: statsContainer.bottomAnchor),
-        ])
-
-        // Edit profile button
-        editProfileButton.addTarget(self, action: #selector(nameTapped), for: .touchUpInside)
-        headerCard.addSubview(editProfileButton)
-
-        NSLayoutConstraint.activate([
-            avatarRing.topAnchor.constraint(equalTo: headerCard.topAnchor, constant: 24),
-            avatarRing.centerXAnchor.constraint(equalTo: headerCard.centerXAnchor),
-            avatarRing.widthAnchor.constraint(equalToConstant: 100),
-            avatarRing.heightAnchor.constraint(equalToConstant: 100),
+            avatarRing.topAnchor.constraint(equalTo: headerSection.topAnchor, constant: 8),
+            avatarRing.centerXAnchor.constraint(equalTo: headerSection.centerXAnchor),
+            avatarRing.widthAnchor.constraint(equalToConstant: 110),
+            avatarRing.heightAnchor.constraint(equalToConstant: 110),
 
             cameraButton.trailingAnchor.constraint(equalTo: avatarRing.trailingAnchor, constant: 2),
             cameraButton.bottomAnchor.constraint(equalTo: avatarRing.bottomAnchor, constant: 2),
-            cameraButton.widthAnchor.constraint(equalToConstant: 26),
-            cameraButton.heightAnchor.constraint(equalToConstant: 26),
+            cameraButton.widthAnchor.constraint(equalToConstant: 28),
+            cameraButton.heightAnchor.constraint(equalToConstant: 28),
 
-            nameLabel.topAnchor.constraint(equalTo: avatarRing.bottomAnchor, constant: 14),
-            nameLabel.centerXAnchor.constraint(equalTo: headerCard.centerXAnchor),
-            nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: headerCard.leadingAnchor, constant: 24),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerCard.trailingAnchor, constant: -24),
+            nameLabel.topAnchor.constraint(equalTo: avatarRing.bottomAnchor, constant: 12),
+            nameLabel.centerXAnchor.constraint(equalTo: headerSection.centerXAnchor),
+            nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: headerSection.leadingAnchor, constant: 24),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerSection.trailingAnchor, constant: -24),
 
             tierChip.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 8),
-            tierChip.centerXAnchor.constraint(equalTo: headerCard.centerXAnchor),
+            tierChip.centerXAnchor.constraint(equalTo: headerSection.centerXAnchor),
             tierChip.heightAnchor.constraint(equalToConstant: 28),
+            tierChip.bottomAnchor.constraint(equalTo: headerSection.bottomAnchor, constant: -8),
 
             tierDot.leadingAnchor.constraint(equalTo: tierChip.leadingAnchor, constant: 12),
             tierDot.centerYAnchor.constraint(equalTo: tierChip.centerYAnchor),
@@ -386,47 +377,87 @@ final class ProfileViewController: UIViewController {
             tierTextLabel.leadingAnchor.constraint(equalTo: tierDot.trailingAnchor, constant: 6),
             tierTextLabel.trailingAnchor.constraint(equalTo: tierChip.trailingAnchor, constant: -12),
             tierTextLabel.centerYAnchor.constraint(equalTo: tierChip.centerYAnchor),
-
-            statsContainer.topAnchor.constraint(equalTo: tierChip.bottomAnchor, constant: 18),
-            statsContainer.leadingAnchor.constraint(equalTo: headerCard.leadingAnchor, constant: 16),
-            statsContainer.trailingAnchor.constraint(equalTo: headerCard.trailingAnchor, constant: -16),
-
-            editProfileButton.topAnchor.constraint(equalTo: statsContainer.bottomAnchor, constant: 18),
-            editProfileButton.leadingAnchor.constraint(equalTo: headerCard.leadingAnchor, constant: 20),
-            editProfileButton.trailingAnchor.constraint(equalTo: headerCard.trailingAnchor, constant: -20),
-            editProfileButton.heightAnchor.constraint(equalToConstant: 36),
-            editProfileButton.bottomAnchor.constraint(equalTo: headerCard.bottomAnchor, constant: -20),
         ])
 
-        contentStack.addArrangedSubview(headerCard)
+        contentStack.addArrangedSubview(headerSection)
     }
 
-    private func buildStatsColumns() -> UIStackView {
-        let followersCol = makeStatColumn(value: followersStatValue, label: followersStatLabel,
-                                           labelText: "social.followers".localized, action: #selector(followersTapped))
-        let followingCol = makeStatColumn(value: followingStatValue, label: followingStatLabel,
-                                           labelText: "social.following".localized, action: #selector(followingTapped))
+    // MARK: - Section 2: Stats Badge Row
 
-        let stack = UIStackView(arrangedSubviews: [followersCol, followingCol])
+    private func buildStatsBadgeRow() {
+        statsBadgeCard.translatesAutoresizingMaskIntoConstraints = false
+        statsBadgeCard.backgroundColor = AIONDesign.surface.withAlphaComponent(0.6)
+        statsBadgeCard.layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        statsBadgeCard.clipsToBounds = true
+
+        // Add blur for glass effect
+        let blurView = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blurView.translatesAutoresizingMaskIntoConstraints = false
+        statsBadgeCard.addSubview(blurView)
+
+        let rankCol = makeStatBadgeColumn(value: rankStatValue, label: rankStatLabel,
+                                           labelText: "profile.rank".localized,
+                                           icon: "medal.fill", iconColor: AIONDesign.accentWarning,
+                                           action: nil)
+        let scoreCol = makeStatBadgeColumn(value: scoreStatValue, label: scoreStatLabel,
+                                            labelText: "profile.score".localized,
+                                            icon: "heart.fill", iconColor: AIONDesign.accentSuccess,
+                                            action: nil)
+        let followersCol = makeStatBadgeColumn(value: followersStatValue, label: followersStatLabel,
+                                                labelText: "social.followers".localized,
+                                                icon: "person.2.fill", iconColor: AIONDesign.accentPrimary,
+                                                action: #selector(followersTapped))
+        let streakCol = makeStatBadgeColumn(value: streakStatValue, label: streakStatLabel,
+                                             labelText: "profile.streak".localized,
+                                             icon: "flame.fill", iconColor: AIONDesign.accentDanger,
+                                             action: nil)
+
+        let stack = UIStackView(arrangedSubviews: [rankCol, scoreCol, followersCol, streakCol])
         stack.axis = .horizontal
         stack.distribution = .fillEqually
         stack.alignment = .center
         stack.spacing = 0
         stack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        statsBadgeCard.addSubview(stack)
 
-        let div = makeThinVerticalDivider()
-        stack.addSubview(div)
+        // Add dividers
+        for i in 0..<3 {
+            let div = makeThinVerticalDivider()
+            stack.addSubview(div)
+            NSLayoutConstraint.activate([
+                div.centerYAnchor.constraint(equalTo: stack.centerYAnchor),
+                div.leadingAnchor.constraint(equalTo: stack.arrangedSubviews[i].trailingAnchor),
+            ])
+        }
+
         NSLayoutConstraint.activate([
-            div.centerYAnchor.constraint(equalTo: stack.centerYAnchor),
-            div.leadingAnchor.constraint(equalTo: followersCol.trailingAnchor),
+            blurView.topAnchor.constraint(equalTo: statsBadgeCard.topAnchor),
+            blurView.leadingAnchor.constraint(equalTo: statsBadgeCard.leadingAnchor),
+            blurView.trailingAnchor.constraint(equalTo: statsBadgeCard.trailingAnchor),
+            blurView.bottomAnchor.constraint(equalTo: statsBadgeCard.bottomAnchor),
+
+            stack.topAnchor.constraint(equalTo: statsBadgeCard.topAnchor, constant: 12),
+            stack.leadingAnchor.constraint(equalTo: statsBadgeCard.leadingAnchor, constant: 4),
+            stack.trailingAnchor.constraint(equalTo: statsBadgeCard.trailingAnchor, constant: -4),
+            stack.bottomAnchor.constraint(equalTo: statsBadgeCard.bottomAnchor, constant: -12),
         ])
 
-        return stack
+        contentStack.addArrangedSubview(statsBadgeCard)
     }
 
-    private func makeStatColumn(value: UILabel, label: UILabel, labelText: String, action: Selector?) -> UIView {
+    private func makeStatBadgeColumn(value: UILabel, label: UILabel, labelText: String,
+                                      icon: String, iconColor: UIColor,
+                                      action: Selector?) -> UIView {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
+
+        let iconView = UIImageView(image: UIImage(systemName: icon,
+                                                    withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)))
+        iconView.tintColor = iconColor
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.contentMode = .scaleAspectFit
+        container.addSubview(iconView)
 
         value.text = "—"
         value.font = .monospacedDigitSystemFont(ofSize: 20, weight: .black)
@@ -436,18 +467,24 @@ final class ProfileViewController: UIViewController {
         container.addSubview(value)
 
         label.text = labelText.uppercased()
-        label.font = .systemFont(ofSize: 11, weight: .semibold)
+        label.font = .systemFont(ofSize: 9, weight: .heavy)
         label.textColor = AIONDesign.textTertiary
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(label)
 
         NSLayoutConstraint.activate([
-            value.topAnchor.constraint(equalTo: container.topAnchor, constant: 4),
+            iconView.topAnchor.constraint(equalTo: container.topAnchor, constant: 2),
+            iconView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 14),
+            iconView.heightAnchor.constraint(equalToConstant: 14),
+
+            value.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 4),
             value.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+
             label.topAnchor.constraint(equalTo: value.bottomAnchor, constant: 2),
             label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -4),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -2),
         ])
 
         if let action = action {
@@ -463,33 +500,100 @@ final class ProfileViewController: UIViewController {
         div.backgroundColor = AIONDesign.separator.withAlphaComponent(0.2)
         NSLayoutConstraint.activate([
             div.widthAnchor.constraint(equalToConstant: 0.5),
-            div.heightAnchor.constraint(equalToConstant: 30),
+            div.heightAnchor.constraint(equalToConstant: 36),
         ])
         return div
     }
 
-    // MARK: - Section 2: Hero Score Card
+    // MARK: - Section 3: Tab Selector
 
-    private func buildHeroScoreCard() {
-        heroScoreCard.translatesAutoresizingMaskIntoConstraints = false
-        heroScoreCard.configurePlaceholder()
-        contentStack.addArrangedSubview(heroScoreCard)
+    private func buildTabSelector() {
+        periodTabControl.onSelectionChanged = { [weak self] index in
+            self?.selectedPeriodIndex = index
+            self?.loadKeyStats()
+        }
+        periodTabControl.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        contentStack.addArrangedSubview(periodTabControl)
     }
 
-    // MARK: - Section 3: Activity Rings
+    // MARK: - Section 4: Key Stats Row
 
-    private func buildActivityRingsSection() {
-        activitySectionLabel.text = "profile.todayActivity".localized.uppercased()
-        configureSectionLabel(activitySectionLabel)
-        contentStack.addArrangedSubview(activitySectionLabel)
+    private func buildKeyStatsRow() {
+        keyStatsRow.axis = .horizontal
+        keyStatsRow.distribution = .fillEqually
+        keyStatsRow.spacing = 8
+        keyStatsRow.translatesAutoresizingMaskIntoConstraints = false
 
-        activityRings.translatesAutoresizingMaskIntoConstraints = false
-        activityRings.heightAnchor.constraint(equalToConstant: 156).isActive = true
-        activityRings.showPlaceholder()
-        contentStack.addArrangedSubview(activityRings)
+        let activityStat = makeKeyStatCard(
+            icon: "figure.run", iconColor: AIONDesign.accentSecondary,
+            valueLabel: activityCountLabel, caption: "profile.activities".localized
+        )
+        let avgScoreStat = makeKeyStatCard(
+            icon: "chart.line.uptrend.xyaxis", iconColor: AIONDesign.accentPrimary,
+            valueLabel: avgScoreLabel, caption: "profile.avgScore".localized
+        )
+        let bestDayStat = makeKeyStatCard(
+            icon: "star.fill", iconColor: AIONDesign.accentSuccess,
+            valueLabel: bestDayLabel, caption: "profile.bestDay".localized
+        )
+
+        keyStatsRow.addArrangedSubview(activityStat)
+        keyStatsRow.addArrangedSubview(avgScoreStat)
+        keyStatsRow.addArrangedSubview(bestDayStat)
+
+        contentStack.addArrangedSubview(keyStatsRow)
     }
 
-    // MARK: - Section 4: Health Breakdown Grid
+    private func makeKeyStatCard(icon: String, iconColor: UIColor,
+                                   valueLabel: UILabel, caption: String) -> UIView {
+        let card = UIView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.backgroundColor = AIONDesign.surface
+        card.layer.cornerRadius = AIONDesign.cornerRadius
+        card.clipsToBounds = true
+
+        let iconView = UIImageView(image: UIImage(systemName: icon,
+                                                    withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)))
+        iconView.tintColor = iconColor
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(iconView)
+
+        valueLabel.text = "—"
+        valueLabel.font = .monospacedDigitSystemFont(ofSize: 22, weight: .black)
+        valueLabel.textColor = AIONDesign.textPrimary
+        valueLabel.textAlignment = .center
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(valueLabel)
+
+        let captionLabel = UILabel()
+        captionLabel.text = caption.uppercased()
+        captionLabel.font = .systemFont(ofSize: 9, weight: .heavy)
+        captionLabel.textColor = AIONDesign.textTertiary
+        captionLabel.textAlignment = .center
+        captionLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(captionLabel)
+
+        NSLayoutConstraint.activate([
+            card.heightAnchor.constraint(equalToConstant: 90),
+
+            iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            iconView.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+
+            valueLabel.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 6),
+            valueLabel.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            valueLabel.leadingAnchor.constraint(greaterThanOrEqualTo: card.leadingAnchor, constant: 4),
+            valueLabel.trailingAnchor.constraint(lessThanOrEqualTo: card.trailingAnchor, constant: -4),
+
+            captionLabel.topAnchor.constraint(equalTo: valueLabel.bottomAnchor, constant: 4),
+            captionLabel.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            captionLabel.leadingAnchor.constraint(greaterThanOrEqualTo: card.leadingAnchor, constant: 4),
+            captionLabel.trailingAnchor.constraint(lessThanOrEqualTo: card.trailingAnchor, constant: -4),
+        ])
+
+        return card
+    }
+
+    // MARK: - Section 5: Health Breakdown Grid
 
     private func buildBreakdownGrid() {
         breakdownSectionLabel.text = "profile.healthBreakdown".localized.uppercased()
@@ -499,14 +603,12 @@ final class ProfileViewController: UIViewController {
         breakdownContainer.translatesAutoresizingMaskIntoConstraints = false
         breakdownContainer.isHidden = true
 
-        // Row 1: Sleep | Recovery | Energy
         let row1 = UIStackView(arrangedSubviews: [sleepCard, recoveryCard, energyCard])
         row1.axis = .horizontal
         row1.distribution = .fillEqually
         row1.spacing = 8
         row1.translatesAutoresizingMaskIntoConstraints = false
 
-        // Row 2: Activity | Nervous System | Load Balance
         let row2 = UIStackView(arrangedSubviews: [activityCard, nervousCard, balanceCard])
         row2.axis = .horizontal
         row2.distribution = .fillEqually
@@ -526,39 +628,12 @@ final class ProfileViewController: UIViewController {
             gridStack.bottomAnchor.constraint(equalTo: breakdownContainer.bottomAnchor),
         ])
 
-        // Set minimum height for each card
         [sleepCard, recoveryCard, energyCard, activityCard, nervousCard, balanceCard].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             $0.heightAnchor.constraint(greaterThanOrEqualToConstant: 100).isActive = true
         }
 
         contentStack.addArrangedSubview(breakdownContainer)
-    }
-
-    // MARK: - Section 5: Weekly Trend
-
-    private func buildWeeklyTrend() {
-        weeklySectionLabel.text = "profile.thisWeek".localized.uppercased()
-        configureSectionLabel(weeklySectionLabel)
-        contentStack.addArrangedSubview(weeklySectionLabel)
-
-        weeklyCard.translatesAutoresizingMaskIntoConstraints = false
-        weeklyCard.backgroundColor = AIONDesign.surface
-        weeklyCard.layer.cornerRadius = AIONDesign.cornerRadiusLarge
-        weeklyCard.clipsToBounds = true
-
-        weeklyChart.barHeight = 60
-        weeklyChart.translatesAutoresizingMaskIntoConstraints = false
-        weeklyCard.addSubview(weeklyChart)
-
-        NSLayoutConstraint.activate([
-            weeklyChart.topAnchor.constraint(equalTo: weeklyCard.topAnchor, constant: 16),
-            weeklyChart.leadingAnchor.constraint(equalTo: weeklyCard.leadingAnchor, constant: 16),
-            weeklyChart.trailingAnchor.constraint(equalTo: weeklyCard.trailingAnchor, constant: -16),
-            weeklyChart.bottomAnchor.constraint(equalTo: weeklyCard.bottomAnchor, constant: -16),
-        ])
-
-        contentStack.addArrangedSubview(weeklyCard)
     }
 
     // MARK: - Section 6: Body Metrics Card
@@ -694,7 +769,7 @@ final class ProfileViewController: UIViewController {
         rankCard.backgroundColor = AIONDesign.surface
         rankCard.layer.cornerRadius = AIONDesign.cornerRadiusLarge
         rankCard.clipsToBounds = true
-        rankCard.isHidden = true  // Show only when rank data available
+        rankCard.isHidden = true
 
         rankBadge.translatesAutoresizingMaskIntoConstraints = false
         rankCard.addSubview(rankBadge)
@@ -740,10 +815,9 @@ final class ProfileViewController: UIViewController {
 
     private func playEntranceAnimations() {
         let animatables: [UIView] = [
-            headerCard, heroScoreCard,
-            activitySectionLabel, activityRings,
+            headerSection, statsBadgeCard, periodTabControl,
+            keyStatsRow,
             breakdownSectionLabel, breakdownContainer,
-            weeklySectionLabel, weeklyCard,
             metricsCard, rankCard,
         ].filter { !$0.isHidden }
 
@@ -821,62 +895,19 @@ final class ProfileViewController: UIViewController {
             // Avatar ring
             avatarRing.ringColors = gradientColorsForScore(score)
 
-            // Header gradient tint
-            headerGradientLayer.colors = [
-                tierColor.withAlphaComponent(0.28).cgColor,
-                AIONDesign.accentSecondary.withAlphaComponent(0.10).cgColor,
+            // Tint the blur overlay with tier color
+            gradientOverlayLayer.colors = [
+                tierColor.withAlphaComponent(0.15).cgColor,
+                AIONDesign.background.withAlphaComponent(0.5).cgColor,
                 AIONDesign.background.cgColor,
             ]
 
-            // Ambient glow tint
-            ambientGlowLayer.colors = [
-                tierColor.withAlphaComponent(0.18).cgColor,
-                AIONDesign.accentSecondary.withAlphaComponent(0.12).cgColor,
-                AIONDesign.accentSuccess.withAlphaComponent(0.08).cgColor,
-                tierColor.withAlphaComponent(0.18).cgColor,
-            ]
-
-            // Hero score card
-            let breakdown = AnalysisCache.loadScoreBreakdown()
-            heroScoreCard.configure(
-                score: score,
-                tier: tier,
-                sleepText: breakdown.sleep.map { "\($0)" } ?? "—",
-                hrvText: breakdown.nervousSystem.map { "\($0)" } ?? "—",
-                strainText: breakdown.activity.map { "\($0)" } ?? "—",
-                animated: !hasAppearedOnce
-            )
+            // Update score in stats badge
+            scoreStatValue.text = "\(score)"
         } else {
             currentScore = 0
             tierChip.isHidden = true
-            heroScoreCard.configurePlaceholder()
-        }
-    }
-
-    private func loadActivityData() {
-        guard HKHealthStore.isHealthDataAvailable() else {
-            activityRings.showPlaceholder()
-            return
-        }
-        HealthKitManager.shared.requestAuthorization { [weak self] ok, _ in
-            guard ok else { return }
-            HealthKitManager.shared.fetchActivityForRange(.day) { [weak self] summary in
-                DispatchQueue.main.async {
-                    guard let s = summary else {
-                        self?.activityRings.showPlaceholder()
-                        return
-                    }
-                    self?.activityRings.configure(
-                        moveCalories: s.activeEnergyKcal,
-                        moveGoal: 500,
-                        exerciseMinutes: s.exerciseMinutes,
-                        exerciseGoal: 30,
-                        standHours: s.standHours,
-                        standGoal: 12,
-                        animated: true
-                    )
-                }
-            }
+            scoreStatValue.text = "—"
         }
     }
 
@@ -912,29 +943,43 @@ final class ProfileViewController: UIViewController {
         }
     }
 
-    private func loadWeeklyTrend() {
-        if currentScore > 0 {
-            let scores = [0, 0, 0, 0, 0, 0, currentScore]
-            weeklyChart.configure(scores: scores)
+    private func loadKeyStats() {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        HealthKitManager.shared.requestAuthorization { [weak self] ok, _ in
+            guard ok, let self = self else { return }
 
-            // Hide the red bars for days with no data (score 0 → default red).
-            // The chart's bars are inside the first UIStackView subview.
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                for sv in self.weeklyChart.subviews {
-                    if let stack = sv as? UIStackView {
-                        for (i, bar) in stack.arrangedSubviews.enumerated() where i < 6 {
-                            bar.backgroundColor = AIONDesign.surface
-                        }
-                        break
+            let endDate = Date()
+            let startDate: Date
+            if self.selectedPeriodIndex == 0 {
+                startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate) ?? endDate
+            } else {
+                startDate = Calendar.current.date(byAdding: .year, value: -10, to: endDate) ?? endDate
+            }
+
+            HealthKitManager.shared.fetchWorkouts(startDate: startDate, endDate: endDate) { [weak self] workouts in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.activityCountLabel.text = "\(workouts.count)"
+
+                    // Average score: use current score for now
+                    if self.currentScore > 0 {
+                        self.avgScoreLabel.text = "\(self.currentScore)"
+                    }
+
+                    // Best day: highest score from breakdown
+                    let bd = AnalysisCache.loadScoreBreakdown()
+                    let scores = [bd.sleep, bd.recovery, bd.energy, bd.activity, bd.nervousSystem, bd.loadBalance].compactMap { $0 }
+                    if let best = scores.max() {
+                        self.bestDayLabel.text = "\(best)"
                     }
                 }
             }
-        } else {
-            // No score at all — hide the weekly section
-            weeklyCard.isHidden = true
-            weeklySectionLabel.isHidden = true
         }
+    }
+
+    private func loadStreakData() {
+        let streak = UserDefaults.standard.integer(forKey: "morningNotification.stepStreak")
+        streakStatValue.text = "\(streak)"
     }
 
     private func loadRankData() {
@@ -942,13 +987,14 @@ final class ProfileViewController: UIViewController {
             DispatchQueue.main.async {
                 guard let self = self, let rank = rank, rank > 0 else {
                     self?.rankCard.isHidden = true
+                    self?.rankStatValue.text = "—"
                     return
                 }
                 self.rankCard.isHidden = false
                 self.rankBadge.configure(rank: rank)
                 self.rankLabel.text = "#\(rank) " + "profile.globalRank".localized
+                self.rankStatValue.text = "#\(rank)"
 
-                // Progress to next tier
                 let score = self.currentScore
                 let nextThreshold: Int
                 switch score {
@@ -980,7 +1026,9 @@ final class ProfileViewController: UIViewController {
             DispatchQueue.main.async { self?.followersStatValue.text = "\(c)" }
         }
         FollowFirestoreSync.fetchFollowingCount(for: uid) { [weak self] c in
-            DispatchQueue.main.async { self?.followingStatValue.text = "\(c)" }
+            DispatchQueue.main.async {
+                // followingStatValue not displayed in badge row, but keep data loaded
+            }
         }
     }
 
@@ -1044,7 +1092,10 @@ final class ProfileViewController: UIViewController {
                 guard let d = data, let img = UIImage(data: d) else {
                     DispatchQueue.main.async { self?.tryAuthPhotoOrDefault() }; return
                 }
-                DispatchQueue.main.async { self?.avatarRing.image = img }
+                DispatchQueue.main.async {
+                    self?.avatarRing.image = img
+                    self?.backgroundImageView.image = img
+                }
             }.resume()
         } else { tryAuthPhotoOrDefault() }
     }
@@ -1053,11 +1104,20 @@ final class ProfileViewController: UIViewController {
         if let u = Auth.auth().currentUser?.photoURL?.absoluteString, let uu = URL(string: u) {
             URLSession.shared.dataTask(with: uu) { [weak self] data, _, _ in
                 guard let d = data, let img = UIImage(data: d) else {
-                    DispatchQueue.main.async { self?.avatarRing.image = nil }; return
+                    DispatchQueue.main.async {
+                        self?.avatarRing.image = nil
+                        self?.backgroundImageView.image = nil
+                    }; return
                 }
-                DispatchQueue.main.async { self?.avatarRing.image = img }
+                DispatchQueue.main.async {
+                    self?.avatarRing.image = img
+                    self?.backgroundImageView.image = img
+                }
             }.resume()
-        } else { avatarRing.image = nil }
+        } else {
+            avatarRing.image = nil
+            backgroundImageView.image = nil
+        }
     }
 
     // MARK: - Photo Change
@@ -1125,6 +1185,16 @@ final class ProfileViewController: UIViewController {
         navigationController?.navigationBar.barTintColor = AIONDesign.background
         navigationController?.navigationBar.backgroundColor = AIONDesign.background
         navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
+    }
+}
+
+// MARK: - UIScrollViewDelegate (Parallax)
+
+extension ProfileViewController: UIScrollViewDelegate {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let offset = scrollView.contentOffset.y
+        let parallaxFactor: CGFloat = 0.3
+        backgroundImageView.transform = CGAffineTransform(translationX: 0, y: min(0, offset * parallaxFactor))
     }
 }
 
