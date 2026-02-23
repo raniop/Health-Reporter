@@ -155,7 +155,7 @@ final class CarRevealOnboardingPage: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
 
         // Cover with question mark
         view.addSubview(coverView)

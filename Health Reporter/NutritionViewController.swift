@@ -52,7 +52,7 @@ final class NutritionViewController: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = bgColor
+        applyAIONGradientBackground()
         title = "nutrition.title".localized
 
         // Navigation bar styling

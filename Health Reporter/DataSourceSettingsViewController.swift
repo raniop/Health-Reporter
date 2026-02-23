@@ -45,7 +45,7 @@ final class DataSourceSettingsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "dataSources.title".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupUI()

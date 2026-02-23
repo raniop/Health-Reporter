@@ -28,7 +28,7 @@ enum GoalCategory: String, Codable, CaseIterable {
 
     var color: UIColor {
         switch self {
-        case .sleep:     return UIColor(hex: "#5C4D7D")!
+        case .sleep:     return UIColor(hex: "#5CEAD4")!
         case .exercise:  return AIONDesign.accentSecondary
         case .nutrition: return AIONDesign.accentSuccess
         case .recovery:  return AIONDesign.accentPrimary

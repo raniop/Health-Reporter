@@ -64,7 +64,7 @@ final class UnifiedTrendsActivityViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "unified.title".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupUI()
         restoreLastSegment()
@@ -87,7 +87,7 @@ final class UnifiedTrendsActivityViewController: UIViewController {
     }
 
     @objc private func backgroundColorDidChange() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         segmentedControl.backgroundColor = AIONDesign.surface
         segmentedControl.selectedSegmentTintColor = AIONDesign.surfaceElevated
         navigationController?.navigationBar.barStyle = AIONDesign.navBarStyle

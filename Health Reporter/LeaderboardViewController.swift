@@ -165,7 +165,7 @@ final class LeaderboardViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "social.leaderboard".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupUI()
         setupRefreshControl()

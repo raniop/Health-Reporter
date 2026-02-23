@@ -104,7 +104,7 @@ class HealthDashboardViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         title = "AION"
         navigationController?.setNavigationBarHidden(true, animated: false)
@@ -138,7 +138,7 @@ class HealthDashboardViewController: UIViewController {
     }
 
     @objc private func backgroundColorDidChange() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         navigationController?.navigationBar.barStyle = AIONDesign.navBarStyle
         navigationController?.navigationBar.barTintColor = AIONDesign.background
         navigationController?.navigationBar.backgroundColor = AIONDesign.background

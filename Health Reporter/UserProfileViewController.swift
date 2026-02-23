@@ -171,7 +171,7 @@ final class UserProfileViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         feedbackGenerator.prepare()
 

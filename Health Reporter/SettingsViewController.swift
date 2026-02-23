@@ -20,7 +20,7 @@ final class SettingsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "settings.title".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupUI()
 
@@ -757,7 +757,7 @@ final class SettingsViewController: UIViewController {
     // MARK: - Background Color Change Notification
 
     @objc private func backgroundColorDidChange() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         navigationController?.navigationBar.barStyle = AIONDesign.navBarStyle
         navigationController?.navigationBar.barTintColor = AIONDesign.background
         navigationController?.navigationBar.backgroundColor = AIONDesign.background

@@ -133,7 +133,7 @@ final class UserSearchViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "social.searchUsers".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupUI()

@@ -22,8 +22,8 @@ final class MainTabBarController: UITabBarController {
         configureLiquidGlassTabBar()
         configureSemanticContentAttribute()
         syncCurrentUserProfile()
-        tabBar.tintColor = AIONDesign.accentPrimary
-        tabBar.unselectedItemTintColor = AIONDesign.textTertiary
+        tabBar.tintColor = UIColor.white
+        tabBar.unselectedItemTintColor = UIColor.white.withAlphaComponent(0.5)
 
         let home = InsightsDashboardViewController()
         home.tabBarItem = UITabBarItem(title: "tab.dashboard".localized, image: UIImage(systemName: "square.grid.2x2"), tag: 0)
@@ -223,22 +223,32 @@ final class MainTabBarController: UITabBarController {
 
     private func configureNavigationBar(_ navBar: UINavigationBar) {
         let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = AIONDesign.background
+        appearance.configureWithTransparentBackground()
+        appearance.backgroundColor = .clear
         appearance.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
         appearance.largeTitleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
 
         navBar.standardAppearance = appearance
         navBar.scrollEdgeAppearance = appearance
         navBar.compactAppearance = appearance
-        navBar.tintColor = AIONDesign.accentPrimary
-        navBar.barStyle = AIONDesign.navBarStyle
+        navBar.tintColor = UIColor.white
+        navBar.barStyle = .black
     }
 
-    /// Liquid Glass styling for tab bar (iOS 26): default background, transparency, no full background override.
+    /// Glassmorphism styling for tab bar: frosted glass with teal tint.
     private func configureLiquidGlassTabBar() {
         let appearance = UITabBarAppearance()
         appearance.configureWithDefaultBackground()
+        appearance.backgroundColor = UIColor.white.withAlphaComponent(0.06)
+        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+
+        // Style both normal and stacked layouts
+        let normalAppearance = appearance.stackedLayoutAppearance
+        normalAppearance.normal.iconColor = UIColor.white.withAlphaComponent(0.5)
+        normalAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.white.withAlphaComponent(0.5)]
+        normalAppearance.selected.iconColor = UIColor.white
+        normalAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.white]
+
         tabBar.standardAppearance = appearance
         tabBar.scrollEdgeAppearance = appearance
         tabBar.isTranslucent = true

@@ -88,7 +88,7 @@ final class NotificationsOnboardingPage: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
 
         // Icon
         iconContainer.addSubview(iconImageView)

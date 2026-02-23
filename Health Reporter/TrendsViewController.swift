@@ -39,7 +39,7 @@ final class TrendsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // title removed - managed by parent UnifiedTrendsActivityViewController
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupTimeframe()
         setupInsightCard()
@@ -60,7 +60,7 @@ final class TrendsViewController: UIViewController {
     }
 
     @objc private func backgroundColorDidChange() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         navigationController?.navigationBar.barStyle = AIONDesign.navBarStyle
         navigationController?.navigationBar.barTintColor = AIONDesign.background
         navigationController?.navigationBar.backgroundColor = AIONDesign.background

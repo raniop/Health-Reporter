@@ -38,7 +38,7 @@ final class BedtimeNotificationSettingsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "settings.bedtimeNotification.title".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupUI()

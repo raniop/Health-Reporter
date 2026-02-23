@@ -91,20 +91,24 @@ final class HomeHeaderView: UIView {
 
         // Edit button (pencil in glass circle)
         let btnSize: CGFloat = 38
-        editButton.backgroundColor = AIONDesign.surfaceElevated
+        editButton.backgroundColor = UIColor.white.withAlphaComponent(0.1)
         editButton.layer.cornerRadius = btnSize / 2
+        editButton.layer.borderWidth = 0.5
+        editButton.layer.borderColor = UIColor.white.withAlphaComponent(0.2).cgColor
         let editCfg = UIImage.SymbolConfiguration(pointSize: 15, weight: .medium)
         editButton.setImage(UIImage(systemName: "pencil", withConfiguration: editCfg), for: .normal)
-        editButton.tintColor = AIONDesign.accentPrimary
+        editButton.tintColor = UIColor.white
         editButton.addTarget(self, action: #selector(editTapped), for: .touchUpInside)
         editButton.translatesAutoresizingMaskIntoConstraints = false
 
         // Bell button
-        bellButton.backgroundColor = AIONDesign.surfaceElevated
+        bellButton.backgroundColor = UIColor.white.withAlphaComponent(0.1)
         bellButton.layer.cornerRadius = btnSize / 2
+        bellButton.layer.borderWidth = 0.5
+        bellButton.layer.borderColor = UIColor.white.withAlphaComponent(0.2).cgColor
         let bellCfg = UIImage.SymbolConfiguration(pointSize: 15, weight: .medium)
         bellButton.setImage(UIImage(systemName: "bell.fill", withConfiguration: bellCfg), for: .normal)
-        bellButton.tintColor = AIONDesign.textPrimary
+        bellButton.tintColor = UIColor.white
         bellButton.addTarget(self, action: #selector(bellTapped), for: .touchUpInside)
         bellButton.translatesAutoresizingMaskIntoConstraints = false
         bellButton.clipsToBounds = false
@@ -124,7 +128,7 @@ final class HomeHeaderView: UIView {
         avatarImageView.contentMode = .scaleAspectFill
         avatarImageView.clipsToBounds = true
         avatarImageView.layer.cornerRadius = 20
-        avatarImageView.backgroundColor = AIONDesign.surface
+        avatarImageView.backgroundColor = UIColor.white.withAlphaComponent(0.2)
         avatarImageView.translatesAutoresizingMaskIntoConstraints = false
 
         // Buttons have fixed size — greeting label fills the remaining space.
@@ -203,6 +207,7 @@ final class HeroMetricCardView: UIView {
     // Layers
     private let glassBlur: UIVisualEffectView = {
         let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
         blur.translatesAutoresizingMaskIntoConstraints = false
         blur.layer.cornerRadius = 16
         blur.clipsToBounds = true
@@ -242,8 +247,14 @@ final class HeroMetricCardView: UIView {
         semanticContentAttribute = semanticAttr
         clipsToBounds = false
 
-        // Glass background
+        // Frosted glass background
+        backgroundColor = .clear
+        layer.cornerRadius = 16
+        layer.borderWidth = 0.5
+        layer.borderColor = AIONDesign.glassCardBorder.cgColor
+
         addSubview(glassBlur)
+        glassBlur.alpha = AIONDesign.glassBlurAlpha
         NSLayoutConstraint.activate([
             glassBlur.topAnchor.constraint(equalTo: topAnchor),
             glassBlur.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -251,12 +262,12 @@ final class HeroMetricCardView: UIView {
             glassBlur.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
 
-        // Animated gradient border
+        // Animated gradient border (subtle cyan glow)
         borderGradientLayer.colors = [
-            AIONDesign.accentPrimary.cgColor,
-            AIONDesign.accentSecondary.cgColor,
-            AIONDesign.accentSuccess.cgColor,
-            AIONDesign.accentPrimary.cgColor,
+            UIColor.white.withAlphaComponent(0.4).cgColor,
+            AIONDesign.accentPrimary.withAlphaComponent(0.3).cgColor,
+            AIONDesign.accentSecondary.withAlphaComponent(0.3).cgColor,
+            UIColor.white.withAlphaComponent(0.4).cgColor,
         ]
         borderGradientLayer.startPoint = CGPoint(x: 0, y: 0)
         borderGradientLayer.endPoint = CGPoint(x: 1, y: 1)
@@ -269,7 +280,7 @@ final class HeroMetricCardView: UIView {
         borderShapeLayer.lineWidth = 1.5
         borderGradientLayer.mask = borderShapeLayer
 
-        // Glow
+        // Glow (cyan)
         glowLayer.shadowColor = AIONDesign.accentPrimary.cgColor
         glowLayer.shadowOpacity = 0
         glowLayer.shadowRadius = 20
@@ -328,7 +339,7 @@ final class HeroMetricCardView: UIView {
 
         // Explanation
         explanationLabel.font = .systemFont(ofSize: 12, weight: .regular)
-        explanationLabel.textColor = AIONDesign.textTertiary
+        explanationLabel.textColor = .white
         explanationLabel.textAlignment = .center
         explanationLabel.numberOfLines = 2
 
@@ -514,7 +525,7 @@ final class HeroMetricCardView: UIView {
 
     private func colorForScore(_ score: Double) -> UIColor {
         if score >= 80 { return AIONDesign.accentSuccess }
-        if score >= 60 { return AIONDesign.accentSecondary }
+        if score >= 60 { return UIColor.white }
         if score >= 40 { return AIONDesign.accentWarning }
         return AIONDesign.accentDanger
     }
@@ -522,13 +533,13 @@ final class HeroMetricCardView: UIView {
     private func chartColor(for metricId: String) -> Color {
         switch metricId {
         case "sleep_quality", "sleep_consistency", "sleep_debt":
-            return Color(uiColor: UIColor(hex: "#5C4D7D") ?? .purple)
+            return Color(uiColor: UIColor(hex: "#36D1DC") ?? .purple)
         case "training_strain", "load_balance":
             return Color(uiColor: AIONDesign.accentSecondary)
         case "energy_forecast", "workout_readiness":
             return Color(uiColor: AIONDesign.accentSuccess)
         default:
-            return Color(uiColor: AIONDesign.accentPrimary)
+            return Color(uiColor: UIColor.white)
         }
     }
 
@@ -590,7 +601,7 @@ private struct HeroWeeklyChart: View {
         .chartXAxis {
             AxisMarks { value in
                 AxisValueLabel()
-                    .foregroundStyle(Color(uiColor: AIONDesign.textTertiary))
+                    .foregroundStyle(Color.white)
                     .font(.system(size: 10))
             }
         }
@@ -611,6 +622,7 @@ final class SecondaryMetricCardView: UIView {
 
     private let glassBlur: UIVisualEffectView = {
         let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
         blur.translatesAutoresizingMaskIntoConstraints = false
         blur.layer.cornerRadius = AIONDesign.cornerRadius
         blur.clipsToBounds = true
@@ -637,8 +649,13 @@ final class SecondaryMetricCardView: UIView {
         clipsToBounds = false
         layer.cornerRadius = AIONDesign.cornerRadius
 
-        // Glass background
+        // Frosted glass background
+        backgroundColor = .clear
+        layer.borderWidth = 0.5
+        layer.borderColor = AIONDesign.glassCardBorder.cgColor
+
         addSubview(glassBlur)
+        glassBlur.alpha = AIONDesign.glassBlurAlpha
         NSLayoutConstraint.activate([
             glassBlur.topAnchor.constraint(equalTo: topAnchor),
             glassBlur.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -646,7 +663,7 @@ final class SecondaryMetricCardView: UIView {
             glassBlur.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
 
-        // Subtle glow
+        // Subtle cyan glow
         glowLayer.shadowColor = AIONDesign.accentPrimary.cgColor
         glowLayer.shadowOpacity = 0.15
         glowLayer.shadowRadius = 12
@@ -795,7 +812,7 @@ final class SecondaryMetricCardView: UIView {
 
     private func colorForScore(_ score: Double) -> UIColor {
         if score >= 80 { return AIONDesign.accentSuccess }
-        if score >= 60 { return AIONDesign.accentSecondary }
+        if score >= 60 { return UIColor.white }
         if score >= 40 { return AIONDesign.accentWarning }
         return AIONDesign.accentDanger
     }
@@ -803,13 +820,13 @@ final class SecondaryMetricCardView: UIView {
     private func chartColor(for metricId: String) -> Color {
         switch metricId {
         case "sleep_quality", "sleep_consistency", "sleep_debt":
-            return Color(uiColor: UIColor(hex: "#5C4D7D") ?? .purple)
+            return Color(uiColor: UIColor(hex: "#36D1DC") ?? .purple)
         case "training_strain", "load_balance":
             return Color(uiColor: AIONDesign.accentSecondary)
         case "energy_forecast", "workout_readiness":
             return Color(uiColor: AIONDesign.accentSuccess)
         default:
-            return Color(uiColor: AIONDesign.accentPrimary)
+            return Color(uiColor: UIColor.white.withAlphaComponent(0.7))
         }
     }
 
@@ -913,8 +930,13 @@ final class AIRecommendationsSectionView: UIView {
     private func setupRetryContainer() {
         retryContainer.translatesAutoresizingMaskIntoConstraints = false
 
-        // Glass background
+        // Frosted glass background
+        retryContainer.backgroundColor = .clear
+        retryContainer.layer.borderWidth = 1
+        retryContainer.layer.borderColor = AIONDesign.glassCardBorder.cgColor
+
         let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
         blur.translatesAutoresizingMaskIntoConstraints = false
         blur.layer.cornerRadius = AIONDesign.cornerRadius
         blur.clipsToBounds = true
@@ -1021,7 +1043,13 @@ private final class RecommendationCard: UIView {
         self.accentColor = color
         super.init(frame: .zero)
 
+        // Frosted glass background
+        backgroundColor = .clear
+        layer.borderWidth = 0.5
+        layer.borderColor = AIONDesign.glassCardBorder.cgColor
+
         let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
         blur.translatesAutoresizingMaskIntoConstraints = false
         blur.layer.cornerRadius = AIONDesign.cornerRadius
         blur.clipsToBounds = true
@@ -1196,7 +1224,7 @@ final class MetricSelectionViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         title = "home.edit".localized
 
         setupNavBar()
@@ -1449,6 +1477,7 @@ private final class MetricPickerCardView: UIView {
     // Layers & views
     private let glassBlur: UIVisualEffectView = {
         let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
         blur.translatesAutoresizingMaskIntoConstraints = false
         blur.layer.cornerRadius = AIONDesign.cornerRadius
         blur.clipsToBounds = true
@@ -1465,13 +1494,13 @@ private final class MetricPickerCardView: UIView {
     // Category → color mapping
     private static let categoryColors: [String: UIColor] = [
         "hero": AIONDesign.accentPrimary,
-        "recovery": UIColor(hex: "#00B4D8")!,
-        "sleep": UIColor(hex: "#5C4D7D")!,
-        "stress": UIColor(hex: "#CA6702")!,
-        "load": UIColor(hex: "#00C9A7")!,
-        "performance": UIColor(hex: "#7BED9F")!,
-        "activity": UIColor(hex: "#FFB74D")!,
-        "habit": UIColor(hex: "#4FC3F7")!,
+        "recovery": UIColor(hex: "#36D1DC")!,
+        "sleep": UIColor(hex: "#5CEAD4")!,
+        "stress": UIColor(hex: "#FF6B35")!,
+        "load": UIColor(hex: "#00CED1")!,
+        "performance": UIColor(hex: "#6EE7B7")!,
+        "activity": UIColor(hex: "#FBBF24")!,
+        "habit": UIColor(hex: "#36D1DC")!,
     ]
 
     init(mode: Mode) {
@@ -1490,7 +1519,11 @@ private final class MetricPickerCardView: UIView {
         layer.cornerRadius = AIONDesign.cornerRadius
         clipsToBounds = false
 
-        // Glass background
+        // Frosted glass background
+        backgroundColor = .clear
+        layer.borderWidth = 0.5
+        layer.borderColor = AIONDesign.glassCardBorder.cgColor
+
         addSubview(glassBlur)
         NSLayoutConstraint.activate([
             glassBlur.topAnchor.constraint(equalTo: topAnchor),
@@ -1540,7 +1573,7 @@ private final class MetricPickerCardView: UIView {
         selectionIndicator.translatesAutoresizingMaskIntoConstraints = false
         selectionIndicator.layer.cornerRadius = 11
         selectionIndicator.layer.borderWidth = 2
-        selectionIndicator.layer.borderColor = AIONDesign.textTertiary.cgColor
+        selectionIndicator.layer.borderColor = UIColor.white.withAlphaComponent(0.4).cgColor
         selectionIndicator.backgroundColor = .clear
         NSLayoutConstraint.activate([
             selectionIndicator.widthAnchor.constraint(equalToConstant: 22),

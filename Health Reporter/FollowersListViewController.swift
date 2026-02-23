@@ -138,7 +138,7 @@ final class FollowersListViewController: UIViewController {
     // MARK: - Setup UI
 
     private func setupUI() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
 
         searchBar.delegate = self
 

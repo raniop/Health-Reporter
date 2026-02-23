@@ -96,7 +96,7 @@ final class HealthScoreOnboardingPage: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
 
         // Gauge container
         view.addSubview(gaugeContainer)

@@ -54,7 +54,7 @@ final class ScoreDetailWithGraphViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         setupUI()
     }
 

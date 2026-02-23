@@ -112,7 +112,7 @@ final class AnalysisLoadingPage: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
 
         // Car icon
         view.addSubview(carImageView)

@@ -73,11 +73,13 @@ final class WeeklyGoalsSectionView: UIView {
 
         // Refresh button (small circular icon)
         let refreshSize: CGFloat = 28
-        refreshButton.backgroundColor = AIONDesign.surfaceElevated
+        refreshButton.backgroundColor = UIColor.white.withAlphaComponent(0.1)
         refreshButton.layer.cornerRadius = refreshSize / 2
+        refreshButton.layer.borderWidth = 0.5
+        refreshButton.layer.borderColor = UIColor.white.withAlphaComponent(0.2).cgColor
         let refreshCfg = UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
         refreshButton.setImage(UIImage(systemName: "arrow.triangle.2.circlepath", withConfiguration: refreshCfg), for: .normal)
-        refreshButton.tintColor = AIONDesign.accentPrimary
+        refreshButton.tintColor = UIColor.white
         refreshButton.translatesAutoresizingMaskIntoConstraints = false
         refreshButton.accessibilityLabel = "goals.refresh".localized
         refreshButton.addTarget(self, action: #selector(refreshTapped), for: .touchUpInside)
@@ -131,6 +133,7 @@ final class WeeklyGoalsSectionView: UIView {
         allDoneContainer.isHidden = true
 
         let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
         blur.translatesAutoresizingMaskIntoConstraints = false
         blur.layer.cornerRadius = AIONDesign.cornerRadius
         blur.clipsToBounds = true
@@ -180,6 +183,7 @@ final class WeeklyGoalsSectionView: UIView {
 
         // Glass background
         let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
         blur.translatesAutoresizingMaskIntoConstraints = false
         blur.layer.cornerRadius = AIONDesign.cornerRadius
         blur.clipsToBounds = true
@@ -412,8 +416,13 @@ private final class GoalCardView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     private func setupUI() {
-        // Glass background
+        // Frosted glass background
+        backgroundColor = .clear
+        layer.borderWidth = 0.5
+        layer.borderColor = AIONDesign.glassCardBorder.cgColor
+
         let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
         blur.translatesAutoresizingMaskIntoConstraints = false
         blur.layer.cornerRadius = AIONDesign.cornerRadius
         blur.clipsToBounds = true
@@ -563,7 +572,7 @@ final class GoalHistoryViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "goals.history.title".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
 
         goalSets = WeeklyGoalStore.loadAll().reversed() // Most recent first
 

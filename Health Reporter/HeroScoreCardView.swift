@@ -72,8 +72,10 @@ final class HeroScoreCardView: UIView {
     // MARK: - Setup
 
     private func setup() {
-        backgroundColor = AIONDesign.surface
+        backgroundColor = .clear
         layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        layer.borderWidth = 0.5
+        layer.borderColor = AIONDesign.glassCardBorder.cgColor
         clipsToBounds = true
         semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 

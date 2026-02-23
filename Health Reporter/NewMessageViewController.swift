@@ -73,7 +73,7 @@ final class NewMessageViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "chat.newMessage".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupNavigation()

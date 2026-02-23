@@ -29,7 +29,7 @@ final class ConfettiEmitter {
         // Create particles in different colors
         let colors: [UIColor] = [
             UIColor(red: 0.0, green: 0.85, blue: 0.95, alpha: 1.0),  // Cyan
-            UIColor(red: 0.6, green: 0.4, blue: 1.0, alpha: 1.0),   // Purple
+            UIColor(red: 0.0, green: 0.81, blue: 0.82, alpha: 1.0),  // Teal
             UIColor(red: 0.2, green: 0.9, blue: 0.5, alpha: 1.0),   // Green
             UIColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1.0),   // Orange
             UIColor.white

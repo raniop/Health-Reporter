@@ -50,7 +50,10 @@ class GlassMorphismView: UIView {
     private func setupView() {
         clipsToBounds = true
 
+        backgroundColor = .clear
+
         addSubview(blurView)
+        blurView.alpha = AIONDesign.glassBlurAlpha
         blurView.contentView.addSubview(tintOverlay)
 
         NSLayoutConstraint.activate([
@@ -67,6 +70,11 @@ class GlassMorphismView: UIView {
 
         updateTint()
         updateCornerRadius()
+
+        // Subtle white border for glass edge
+        layer.borderWidth = 1
+        layer.borderColor = AIONDesign.glassCardBorder.cgColor
+
         applyShadow(.medium)
     }
 

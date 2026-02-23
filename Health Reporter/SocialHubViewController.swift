@@ -105,7 +105,7 @@ final class SocialHubViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "social.title".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupNavigationBar()

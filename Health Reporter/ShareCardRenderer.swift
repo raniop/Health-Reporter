@@ -160,11 +160,11 @@ enum ShareCardRenderer {
 
     private static func gradientColorsForScore(_ score: Int) -> [UIColor] {
         switch score {
-        case 82...100: return [UIColor(hex: "#7BED9F")!, UIColor(hex: "#00C9A7")!]
-        case 65...81:  return [UIColor(hex: "#00C9A7")!, UIColor(hex: "#00B4D8")!]
-        case 45...64:  return [UIColor(hex: "#00B4D8")!, UIColor(hex: "#00C9A7")!]
-        case 25...44:  return [UIColor(hex: "#CA6702")!, UIColor(hex: "#00B4D8")!]
-        default:       return [UIColor(hex: "#9D0208")!, UIColor(hex: "#CA6702")!]
+        case 82...100: return [UIColor(hex: "#6EE7B7")!, UIColor(hex: "#34D399")!]
+        case 65...81:  return [UIColor(hex: "#00CED1")!, UIColor(hex: "#00BFFF")!]
+        case 45...64:  return [UIColor(hex: "#00BFFF")!, UIColor(hex: "#00CED1")!]
+        case 25...44:  return [UIColor(hex: "#FF6B35")!, UIColor(hex: "#00BFFF")!]
+        default:       return [UIColor(hex: "#EF4444")!, UIColor(hex: "#FF6B35")!]
         }
     }
 }

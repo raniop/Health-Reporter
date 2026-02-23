@@ -83,7 +83,7 @@ final class LanguageSelectionViewController: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = UIColor(red: 0.11, green: 0.11, blue: 0.118, alpha: 1.0)
+        applyAIONGradientBackground()
 
         view.addSubview(logoImageView)
         view.addSubview(titleLabel)
@@ -196,8 +196,8 @@ final class LanguageSelectionViewController: UIViewController {
         let otherButton = sender.tag == 0 ? hebrewButton : englishButton
 
         UIView.animate(withDuration: 0.2) {
-            selectedButton.backgroundColor = UIColor(hex: "#00B4D8")!.withAlphaComponent(0.3)
-            selectedButton.layer.borderColor = UIColor(hex: "#00B4D8")!.cgColor
+            selectedButton.backgroundColor = AIONDesign.accentPrimary.withAlphaComponent(0.3)
+            selectedButton.layer.borderColor = AIONDesign.accentPrimary.cgColor
             otherButton.alpha = 0.4
         }
 

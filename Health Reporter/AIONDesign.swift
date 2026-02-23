@@ -2,7 +2,7 @@
 //  AIONDesign.swift
 //  Health Reporter
 //
-//  Design system – Pro Lab / Synthesis. Always dark, logo colors (cyan/turquoise/green).
+//  Design system – Glassmorphism: cyan/teal background, frosted-glass cards, orange accents.
 //
 
 import UIKit
@@ -12,13 +12,13 @@ import UIKit
 private let kBackgroundColorKey = "AION.BackgroundColor"
 
 enum BackgroundColor: String, CaseIterable {
-    case midnight = "#0D0D0F"      // Default - dark black
-    case charcoal = "#1A1A1D"      // Dark gray
-    case navy = "#0A1628"          // Dark blue
-    case forest = "#0D1A14"        // Dark green
-    case wine = "#1A0D14"          // Dark burgundy
-    case slate = "#1C1F26"         // Gray-blue
-    case light = "#F5F5F7"         // Light/white background
+    case midnight = "#0A2A3C"      // Default - deep dark teal
+    case charcoal = "#0D3B52"      // Medium dark teal
+    case navy = "#071E30"          // Very dark navy
+    case forest = "#0E4D5C"        // Dark cyan
+    case wine = "#1A3045"          // Dark blue-grey
+    case slate = "#0B3348"         // Dark teal-blue
+    case light = "#E0F7FA"         // Light cyan
 
     var color: UIColor {
         UIColor(hex: rawValue)!
@@ -26,12 +26,12 @@ enum BackgroundColor: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .midnight: return "Midnight"
-        case .charcoal: return "Charcoal"
-        case .navy: return "Deep Blue"
-        case .forest: return "Forest"
-        case .wine: return "Wine"
-        case .slate: return "Slate"
+        case .midnight: return "Teal"
+        case .charcoal: return "Ocean"
+        case .navy: return "Navy"
+        case .forest: return "Cyan"
+        case .wine: return "Deep Blue"
+        case .slate: return "Blue Teal"
         case .light: return "Light"
         }
     }
@@ -60,20 +60,26 @@ enum AIONDesign {
     static var background: UIColor {
         BackgroundColor.current.color
     }
+    /// Gradient background colors for views (top to bottom)
+    static var backgroundGradientColors: [CGColor] {
+        BackgroundColor.current.isLight
+            ? [UIColor(hex: "#E0F7FA")!.cgColor, UIColor(hex: "#B2EBF2")!.cgColor]
+            : [UIColor(hex: "#0D3B52")!.cgColor, UIColor(hex: "#0E6E78")!.cgColor, UIColor(hex: "#14998D")!.cgColor]
+    }
     static var surface: UIColor {
         BackgroundColor.current.isLight
-            ? UIColor(hex: "#FFFFFF")!
-            : UIColor(hex: "#1C1C1E")!
+            ? UIColor.white.withAlphaComponent(0.6)
+            : UIColor.white.withAlphaComponent(0.08)
     }
     static var surfaceElevated: UIColor {
         BackgroundColor.current.isLight
-            ? UIColor(hex: "#F0F0F2")!
-            : UIColor(hex: "#252528")!
+            ? UIColor.white.withAlphaComponent(0.75)
+            : UIColor.white.withAlphaComponent(0.12)
     }
     static var separator: UIColor {
         BackgroundColor.current.isLight
             ? UIColor(hex: "#C6C6C8")!
-            : UIColor(hex: "#3A3A3C")!
+            : UIColor.white.withAlphaComponent(0.15)
     }
 
     // MARK: - Navigation Bar Style
@@ -84,47 +90,57 @@ enum AIONDesign {
     // MARK: - Text (dynamic based on light/dark background)
     static var textPrimary: UIColor {
         BackgroundColor.current.isLight
-            ? UIColor(hex: "#000000")!
-            : UIColor(hex: "#FFFFFF")!
+            ? UIColor(hex: "#0A2A3C")!
+            : UIColor.white
     }
     static var textSecondary: UIColor {
         BackgroundColor.current.isLight
-            ? UIColor(hex: "#3C3C43")!.withAlphaComponent(0.6)
-            : UIColor(hex: "#EBEBF5")!.withAlphaComponent(0.65)
+            ? UIColor(hex: "#1A4A5E")!.withAlphaComponent(0.7)
+            : UIColor.white.withAlphaComponent(0.7)
     }
     static var textTertiary: UIColor {
         BackgroundColor.current.isLight
-            ? UIColor(hex: "#3C3C43")!.withAlphaComponent(0.3)
-            : UIColor(hex: "#EBEBF5")!.withAlphaComponent(0.45)
+            ? UIColor(hex: "#1A4A5E")!.withAlphaComponent(0.4)
+            : UIColor.white.withAlphaComponent(0.45)
     }
 
-    // MARK: - Accents (logo gradient: lime green -> turquoise -> cyan)
-    static let accentPrimary = UIColor(hex: "#00B4D8")!   // Cyan – logo center
-    static let accentSecondary = UIColor(hex: "#00C9A7")! // Turquoise
-    static let accentSuccess = UIColor(hex: "#7BED9F")!   // Lime green – leaf/growth
-    static let accentWarning = UIColor(hex: "#CA6702")!
-    static let accentDanger = UIColor(hex: "#9D0208")!
+    // MARK: - Accents (cyan/teal/lime logo theme)
+    static let accentPrimary = UIColor(hex: "#00BFFF")!   // Deep Sky Blue – logo cyan
+    static let accentSecondary = UIColor(hex: "#00CED1")!  // Dark Turquoise – logo teal
+    static let accentSuccess = UIColor(hex: "#7FFF00")!    // Chartreuse – logo lime
+    static let accentWarning = UIColor(hex: "#FF6B35")!    // Orange
+    static let accentDanger = UIColor(hex: "#EF4444")!
 
-    // MARK: - Chart colors (matching the logo)
-    static let chartRecovery = UIColor(hex: "#00B4D8")!
-    static let chartStrain = UIColor(hex: "#00C9A7")!
-    static let chartSleep = UIColor(hex: "#5C4D7D")!
-    static let chartGlucose = UIColor(hex: "#7BED9F")!
+    // MARK: - Chart colors
+    static let chartRecovery = UIColor(hex: "#00BFFF")!
+    static let chartStrain = UIColor(hex: "#00CED1")!
+    static let chartSleep = UIColor(hex: "#36D1DC")!
+    static let chartGlucose = UIColor(hex: "#7FFF00")!
 
     // MARK: - Layout
-    static let cornerRadius: CGFloat = 14
-    static let cornerRadiusLarge: CGFloat = 20
-    static let cornerRadiusSmall: CGFloat = 8
+    static let cornerRadius: CGFloat = 16
+    static let cornerRadiusLarge: CGFloat = 24
+    static let cornerRadiusSmall: CGFloat = 10
     static let spacing: CGFloat = 12
     static let spacingLarge: CGFloat = 20
     static let spacingSmall: CGFloat = 8
 
     // MARK: - Glass Morphism
     static var glassBlurStyle: UIBlurEffect.Style {
-        BackgroundColor.current.isLight ? .systemUltraThinMaterialLight : .systemUltraThinMaterialDark
+        .light   // Always light – avoids dark/black tint on dark backgrounds
     }
-    static let glassTintAlpha: CGFloat = 0.08
+    /// Alpha for the blur view itself (lower = more transparent glass)
+    static let glassBlurAlpha: CGFloat = 0.35
+    static let glassTintAlpha: CGFloat = 0.04
     static let glassBorderAlpha: CGFloat = 0.2
+    /// Glass card background: clear – the blur handles the frosted look
+    static var glassCardBackground: UIColor {
+        .clear
+    }
+    /// Glass card border color – thin and subtle
+    static var glassCardBorder: UIColor {
+        UIColor.white.withAlphaComponent(0.2)
+    }
 
     // MARK: - Shadows
     struct ShadowStyle {
@@ -133,15 +149,15 @@ enum AIONDesign {
         let radius: CGFloat
         let opacity: Float
 
-        static let small = ShadowStyle(color: .black, offset: CGSize(width: 0, height: 2), radius: 4, opacity: 0.1)
-        static let medium = ShadowStyle(color: .black, offset: CGSize(width: 0, height: 4), radius: 12, opacity: 0.15)
-        static let large = ShadowStyle(color: .black, offset: CGSize(width: 0, height: 8), radius: 24, opacity: 0.2)
-        static let glow = ShadowStyle(color: accentPrimary, offset: .zero, radius: 15, opacity: 0.4)
+        static let small = ShadowStyle(color: UIColor(hex: "#0A2A3C")!, offset: CGSize(width: 0, height: 2), radius: 8, opacity: 0.15)
+        static let medium = ShadowStyle(color: UIColor(hex: "#0A2A3C")!, offset: CGSize(width: 0, height: 4), radius: 16, opacity: 0.2)
+        static let large = ShadowStyle(color: UIColor(hex: "#0A2A3C")!, offset: CGSize(width: 0, height: 8), radius: 24, opacity: 0.25)
+        static let glow = ShadowStyle(color: accentPrimary, offset: .zero, radius: 20, opacity: 0.35)
     }
 
     // MARK: - Gradients
     static let primaryGradient: [CGColor] = [accentPrimary.cgColor, accentSecondary.cgColor]
-    static let successGradient: [CGColor] = [accentSecondary.cgColor, accentSuccess.cgColor]
+    static let successGradient: [CGColor] = [accentSuccess.cgColor, UIColor(hex: "#66CC00")!.cgColor]
     static let celebrationGradient: [CGColor] = [accentPrimary.cgColor, accentSecondary.cgColor, accentSuccess.cgColor]
     static let goldGradient: [CGColor] = [UIColor(hex: "#FFD700")!.cgColor, UIColor(hex: "#FFA500")!.cgColor]
     static let silverGradient: [CGColor] = [UIColor(hex: "#C0C0C0")!.cgColor, UIColor(hex: "#A8A8A8")!.cgColor]
@@ -190,6 +206,56 @@ enum AIONDesign {
                 .paragraphStyle: localizedParagraphStyle()
             ]
         )
+    }
+}
+
+// MARK: - Gradient Background View (auto-resizing)
+
+/// A reusable gradient background view that auto-resizes via Auto Layout.
+final class AIONGradientBackgroundView: UIView {
+    private let gradientLayer = CAGradientLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        gradientLayer.colors = AIONDesign.backgroundGradientColors
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
+        layer.insertSublayer(gradientLayer, at: 0)
+        isUserInteractionEnabled = false
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        gradientLayer.frame = bounds
+    }
+}
+
+// MARK: - UIViewController Gradient Extension
+
+extension UIViewController {
+    private static let gradientBgTag = 9990
+
+    /// Adds the AION gradient background to the view. Safe to call multiple times (idempotent).
+    @discardableResult
+    func applyAIONGradientBackground() -> UIView {
+        view.backgroundColor = AIONDesign.background
+        // Remove existing gradient background if present
+        if let existing = view.viewWithTag(UIViewController.gradientBgTag) {
+            existing.removeFromSuperview()
+        }
+        let bgView = AIONGradientBackgroundView()
+        bgView.tag = UIViewController.gradientBgTag
+        bgView.translatesAutoresizingMaskIntoConstraints = false
+        view.insertSubview(bgView, at: 0)
+        NSLayoutConstraint.activate([
+            bgView.topAnchor.constraint(equalTo: view.topAnchor),
+            bgView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bgView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bgView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        return bgView
     }
 }
 

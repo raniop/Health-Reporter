@@ -22,7 +22,7 @@ final class NotificationDetailViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         buildUI()
     }
 

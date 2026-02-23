@@ -92,7 +92,7 @@ final class CarMetaphorOnboardingPage: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
 
         // Gradient background at top
         view.addSubview(gradientView)

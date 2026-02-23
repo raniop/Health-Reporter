@@ -40,7 +40,7 @@ final class MorningNotificationSettingsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "settings.morningNotification.title".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupUI()

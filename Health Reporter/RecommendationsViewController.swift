@@ -78,7 +78,7 @@ class RecommendationsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "recommendations.title".localized
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         setupScrollAndStack()
         setupHero()

@@ -62,7 +62,7 @@ final class OnboardingPageViewController: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
 
         // Container for pages
         containerView.translatesAutoresizingMaskIntoConstraints = false

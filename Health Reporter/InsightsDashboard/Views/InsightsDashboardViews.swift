@@ -164,7 +164,7 @@ final class SimpleMetricDetailViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         setupUI()
     }
 

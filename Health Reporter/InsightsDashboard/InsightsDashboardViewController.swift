@@ -74,6 +74,10 @@ final class InsightsDashboardViewController: UIViewController {
         loadData(forceRefresh: true)
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+    }
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
@@ -88,7 +92,7 @@ final class InsightsDashboardViewController: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         configureSemanticDirection()
 
         // Scroll view

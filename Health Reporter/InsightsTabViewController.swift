@@ -162,7 +162,7 @@ final class InsightsTabViewController: UIViewController {
     private let accentGreen = UIColor(red: 0.2, green: 0.9, blue: 0.5, alpha: 1.0)
     private let accentOrange = UIColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1.0)
     private let accentRed = UIColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1.0)
-    private let accentPurple = UIColor(red: 0.6, green: 0.4, blue: 1.0, alpha: 1.0)
+    private let accentPurple = UIColor(red: 0.0, green: 0.81, blue: 0.82, alpha: 1.0)
     private let accentBlue = UIColor(red: 0.3, green: 0.6, blue: 1.0, alpha: 1.0)
 
     // MARK: - Properties
@@ -200,7 +200,7 @@ final class InsightsTabViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "insights.title".localized
-        view.backgroundColor = bgColor
+        applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
         setupUI()
@@ -223,7 +223,7 @@ final class InsightsTabViewController: UIViewController {
     }
 
     @objc private func backgroundColorDidChange() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
         navigationController?.navigationBar.barStyle = AIONDesign.navBarStyle
         navigationController?.navigationBar.barTintColor = AIONDesign.background
         navigationController?.navigationBar.backgroundColor = AIONDesign.background
@@ -853,9 +853,11 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     self.discoveryContainer = wrapper
     self.carCardView = card
 
-    // Blur background
-    let blurEffect = UIBlurEffect(style: .systemUltraThinMaterialDark)
+    // Blur background (glass morphism - light blur avoids dark tint)
+    card.backgroundColor = .clear
+    let blurEffect = UIBlurEffect(style: AIONDesign.glassBlurStyle)
     let blurView = UIVisualEffectView(effect: blurEffect)
+    blurView.alpha = AIONDesign.glassBlurAlpha
     blurView.translatesAutoresizingMaskIntoConstraints = false
     card.addSubview(blurView)
 

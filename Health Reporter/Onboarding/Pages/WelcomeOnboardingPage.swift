@@ -77,7 +77,7 @@ final class WelcomeOnboardingPage: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = AIONDesign.background
+        applyAIONGradientBackground()
 
         // Logo
         view.addSubview(logoImageView)

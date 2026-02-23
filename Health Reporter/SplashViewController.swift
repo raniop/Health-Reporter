@@ -35,7 +35,7 @@ class SplashViewController: UIViewController {
         let label = UILabel()
         label.text = "splash.healthReport".localized
         label.font = .systemFont(ofSize: 15, weight: .medium)
-        label.textColor = UIColor(red: 0.612, green: 0.584, blue: 0.557, alpha: 1.0)
+        label.textColor = UIColor.white.withAlphaComponent(0.6)
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -53,7 +53,7 @@ class SplashViewController: UIViewController {
         let label = UILabel()
         label.text = "loading".localized
         label.font = .systemFont(ofSize: 13, weight: .regular)
-        label.textColor = UIColor(red: 0.612, green: 0.584, blue: 0.557, alpha: 1.0)
+        label.textColor = UIColor.white.withAlphaComponent(0.6)
         label.textAlignment = .center
         label.alpha = 0
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -89,8 +89,8 @@ class SplashViewController: UIViewController {
     // MARK: - Setup
 
     private func setupUI() {
-        // Dark background like LaunchScreen
-        view.backgroundColor = UIColor(red: 0.11, green: 0.11, blue: 0.118, alpha: 1.0)
+        // Teal background matching new design
+        applyAIONGradientBackground()
 
         // Add elements
         view.addSubview(logoImageView)
