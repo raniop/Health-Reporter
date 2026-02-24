@@ -321,6 +321,12 @@ final class UserProfileViewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+
+        // Position blurred background to cover header area (scrolls with content)
+        let w = view.bounds.width
+        backgroundImageView.frame = CGRect(x: 0, y: 0, width: w, height: 380)
+
+        bgGradientLayer.frame = bgGradientOverlay.bounds
         progressGradient.frame = progressFill.bounds
         if let glowSuper = carGlowLayer.superlayer?.bounds {
             carGlowLayer.frame = glowSuper
@@ -357,6 +363,21 @@ final class UserProfileViewController: UIViewController {
         scrollView.delegate = self
         view.addSubview(scrollView)
 
+        // --- Blurred background photo (scrolls with content) ---
+        backgroundImageView.translatesAutoresizingMaskIntoConstraints = true
+        scrollView.addSubview(backgroundImageView)
+        backgroundImageView.addSubview(bgBlurEffectView)
+        backgroundImageView.addSubview(bgGradientOverlay)
+
+        bgGradientLayer.colors = [
+            UIColor.clear.cgColor,
+            AIONDesign.background.withAlphaComponent(0.3).cgColor,
+            AIONDesign.background.withAlphaComponent(0.85).cgColor,
+            AIONDesign.background.cgColor,
+        ]
+        bgGradientLayer.locations = [0, 0.4, 0.75, 1.0]
+        bgGradientOverlay.layer.insertSublayer(bgGradientLayer, at: 0)
+
         // --- Content stack (vertical) ---
         contentStack.axis = .vertical
         contentStack.alignment = .fill
@@ -382,6 +403,23 @@ final class UserProfileViewController: UIViewController {
         let hPad: CGFloat = 16
 
         // --- Constraints ---
+        // Position blurred background using frame (scrolls with scrollView content)
+        backgroundImageView.translatesAutoresizingMaskIntoConstraints = true
+        bgBlurEffectView.translatesAutoresizingMaskIntoConstraints = false
+        bgGradientOverlay.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            bgBlurEffectView.topAnchor.constraint(equalTo: backgroundImageView.topAnchor),
+            bgBlurEffectView.leadingAnchor.constraint(equalTo: backgroundImageView.leadingAnchor),
+            bgBlurEffectView.trailingAnchor.constraint(equalTo: backgroundImageView.trailingAnchor),
+            bgBlurEffectView.bottomAnchor.constraint(equalTo: backgroundImageView.bottomAnchor),
+
+            bgGradientOverlay.topAnchor.constraint(equalTo: backgroundImageView.topAnchor),
+            bgGradientOverlay.leadingAnchor.constraint(equalTo: backgroundImageView.leadingAnchor),
+            bgGradientOverlay.trailingAnchor.constraint(equalTo: backgroundImageView.trailingAnchor),
+            bgGradientOverlay.bottomAnchor.constraint(equalTo: backgroundImageView.bottomAnchor),
+        ])
+
         NSLayoutConstraint.activate([
             // Spinner
             loadingSpinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -1424,8 +1462,14 @@ final class UserProfileViewController: UIViewController {
         nameLabel.text = data.displayName
         title = data.displayName
 
-        // Avatar
+        // Avatar + blurred background
         avatarRing.loadImage(from: data.photoURL)
+        if let photoURL = data.photoURL, let url = URL(string: photoURL) {
+            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                guard let d = data, let img = UIImage(data: d) else { return }
+                DispatchQueue.main.async { self?.backgroundImageView.image = img }
+            }.resume()
+        }
 
         // Stats row - always show
         followersStatValue.text = "\(followersCount)"
@@ -1442,6 +1486,13 @@ final class UserProfileViewController: UIViewController {
 
             // Avatar ring colors
             avatarRing.ringColors = [tierColor, tierColor.withAlphaComponent(0.5)]
+
+            // Tint blurred background
+            bgGradientLayer.colors = [
+                tierColor.withAlphaComponent(0.15).cgColor,
+                AIONDesign.background.withAlphaComponent(0.5).cgColor,
+                AIONDesign.background.cgColor,
+            ]
 
             // Score stat
             scoreStatValue.text = "\(data.healthScore)"
