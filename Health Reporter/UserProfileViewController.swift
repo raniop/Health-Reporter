@@ -49,17 +49,34 @@ final class UserProfileViewController: UIViewController {
     private let contentStack = UIStackView()
     private let loadingSpinner = UIActivityIndicatorView(style: .large)
 
-    // Gradient header (below scroll, behind everything)
-    private let headerGradientView = UIView()
-    private let headerGradientLayer = CAGradientLayer()
+    // Blurred background photo (WHOOP-style)
+    private let backgroundImageView: UIImageView = {
+        let iv = UIImageView()
+        iv.contentMode = .scaleAspectFill
+        iv.clipsToBounds = true
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        iv.backgroundColor = AIONDesign.background
+        return iv
+    }()
+    private let bgBlurEffectView: UIVisualEffectView = {
+        let v = UIVisualEffectView(effect: UIBlurEffect(style: .dark))
+        v.alpha = 0.7
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+    private let bgGradientOverlay: UIView = {
+        let v = UIView()
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+    private let bgGradientLayer = CAGradientLayer()
 
-    // MARK: - UI -- Header Card
+    // MARK: - UI -- Header Section (transparent, over blur)
 
-    private let headerCard = UIView()
-    private let ambientGlowLayer = CAGradientLayer()
+    private let headerSection = UIView()
 
     private let avatarRing: AvatarRingView = {
-        let v = AvatarRingView(size: 100)
+        let v = AvatarRingView(size: 110)
         v.ringWidth = 3
         v.isAnimated = false
         v.translatesAutoresizingMaskIntoConstraints = false
@@ -68,8 +85,8 @@ final class UserProfileViewController: UIViewController {
 
     private let nameLabel: UILabel = {
         let l = UILabel()
-        l.font = .systemFont(ofSize: 24, weight: .black)
-        l.textColor = AIONDesign.textPrimary
+        l.font = .systemFont(ofSize: 26, weight: .black)
+        l.textColor = .white
         l.textAlignment = .center
         l.numberOfLines = 2
         l.adjustsFontSizeToFitWidth = true
@@ -182,8 +199,7 @@ final class UserProfileViewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        headerGradientLayer.frame = headerGradientView.bounds
-        ambientGlowLayer.frame = headerCard.bounds
+        bgGradientLayer.frame = bgGradientOverlay.bounds
         progressGradient.frame = progressFill.bounds
     }
 
@@ -204,20 +220,19 @@ final class UserProfileViewController: UIViewController {
     // MARK: - Layout
 
     private func buildLayout() {
-        // --- Header gradient (pinned behind scroll) ---
-        headerGradientView.translatesAutoresizingMaskIntoConstraints = false
-        headerGradientView.isUserInteractionEnabled = false
-        view.addSubview(headerGradientView)
+        // --- Blurred background photo ---
+        view.addSubview(backgroundImageView)
+        backgroundImageView.addSubview(bgBlurEffectView)
+        backgroundImageView.addSubview(bgGradientOverlay)
 
-        headerGradientLayer.colors = [
-            AIONDesign.accentPrimary.withAlphaComponent(0.28).cgColor,
-            AIONDesign.accentSecondary.withAlphaComponent(0.12).cgColor,
-            AIONDesign.background.cgColor
+        bgGradientLayer.colors = [
+            UIColor.clear.cgColor,
+            AIONDesign.background.withAlphaComponent(0.3).cgColor,
+            AIONDesign.background.withAlphaComponent(0.85).cgColor,
+            AIONDesign.background.cgColor,
         ]
-        headerGradientLayer.locations = [0, 0.4, 1]
-        headerGradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
-        headerGradientLayer.endPoint   = CGPoint(x: 0.5, y: 1)
-        headerGradientView.layer.insertSublayer(headerGradientLayer, at: 0)
+        bgGradientLayer.locations = [0, 0.4, 0.75, 1.0]
+        bgGradientOverlay.layer.insertSublayer(bgGradientLayer, at: 0)
 
         // --- Loading spinner ---
         loadingSpinner.translatesAutoresizingMaskIntoConstraints = false
@@ -229,6 +244,7 @@ final class UserProfileViewController: UIViewController {
         scrollView.showsVerticalScrollIndicator = false
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.backgroundColor = .clear
+        scrollView.delegate = self
         view.addSubview(scrollView)
 
         // --- Content stack (vertical) ---
@@ -239,7 +255,8 @@ final class UserProfileViewController: UIViewController {
         scrollView.addSubview(contentStack)
 
         // Build sections
-        buildHeaderCard()
+        buildHeaderSection()
+        buildStatsCard()
         buildScoreCard()
         buildCarTierCard()
         buildAboutCard()
@@ -254,11 +271,21 @@ final class UserProfileViewController: UIViewController {
 
         // --- Constraints ---
         NSLayoutConstraint.activate([
-            // Header gradient
-            headerGradientView.topAnchor.constraint(equalTo: view.topAnchor),
-            headerGradientView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            headerGradientView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerGradientView.heightAnchor.constraint(equalToConstant: 280),
+            // Blurred background
+            backgroundImageView.topAnchor.constraint(equalTo: view.topAnchor),
+            backgroundImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            backgroundImageView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            backgroundImageView.heightAnchor.constraint(equalToConstant: 380),
+
+            bgBlurEffectView.topAnchor.constraint(equalTo: backgroundImageView.topAnchor),
+            bgBlurEffectView.leadingAnchor.constraint(equalTo: backgroundImageView.leadingAnchor),
+            bgBlurEffectView.trailingAnchor.constraint(equalTo: backgroundImageView.trailingAnchor),
+            bgBlurEffectView.bottomAnchor.constraint(equalTo: backgroundImageView.bottomAnchor),
+
+            bgGradientOverlay.topAnchor.constraint(equalTo: backgroundImageView.topAnchor),
+            bgGradientOverlay.leadingAnchor.constraint(equalTo: backgroundImageView.leadingAnchor),
+            bgGradientOverlay.trailingAnchor.constraint(equalTo: backgroundImageView.trailingAnchor),
+            bgGradientOverlay.bottomAnchor.constraint(equalTo: backgroundImageView.bottomAnchor),
 
             // Spinner
             loadingSpinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -271,7 +298,7 @@ final class UserProfileViewController: UIViewController {
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
             // Content stack
-            contentStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 110),
+            contentStack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 90),
             contentStack.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: hPad),
             contentStack.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -hPad),
             contentStack.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
@@ -279,51 +306,84 @@ final class UserProfileViewController: UIViewController {
         ])
     }
 
-    // MARK: - Header Card
+    // MARK: - Header Section (transparent, over blur)
 
-    private func buildHeaderCard() {
-        headerCard.translatesAutoresizingMaskIntoConstraints = false
-        headerCard.backgroundColor = AIONDesign.surface
-        headerCard.layer.cornerRadius = 28
-        headerCard.clipsToBounds = true
-
-        // Ambient glow
-        ambientGlowLayer.type = .conic
-        ambientGlowLayer.colors = [
-            AIONDesign.accentPrimary.withAlphaComponent(0.18).cgColor,
-            AIONDesign.accentSecondary.withAlphaComponent(0.12).cgColor,
-            AIONDesign.accentSuccess.withAlphaComponent(0.08).cgColor,
-            AIONDesign.accentPrimary.withAlphaComponent(0.18).cgColor,
-        ]
-        ambientGlowLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-        ambientGlowLayer.endPoint = CGPoint(x: 0.5, y: 0)
-        headerCard.layer.insertSublayer(ambientGlowLayer, at: 0)
+    private func buildHeaderSection() {
+        headerSection.translatesAutoresizingMaskIntoConstraints = false
+        headerSection.backgroundColor = .clear
 
         // Avatar ring
-        headerCard.addSubview(avatarRing)
+        headerSection.addSubview(avatarRing)
 
         // Name
-        headerCard.addSubview(nameLabel)
+        headerSection.addSubview(nameLabel)
 
         // Tier chip
         tierChip.translatesAutoresizingMaskIntoConstraints = false
-        tierChip.backgroundColor = AIONDesign.surfaceElevated
+        tierChip.backgroundColor = UIColor.white.withAlphaComponent(0.1)
         tierChip.layer.cornerRadius = 14
+        tierChip.layer.borderWidth = 0.5
+        tierChip.layer.borderColor = UIColor.white.withAlphaComponent(0.25).cgColor
         tierChip.isHidden = true
-        headerCard.addSubview(tierChip)
+        headerSection.addSubview(tierChip)
 
         tierIcon.font = .systemFont(ofSize: 14)
         tierIcon.translatesAutoresizingMaskIntoConstraints = false
         tierChip.addSubview(tierIcon)
 
         tierTextLabel.font = .systemFont(ofSize: 12, weight: .bold)
-        tierTextLabel.textColor = AIONDesign.textSecondary
+        tierTextLabel.textColor = .white
         tierTextLabel.translatesAutoresizingMaskIntoConstraints = false
         tierChip.addSubview(tierTextLabel)
 
+        NSLayoutConstraint.activate([
+            avatarRing.topAnchor.constraint(equalTo: headerSection.topAnchor, constant: 8),
+            avatarRing.centerXAnchor.constraint(equalTo: headerSection.centerXAnchor),
+            avatarRing.widthAnchor.constraint(equalToConstant: 110),
+            avatarRing.heightAnchor.constraint(equalToConstant: 110),
+
+            nameLabel.topAnchor.constraint(equalTo: avatarRing.bottomAnchor, constant: 12),
+            nameLabel.centerXAnchor.constraint(equalTo: headerSection.centerXAnchor),
+            nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: headerSection.leadingAnchor, constant: 24),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerSection.trailingAnchor, constant: -24),
+
+            tierChip.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 8),
+            tierChip.centerXAnchor.constraint(equalTo: headerSection.centerXAnchor),
+            tierChip.heightAnchor.constraint(equalToConstant: 28),
+            tierChip.bottomAnchor.constraint(equalTo: headerSection.bottomAnchor, constant: -8),
+
+            tierIcon.leadingAnchor.constraint(equalTo: tierChip.leadingAnchor, constant: 10),
+            tierIcon.centerYAnchor.constraint(equalTo: tierChip.centerYAnchor),
+
+            tierTextLabel.leadingAnchor.constraint(equalTo: tierIcon.trailingAnchor, constant: 5),
+            tierTextLabel.trailingAnchor.constraint(equalTo: tierChip.trailingAnchor, constant: -12),
+            tierTextLabel.centerYAnchor.constraint(equalTo: tierChip.centerYAnchor),
+        ])
+
+        contentStack.addArrangedSubview(headerSection)
+    }
+
+    // MARK: - Stats + Buttons Card (glass)
+
+    private let statsCard = UIView()
+
+    private func buildStatsCard() {
+        statsCard.translatesAutoresizingMaskIntoConstraints = false
+        statsCard.backgroundColor = AIONDesign.glassCardBackground
+        statsCard.layer.cornerRadius = AIONDesign.cornerRadiusLarge
+        statsCard.layer.borderWidth = 1
+        statsCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
+        statsCard.clipsToBounds = true
+
+        // Glass blur
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        statsCard.addSubview(blur)
+
         // Stats row
         statsContainer.translatesAutoresizingMaskIntoConstraints = false
-        headerCard.addSubview(statsContainer)
+        statsCard.addSubview(statsContainer)
 
         let statColumns = buildStatsColumns()
         statsContainer.addSubview(statColumns)
@@ -341,46 +401,29 @@ final class UserProfileViewController: UIViewController {
         buttonsStack.spacing = 10
         buttonsStack.distribution = .fillEqually
         buttonsStack.translatesAutoresizingMaskIntoConstraints = false
-        headerCard.addSubview(buttonsStack)
+        statsCard.addSubview(buttonsStack)
 
         primaryButton.addTarget(self, action: #selector(didTapPrimary), for: .touchUpInside)
         secondaryButton.addTarget(self, action: #selector(didTapSecondary), for: .touchUpInside)
 
-        // Constraints
         NSLayoutConstraint.activate([
-            avatarRing.topAnchor.constraint(equalTo: headerCard.topAnchor, constant: 24),
-            avatarRing.centerXAnchor.constraint(equalTo: headerCard.centerXAnchor),
-            avatarRing.widthAnchor.constraint(equalToConstant: 100),
-            avatarRing.heightAnchor.constraint(equalToConstant: 100),
+            blur.topAnchor.constraint(equalTo: statsCard.topAnchor),
+            blur.leadingAnchor.constraint(equalTo: statsCard.leadingAnchor),
+            blur.trailingAnchor.constraint(equalTo: statsCard.trailingAnchor),
+            blur.bottomAnchor.constraint(equalTo: statsCard.bottomAnchor),
 
-            nameLabel.topAnchor.constraint(equalTo: avatarRing.bottomAnchor, constant: 14),
-            nameLabel.centerXAnchor.constraint(equalTo: headerCard.centerXAnchor),
-            nameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: headerCard.leadingAnchor, constant: 24),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerCard.trailingAnchor, constant: -24),
+            statsContainer.topAnchor.constraint(equalTo: statsCard.topAnchor, constant: 16),
+            statsContainer.leadingAnchor.constraint(equalTo: statsCard.leadingAnchor, constant: 16),
+            statsContainer.trailingAnchor.constraint(equalTo: statsCard.trailingAnchor, constant: -16),
 
-            tierChip.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 8),
-            tierChip.centerXAnchor.constraint(equalTo: headerCard.centerXAnchor),
-            tierChip.heightAnchor.constraint(equalToConstant: 28),
-
-            tierIcon.leadingAnchor.constraint(equalTo: tierChip.leadingAnchor, constant: 10),
-            tierIcon.centerYAnchor.constraint(equalTo: tierChip.centerYAnchor),
-
-            tierTextLabel.leadingAnchor.constraint(equalTo: tierIcon.trailingAnchor, constant: 5),
-            tierTextLabel.trailingAnchor.constraint(equalTo: tierChip.trailingAnchor, constant: -12),
-            tierTextLabel.centerYAnchor.constraint(equalTo: tierChip.centerYAnchor),
-
-            statsContainer.topAnchor.constraint(equalTo: tierChip.bottomAnchor, constant: 18),
-            statsContainer.leadingAnchor.constraint(equalTo: headerCard.leadingAnchor, constant: 16),
-            statsContainer.trailingAnchor.constraint(equalTo: headerCard.trailingAnchor, constant: -16),
-
-            buttonsStack.topAnchor.constraint(equalTo: statsContainer.bottomAnchor, constant: 18),
-            buttonsStack.leadingAnchor.constraint(equalTo: headerCard.leadingAnchor, constant: 20),
-            buttonsStack.trailingAnchor.constraint(equalTo: headerCard.trailingAnchor, constant: -20),
+            buttonsStack.topAnchor.constraint(equalTo: statsContainer.bottomAnchor, constant: 16),
+            buttonsStack.leadingAnchor.constraint(equalTo: statsCard.leadingAnchor, constant: 20),
+            buttonsStack.trailingAnchor.constraint(equalTo: statsCard.trailingAnchor, constant: -20),
             buttonsStack.heightAnchor.constraint(equalToConstant: 36),
-            buttonsStack.bottomAnchor.constraint(equalTo: headerCard.bottomAnchor, constant: -20),
+            buttonsStack.bottomAnchor.constraint(equalTo: statsCard.bottomAnchor, constant: -16),
         ])
 
-        contentStack.addArrangedSubview(headerCard)
+        contentStack.addArrangedSubview(statsCard)
     }
 
     /// Build the 3-column stats row: Score | Followers | Following
@@ -482,10 +525,23 @@ final class UserProfileViewController: UIViewController {
 
     private func buildScoreCard() {
         scoreCard.translatesAutoresizingMaskIntoConstraints = false
-        scoreCard.backgroundColor = AIONDesign.surface
+        scoreCard.backgroundColor = AIONDesign.glassCardBackground
         scoreCard.layer.cornerRadius = 22
+        scoreCard.layer.borderWidth = 1
+        scoreCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
         scoreCard.clipsToBounds = true
         scoreCard.isHidden = true
+
+        let scoreBlur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        scoreBlur.alpha = AIONDesign.glassBlurAlpha
+        scoreBlur.translatesAutoresizingMaskIntoConstraints = false
+        scoreCard.addSubview(scoreBlur)
+        NSLayoutConstraint.activate([
+            scoreBlur.topAnchor.constraint(equalTo: scoreCard.topAnchor),
+            scoreBlur.leadingAnchor.constraint(equalTo: scoreCard.leadingAnchor),
+            scoreBlur.trailingAnchor.constraint(equalTo: scoreCard.trailingAnchor),
+            scoreBlur.bottomAnchor.constraint(equalTo: scoreCard.bottomAnchor),
+        ])
 
         let isRTL = LocalizationManager.shared.currentLanguage.isRTL
 
@@ -590,8 +646,10 @@ final class UserProfileViewController: UIViewController {
 
     private func buildCarTierCard() {
         carTierCard.translatesAutoresizingMaskIntoConstraints = false
-        carTierCard.backgroundColor = AIONDesign.surface
+        carTierCard.backgroundColor = AIONDesign.glassCardBackground
         carTierCard.layer.cornerRadius = 22
+        carTierCard.layer.borderWidth = 1
+        carTierCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
         carTierCard.clipsToBounds = true
         carTierCard.isHidden = true
 
@@ -601,6 +659,18 @@ final class UserProfileViewController: UIViewController {
     private func populateCarTierCard(tierIndex: Int, carName: String) {
         // Clear previous content
         carTierCard.subviews.forEach { $0.removeFromSuperview() }
+
+        // Re-add glass blur
+        let tierBlur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        tierBlur.alpha = AIONDesign.glassBlurAlpha
+        tierBlur.translatesAutoresizingMaskIntoConstraints = false
+        carTierCard.addSubview(tierBlur)
+        NSLayoutConstraint.activate([
+            tierBlur.topAnchor.constraint(equalTo: carTierCard.topAnchor),
+            tierBlur.leadingAnchor.constraint(equalTo: carTierCard.leadingAnchor),
+            tierBlur.trailingAnchor.constraint(equalTo: carTierCard.trailingAnchor),
+            tierBlur.bottomAnchor.constraint(equalTo: carTierCard.bottomAnchor),
+        ])
 
         let tier = HealthTier.forIndex(tierIndex)
         let emoji = tier?.emoji ?? "\u{1F697}"
@@ -682,8 +752,22 @@ final class UserProfileViewController: UIViewController {
 
     private func buildAboutCard() {
         aboutCard.translatesAutoresizingMaskIntoConstraints = false
-        aboutCard.backgroundColor = AIONDesign.surface
+        aboutCard.backgroundColor = AIONDesign.glassCardBackground
         aboutCard.layer.cornerRadius = 16
+        aboutCard.layer.borderWidth = 1
+        aboutCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
+        aboutCard.clipsToBounds = true
+
+        let aboutBlur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        aboutBlur.alpha = AIONDesign.glassBlurAlpha
+        aboutBlur.translatesAutoresizingMaskIntoConstraints = false
+        aboutCard.addSubview(aboutBlur)
+        NSLayoutConstraint.activate([
+            aboutBlur.topAnchor.constraint(equalTo: aboutCard.topAnchor),
+            aboutBlur.leadingAnchor.constraint(equalTo: aboutCard.leadingAnchor),
+            aboutBlur.trailingAnchor.constraint(equalTo: aboutCard.trailingAnchor),
+            aboutBlur.bottomAnchor.constraint(equalTo: aboutCard.bottomAnchor),
+        ])
 
         aboutCard.addSubview(aboutTitleLabel)
         aboutCard.addSubview(aboutBodyLabel)
@@ -867,8 +951,14 @@ final class UserProfileViewController: UIViewController {
         nameLabel.text = data.displayName
         title = data.displayName
 
-        // Avatar
+        // Avatar + blurred background
         avatarRing.loadImage(from: data.photoURL)
+        if let photoURL = data.photoURL, let url = URL(string: photoURL) {
+            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                guard let d = data, let img = UIImage(data: d) else { return }
+                DispatchQueue.main.async { self?.backgroundImageView.image = img }
+            }.resume()
+        }
 
         // Stats row - always show
         followersStatValue.text = "\(followersCount)"
@@ -886,19 +976,11 @@ final class UserProfileViewController: UIViewController {
             // Avatar ring colors
             avatarRing.ringColors = [tierColor, tierColor.withAlphaComponent(0.5)]
 
-            // Header gradient tint
-            headerGradientLayer.colors = [
-                tierColor.withAlphaComponent(0.28).cgColor,
-                AIONDesign.accentSecondary.withAlphaComponent(0.10).cgColor,
-                AIONDesign.background.cgColor
-            ]
-
-            // Ambient glow tint
-            ambientGlowLayer.colors = [
-                tierColor.withAlphaComponent(0.18).cgColor,
-                AIONDesign.accentSecondary.withAlphaComponent(0.12).cgColor,
-                AIONDesign.accentSuccess.withAlphaComponent(0.08).cgColor,
-                tierColor.withAlphaComponent(0.18).cgColor,
+            // Tint blur overlay
+            bgGradientLayer.colors = [
+                tierColor.withAlphaComponent(0.15).cgColor,
+                AIONDesign.background.withAlphaComponent(0.5).cgColor,
+                AIONDesign.background.cgColor,
             ]
 
             // Score stat
@@ -1041,7 +1123,7 @@ final class UserProfileViewController: UIViewController {
         guard !didPlayEntrance else { return }
         didPlayEntrance = true
         let animatables: [UIView] = [
-            headerCard, scoreCard, carTierCard, aboutCard
+            headerSection, statsCard, scoreCard, carTierCard, aboutCard
         ].filter { !$0.isHidden }
 
         for v in animatables {
@@ -1272,6 +1354,15 @@ final class UserProfileViewController: UIViewController {
 
     private func notifyTabBarBadge() {
         (tabBarController as? MainTabBarController)?.updateFollowRequestBadge()
+    }
+}
+
+// MARK: - UIScrollViewDelegate (Parallax)
+
+extension UserProfileViewController: UIScrollViewDelegate {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let offset = scrollView.contentOffset.y
+        backgroundImageView.transform = CGAffineTransform(translationX: 0, y: min(0, offset * 0.3))
     }
 }
 
