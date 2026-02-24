@@ -91,3 +91,5 @@ iOSInjectionProject/
 
 # API Keys and sensitive data
 Config.plist
+functions/.env
+functions/.env.local

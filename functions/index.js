@@ -467,9 +467,9 @@ exports.runGeminiAnalysis = functions
       const TAG = "[GeminiAnalysis]";
       console.log(`${TAG} Starting scheduled Gemini analysis run`);
 
-      const apiKey = functions.config().gemini?.apikey;
+      const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        console.error(`${TAG} No Gemini API key configured! Run: firebase functions:config:set gemini.apikey="YOUR_KEY"`);
+        console.error(`${TAG} No GEMINI_API_KEY env var! Add it to functions/.env`);
         return null;
       }
 
