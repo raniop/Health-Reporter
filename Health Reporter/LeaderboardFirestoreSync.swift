@@ -69,12 +69,52 @@ enum LeaderboardFirestoreSync {
             return
         }
 
-        // Get user profile data
+        let group = DispatchGroup()
+        var userDataResult: [String: Any]?
+        var existingPublicResult: [String: Any]?
+
+        // Read user profile data
+        group.enter()
         db.collection(usersCollection).document(currentUid).getDocument { snapshot, _ in
-            let userData = snapshot?.data()
+            userDataResult = snapshot?.data()
+            group.leave()
+        }
+
+        // Read existing publicScores for peakScore/memberSince/streakDays
+        group.enter()
+        db.collection(publicScoresCollection).document(currentUid).getDocument { snapshot, _ in
+            existingPublicResult = snapshot?.data()
+            group.leave()
+        }
+
+        group.notify(queue: .global(qos: .userInitiated)) {
+            let userData = userDataResult
             let displayName = userData?["displayName"] as? String ?? currentUser.displayName ?? "social.unknownUser".localized
             let photoURL = userData?["photoURL"] as? String ?? currentUser.photoURL?.absoluteString
             let optIn = userData?["leaderboardOptIn"] as? Bool ?? false
+
+            // ── Compute gamification fields ──
+            let existingPeak = existingPublicResult?["peakScore"] as? Int ?? 0
+            let peakScore = max(score, existingPeak)
+
+            // memberSince: keep existing or set now
+            let existingMemberSince = existingPublicResult?["memberSince"] as? Timestamp
+
+            // streakDays: if last update was yesterday → increment, else reset to 1
+            var streakDays = 1
+            if let lastTs = existingPublicResult?["lastUpdated"] as? Timestamp {
+                let lastDate = Calendar.current.startOfDay(for: lastTs.dateValue())
+                let today = Calendar.current.startOfDay(for: Date())
+                let daysBetween = Calendar.current.dateComponents([.day], from: lastDate, to: today).day ?? 0
+                if daysBetween == 1 {
+                    // Consecutive day — increment
+                    streakDays = (existingPublicResult?["streakDays"] as? Int ?? 0) + 1
+                } else if daysBetween == 0 {
+                    // Same day — keep current streak
+                    streakDays = existingPublicResult?["streakDays"] as? Int ?? 1
+                }
+                // daysBetween > 1 → streak resets to 1 (default)
+            }
 
             // Build scoreData - only include carTierName if we have a geminiCarName
             var scoreData: [String: Any] = [
@@ -86,13 +126,22 @@ enum LeaderboardFirestoreSync {
                 "carTierIndex": tier.tierIndex,
                 "carTierLabel": tier.tierLabel,
                 "lastUpdated": FieldValue.serverTimestamp(),
-                "isPublic": optIn
+                "isPublic": optIn,
+                "peakScore": peakScore,
+                "streakDays": streakDays
             ]
 
             // Only update carTierName if we have a real name from Gemini
             // This prevents overwriting the existing car name with default tier name
             if let carName = geminiCarName {
                 scoreData["carTierName"] = carName
+            }
+
+            // memberSince: preserve existing or set server timestamp
+            if let existing = existingMemberSince {
+                scoreData["memberSince"] = existing
+            } else {
+                scoreData["memberSince"] = FieldValue.serverTimestamp()
             }
 
             let batch = db.batch()

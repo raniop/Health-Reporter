@@ -144,6 +144,17 @@ final class SettingsViewController: UIViewController {
 
         stack.setCustomSpacing(AIONDesign.spacingLarge, after: followPrivacyCard)
 
+        // 5b. Privacy & Data Card (AI consent + Leaderboard consent)
+        let privacyDataCard = makePrivacyDataCard()
+        stack.addArrangedSubview(privacyDataCard)
+
+        NSLayoutConstraint.activate([
+            privacyDataCard.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
+            privacyDataCard.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+        ])
+
+        stack.setCustomSpacing(AIONDesign.spacingLarge, after: privacyDataCard)
+
         // 6. Delete Account Card (red, inside scroll view)
         let deleteAccountCard = makeDeleteAccountCard()
         stack.addArrangedSubview(deleteAccountCard)
@@ -676,6 +687,169 @@ final class SettingsViewController: UIViewController {
     @objc private func followPrivacyChanged(_ sender: UISegmentedControl) {
         let privacy: FollowPrivacy = sender.selectedSegmentIndex == 0 ? .open : .approval
         FollowFirestoreSync.setFollowPrivacy(privacy)
+    }
+
+    // MARK: - Privacy & Data
+
+    private func makePrivacyDataCard() -> UIView {
+        let card = UIView()
+        card.backgroundColor = AIONDesign.surface
+        card.layer.cornerRadius = AIONDesign.cornerRadius
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.tag = 990
+
+        let iconView = UIImageView(image: UIImage(systemName: "hand.raised.fill"))
+        iconView.tintColor = AIONDesign.accentPrimary
+        iconView.contentMode = .scaleAspectFit
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = "settings.privacy.title".localized
+        titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.textColor = AIONDesign.textPrimary
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // AI Analysis toggle row
+        let aiRow = makeToggleRow(
+            title: "settings.privacy.aiAnalysis".localized,
+            subtitle: "settings.privacy.aiAnalysisDescription".localized,
+            isOn: ConsentManager.hasAIConsent,
+            tag: 991
+        )
+
+        // Leaderboard toggle row
+        let leaderboardRow = makeToggleRow(
+            title: "settings.privacy.leaderboard".localized,
+            subtitle: "settings.privacy.leaderboardDescription".localized,
+            isOn: ConsentManager.hasLeaderboardConsent,
+            tag: 992
+        )
+
+        card.addSubview(iconView)
+        card.addSubview(titleLabel)
+        card.addSubview(aiRow)
+        card.addSubview(leaderboardRow)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        NSLayoutConstraint.activate([
+            iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            iconView.widthAnchor.constraint(equalToConstant: 24),
+            iconView.heightAnchor.constraint(equalToConstant: 24),
+
+            titleLabel.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),
+
+            aiRow.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 12),
+            aiRow.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+            aiRow.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+
+            leaderboardRow.topAnchor.constraint(equalTo: aiRow.bottomAnchor, constant: 12),
+            leaderboardRow.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+            leaderboardRow.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+            leaderboardRow.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -AIONDesign.spacing),
+        ])
+
+        if isRTL {
+            NSLayoutConstraint.activate([
+                iconView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -AIONDesign.spacing),
+                titleLabel.trailingAnchor.constraint(equalTo: iconView.leadingAnchor, constant: -10),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: AIONDesign.spacing),
+                titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 10),
+            ])
+        }
+
+        return card
+    }
+
+    private func makeToggleRow(title: String, subtitle: String, isOn: Bool, tag: Int) -> UIView {
+        let row = UIView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        titleLabel.textColor = AIONDesign.textPrimary
+        titleLabel.textAlignment = LocalizationManager.shared.textAlignment
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = subtitle
+        subtitleLabel.font = .systemFont(ofSize: 12, weight: .regular)
+        subtitleLabel.textColor = AIONDesign.textSecondary
+        subtitleLabel.textAlignment = LocalizationManager.shared.textAlignment
+        subtitleLabel.numberOfLines = 0
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let toggle = UISwitch()
+        toggle.isOn = isOn
+        toggle.onTintColor = AIONDesign.accentPrimary
+        toggle.tag = tag
+        toggle.addTarget(self, action: #selector(privacyToggleChanged(_:)), for: .valueChanged)
+        toggle.translatesAutoresizingMaskIntoConstraints = false
+
+        row.addSubview(titleLabel)
+        row.addSubview(subtitleLabel)
+        row.addSubview(toggle)
+
+        let isRTL = LocalizationManager.shared.currentLanguage.isRTL
+
+        NSLayoutConstraint.activate([
+            toggle.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+
+            titleLabel.topAnchor.constraint(equalTo: row.topAnchor),
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
+            subtitleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor),
+        ])
+
+        if isRTL {
+            NSLayoutConstraint.activate([
+                toggle.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+                titleLabel.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+                titleLabel.leadingAnchor.constraint(equalTo: toggle.trailingAnchor, constant: 12),
+                subtitleLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+                subtitleLabel.leadingAnchor.constraint(equalTo: toggle.trailingAnchor, constant: 12),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+                titleLabel.trailingAnchor.constraint(equalTo: toggle.leadingAnchor, constant: -12),
+                subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+                subtitleLabel.trailingAnchor.constraint(equalTo: toggle.leadingAnchor, constant: -12),
+                toggle.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+            ])
+        }
+
+        return row
+    }
+
+    @objc private func privacyToggleChanged(_ sender: UISwitch) {
+        if sender.tag == 991 {
+            // AI Analysis toggle
+            if !sender.isOn {
+                // Warn user before disabling AI
+                let alert = UIAlertController(
+                    title: "settings.privacy.aiDisableConfirm".localized,
+                    message: "settings.privacy.aiRequired".localized,
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel) { _ in
+                    sender.setOn(true, animated: true)
+                })
+                alert.addAction(UIAlertAction(title: "ok".localized, style: .destructive) { _ in
+                    ConsentManager.hasAIConsent = false
+                })
+                present(alert, animated: true)
+            } else {
+                ConsentManager.hasAIConsent = true
+            }
+        } else if sender.tag == 992 {
+            // Leaderboard toggle
+            ConsentManager.hasLeaderboardConsent = sender.isOn
+        }
     }
 
     // MARK: - Delete Account Card

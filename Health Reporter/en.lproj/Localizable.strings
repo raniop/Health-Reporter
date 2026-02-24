@@ -787,6 +787,30 @@
 "social.timeAgo.yesterday" = "yesterday";
 "social.timeAgo.days" = "%dd ago";
 
+/* Profile - Car Showcase */
+"social.garage" = "GARAGE";
+"social.tierLevel" = "Tier %d of 5";
+
+/* Profile - Comparison */
+"social.comparison" = "COMPARISON";
+"social.you" = "You";
+"social.youLeadByPoints" = "You lead by %d points";
+"social.behindByPoints" = "Behind by %d points";
+"social.tiedScore" = "Tied!";
+
+/* Profile - Badges */
+"social.badges" = "BADGES";
+"social.memberBadge" = "MEMBER";
+"social.streakBadge" = "STREAK";
+"social.bestBadge" = "BEST";
+"social.monthsCount" = "%d mo";
+"social.daysCount" = "%d d";
+"social.yearsCount" = "%d yr";
+
+/* Profile - Mutual Connections */
+"social.mutualConnections" = "MUTUAL CONNECTIONS";
+"social.moreMutuals" = "+%d";
+
 /* Chat */
 "chat.title" = "Messages";
 "chat.message" = "Message";
@@ -1075,6 +1099,24 @@
 "onboarding.ai.feature3" = "Actionable recommendations";
 
 "onboarding.continue" = "Continue";
+
+/* Onboarding - Data & Privacy */
+"onboarding.privacy.title" = "Your Data & Privacy";
+"onboarding.privacy.description" = "We believe in full transparency. Here's how your data is used:";
+"onboarding.privacy.ai.title" = "AI Health Analysis";
+"onboarding.privacy.ai.detail" = "Your health data is sent to Google Gemini AI to generate personalized insights and recommendations. No data is stored by Google.";
+"onboarding.privacy.leaderboard.title" = "Global Leaderboard";
+"onboarding.privacy.leaderboard.detail" = "Your health score can appear on the public leaderboard. Your name and score will be visible to other users.";
+"onboarding.privacy.agree" = "Agree & Continue";
+
+/* Settings - Privacy & Consent */
+"settings.privacy.title" = "Privacy & Data";
+"settings.privacy.aiAnalysis" = "AI Health Analysis";
+"settings.privacy.aiAnalysisDescription" = "Send health data to Google Gemini AI for personalized analysis";
+"settings.privacy.leaderboard" = "Global Leaderboard";
+"settings.privacy.leaderboardDescription" = "Show your score on the public leaderboard";
+"settings.privacy.aiRequired" = "Disabling this will stop AI-powered insights and recommendations.";
+"settings.privacy.aiDisableConfirm" = "Disable AI Analysis?";
 
 "onboarding.loading.subtitle" = "This may take a moment...";
 "onboarding.progress.connecting" = "Connecting to Apple Health...";

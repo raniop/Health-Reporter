@@ -791,6 +791,30 @@
 "social.timeAgo.yesterday" = "אתמול";
 "social.timeAgo.days" = "לפני %d ימים";
 
+/* פרופיל - תצוגת רכב */
+"social.garage" = "מוסך";
+"social.tierLevel" = "דרגה %d מתוך 5";
+
+/* פרופיל - השוואה */
+"social.comparison" = "השוואה";
+"social.you" = "אתה";
+"social.youLeadByPoints" = "אתה מוביל ב-%d נקודות";
+"social.behindByPoints" = "מאחור ב-%d נקודות";
+"social.tiedScore" = "שוויון!";
+
+/* פרופיל - תגים */
+"social.badges" = "תגים";
+"social.memberBadge" = "חבר";
+"social.streakBadge" = "רצף";
+"social.bestBadge" = "שיא";
+"social.monthsCount" = "%d חו׳";
+"social.daysCount" = "%d י׳";
+"social.yearsCount" = "%d ש׳";
+
+/* פרופיל - חברים משותפים */
+"social.mutualConnections" = "חברים משותפים";
+"social.moreMutuals" = "+%d";
+
 /* צ׳אט */
 "chat.title" = "הודעות";
 "chat.message" = "הודעה";
@@ -1079,6 +1103,24 @@
 "onboarding.ai.feature3" = "המלצות מעשיות";
 
 "onboarding.continue" = "המשך";
+
+/* Onboarding - פרטיות נתונים */
+"onboarding.privacy.title" = "הנתונים והפרטיות שלך";
+"onboarding.privacy.description" = "אנחנו מאמינים בשקיפות מלאה. כך הנתונים שלך בשימוש:";
+"onboarding.privacy.ai.title" = "ניתוח בריאות AI";
+"onboarding.privacy.ai.detail" = "נתוני הבריאות שלך נשלחים ל-Google Gemini AI ליצירת תובנות והמלצות מותאמות אישית. גוגל לא שומרת את הנתונים.";
+"onboarding.privacy.leaderboard.title" = "טבלת מובילים גלובלית";
+"onboarding.privacy.leaderboard.detail" = "ציון הבריאות שלך יכול להופיע בטבלת המובילים הציבורית. השם והציון שלך יהיו גלויים למשתמשים אחרים.";
+"onboarding.privacy.agree" = "מסכים/ה והמשך";
+
+/* הגדרות - פרטיות והסכמה */
+"settings.privacy.title" = "פרטיות ונתונים";
+"settings.privacy.aiAnalysis" = "ניתוח בריאות AI";
+"settings.privacy.aiAnalysisDescription" = "שלח נתוני בריאות ל-Google Gemini AI לניתוח מותאם אישית";
+"settings.privacy.leaderboard" = "טבלת מובילים גלובלית";
+"settings.privacy.leaderboardDescription" = "הצג את הציון שלך בטבלת המובילים הציבורית";
+"settings.privacy.aiRequired" = "כיבוי יפסיק את התובנות וההמלצות מבוססות ה-AI.";
+"settings.privacy.aiDisableConfirm" = "לכבות ניתוח AI?";
 
 "onboarding.loading.subtitle" = "זה עשוי לקחת רגע...";
 "onboarding.progress.connecting" = "מתחבר ל-Apple Health...";

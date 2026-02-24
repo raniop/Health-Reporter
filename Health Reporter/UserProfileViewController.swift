@@ -146,32 +146,154 @@ final class UserProfileViewController: UIViewController {
     private let progressGradient = CAGradientLayer()
     private var progressFillWidthConstraint: NSLayoutConstraint?
 
-    // MARK: - UI -- Car Tier Card
+    // MARK: - UI -- Car Showcase Card
 
-    private let carTierCard = UIView()
-
-    // MARK: - UI -- About Card
-
-    private let aboutCard = UIView()
-    private let aboutTitleLabel: UILabel = {
+    private let carShowcaseCard = UIView()
+    private let carImageView: UIImageView = {
+        let iv = UIImageView()
+        iv.contentMode = .scaleAspectFit
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        return iv
+    }()
+    private let carGlowLayer = CAGradientLayer()
+    private let carShowcaseNameLabel: UILabel = {
         let l = UILabel()
-        l.text = "About"
-        l.font = .systemFont(ofSize: 14, weight: .bold)
+        l.font = .systemFont(ofSize: 17, weight: .bold)
         l.textColor = AIONDesign.textPrimary
-        l.textAlignment = LocalizationManager.shared.textAlignment
+        l.textAlignment = .center
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
-    private let aboutBodyLabel: UILabel = {
+    private let carShowcaseTierLabel: UILabel = {
         let l = UILabel()
-        l.font = .systemFont(ofSize: 13, weight: .regular)
-        l.textColor = AIONDesign.textSecondary
-        l.textAlignment = LocalizationManager.shared.textAlignment
-        l.numberOfLines = 0
-        l.text = "Active user on Health Reporter"
+        l.font = .systemFont(ofSize: 13, weight: .medium)
+        l.textAlignment = .center
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
+    private let tierLadderStack: UIStackView = {
+        let s = UIStackView()
+        s.axis = .horizontal
+        s.distribution = .equalSpacing
+        s.alignment = .center
+        s.spacing = 12
+        s.translatesAutoresizingMaskIntoConstraints = false
+        return s
+    }()
+
+    // MARK: - UI -- Comparison Card
+
+    private let comparisonCard = UIView()
+    private let comparisonTitleLabel: UILabel = {
+        let l = UILabel()
+        l.text = "social.comparison".localized.uppercased()
+        l.font = .systemFont(ofSize: 11, weight: .heavy)
+        l.textColor = AIONDesign.textTertiary
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+    private let yourAvatarRing: AvatarRingView = {
+        let v = AvatarRingView(size: 32)
+        v.ringWidth = 2
+        v.isAnimated = false
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+    private let yourCompLabel: UILabel = {
+        let l = UILabel()
+        l.text = "social.you".localized
+        l.font = .systemFont(ofSize: 11, weight: .semibold)
+        l.textColor = AIONDesign.textTertiary
+        l.textAlignment = .center
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+    private let yourScoreLabel: UILabel = {
+        let l = UILabel()
+        l.font = .monospacedDigitSystemFont(ofSize: 22, weight: .black)
+        l.textAlignment = .center
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+    private let theirCompLabel: UILabel = {
+        let l = UILabel()
+        l.font = .systemFont(ofSize: 11, weight: .semibold)
+        l.textColor = AIONDesign.textTertiary
+        l.textAlignment = .center
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+    private let theirAvatarRing: AvatarRingView = {
+        let v = AvatarRingView(size: 32)
+        v.ringWidth = 2
+        v.isAnimated = false
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+    private let theirScoreLabel: UILabel = {
+        let l = UILabel()
+        l.font = .monospacedDigitSystemFont(ofSize: 22, weight: .black)
+        l.textAlignment = .center
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+    private let comparisonBarContainer = UIView()
+    private let comparisonBarYou = UIView()
+    private let comparisonBarThem = UIView()
+    private var compBarYouWidth: NSLayoutConstraint?
+    private let comparisonStatusLabel: UILabel = {
+        let l = UILabel()
+        l.font = .systemFont(ofSize: 13, weight: .semibold)
+        l.textAlignment = .center
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+
+    // MARK: - UI -- Badges Card
+
+    private let badgesCard = UIView()
+    private let badgesTitleLabel: UILabel = {
+        let l = UILabel()
+        l.text = "social.badges".localized.uppercased()
+        l.font = .systemFont(ofSize: 11, weight: .heavy)
+        l.textColor = AIONDesign.textTertiary
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+    private let memberValueLabel = UILabel()
+    private let streakValueLabel = UILabel()
+    private let peakScoreValueLabel = UILabel()
+
+    // MARK: - UI -- Mutual Friends
+
+    private let mutualCard = UIView()
+    private let mutualTitleLabel: UILabel = {
+        let l = UILabel()
+        l.text = "social.mutualConnections".localized.uppercased()
+        l.font = .systemFont(ofSize: 11, weight: .heavy)
+        l.textColor = AIONDesign.textTertiary
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
+    private let mutualScrollView: UIScrollView = {
+        let sv = UIScrollView()
+        sv.showsHorizontalScrollIndicator = false
+        sv.translatesAutoresizingMaskIntoConstraints = false
+        return sv
+    }()
+    private let mutualStack: UIStackView = {
+        let s = UIStackView()
+        s.axis = .horizontal
+        s.spacing = 14
+        s.alignment = .center
+        s.translatesAutoresizingMaskIntoConstraints = false
+        return s
+    }()
+
+    // Extra data for new cards
+    private var memberSinceDate: Date?
+    private var streakDays: Int = 0
+    private var peakScore: Int = 0
 
     // MARK: - Init
 
@@ -201,6 +323,9 @@ final class UserProfileViewController: UIViewController {
         super.viewDidLayoutSubviews()
         bgGradientLayer.frame = bgGradientOverlay.bounds
         progressGradient.frame = progressFill.bounds
+        if let glowSuper = carGlowLayer.superlayer?.bounds {
+            carGlowLayer.frame = glowSuper
+        }
     }
 
     // MARK: - Navigation Bar
@@ -256,10 +381,14 @@ final class UserProfileViewController: UIViewController {
 
         // Build sections
         buildHeaderSection()
+        // Push stats card below the blurred background photo (380px)
+        contentStack.setCustomSpacing(96, after: headerSection)
         buildStatsCard()
         buildScoreCard()
-        buildCarTierCard()
-        buildAboutCard()
+        buildCarShowcaseCard()
+        buildComparisonCard()
+        buildBadgesCard()
+        buildMutualFriendsSection()
 
         // Bottom spacing
         let bottomSpacer = UIView()
@@ -431,11 +560,11 @@ final class UserProfileViewController: UIViewController {
         let isRTL = LocalizationManager.shared.currentLanguage.isRTL
 
         let scoreCol = makeStatColumn(value: scoreStatValue, label: scoreStatLabel,
-                                       labelText: "Health Score", action: nil)
+                                       labelText: "social.healthScore".localized, action: nil)
         let followersCol = makeStatColumn(value: followersStatValue, label: followersStatLabel,
-                                           labelText: "Followers", action: #selector(followersTapped))
+                                           labelText: "social.followers".localized, action: #selector(followersTapped))
         let followingCol = makeStatColumn(value: followingStatValue, label: followingStatLabel,
-                                           labelText: "Following", action: #selector(followingTapped))
+                                           labelText: "social.following".localized, action: #selector(followingTapped))
 
         let stack = UIStackView()
         stack.axis = .horizontal
@@ -549,7 +678,7 @@ final class UserProfileViewController: UIViewController {
         scoreCard.addSubview(circularProgress)
 
         // Score title
-        scoreTitleLabel.text = "Health Score"
+        scoreTitleLabel.text = "social.healthScore".localized
         scoreTitleLabel.font = .systemFont(ofSize: 12, weight: .bold)
         scoreTitleLabel.textColor = AIONDesign.textTertiary
         scoreTitleLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -590,6 +719,7 @@ final class UserProfileViewController: UIViewController {
         progressFillWidthConstraint = fillWidth
 
         NSLayoutConstraint.activate([
+            progressTrack.topAnchor.constraint(greaterThanOrEqualTo: circularProgress.bottomAnchor, constant: 16),
             progressTrack.bottomAnchor.constraint(equalTo: scoreCard.bottomAnchor, constant: -18),
             progressTrack.leadingAnchor.constraint(equalTo: scoreCard.leadingAnchor, constant: 20),
             progressTrack.trailingAnchor.constraint(equalTo: scoreCard.trailingAnchor, constant: -20),
@@ -618,6 +748,7 @@ final class UserProfileViewController: UIViewController {
 
                 carSubtitle.topAnchor.constraint(equalTo: scoreDescLabel.bottomAnchor, constant: 4),
                 carSubtitle.leadingAnchor.constraint(equalTo: scoreTitleLabel.leadingAnchor),
+                carSubtitle.bottomAnchor.constraint(lessThanOrEqualTo: progressTrack.topAnchor, constant: -12),
             ])
         } else {
             NSLayoutConstraint.activate([
@@ -636,154 +767,397 @@ final class UserProfileViewController: UIViewController {
 
                 carSubtitle.topAnchor.constraint(equalTo: scoreDescLabel.bottomAnchor, constant: 4),
                 carSubtitle.leadingAnchor.constraint(equalTo: scoreTitleLabel.leadingAnchor),
+                carSubtitle.bottomAnchor.constraint(lessThanOrEqualTo: progressTrack.topAnchor, constant: -12),
             ])
         }
 
         contentStack.addArrangedSubview(scoreCard)
     }
 
-    // MARK: - Car Tier Card
+    // MARK: - Car Showcase Card
 
-    private func buildCarTierCard() {
-        carTierCard.translatesAutoresizingMaskIntoConstraints = false
-        carTierCard.backgroundColor = AIONDesign.glassCardBackground
-        carTierCard.layer.cornerRadius = 22
-        carTierCard.layer.borderWidth = 1
-        carTierCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
-        carTierCard.clipsToBounds = true
-        carTierCard.isHidden = true
+    private func buildCarShowcaseCard() {
+        carShowcaseCard.translatesAutoresizingMaskIntoConstraints = false
+        carShowcaseCard.backgroundColor = AIONDesign.glassCardBackground
+        carShowcaseCard.layer.cornerRadius = 22
+        carShowcaseCard.layer.borderWidth = 1
+        carShowcaseCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
+        carShowcaseCard.clipsToBounds = true
+        carShowcaseCard.isHidden = true
 
-        contentStack.addArrangedSubview(carTierCard)
-    }
-
-    private func populateCarTierCard(tierIndex: Int, carName: String) {
-        // Clear previous content
-        carTierCard.subviews.forEach { $0.removeFromSuperview() }
-
-        // Re-add glass blur
-        let tierBlur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
-        tierBlur.alpha = AIONDesign.glassBlurAlpha
-        tierBlur.translatesAutoresizingMaskIntoConstraints = false
-        carTierCard.addSubview(tierBlur)
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        carShowcaseCard.addSubview(blur)
         NSLayoutConstraint.activate([
-            tierBlur.topAnchor.constraint(equalTo: carTierCard.topAnchor),
-            tierBlur.leadingAnchor.constraint(equalTo: carTierCard.leadingAnchor),
-            tierBlur.trailingAnchor.constraint(equalTo: carTierCard.trailingAnchor),
-            tierBlur.bottomAnchor.constraint(equalTo: carTierCard.bottomAnchor),
+            blur.topAnchor.constraint(equalTo: carShowcaseCard.topAnchor),
+            blur.leadingAnchor.constraint(equalTo: carShowcaseCard.leadingAnchor),
+            blur.trailingAnchor.constraint(equalTo: carShowcaseCard.trailingAnchor),
+            blur.bottomAnchor.constraint(equalTo: carShowcaseCard.bottomAnchor),
         ])
 
-        let tier = HealthTier.forIndex(tierIndex)
-        let emoji = tier?.emoji ?? "\u{1F697}"
-        let tierLabel = tier?.tierLabel ?? ""
-        let tierColor = tier?.color ?? AIONDesign.accentPrimary
+        // Glow layer behind car image
+        let glowContainer = UIView()
+        glowContainer.translatesAutoresizingMaskIntoConstraints = false
+        carShowcaseCard.addSubview(glowContainer)
+
+        carGlowLayer.type = .radial
+        carGlowLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+        carGlowLayer.endPoint = CGPoint(x: 1.0, y: 1.0)
+        carGlowLayer.colors = [
+            AIONDesign.accentPrimary.withAlphaComponent(0.25).cgColor,
+            UIColor.clear.cgColor
+        ]
+        glowContainer.layer.insertSublayer(carGlowLayer, at: 0)
+
+        // Car image
+        carShowcaseCard.addSubview(carImageView)
+
+        // Section label
+        let sectionLabel = UILabel()
+        sectionLabel.text = "social.garage".localized.uppercased()
+        sectionLabel.font = .systemFont(ofSize: 11, weight: .heavy)
+        sectionLabel.textColor = AIONDesign.textTertiary
+        sectionLabel.translatesAutoresizingMaskIntoConstraints = false
+        carShowcaseCard.addSubview(sectionLabel)
+
+        // Car name + tier label
+        carShowcaseCard.addSubview(carShowcaseNameLabel)
+        carShowcaseCard.addSubview(carShowcaseTierLabel)
+
+        // Tier ladder (5 dots)
+        carShowcaseCard.addSubview(tierLadderStack)
+        tierLadderStack.semanticContentAttribute = .forceLeftToRight // Always LTR for ladder
+
+        for i in 0..<5 {
+            let dot = UIView()
+            dot.translatesAutoresizingMaskIntoConstraints = false
+            dot.layer.cornerRadius = 6
+            dot.backgroundColor = AIONDesign.surfaceElevated
+            dot.tag = 500 + i
+
+            let emoji = UILabel()
+            emoji.font = .systemFont(ofSize: 10)
+            emoji.textAlignment = .center
+            emoji.translatesAutoresizingMaskIntoConstraints = false
+            emoji.tag = 600 + i
+            emoji.text = HealthTier.forIndex(i)?.emoji ?? ""
+
+            let col = UIStackView(arrangedSubviews: [dot, emoji])
+            col.axis = .vertical
+            col.alignment = .center
+            col.spacing = 4
+            col.translatesAutoresizingMaskIntoConstraints = false
+
+            NSLayoutConstraint.activate([
+                dot.widthAnchor.constraint(equalToConstant: 12),
+                dot.heightAnchor.constraint(equalToConstant: 12),
+            ])
+
+            tierLadderStack.addArrangedSubview(col)
+        }
+
+        NSLayoutConstraint.activate([
+            sectionLabel.topAnchor.constraint(equalTo: carShowcaseCard.topAnchor, constant: 16),
+            sectionLabel.centerXAnchor.constraint(equalTo: carShowcaseCard.centerXAnchor),
+
+            glowContainer.centerXAnchor.constraint(equalTo: carShowcaseCard.centerXAnchor),
+            glowContainer.topAnchor.constraint(equalTo: sectionLabel.bottomAnchor, constant: 8),
+            glowContainer.widthAnchor.constraint(equalToConstant: 200),
+            glowContainer.heightAnchor.constraint(equalToConstant: 120),
+
+            carImageView.centerXAnchor.constraint(equalTo: glowContainer.centerXAnchor),
+            carImageView.centerYAnchor.constraint(equalTo: glowContainer.centerYAnchor),
+            carImageView.widthAnchor.constraint(equalToConstant: 180),
+            carImageView.heightAnchor.constraint(equalToConstant: 110),
+
+            carShowcaseNameLabel.topAnchor.constraint(equalTo: glowContainer.bottomAnchor, constant: 8),
+            carShowcaseNameLabel.leadingAnchor.constraint(equalTo: carShowcaseCard.leadingAnchor, constant: 20),
+            carShowcaseNameLabel.trailingAnchor.constraint(equalTo: carShowcaseCard.trailingAnchor, constant: -20),
+
+            carShowcaseTierLabel.topAnchor.constraint(equalTo: carShowcaseNameLabel.bottomAnchor, constant: 4),
+            carShowcaseTierLabel.centerXAnchor.constraint(equalTo: carShowcaseCard.centerXAnchor),
+
+            tierLadderStack.topAnchor.constraint(equalTo: carShowcaseTierLabel.bottomAnchor, constant: 16),
+            tierLadderStack.centerXAnchor.constraint(equalTo: carShowcaseCard.centerXAnchor),
+            tierLadderStack.bottomAnchor.constraint(equalTo: carShowcaseCard.bottomAnchor, constant: -18),
+        ])
+
+        contentStack.addArrangedSubview(carShowcaseCard)
+    }
+
+    // MARK: - Comparison Card
+
+    private func buildComparisonCard() {
+        comparisonCard.translatesAutoresizingMaskIntoConstraints = false
+        comparisonCard.backgroundColor = AIONDesign.glassCardBackground
+        comparisonCard.layer.cornerRadius = 22
+        comparisonCard.layer.borderWidth = 1
+        comparisonCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
+        comparisonCard.clipsToBounds = true
+        comparisonCard.isHidden = true
+
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        comparisonCard.addSubview(blur)
+        NSLayoutConstraint.activate([
+            blur.topAnchor.constraint(equalTo: comparisonCard.topAnchor),
+            blur.leadingAnchor.constraint(equalTo: comparisonCard.leadingAnchor),
+            blur.trailingAnchor.constraint(equalTo: comparisonCard.trailingAnchor),
+            blur.bottomAnchor.constraint(equalTo: comparisonCard.bottomAnchor),
+        ])
+
+        // Title
+        comparisonCard.addSubview(comparisonTitleLabel)
+
+        // Your side
+        let yourCol = UIStackView(arrangedSubviews: [yourAvatarRing, yourCompLabel, yourScoreLabel])
+        yourCol.axis = .vertical
+        yourCol.alignment = .center
+        yourCol.spacing = 4
+        yourCol.translatesAutoresizingMaskIntoConstraints = false
+        comparisonCard.addSubview(yourCol)
+
+        // Their side
+        let theirCol = UIStackView(arrangedSubviews: [theirAvatarRing, theirCompLabel, theirScoreLabel])
+        theirCol.axis = .vertical
+        theirCol.alignment = .center
+        theirCol.spacing = 4
+        theirCol.translatesAutoresizingMaskIntoConstraints = false
+        comparisonCard.addSubview(theirCol)
+
+        // VS label
+        let vsLabel = UILabel()
+        vsLabel.text = "VS"
+        vsLabel.font = .systemFont(ofSize: 13, weight: .heavy)
+        vsLabel.textColor = AIONDesign.textTertiary.withAlphaComponent(0.5)
+        vsLabel.textAlignment = .center
+        vsLabel.translatesAutoresizingMaskIntoConstraints = false
+        comparisonCard.addSubview(vsLabel)
+
+        // Comparison bar
+        comparisonBarContainer.translatesAutoresizingMaskIntoConstraints = false
+        comparisonBarContainer.backgroundColor = AIONDesign.surfaceElevated
+        comparisonBarContainer.layer.cornerRadius = 5
+        comparisonBarContainer.clipsToBounds = true
+        comparisonCard.addSubview(comparisonBarContainer)
+
+        comparisonBarYou.translatesAutoresizingMaskIntoConstraints = false
+        comparisonBarYou.layer.cornerRadius = 5
+        comparisonBarContainer.addSubview(comparisonBarYou)
+
+        comparisonBarThem.translatesAutoresizingMaskIntoConstraints = false
+        comparisonBarThem.layer.cornerRadius = 5
+        comparisonBarContainer.addSubview(comparisonBarThem)
+
+        let youWidth = comparisonBarYou.widthAnchor.constraint(equalTo: comparisonBarContainer.widthAnchor, multiplier: 0.5)
+        compBarYouWidth = youWidth
+
+        NSLayoutConstraint.activate([
+            comparisonBarYou.topAnchor.constraint(equalTo: comparisonBarContainer.topAnchor),
+            comparisonBarYou.leadingAnchor.constraint(equalTo: comparisonBarContainer.leadingAnchor),
+            comparisonBarYou.bottomAnchor.constraint(equalTo: comparisonBarContainer.bottomAnchor),
+            youWidth,
+
+            comparisonBarThem.topAnchor.constraint(equalTo: comparisonBarContainer.topAnchor),
+            comparisonBarThem.trailingAnchor.constraint(equalTo: comparisonBarContainer.trailingAnchor),
+            comparisonBarThem.bottomAnchor.constraint(equalTo: comparisonBarContainer.bottomAnchor),
+            comparisonBarThem.leadingAnchor.constraint(equalTo: comparisonBarYou.trailingAnchor, constant: 2),
+        ])
+
+        // Status label
+        comparisonCard.addSubview(comparisonStatusLabel)
 
         let isRTL = LocalizationManager.shared.currentLanguage.isRTL
 
-        // Colored accent bar on leading edge
-        let accentBar = UIView()
-        accentBar.translatesAutoresizingMaskIntoConstraints = false
-        accentBar.backgroundColor = tierColor
-        accentBar.layer.cornerRadius = 2
-        carTierCard.addSubview(accentBar)
+        NSLayoutConstraint.activate([
+            comparisonTitleLabel.topAnchor.constraint(equalTo: comparisonCard.topAnchor, constant: 16),
+            comparisonTitleLabel.centerXAnchor.constraint(equalTo: comparisonCard.centerXAnchor),
 
-        // Emoji
-        let emojiLabel = UILabel()
-        emojiLabel.text = emoji
-        emojiLabel.font = .systemFont(ofSize: 36)
-        emojiLabel.translatesAutoresizingMaskIntoConstraints = false
-        carTierCard.addSubview(emojiLabel)
+            yourCol.topAnchor.constraint(equalTo: comparisonTitleLabel.bottomAnchor, constant: 14),
+            yourCol.leadingAnchor.constraint(equalTo: comparisonCard.leadingAnchor, constant: 28),
+            yourCol.widthAnchor.constraint(equalToConstant: 70),
 
-        // Car name
-        let carNameLabel = UILabel()
-        carNameLabel.text = carName
-        carNameLabel.font = .systemFont(ofSize: 17, weight: .bold)
-        carNameLabel.textColor = AIONDesign.textPrimary
-        carNameLabel.translatesAutoresizingMaskIntoConstraints = false
-        carTierCard.addSubview(carNameLabel)
+            theirCol.topAnchor.constraint(equalTo: yourCol.topAnchor),
+            theirCol.trailingAnchor.constraint(equalTo: comparisonCard.trailingAnchor, constant: -28),
+            theirCol.widthAnchor.constraint(equalToConstant: 70),
 
-        // Tier label
-        let tierDescLabel = UILabel()
-        tierDescLabel.text = tierLabel
-        tierDescLabel.font = .systemFont(ofSize: 13, weight: .medium)
-        tierDescLabel.textColor = tierColor
-        tierDescLabel.translatesAutoresizingMaskIntoConstraints = false
-        carTierCard.addSubview(tierDescLabel)
+            vsLabel.centerYAnchor.constraint(equalTo: yourCol.centerYAnchor),
+            vsLabel.centerXAnchor.constraint(equalTo: comparisonCard.centerXAnchor),
 
-        if isRTL {
-            NSLayoutConstraint.activate([
-                accentBar.trailingAnchor.constraint(equalTo: carTierCard.trailingAnchor),
-                accentBar.topAnchor.constraint(equalTo: carTierCard.topAnchor, constant: 12),
-                accentBar.bottomAnchor.constraint(equalTo: carTierCard.bottomAnchor, constant: -12),
-                accentBar.widthAnchor.constraint(equalToConstant: 4),
+            comparisonBarContainer.topAnchor.constraint(equalTo: yourCol.bottomAnchor, constant: 14),
+            comparisonBarContainer.leadingAnchor.constraint(equalTo: comparisonCard.leadingAnchor, constant: 20),
+            comparisonBarContainer.trailingAnchor.constraint(equalTo: comparisonCard.trailingAnchor, constant: -20),
+            comparisonBarContainer.heightAnchor.constraint(equalToConstant: 10),
 
-                emojiLabel.trailingAnchor.constraint(equalTo: accentBar.leadingAnchor, constant: -16),
-                emojiLabel.centerYAnchor.constraint(equalTo: carTierCard.centerYAnchor),
+            comparisonStatusLabel.topAnchor.constraint(equalTo: comparisonBarContainer.bottomAnchor, constant: 10),
+            comparisonStatusLabel.centerXAnchor.constraint(equalTo: comparisonCard.centerXAnchor),
+            comparisonStatusLabel.bottomAnchor.constraint(equalTo: comparisonCard.bottomAnchor, constant: -16),
+        ])
 
-                carNameLabel.trailingAnchor.constraint(equalTo: emojiLabel.leadingAnchor, constant: -14),
-                carNameLabel.topAnchor.constraint(equalTo: carTierCard.topAnchor, constant: 16),
-                carNameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: carTierCard.leadingAnchor, constant: 16),
-
-                tierDescLabel.trailingAnchor.constraint(equalTo: carNameLabel.trailingAnchor),
-                tierDescLabel.topAnchor.constraint(equalTo: carNameLabel.bottomAnchor, constant: 4),
-                tierDescLabel.bottomAnchor.constraint(equalTo: carTierCard.bottomAnchor, constant: -16),
-            ])
-        } else {
-            NSLayoutConstraint.activate([
-                accentBar.leadingAnchor.constraint(equalTo: carTierCard.leadingAnchor),
-                accentBar.topAnchor.constraint(equalTo: carTierCard.topAnchor, constant: 12),
-                accentBar.bottomAnchor.constraint(equalTo: carTierCard.bottomAnchor, constant: -12),
-                accentBar.widthAnchor.constraint(equalToConstant: 4),
-
-                emojiLabel.leadingAnchor.constraint(equalTo: accentBar.trailingAnchor, constant: 16),
-                emojiLabel.centerYAnchor.constraint(equalTo: carTierCard.centerYAnchor),
-
-                carNameLabel.leadingAnchor.constraint(equalTo: emojiLabel.trailingAnchor, constant: 14),
-                carNameLabel.topAnchor.constraint(equalTo: carTierCard.topAnchor, constant: 16),
-                carNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: carTierCard.trailingAnchor, constant: -16),
-
-                tierDescLabel.leadingAnchor.constraint(equalTo: carNameLabel.leadingAnchor),
-                tierDescLabel.topAnchor.constraint(equalTo: carNameLabel.bottomAnchor, constant: 4),
-                tierDescLabel.bottomAnchor.constraint(equalTo: carTierCard.bottomAnchor, constant: -16),
-            ])
-        }
+        contentStack.addArrangedSubview(comparisonCard)
     }
 
-    // MARK: - About Card
+    // MARK: - Badges Card
 
-    private func buildAboutCard() {
-        aboutCard.translatesAutoresizingMaskIntoConstraints = false
-        aboutCard.backgroundColor = AIONDesign.glassCardBackground
-        aboutCard.layer.cornerRadius = 16
-        aboutCard.layer.borderWidth = 1
-        aboutCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
-        aboutCard.clipsToBounds = true
+    private func buildBadgesCard() {
+        badgesCard.translatesAutoresizingMaskIntoConstraints = false
+        badgesCard.backgroundColor = AIONDesign.glassCardBackground
+        badgesCard.layer.cornerRadius = 22
+        badgesCard.layer.borderWidth = 1
+        badgesCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
+        badgesCard.clipsToBounds = true
+        badgesCard.isHidden = true
 
-        let aboutBlur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
-        aboutBlur.alpha = AIONDesign.glassBlurAlpha
-        aboutBlur.translatesAutoresizingMaskIntoConstraints = false
-        aboutCard.addSubview(aboutBlur)
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        badgesCard.addSubview(blur)
         NSLayoutConstraint.activate([
-            aboutBlur.topAnchor.constraint(equalTo: aboutCard.topAnchor),
-            aboutBlur.leadingAnchor.constraint(equalTo: aboutCard.leadingAnchor),
-            aboutBlur.trailingAnchor.constraint(equalTo: aboutCard.trailingAnchor),
-            aboutBlur.bottomAnchor.constraint(equalTo: aboutCard.bottomAnchor),
+            blur.topAnchor.constraint(equalTo: badgesCard.topAnchor),
+            blur.leadingAnchor.constraint(equalTo: badgesCard.leadingAnchor),
+            blur.trailingAnchor.constraint(equalTo: badgesCard.trailingAnchor),
+            blur.bottomAnchor.constraint(equalTo: badgesCard.bottomAnchor),
         ])
 
-        aboutCard.addSubview(aboutTitleLabel)
-        aboutCard.addSubview(aboutBodyLabel)
+        badgesCard.addSubview(badgesTitleLabel)
+
+        // Three badge columns
+        let memberCol = makeBadgeColumn(
+            iconName: "calendar", iconColor: AIONDesign.accentPrimary,
+            valueLabel: memberValueLabel, caption: "social.memberBadge".localized
+        )
+        let streakCol = makeBadgeColumn(
+            iconName: "flame.fill", iconColor: .systemOrange,
+            valueLabel: streakValueLabel, caption: "social.streakBadge".localized
+        )
+        let peakCol = makeBadgeColumn(
+            iconName: "star.fill", iconColor: .systemYellow,
+            valueLabel: peakScoreValueLabel, caption: "social.bestBadge".localized
+        )
+
+        let badgesStack = UIStackView(arrangedSubviews: [memberCol, streakCol, peakCol])
+        badgesStack.axis = .horizontal
+        badgesStack.distribution = .fillEqually
+        badgesStack.alignment = .center
+        badgesStack.spacing = 0
+        badgesStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        badgesStack.translatesAutoresizingMaskIntoConstraints = false
+        badgesCard.addSubview(badgesStack)
+
+        // Dividers
+        let div1 = makeThinVerticalDivider()
+        let div2 = makeThinVerticalDivider()
+        badgesStack.addSubview(div1)
+        badgesStack.addSubview(div2)
 
         NSLayoutConstraint.activate([
-            aboutTitleLabel.topAnchor.constraint(equalTo: aboutCard.topAnchor, constant: 16),
-            aboutTitleLabel.leadingAnchor.constraint(equalTo: aboutCard.leadingAnchor, constant: 16),
-            aboutTitleLabel.trailingAnchor.constraint(equalTo: aboutCard.trailingAnchor, constant: -16),
+            badgesTitleLabel.topAnchor.constraint(equalTo: badgesCard.topAnchor, constant: 16),
+            badgesTitleLabel.centerXAnchor.constraint(equalTo: badgesCard.centerXAnchor),
 
-            aboutBodyLabel.topAnchor.constraint(equalTo: aboutTitleLabel.bottomAnchor, constant: 6),
-            aboutBodyLabel.leadingAnchor.constraint(equalTo: aboutCard.leadingAnchor, constant: 16),
-            aboutBodyLabel.trailingAnchor.constraint(equalTo: aboutCard.trailingAnchor, constant: -16),
-            aboutBodyLabel.bottomAnchor.constraint(equalTo: aboutCard.bottomAnchor, constant: -16),
+            badgesStack.topAnchor.constraint(equalTo: badgesTitleLabel.bottomAnchor, constant: 12),
+            badgesStack.leadingAnchor.constraint(equalTo: badgesCard.leadingAnchor, constant: 8),
+            badgesStack.trailingAnchor.constraint(equalTo: badgesCard.trailingAnchor, constant: -8),
+            badgesStack.bottomAnchor.constraint(equalTo: badgesCard.bottomAnchor, constant: -16),
+
+            div1.centerYAnchor.constraint(equalTo: badgesStack.centerYAnchor),
+            div1.leadingAnchor.constraint(equalTo: memberCol.trailingAnchor),
+            div2.centerYAnchor.constraint(equalTo: badgesStack.centerYAnchor),
+            div2.leadingAnchor.constraint(equalTo: streakCol.trailingAnchor),
         ])
 
-        contentStack.addArrangedSubview(aboutCard)
+        contentStack.addArrangedSubview(badgesCard)
+    }
+
+    private func makeBadgeColumn(iconName: String, iconColor: UIColor, valueLabel: UILabel, caption: String) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let icon = UIImageView(image: UIImage(systemName: iconName))
+        icon.tintColor = iconColor
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(icon)
+
+        valueLabel.text = "—"
+        valueLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .bold)
+        valueLabel.textColor = AIONDesign.textPrimary
+        valueLabel.textAlignment = .center
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(valueLabel)
+
+        let captionLabel = UILabel()
+        captionLabel.text = caption.uppercased()
+        captionLabel.font = .systemFont(ofSize: 9, weight: .heavy)
+        captionLabel.textColor = AIONDesign.textTertiary
+        captionLabel.textAlignment = .center
+        captionLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(captionLabel)
+
+        NSLayoutConstraint.activate([
+            icon.topAnchor.constraint(equalTo: container.topAnchor, constant: 4),
+            icon.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 20),
+            icon.heightAnchor.constraint(equalToConstant: 20),
+
+            valueLabel.topAnchor.constraint(equalTo: icon.bottomAnchor, constant: 6),
+            valueLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+
+            captionLabel.topAnchor.constraint(equalTo: valueLabel.bottomAnchor, constant: 2),
+            captionLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            captionLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -4),
+        ])
+
+        return container
+    }
+
+    // MARK: - Mutual Friends Section
+
+    private func buildMutualFriendsSection() {
+        mutualCard.translatesAutoresizingMaskIntoConstraints = false
+        mutualCard.backgroundColor = AIONDesign.glassCardBackground
+        mutualCard.layer.cornerRadius = 22
+        mutualCard.layer.borderWidth = 1
+        mutualCard.layer.borderColor = AIONDesign.glassCardBorder.cgColor
+        mutualCard.clipsToBounds = true
+        mutualCard.isHidden = true
+
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: AIONDesign.glassBlurStyle))
+        blur.alpha = AIONDesign.glassBlurAlpha
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        mutualCard.addSubview(blur)
+        NSLayoutConstraint.activate([
+            blur.topAnchor.constraint(equalTo: mutualCard.topAnchor),
+            blur.leadingAnchor.constraint(equalTo: mutualCard.leadingAnchor),
+            blur.trailingAnchor.constraint(equalTo: mutualCard.trailingAnchor),
+            blur.bottomAnchor.constraint(equalTo: mutualCard.bottomAnchor),
+        ])
+
+        mutualCard.addSubview(mutualTitleLabel)
+        mutualCard.addSubview(mutualScrollView)
+        mutualScrollView.addSubview(mutualStack)
+        mutualScrollView.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+        mutualStack.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
+
+        NSLayoutConstraint.activate([
+            mutualTitleLabel.topAnchor.constraint(equalTo: mutualCard.topAnchor, constant: 16),
+            mutualTitleLabel.leadingAnchor.constraint(equalTo: mutualCard.leadingAnchor, constant: 20),
+
+            mutualScrollView.topAnchor.constraint(equalTo: mutualTitleLabel.bottomAnchor, constant: 12),
+            mutualScrollView.leadingAnchor.constraint(equalTo: mutualCard.leadingAnchor, constant: 16),
+            mutualScrollView.trailingAnchor.constraint(equalTo: mutualCard.trailingAnchor, constant: -16),
+            mutualScrollView.bottomAnchor.constraint(equalTo: mutualCard.bottomAnchor, constant: -16),
+            mutualScrollView.heightAnchor.constraint(equalToConstant: 64),
+
+            mutualStack.topAnchor.constraint(equalTo: mutualScrollView.topAnchor),
+            mutualStack.leadingAnchor.constraint(equalTo: mutualScrollView.leadingAnchor),
+            mutualStack.trailingAnchor.constraint(equalTo: mutualScrollView.trailingAnchor),
+            mutualStack.bottomAnchor.constraint(equalTo: mutualScrollView.bottomAnchor),
+            mutualStack.heightAnchor.constraint(equalTo: mutualScrollView.heightAnchor),
+        ])
+
+        contentStack.addArrangedSubview(mutualCard)
     }
 
     // MARK: - Data Loading
@@ -809,6 +1183,11 @@ final class UserProfileViewController: UIViewController {
                 let carTierName = data["carTierName"] as? String
                     ?? HealthTier.forIndex(carTierIndex)?.tierLabel
                     ?? ""
+
+                // Read new gamification fields
+                self.memberSinceDate = (data["memberSince"] as? Timestamp)?.dateValue()
+                self.streakDays = data["streakDays"] as? Int ?? 0
+                self.peakScore = data["peakScore"] as? Int ?? healthScore
 
                 self.userData = (
                     displayName: displayName,
@@ -871,6 +1250,9 @@ final class UserProfileViewController: UIViewController {
                 self?.applyButtonStates()
             }
         }
+
+        // 5. Load mutual connections
+        loadMutualFriends()
     }
 
     // MARK: - Friendship Status
@@ -930,14 +1312,138 @@ final class UserProfileViewController: UIViewController {
             }
     }
 
+    // MARK: - Mutual Friends Loading
+
+    private func loadMutualFriends() {
+        guard let currentUid = Auth.auth().currentUser?.uid, currentUid != userUid else { return }
+
+        let group = DispatchGroup()
+        var myFollowing: [FollowRelation] = []
+        var theirFollowers: [FollowRelation] = []
+
+        group.enter()
+        FollowFirestoreSync.fetchFollowing(for: currentUid) { relations in
+            myFollowing = relations
+            group.leave()
+        }
+
+        group.enter()
+        FollowFirestoreSync.fetchFollowers(for: userUid) { relations in
+            theirFollowers = relations
+            group.leave()
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+
+            let myFollowingUids = Set(myFollowing.map { $0.uid })
+            let theirFollowerUids = Set(theirFollowers.map { $0.uid })
+            let mutualUids = myFollowingUids.intersection(theirFollowerUids)
+
+            guard !mutualUids.isEmpty else { return }
+
+            // Get FollowRelation objects for mutual users (from my following list for display names/photos)
+            let mutuals = myFollowing.filter { mutualUids.contains($0.uid) }
+
+            // Clear existing
+            self.mutualStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+
+            let maxShow = 5
+            let displayMutuals = Array(mutuals.prefix(maxShow))
+
+            for mutual in displayMutuals {
+                let col = self.makeMutualAvatarColumn(relation: mutual)
+                self.mutualStack.addArrangedSubview(col)
+            }
+
+            // "+N" indicator if more
+            if mutuals.count > maxShow {
+                let extra = mutuals.count - maxShow
+                let moreLabel = UILabel()
+                moreLabel.text = String(format: "social.moreMutuals".localized, extra)
+                moreLabel.font = .systemFont(ofSize: 13, weight: .bold)
+                moreLabel.textColor = AIONDesign.accentPrimary
+                moreLabel.textAlignment = .center
+                moreLabel.translatesAutoresizingMaskIntoConstraints = false
+
+                let moreContainer = UIView()
+                moreContainer.translatesAutoresizingMaskIntoConstraints = false
+                moreContainer.backgroundColor = AIONDesign.surfaceElevated
+                moreContainer.layer.cornerRadius = 18
+                moreContainer.addSubview(moreLabel)
+
+                NSLayoutConstraint.activate([
+                    moreContainer.widthAnchor.constraint(equalToConstant: 36),
+                    moreContainer.heightAnchor.constraint(equalToConstant: 36),
+                    moreLabel.centerXAnchor.constraint(equalTo: moreContainer.centerXAnchor),
+                    moreLabel.centerYAnchor.constraint(equalTo: moreContainer.centerYAnchor),
+                ])
+
+                let moreCol = UIStackView(arrangedSubviews: [moreContainer, UIView()])
+                moreCol.axis = .vertical
+                moreCol.alignment = .center
+                moreCol.spacing = 4
+                moreCol.translatesAutoresizingMaskIntoConstraints = false
+                self.mutualStack.addArrangedSubview(moreCol)
+            }
+
+            self.mutualCard.isHidden = false
+        }
+    }
+
+    private func makeMutualAvatarColumn(relation: FollowRelation) -> UIView {
+        let avatar = AvatarRingView(size: 36)
+        avatar.ringWidth = 1.5
+        avatar.isAnimated = false
+        avatar.translatesAutoresizingMaskIntoConstraints = false
+        avatar.loadImage(from: relation.photoURL)
+
+        let nameLabel = UILabel()
+        nameLabel.text = relation.displayName.components(separatedBy: " ").first ?? relation.displayName
+        nameLabel.font = .systemFont(ofSize: 9, weight: .medium)
+        nameLabel.textColor = AIONDesign.textTertiary
+        nameLabel.textAlignment = .center
+        nameLabel.lineBreakMode = .byTruncatingTail
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let col = UIStackView(arrangedSubviews: [avatar, nameLabel])
+        col.axis = .vertical
+        col.alignment = .center
+        col.spacing = 4
+        col.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            avatar.widthAnchor.constraint(equalToConstant: 36),
+            avatar.heightAnchor.constraint(equalToConstant: 36),
+            nameLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 50),
+        ])
+
+        // Tap to navigate
+        col.isUserInteractionEnabled = true
+        let tap = UITapGestureRecognizer(target: self, action: #selector(mutualAvatarTapped(_:)))
+        col.addGestureRecognizer(tap)
+        col.tag = relation.uid.hashValue // Store UID hash for identification
+        col.accessibilityIdentifier = relation.uid
+
+        return col
+    }
+
+    @objc private func mutualAvatarTapped(_ gesture: UITapGestureRecognizer) {
+        guard let view = gesture.view, let uid = view.accessibilityIdentifier else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        let vc = UserProfileViewController(userUid: uid)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
     // MARK: - Apply Data to UI
 
     private func applyData() {
         guard let data = userData else {
-            nameLabel.text = "Unknown User"
+            nameLabel.text = "social.unknownUser".localized
             scoreCard.isHidden = true
-            carTierCard.isHidden = true
-            aboutCard.isHidden = true
+            carShowcaseCard.isHidden = true
+            comparisonCard.isHidden = true
+            badgesCard.isHidden = true
             tierChip.isHidden = true
             scoreStatValue.text = "—"
             followersStatValue.text = "\(followersCount)"
@@ -992,7 +1498,7 @@ final class UserProfileViewController: UIViewController {
             circularProgress.score = data.healthScore
 
             applyScoreDescription(healthScore: data.healthScore)
-            carSubtitle.text = "\(tier?.emoji ?? "") \(data.carTierName)"
+            carSubtitle.isHidden = true
 
             // Animate progress bar
             let fraction = CGFloat(data.healthScore) / 100.0
@@ -1002,56 +1508,193 @@ final class UserProfileViewController: UIViewController {
             )
             progressFillWidthConstraint?.isActive = true
 
-            // --- Car Tier Card ---
-            carTierCard.isHidden = false
-            populateCarTierCard(tierIndex: data.carTierIndex, carName: data.carTierName)
+            // --- Car Showcase Card ---
+            applyCarShowcase(tierIndex: data.carTierIndex, carName: data.carTierName, tierColor: tierColor)
 
-            // --- About ---
-            aboutCard.isHidden = false
-            applyAboutText(healthScore: data.healthScore)
+            // --- Comparison Card ---
+            applyComparison(theirScore: data.healthScore, theirName: data.displayName,
+                            theirPhotoURL: data.photoURL, theirTierColor: tierColor)
+
+            // --- Badges Card ---
+            applyBadges(tierColor: tierColor)
 
         } else {
             tierChip.isHidden = true
             scoreCard.isHidden = true
-            carTierCard.isHidden = true
+            carShowcaseCard.isHidden = true
+            comparisonCard.isHidden = true
+            badgesCard.isHidden = true
             scoreStatValue.text = "—"
-
-            // About - show generic text
-            aboutCard.isHidden = false
-            aboutBodyLabel.text = "Active user on Health Reporter"
         }
 
         // Buttons
         applyButtonStates()
     }
 
-    private func applyScoreDescription(healthScore: Int) {
-        switch healthScore {
-        case 80...:
-            scoreDescLabel.text = "Excellent health habits!"
-            scoreDescLabel.textColor = AIONDesign.accentSuccess
-        case 60..<80:
-            scoreDescLabel.text = "Good health progress"
-            scoreDescLabel.textColor = AIONDesign.accentSecondary
-        case 40..<60:
-            scoreDescLabel.text = "Making progress"
-            scoreDescLabel.textColor = AIONDesign.accentPrimary
-        default:
-            scoreDescLabel.text = "Just getting started"
-            scoreDescLabel.textColor = AIONDesign.accentWarning
+    // MARK: - Apply New Cards Data
+
+    private func applyCarShowcase(tierIndex: Int, carName: String, tierColor: UIColor) {
+        guard let tier = HealthTier.forIndex(tierIndex) else {
+            carShowcaseCard.isHidden = true
+            return
+        }
+
+        carShowcaseCard.isHidden = false
+
+        // Car image from asset catalog
+        carImageView.image = UIImage(named: tier.imageName)
+
+        // Glow color
+        carGlowLayer.colors = [
+            tierColor.withAlphaComponent(0.3).cgColor,
+            UIColor.clear.cgColor
+        ]
+
+        // Labels
+        carShowcaseNameLabel.text = carName
+        carShowcaseTierLabel.text = String(format: "social.tierLevel".localized, tierIndex + 1)
+        carShowcaseTierLabel.textColor = tierColor
+
+        // Update tier ladder dots
+        for i in 0..<5 {
+            guard let col = tierLadderStack.arrangedSubviews[safe: i] as? UIStackView,
+                  let dot = col.arrangedSubviews.first else { continue }
+
+            let dotTier = HealthTier.forIndex(i)
+            let isCurrent = (i == tierIndex)
+
+            if isCurrent {
+                dot.backgroundColor = tierColor
+                dot.transform = CGAffineTransform(scaleX: 1.5, y: 1.5)
+                dot.layer.shadowColor = tierColor.cgColor
+                dot.layer.shadowOpacity = 0.6
+                dot.layer.shadowRadius = 6
+                dot.layer.shadowOffset = .zero
+            } else {
+                dot.backgroundColor = (dotTier?.color ?? AIONDesign.surfaceElevated).withAlphaComponent(0.3)
+                dot.transform = .identity
+                dot.layer.shadowOpacity = 0
+            }
+        }
+
+        // Gradient accent border
+        carShowcaseCard.layer.borderColor = tierColor.withAlphaComponent(0.3).cgColor
+    }
+
+    private func applyComparison(theirScore: Int, theirName: String, theirPhotoURL: String?, theirTierColor: UIColor) {
+        guard let myScore = GeminiResultStore.loadHealthScore(), myScore > 0 else {
+            comparisonCard.isHidden = true
+            return
+        }
+
+        comparisonCard.isHidden = false
+
+        let myTier = HealthTier.forScore(myScore)
+        let myColor = myTier.color
+
+        // Your side
+        if let currentUser = Auth.auth().currentUser {
+            yourAvatarRing.loadImage(from: currentUser.photoURL?.absoluteString)
+            yourAvatarRing.ringColors = [myColor, myColor.withAlphaComponent(0.5)]
+        }
+        yourScoreLabel.text = "\(myScore)"
+        yourScoreLabel.textColor = myColor
+
+        // Their side
+        let firstName = theirName.components(separatedBy: " ").first ?? theirName
+        theirCompLabel.text = firstName
+        theirAvatarRing.loadImage(from: theirPhotoURL)
+        theirAvatarRing.ringColors = [theirTierColor, theirTierColor.withAlphaComponent(0.5)]
+        theirScoreLabel.text = "\(theirScore)"
+        theirScoreLabel.textColor = theirTierColor
+
+        // Comparison bar
+        let total = max(myScore + theirScore, 1)
+        let myFraction = CGFloat(myScore) / CGFloat(total)
+
+        compBarYouWidth?.isActive = false
+        compBarYouWidth = comparisonBarYou.widthAnchor.constraint(
+            equalTo: comparisonBarContainer.widthAnchor,
+            multiplier: max(min(myFraction, 0.95), 0.05)
+        )
+        compBarYouWidth?.isActive = true
+
+        comparisonBarYou.backgroundColor = myColor
+        comparisonBarThem.backgroundColor = theirTierColor
+
+        // Status text
+        let diff = myScore - theirScore
+        if diff > 0 {
+            comparisonStatusLabel.text = String(format: "social.youLeadByPoints".localized, diff)
+            comparisonStatusLabel.textColor = AIONDesign.accentSuccess
+        } else if diff < 0 {
+            comparisonStatusLabel.text = String(format: "social.behindByPoints".localized, abs(diff))
+            comparisonStatusLabel.textColor = AIONDesign.accentWarning
+        } else {
+            comparisonStatusLabel.text = "social.tiedScore".localized
+            comparisonStatusLabel.textColor = AIONDesign.accentPrimary
         }
     }
 
-    private func applyAboutText(healthScore: Int) {
+    private func applyBadges(tierColor: UIColor) {
+        // Show badges card if we have any data
+        let hasMemberSince = memberSinceDate != nil
+        let hasStreak = streakDays > 0
+        let hasPeak = peakScore > 0
+        guard hasMemberSince || hasStreak || hasPeak else {
+            badgesCard.isHidden = true
+            return
+        }
+
+        badgesCard.isHidden = false
+
+        // Member since
+        if let joinDate = memberSinceDate {
+            let months = Calendar.current.dateComponents([.month], from: joinDate, to: Date()).month ?? 0
+            if months >= 12 {
+                let years = months / 12
+                memberValueLabel.text = String(format: "social.yearsCount".localized, years)
+            } else if months > 0 {
+                memberValueLabel.text = String(format: "social.monthsCount".localized, months)
+            } else {
+                memberValueLabel.text = String(format: "social.daysCount".localized,
+                    max(1, Calendar.current.dateComponents([.day], from: joinDate, to: Date()).day ?? 1))
+            }
+        } else {
+            memberValueLabel.text = "—"
+        }
+
+        // Streak
+        if hasStreak {
+            streakValueLabel.text = "\(streakDays)"
+            streakValueLabel.textColor = streakDays >= 7 ? .systemOrange : AIONDesign.textPrimary
+        } else {
+            streakValueLabel.text = "—"
+        }
+
+        // Peak score
+        if hasPeak {
+            peakScoreValueLabel.text = "\(peakScore)"
+            peakScoreValueLabel.textColor = tierColor
+        } else {
+            peakScoreValueLabel.text = "—"
+        }
+    }
+
+    private func applyScoreDescription(healthScore: Int) {
         switch healthScore {
         case 80...:
-            aboutBodyLabel.text = "Excellent health habits!"
+            scoreDescLabel.text = "social.aboutExcellent".localized
+            scoreDescLabel.textColor = AIONDesign.accentSuccess
         case 60..<80:
-            aboutBodyLabel.text = "Good health progress"
+            scoreDescLabel.text = "social.aboutGood".localized
+            scoreDescLabel.textColor = AIONDesign.accentSecondary
         case 40..<60:
-            aboutBodyLabel.text = "Making progress"
+            scoreDescLabel.text = "social.aboutProgress".localized
+            scoreDescLabel.textColor = AIONDesign.accentPrimary
         default:
-            aboutBodyLabel.text = "Just getting started"
+            scoreDescLabel.text = "social.aboutStarting".localized
+            scoreDescLabel.textColor = AIONDesign.accentWarning
         }
     }
 
@@ -1066,7 +1709,7 @@ final class UserProfileViewController: UIViewController {
         case .notFollowing:
             primaryButton.isHidden = false
             primaryButton.isEnabled = true
-            primaryButton.setTitle("Follow", for: .normal)
+            primaryButton.setTitle("social.follow".localized, for: .normal)
             primaryButton.backgroundColor = AIONDesign.accentPrimary
             primaryButton.setTitleColor(.white, for: .normal)
             showMessageButton()
@@ -1074,7 +1717,7 @@ final class UserProfileViewController: UIViewController {
         case .following:
             primaryButton.isHidden = false
             primaryButton.isEnabled = true
-            primaryButton.setTitle("Unfollow", for: .normal)
+            primaryButton.setTitle("social.unfollow".localized, for: .normal)
             primaryButton.backgroundColor = .clear
             primaryButton.setTitleColor(AIONDesign.textPrimary, for: .normal)
             primaryButton.layer.borderWidth = 1
@@ -1084,7 +1727,7 @@ final class UserProfileViewController: UIViewController {
         case .followRequestSent:
             primaryButton.isHidden = false
             primaryButton.isEnabled = true
-            primaryButton.setTitle("Cancel Request", for: .normal)
+            primaryButton.setTitle("social.cancelRequest".localized, for: .normal)
             primaryButton.backgroundColor = .clear
             primaryButton.setTitleColor(AIONDesign.accentDanger, for: .normal)
             primaryButton.layer.borderWidth = 1
@@ -1094,13 +1737,13 @@ final class UserProfileViewController: UIViewController {
         case .followRequestReceived:
             primaryButton.isHidden = false
             primaryButton.isEnabled = true
-            primaryButton.setTitle("Accept", for: .normal)
+            primaryButton.setTitle("social.accept".localized, for: .normal)
             primaryButton.backgroundColor = AIONDesign.accentSuccess
             primaryButton.setTitleColor(.white, for: .normal)
             primaryButton.layer.borderWidth = 0
 
             secondaryButton.isHidden = false
-            secondaryButton.setTitle("Decline", for: .normal)
+            secondaryButton.setTitle("social.decline".localized, for: .normal)
             secondaryButton.setTitleColor(AIONDesign.accentDanger, for: .normal)
             secondaryButton.backgroundColor = .clear
             secondaryButton.layer.borderColor = AIONDesign.accentDanger.withAlphaComponent(0.4).cgColor
@@ -1123,7 +1766,8 @@ final class UserProfileViewController: UIViewController {
         guard !didPlayEntrance else { return }
         didPlayEntrance = true
         let animatables: [UIView] = [
-            headerSection, statsCard, scoreCard, carTierCard, aboutCard
+            headerSection, statsCard, scoreCard,
+            carShowcaseCard, comparisonCard, badgesCard, mutualCard
         ].filter { !$0.isHidden }
 
         for v in animatables {
@@ -1248,12 +1892,12 @@ final class UserProfileViewController: UIViewController {
 
     private func confirmUnfollow() {
         let alert = UIAlertController(
-            title: "Unfollow",
-            message: "Are you sure you want to unfollow \(userData?.displayName ?? "")?",
+            title: "social.unfollow".localized,
+            message: String(format: "social.unfollowConfirmMessage".localized, userData?.displayName ?? ""),
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Unfollow", style: .destructive) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
+        alert.addAction(UIAlertAction(title: "social.unfollow".localized, style: .destructive) { [weak self] _ in
             self?.performUnfollow()
         })
         present(alert, animated: true)
@@ -1326,11 +1970,11 @@ final class UserProfileViewController: UIViewController {
 
     private func presentError(_ message: String) {
         let alert = UIAlertController(
-            title: "Error",
+            title: "error".localized,
             message: message,
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        alert.addAction(UIAlertAction(title: "ok".localized, style: .default))
         present(alert, animated: true)
     }
 

@@ -47,6 +47,13 @@ final class AIONAnalysisOrchestrator {
             return
         }
 
+        // ── Consent check: skip Gemini if user declined AI consent ──
+        if !ConsentManager.hasAIConsent {
+            print("⚠️ [Orchestrator] AI consent not granted — skipping analysis")
+            completion(nil, .geminiFailed)
+            return
+        }
+
         // ── Layer 2: Firestore server result (2.5s timeout) ──
         if !forceRefresh {
             print("📥 [Orchestrator] Layer 2 — Checking Firestore for server result...")
@@ -57,6 +64,17 @@ final class AIONAnalysisOrchestrator {
                    let dailyResult = self.parseServerResult(serverResult) {
                     // Save locally so Layer 1 catches it next time
                     GeminiResultStore.save(dailyResult)
+
+                    // Save score breakdown for profile display
+                    let s = dailyResult.scores
+                    AnalysisCache.saveScoreBreakdown(
+                        recovery: s.readinessScore,
+                        sleep: s.sleepScore,
+                        nervousSystem: s.nervousSystemBalance,
+                        energy: s.energyScore,
+                        activity: s.activityScore,
+                        loadBalance: s.loadBalance
+                    )
 
                     // Process side effects (weekly goals, AION memory, legacy cache)
                     self.processServerResultSideEffects(rawResponse: serverResult.rawResponse, dailyResult: dailyResult)
@@ -202,7 +220,7 @@ final class AIONAnalysisOrchestrator {
 
         // 4. Legacy cache
         let (insights, _, _) = GeminiService.shared.parseResponse(rawResponse)
-        if let insights = insights {
+        if !insights.isEmpty {
             AnalysisCache.save(insights: insights, healthDataHash: "server-result")
         }
     }

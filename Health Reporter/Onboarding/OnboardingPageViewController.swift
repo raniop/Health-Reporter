@@ -2,7 +2,7 @@
 //  OnboardingPageViewController.swift
 //  Health Reporter
 //
-//  Main container for the 7 Onboarding screens
+//  Main container for the 8 Onboarding screens
 //
 
 import UIKit
@@ -24,6 +24,7 @@ final class OnboardingPageViewController: UIViewController {
         WelcomeOnboardingPage(delegate: self),
         NotificationsOnboardingPage(delegate: self),
         HealthKitOnboardingPage(delegate: self),
+        DataPrivacyOnboardingPage(delegate: self),
         CarMetaphorOnboardingPage(delegate: self),
         HealthScoreOnboardingPage(delegate: self),
         AIInsightsOnboardingPage(delegate: self),

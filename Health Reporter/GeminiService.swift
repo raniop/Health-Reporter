@@ -410,6 +410,16 @@ class GeminiService {
                     )
                     GeminiResultStore.save(dailyResult)
 
+                    // Save score breakdown for profile display
+                    AnalysisCache.saveScoreBreakdown(
+                        recovery: geminiScores.readinessScore,
+                        sleep: geminiScores.sleepScore,
+                        nervousSystem: geminiScores.nervousSystemBalance,
+                        energy: geminiScores.energyScore,
+                        activity: geminiScores.activityScore,
+                        loadBalance: geminiScores.loadBalance
+                    )
+
                     // Save weekly goals if generated
                     if !parsed.weeklyGoals.isEmpty {
                         self.saveWeeklyGoals(from: parsed, scores: geminiScores)
