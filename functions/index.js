@@ -447,3 +447,260 @@ exports.sendBedtimeNotifications = functions.pubsub
       console.log(`${TAG} Done: ${ok}/${snap.docs.length} sent`);
       return null;
     });
+
+// ============================================================================
+// 8) SERVER-SIDE GEMINI ANALYSIS (scheduled daily at 5:30 AM)
+// ============================================================================
+//
+// The iOS app uploads the fully-constructed Gemini prompt to Firestore
+// (users/{uid}/geminiPayloads/latest) every time it runs. This function
+// picks up that prompt at 5:30 AM, sends it to Gemini, and stores the
+// result (users/{uid}/geminiResults/latest). When the user opens the app,
+// it reads the server result instantly instead of waiting 60+ seconds.
+//
+
+exports.runGeminiAnalysis = functions
+    .runWith({timeoutSeconds: 540, memory: "512MB"})
+    .pubsub.schedule("30 5 * * *")
+    .timeZone("Asia/Jerusalem")
+    .onRun(async () => {
+      const TAG = "[GeminiAnalysis]";
+      console.log(`${TAG} Starting scheduled Gemini analysis run`);
+
+      const apiKey = functions.config().gemini?.apikey;
+      if (!apiKey) {
+        console.error(`${TAG} No Gemini API key configured! Run: firebase functions:config:set gemini.apikey="YOUR_KEY"`);
+        return null;
+      }
+
+      // Find all users with a pending payload
+      const usersSnap = await db.collection("users").get();
+      const userDocs = usersSnap.docs;
+      console.log(`${TAG} Checking ${userDocs.length} user(s)`);
+
+      let processed = 0;
+      let failed = 0;
+      let skipped = 0;
+
+      // Process in batches of 5 to respect Gemini rate limits
+      const BATCH_SIZE = 5;
+
+      for (let i = 0; i < userDocs.length; i += BATCH_SIZE) {
+        const batch = userDocs.slice(i, i + BATCH_SIZE);
+
+        await Promise.allSettled(
+          batch.map(async (userDoc) => {
+            const uid = userDoc.id;
+
+            try {
+              // 1. Read pending payload
+              const payloadSnap = await db.collection("users").doc(uid)
+                  .collection("geminiPayloads").doc("latest").get();
+
+              if (!payloadSnap.exists) {
+                skipped++;
+                return;
+              }
+
+              const payload = payloadSnap.data();
+
+              // 2. Skip if no valid prompt
+              if (!payload.prompt || payload.prompt.length < 100) {
+                skipped++;
+                return;
+              }
+
+              // 3. Skip if already processed today
+              if (payload.status === "completed" && payload.processedAt) {
+                const processedDate = payload.processedAt.toDate();
+                if (isToday(processedDate)) {
+                  skipped++;
+                  return;
+                }
+              }
+
+              // 4. Skip if a result already exists for today
+              const existingResult = await db.collection("users").doc(uid)
+                  .collection("geminiResults").doc("latest").get();
+
+              if (existingResult.exists) {
+                const resultData = existingResult.data();
+                if (resultData.generatedAt && isToday(resultData.generatedAt.toDate())) {
+                  skipped++;
+                  return;
+                }
+              }
+
+              // 5. Mark payload as processing
+              await db.collection("users").doc(uid)
+                  .collection("geminiPayloads").doc("latest")
+                  .update({status: "processing"});
+
+              // 6. Call Gemini API
+              console.log(`${TAG} [${uid.slice(-6)}] Calling Gemini...`);
+              const rawResponse = await callGeminiAPI(
+                  apiKey,
+                  payload.prompt,
+                  payload.systemInstruction || "",
+              );
+
+              // 7. Save result to Firestore
+              await db.collection("users").doc(uid)
+                  .collection("geminiResults").doc("latest")
+                  .set({
+                    rawResponse,
+                    generatedAt: FieldValue.serverTimestamp(),
+                    promptUploadedAt: payload.uploadedAt || null,
+                    resultVersion: 1,
+                    language: payload.language || "en",
+                    healthScore: extractJSONField(rawResponse, "healthScore"),
+                    carModel: extractCarModel(rawResponse),
+                  });
+
+              // 8. Mark payload as completed
+              await db.collection("users").doc(uid)
+                  .collection("geminiPayloads").doc("latest")
+                  .update({
+                    status: "completed",
+                    processedAt: FieldValue.serverTimestamp(),
+                  });
+
+              processed++;
+              console.log(`${TAG} [${uid.slice(-6)}] ✅ Done`);
+            } catch (err) {
+              failed++;
+              console.error(`${TAG} [${uid.slice(-6)}] ❌ ${err.message}`);
+
+              // Mark payload as failed
+              try {
+                await db.collection("users").doc(uid)
+                    .collection("geminiPayloads").doc("latest")
+                    .update({
+                      status: "failed",
+                      error: err.message,
+                      processedAt: FieldValue.serverTimestamp(),
+                    });
+              } catch (_) { /* ignore update failure */ }
+            }
+          }),
+        );
+
+        // Brief delay between batches to respect rate limits
+        if (i + BATCH_SIZE < userDocs.length) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+
+      console.log(`${TAG} Done: ${processed} processed, ${failed} failed, ${skipped} skipped (${userDocs.length} total)`);
+      return null;
+    });
+
+// ─── Helper: Call Gemini API with retries ───
+
+async function callGeminiAPI(apiKey, prompt, systemInstruction) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+  const requestBody = {
+    contents: [{parts: [{text: prompt}]}],
+    generationConfig: {
+      temperature: 0.2,
+      topP: 0.95,
+      maxOutputTokens: 16384,
+      responseMimeType: "text/plain",
+    },
+  };
+
+  if (systemInstruction) {
+    requestBody.systemInstruction = {parts: [{text: systemInstruction}]};
+  }
+
+  const MAX_RETRIES = 2;
+  let lastError;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(120000), // 2-minute timeout
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        const status = response.status;
+
+        // Retry on transient errors
+        if ([429, 500, 502, 503].includes(status) && attempt < MAX_RETRIES) {
+          const delay = (attempt + 1) * 3000;
+          console.log(`[Gemini] HTTP ${status}, retry in ${delay}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+
+        throw new Error(`Gemini HTTP ${status}: ${errorBody.substring(0, 200)}`);
+      }
+
+      const data = await response.json();
+      const candidates = data.candidates;
+      if (!candidates || !candidates.length) {
+        throw new Error("No candidates in Gemini response");
+      }
+
+      const text = candidates[0].content?.parts?.map((p) => p.text || "").join("") || "";
+      if (!text) {
+        throw new Error("Empty text in Gemini response");
+      }
+
+      return text;
+    } catch (err) {
+      lastError = err;
+      if (attempt < MAX_RETRIES && (err.name === "TimeoutError" || err.code === "ECONNRESET")) {
+        const delay = (attempt + 1) * 3000;
+        console.log(`[Gemini] ${err.name || err.code}, retry in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+    }
+  }
+
+  throw lastError || new Error("Gemini API call failed after retries");
+}
+
+// ─── Helper: Check if a date is today (Asia/Jerusalem) ───
+
+function isToday(date) {
+  const now = new Date();
+  const options = {timeZone: "Asia/Jerusalem"};
+  return date.toLocaleDateString("en-CA", options) === now.toLocaleDateString("en-CA", options);
+}
+
+// ─── Helper: Extract a numeric field from raw Gemini JSON response ───
+
+function extractJSONField(rawResponse, field) {
+  try {
+    let cleaned = rawResponse.trim();
+    if (cleaned.startsWith("```json")) cleaned = cleaned.substring(7);
+    if (cleaned.startsWith("```")) cleaned = cleaned.substring(3);
+    if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
+    const json = JSON.parse(cleaned.trim());
+    return json.scores?.[field] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Helper: Extract car model from raw Gemini JSON response ───
+
+function extractCarModel(rawResponse) {
+  try {
+    let cleaned = rawResponse.trim();
+    if (cleaned.startsWith("```json")) cleaned = cleaned.substring(7);
+    if (cleaned.startsWith("```")) cleaned = cleaned.substring(3);
+    if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
+    const json = JSON.parse(cleaned.trim());
+    return json.carIdentity?.wikiName || json.carIdentity?.model_en || null;
+  } catch {
+    return null;
+  }
+}

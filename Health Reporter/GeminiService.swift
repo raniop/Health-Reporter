@@ -368,6 +368,14 @@ class GeminiService {
             // Save for debug (before sending)
             GeminiDebugStore.lastPrompt = prompt
 
+            // Upload prompt to Firestore for server-side analysis (fire-and-forget)
+            GeminiPayloadSync.uploadPayload(
+                prompt: prompt,
+                systemInstruction: Self.aionSystemInstruction,
+                language: langCode,
+                dataSourceDate: payload.dateRange.end
+            )
+
             self.sendRequest(prompt: prompt, temperature: 0.2) { response, error in
                 if let error = error {
                     completion(nil, nil, nil, error)
@@ -951,7 +959,7 @@ class GeminiService {
         task.resume()
     }
     
-    private func parseResponse(_ response: String) -> (insights: String, recommendations: [String], riskFactors: [String]) {
+    func parseResponse(_ response: String) -> (insights: String, recommendations: [String], riskFactors: [String]) {
         var insights = response
         var recommendations: [String] = []
         var riskFactors: [String] = []

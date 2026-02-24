@@ -5,6 +5,11 @@
 //  Centralized "once per day" Gemini analysis trigger.
 //  Both the Home screen and Insights tab use this instead of calling GeminiService directly.
 //
+//  Layered reliability model:
+//    Layer 1: Local GeminiResultStore (BGProcessingTask cached result) → 0s
+//    Layer 2: Firestore server result (Cloud Function at 5:30 AM)     → ~2s
+//    Layer 3: On-device Gemini analysis (full HealthKit + API call)    → 60s+
+//
 
 import Foundation
 
@@ -30,16 +35,46 @@ final class AIONAnalysisOrchestrator {
     // MARK: - Public API
 
     /// Returns today's result if available, otherwise triggers a fresh Gemini call.
+    /// Checks three layers: local cache → Firestore server result → on-device analysis.
     func ensureTodayResult(forceRefresh: Bool = false, completion: @escaping (GeminiDailyResult?, AnalysisFailureReason?) -> Void) {
+
+        // ── Layer 1: Local cache (instant) ──
         if !forceRefresh, let existing = GeminiResultStore.load(), Calendar.current.isDateInToday(existing.date) {
-            print("✅ [Orchestrator] Today's result already exists — returning cached")
+            print("✅ [Orchestrator] Layer 1 — Today's result already cached locally")
             completion(existing, nil)
             // Still notify so Watch sync fires on every app launch
             NotificationCenter.default.post(name: Self.analysisDidCompleteNotification, object: existing)
             return
         }
 
-        // Need fresh analysis
+        // ── Layer 2: Firestore server result (2.5s timeout) ──
+        if !forceRefresh {
+            print("📥 [Orchestrator] Layer 2 — Checking Firestore for server result...")
+            GeminiResultFirestoreSync.fetchTodayResult { [weak self] serverResult in
+                guard let self = self else { return }
+
+                if let serverResult = serverResult,
+                   let dailyResult = self.parseServerResult(serverResult) {
+                    // Save locally so Layer 1 catches it next time
+                    GeminiResultStore.save(dailyResult)
+
+                    // Process side effects (weekly goals, AION memory, legacy cache)
+                    self.processServerResultSideEffects(rawResponse: serverResult.rawResponse, dailyResult: dailyResult)
+
+                    print("✅ [Orchestrator] Layer 2 — Server result loaded! Score: \(dailyResult.scores.healthScore ?? -1)")
+                    completion(dailyResult, nil)
+                    NotificationCenter.default.post(name: Self.analysisDidCompleteNotification, object: dailyResult)
+                    return
+                }
+
+                // ── Layer 3: Fall through to on-device analysis ──
+                print("🚀 [Orchestrator] Layer 3 — No server result, running on-device analysis")
+                self.runAnalysis(completion: completion)
+            }
+            return
+        }
+
+        // Force refresh — skip server check, go straight to on-device
         runAnalysis(completion: completion)
     }
 
@@ -48,7 +83,131 @@ final class AIONAnalysisOrchestrator {
         runAnalysis(completion: completion)
     }
 
-    // MARK: - Internal
+    // MARK: - Parse Server Result
+
+    /// Parses a server Gemini response into a GeminiDailyResult.
+    /// Uses the same CarAnalysisParser.parseJSON() as the on-device path.
+    private func parseServerResult(_ serverResult: ServerGeminiResult) -> GeminiDailyResult? {
+        guard let parsed = CarAnalysisParser.parseJSON(serverResult.rawResponse) else {
+            print("⚠️ [Orchestrator] Failed to parse server Gemini response")
+            return nil
+        }
+
+        let lang = LocalizationManager.shared.currentLanguage
+        let geminiScores = GeminiScores.from(parsed.scores, language: lang)
+
+        return GeminiDailyResult(
+            date: serverResult.generatedAt,
+            scores: geminiScores,
+            carModelHe: parsed.carModelHe, carModelEn: parsed.carModelEn,
+            carWikiName: parsed.carWikiName,
+            carExplanationHe: parsed.carExplanationHe, carExplanationEn: parsed.carExplanationEn,
+            homeRecommendationMedicalHe: parsed.homeRecommendationMedicalHe,
+            homeRecommendationMedicalEn: parsed.homeRecommendationMedicalEn,
+            homeRecommendationSportsHe: parsed.homeRecommendationSportsHe,
+            homeRecommendationSportsEn: parsed.homeRecommendationSportsEn,
+            homeRecommendationNutritionHe: parsed.homeRecommendationNutritionHe,
+            homeRecommendationNutritionEn: parsed.homeRecommendationNutritionEn,
+            rawAnalysisJSON: serverResult.rawResponse
+        )
+    }
+
+    /// Processes side effects that normally happen after an on-device Gemini call:
+    /// weekly goals saving, goal verification, AION memory update, and legacy cache.
+    private func processServerResultSideEffects(rawResponse: String, dailyResult: GeminiDailyResult) {
+        guard let parsed = CarAnalysisParser.parseJSON(rawResponse) else { return }
+
+        let lang = LocalizationManager.shared.currentLanguage
+        let geminiScores = GeminiScores.from(parsed.scores, language: lang)
+
+        // 1. Save weekly goals if generated
+        if !parsed.weeklyGoals.isEmpty {
+            let calendar = Calendar.current
+            let weekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+
+            let goals: [WeeklyGoal] = parsed.weeklyGoals.compactMap { json in
+                let he = json.text_he ?? json.text_en ?? ""
+                let en = json.text_en ?? json.text_he ?? ""
+                guard !he.isEmpty || !en.isEmpty else { return nil }
+                let catStr = (json.category ?? "exercise").lowercased()
+                let category = GoalCategory(rawValue: catStr) ?? .exercise
+                let diffStr = (json.difficulty ?? "moderate").lowercased()
+                let difficulty = GoalDifficulty(rawValue: diffStr) ?? .moderate
+                let metricIds = json.linkedMetrics ?? []
+                let baselines = WeeklyGoalEngine.captureBaselines(for: metricIds, from: geminiScores)
+                return WeeklyGoal(
+                    id: UUID().uuidString,
+                    textHe: he, textEn: en,
+                    category: category, difficulty: difficulty,
+                    weekStartDate: weekStart,
+                    linkedMetricIds: metricIds,
+                    status: .pending,
+                    baselineMetrics: baselines
+                )
+            }
+
+            if !goals.isEmpty {
+                var seenCategories: Set<String> = []
+                let uniqueGoals = goals.filter { goal in
+                    if seenCategories.contains(goal.category.rawValue) { return false }
+                    seenCategories.insert(goal.category.rawValue)
+                    return true
+                }
+
+                let goalSet = WeeklyGoalSet(
+                    weekStartDate: weekStart,
+                    goals: uniqueGoals,
+                    generatedDate: Date(),
+                    progressAssessmentHe: parsed.weeklyGoalsProgressAssessmentHe,
+                    progressAssessmentEn: parsed.weeklyGoalsProgressAssessmentEn
+                )
+                WeeklyGoalStore.saveNewGoalSet(goalSet)
+                GoalReminderManager.shared.scheduleReminders()
+                print("🎯 [Orchestrator] Server result: saved \(uniqueGoals.count) weekly goals")
+            }
+        }
+
+        // 2. Auto-verify existing pending goals against latest scores
+        if let currentGoalSet = WeeklyGoalStore.currentWeek() {
+            let verifiedGoals = WeeklyGoalEngine.autoVerifyGoals(
+                goals: currentGoalSet.goals,
+                currentScores: geminiScores
+            )
+            if verifiedGoals != currentGoalSet.goals {
+                var allSets = WeeklyGoalStore.loadAll()
+                if let idx = allSets.lastIndex(where: {
+                    Calendar.current.isDate($0.weekStartDate, equalTo: currentGoalSet.weekStartDate, toGranularity: .weekOfYear)
+                }) {
+                    allSets[idx].goals = verifiedGoals
+                    WeeklyGoalStore.save(allSets)
+                    print("✅ [Orchestrator] Server result: auto-verified weekly goals")
+                }
+                GoalReminderManager.shared.refreshAfterGoalUpdate()
+            }
+        }
+
+        // 3. Update AION Memory in the background
+        let score = geminiScores.healthScore ?? 0
+        DispatchQueue.global(qos: .utility).async {
+            let memory = AIONMemoryManager.loadFromCache()
+            let updated = AIONMemoryExtractor.updateMemory(
+                existingMemory: memory,
+                parsedAnalysis: parsed,
+                healthPayload: nil,  // Not available from server path — acceptable
+                healthScore: score
+            )
+            AIONMemoryManager.save(updated)
+            print("🧠 [AION Memory] Updated from server result (interactions: \(updated.interactionCount))")
+        }
+
+        // 4. Legacy cache
+        let (insights, _, _) = GeminiService.shared.parseResponse(rawResponse)
+        if let insights = insights {
+            AnalysisCache.save(insights: insights, healthDataHash: "server-result")
+        }
+    }
+
+    // MARK: - On-Device Analysis (Layer 3)
 
     private func runAnalysis(completion: @escaping (GeminiDailyResult?, AnalysisFailureReason?) -> Void) {
         queue.sync {

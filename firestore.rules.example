@@ -37,6 +37,18 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
+      // Gemini payloads subcollection (app uploads prompt for server-side analysis)
+      match /geminiPayloads/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Gemini results subcollection (Cloud Function writes, app reads)
+      match /geminiResults/{docId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        // Client cannot write — only Cloud Function (Admin SDK) writes results
+        allow write: if false;
+      }
+
       // Legacy friends subcollection (backward compatibility)
       match /friends/{friendUid} {
         allow read: if request.auth != null && request.auth.uid == userId;
