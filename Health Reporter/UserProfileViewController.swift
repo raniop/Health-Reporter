@@ -387,6 +387,7 @@ final class UserProfileViewController: UIViewController {
 
         // Build sections
         buildHeaderSection()
+        contentStack.setCustomSpacing(96, after: headerSection)
         buildStatsCard()
         buildScoreCard()
         buildCarShowcaseCard()
