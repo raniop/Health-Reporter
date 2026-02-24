@@ -321,7 +321,6 @@ final class UserProfileViewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        bgGradientLayer.frame = bgGradientOverlay.bounds
         progressGradient.frame = progressFill.bounds
         if let glowSuper = carGlowLayer.superlayer?.bounds {
             carGlowLayer.frame = glowSuper
@@ -345,20 +344,6 @@ final class UserProfileViewController: UIViewController {
     // MARK: - Layout
 
     private func buildLayout() {
-        // --- Blurred background photo ---
-        view.addSubview(backgroundImageView)
-        backgroundImageView.addSubview(bgBlurEffectView)
-        backgroundImageView.addSubview(bgGradientOverlay)
-
-        bgGradientLayer.colors = [
-            UIColor.clear.cgColor,
-            AIONDesign.background.withAlphaComponent(0.3).cgColor,
-            AIONDesign.background.withAlphaComponent(0.85).cgColor,
-            AIONDesign.background.cgColor,
-        ]
-        bgGradientLayer.locations = [0, 0.4, 0.75, 1.0]
-        bgGradientOverlay.layer.insertSublayer(bgGradientLayer, at: 0)
-
         // --- Loading spinner ---
         loadingSpinner.translatesAutoresizingMaskIntoConstraints = false
         loadingSpinner.color = AIONDesign.accentPrimary
@@ -381,8 +366,6 @@ final class UserProfileViewController: UIViewController {
 
         // Build sections
         buildHeaderSection()
-        // Push stats card below the blurred background photo (380px)
-        contentStack.setCustomSpacing(96, after: headerSection)
         buildStatsCard()
         buildScoreCard()
         buildCarShowcaseCard()
@@ -400,22 +383,6 @@ final class UserProfileViewController: UIViewController {
 
         // --- Constraints ---
         NSLayoutConstraint.activate([
-            // Blurred background
-            backgroundImageView.topAnchor.constraint(equalTo: view.topAnchor),
-            backgroundImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            backgroundImageView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            backgroundImageView.heightAnchor.constraint(equalToConstant: 380),
-
-            bgBlurEffectView.topAnchor.constraint(equalTo: backgroundImageView.topAnchor),
-            bgBlurEffectView.leadingAnchor.constraint(equalTo: backgroundImageView.leadingAnchor),
-            bgBlurEffectView.trailingAnchor.constraint(equalTo: backgroundImageView.trailingAnchor),
-            bgBlurEffectView.bottomAnchor.constraint(equalTo: backgroundImageView.bottomAnchor),
-
-            bgGradientOverlay.topAnchor.constraint(equalTo: backgroundImageView.topAnchor),
-            bgGradientOverlay.leadingAnchor.constraint(equalTo: backgroundImageView.leadingAnchor),
-            bgGradientOverlay.trailingAnchor.constraint(equalTo: backgroundImageView.trailingAnchor),
-            bgGradientOverlay.bottomAnchor.constraint(equalTo: backgroundImageView.bottomAnchor),
-
             // Spinner
             loadingSpinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             loadingSpinner.centerYAnchor.constraint(equalTo: view.centerYAnchor),
@@ -1457,14 +1424,8 @@ final class UserProfileViewController: UIViewController {
         nameLabel.text = data.displayName
         title = data.displayName
 
-        // Avatar + blurred background
+        // Avatar
         avatarRing.loadImage(from: data.photoURL)
-        if let photoURL = data.photoURL, let url = URL(string: photoURL) {
-            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-                guard let d = data, let img = UIImage(data: d) else { return }
-                DispatchQueue.main.async { self?.backgroundImageView.image = img }
-            }.resume()
-        }
 
         // Stats row - always show
         followersStatValue.text = "\(followersCount)"
@@ -1481,13 +1442,6 @@ final class UserProfileViewController: UIViewController {
 
             // Avatar ring colors
             avatarRing.ringColors = [tierColor, tierColor.withAlphaComponent(0.5)]
-
-            // Tint blur overlay
-            bgGradientLayer.colors = [
-                tierColor.withAlphaComponent(0.15).cgColor,
-                AIONDesign.background.withAlphaComponent(0.5).cgColor,
-                AIONDesign.background.cgColor,
-            ]
 
             // Score stat
             scoreStatValue.text = "\(data.healthScore)"
@@ -2001,14 +1955,9 @@ final class UserProfileViewController: UIViewController {
     }
 }
 
-// MARK: - UIScrollViewDelegate (Parallax)
+// MARK: - UIScrollViewDelegate
 
-extension UserProfileViewController: UIScrollViewDelegate {
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        let offset = scrollView.contentOffset.y
-        backgroundImageView.transform = CGAffineTransform(translationX: 0, y: min(0, offset * 0.3))
-    }
-}
+extension UserProfileViewController: UIScrollViewDelegate { }
 
 // MARK: - Array Safe Subscript
 
