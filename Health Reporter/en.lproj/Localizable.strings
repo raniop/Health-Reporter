@@ -280,7 +280,7 @@
 "energy.level.low" = "Low";
 
 /* Score Explanations */
-"explanation.healthScore" = "Health score is calculated from 5 domains: recovery, sleep, fitness, load balance, and activity. Based on the last 90 days of data.";
+"explanation.healthScore" = "Health score is calculated from 5 domains: recovery, sleep, fitness, load balance, and activity. Based on today's data with slight reference to yesterday.";
 "explanation.carTier" = "Car tier score reflects your overall condition based on readiness, sleep, HRV, and training load.";
 "explanation.sleepScore" = "Sleep score is calculated from sleep duration, deep sleep time, and REM time.";
 "explanation.energyForecast" = "Energy forecast is based on AI analysis of HRV, sleep quality, and recent activity patterns.";
@@ -1045,7 +1045,7 @@
 "healthScore.detail.explanation" = "Your main daily score.\n\nCalculated from 6 metrics:\n• Recovery Readiness - 25%\n• Sleep Quality - 20%\n• Nervous System Balance - 20%\n• Energy Forecast - 15%\n• Activity Score - 10%\n• Load Balance - 10%\n\nUpdates daily based on that day's data.";
 
 "carScore.detail.title" = "Body Condition Score";
-"carScore.detail.explanation" = "The score that determines your car.\n\nCalculated from 4 metrics over 7-90 days:\n• Readiness - 40%\n• Sleep - 25%\n• HRV - 20%\n• Strain - 15%";
+"carScore.detail.explanation" = "The score that determines your car.\n\nCalculated from 4 metrics based on today's data:\n• Readiness - 40%\n• Sleep - 25%\n• HRV - 20%\n• Strain - 15%\n\nUpdates daily to reflect your current status.";
 
 "sleepScore.detail.title" = "Sleep Score";
 "sleepScore.detail.explanation" = "Based on sleep duration, consistency of your sleep schedule, and disturbances during the night.";

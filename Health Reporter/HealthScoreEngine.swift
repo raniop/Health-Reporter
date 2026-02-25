@@ -640,46 +640,49 @@ final class HealthScoreEngine {
             return valid.reduce(0, +) / Double(valid.count)
         }
 
-        let dates7d = datesInRange(days: 7)
+        // Daily-focused: primary scores use today + yesterday (2 days)
+        // Baselines (28d/90d) kept for context & normalization
+        let dates2d = datesInRange(days: 2)   // today + yesterday
+        let dates7d = datesInRange(days: 7)   // kept for load balance acute & VO2max
         let dates28d = datesInRange(days: 28)
         let dates90d = sortedDates
 
         var avg = Averages()
 
-        // Sleep
-        avg.sleep7d = average(dates7d.map { cleanedData.entries[$0]?.sleepHours })
+        // Sleep — daily: last night + night before
+        avg.sleep7d = average(dates2d.map { cleanedData.entries[$0]?.sleepHours })
         avg.sleep28d = average(dates28d.map { cleanedData.entries[$0]?.sleepHours })
         avg.sleep90d = average(dates90d.map { cleanedData.entries[$0]?.sleepHours })
 
-        // HRV
-        avg.hrv7d = average(dates7d.map { cleanedData.entries[$0]?.hrvMs })
+        // HRV — daily: today + yesterday
+        avg.hrv7d = average(dates2d.map { cleanedData.entries[$0]?.hrvMs })
         avg.hrv28d = average(dates28d.map { cleanedData.entries[$0]?.hrvMs })
         avg.hrv90d = average(dates90d.map { cleanedData.entries[$0]?.hrvMs })
 
-        // RHR
-        avg.rhr7d = average(dates7d.map { cleanedData.entries[$0]?.restingHR })
+        // RHR — daily: today + yesterday
+        avg.rhr7d = average(dates2d.map { cleanedData.entries[$0]?.restingHR })
         avg.rhr90d = average(dates90d.map { cleanedData.entries[$0]?.restingHR })
 
-        // VO2max
+        // VO2max — keep 7d (doesn't change daily)
         avg.vo2max7d = average(dates7d.map { cleanedData.entries[$0]?.vo2max })
         avg.vo2max90d = average(dates90d.map { cleanedData.entries[$0]?.vo2max })
 
-        // Readiness
-        avg.readiness7d = average(dates7d.map { cleanedData.entries[$0]?.readinessScore })
+        // Readiness — daily: today + yesterday
+        avg.readiness7d = average(dates2d.map { cleanedData.entries[$0]?.readinessScore })
 
         // Stress (not available in current data model)
         avg.stress7d = nil
 
-        // Training Load
+        // Training Load — keep 7d acute for ACWR ratio to work
         avg.trainingLoad7d = average(dates7d.map { cleanedData.entries[$0]?.trainingLoad })
         avg.trainingLoad28d = average(dates28d.map { cleanedData.entries[$0]?.trainingLoad })
 
-        // Steps
-        avg.steps7d = average(dates7d.map { cleanedData.entries[$0]?.steps })
+        // Steps — daily: today + yesterday
+        avg.steps7d = average(dates2d.map { cleanedData.entries[$0]?.steps })
         avg.steps90d = average(dates90d.map { cleanedData.entries[$0]?.steps })
 
-        // Count days with steps >= 6000 in last 7 days
-        avg.daysWithStepsOver6000in7d = dates7d.filter { date in
+        // Count days with steps >= 6000 in last 2 days
+        avg.daysWithStepsOver6000in7d = dates2d.filter { date in
             if let steps = cleanedData.entries[date]?.steps, steps >= 6000 {
                 return true
             }

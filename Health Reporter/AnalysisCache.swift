@@ -257,7 +257,7 @@ enum AnalysisCache {
         var parts: [String] = []
 
         // General explanation
-        parts.append("The score is based on a combination of recovery, sleep, fitness, training load, and activity level over the last 3 months, with emphasis on the last two weeks.")
+        parts.append("The score is based on a combination of recovery, sleep, fitness, training load, and activity level from today's data, with slight reference to yesterday.")
         parts.append("")
         parts.append("Unmeasured data is excluded from the calculation, so you're not penalized for missing measurements.")
         parts.append("")

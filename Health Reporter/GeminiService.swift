@@ -62,16 +62,17 @@ class GeminiService {
 
     # SCORE CALIBRATION (all scores 0-100 unless noted)
     You MUST calculate numerical scores from the provided raw health data.
-    - healthScore: Overall daily health. 50=baseline, 60-74=good, 75-89=very good, 90+=exceptional (rare)
-    - sleepScore: Sleep quality from duration, deep/REM ratio, efficiency. 7-8h optimal.
-    - readinessScore: Recovery readiness from HRV trends, RHR delta, sleep quality, recent load.
-    - energyScore: Predicted energy today based on HRV, sleep, recovery status.
-    - trainingStrain: Training intensity 0-10 scale (like WHOOP). 0=rest, 3-5=moderate, 7+=very high.
-    - nervousSystemBalance: Autonomic balance from HRV/RHR 7-day vs 28-day trends.
-    - recoveryDebt: Accumulated deficit. 0=fully recovered, 50+=significant debt.
-    - activityScore: Activity vs personal baseline from steps, exercise, movement.
+    CRITICAL: All scores MUST reflect TODAY's status. Use historical data only as personal baseline context — NOT for averaging into scores. Slight reference to yesterday is acceptable for smoothing.
+    - healthScore: Overall daily health based on today's data (slight reference to yesterday). 50=baseline, 60-74=good, 75-89=very good, 90+=exceptional (rare)
+    - sleepScore: Last night's sleep quality from duration, deep/REM ratio, efficiency. 7-8h optimal.
+    - readinessScore: Today's recovery readiness from current HRV, RHR delta, last night's sleep, recent load.
+    - energyScore: Predicted energy today based on current HRV, last night's sleep, recovery status.
+    - trainingStrain: Today's training intensity 0-10 scale (like WHOOP). 0=rest, 3-5=moderate, 7+=very high.
+    - nervousSystemBalance: Today's autonomic balance from current HRV/RHR compared to personal baseline.
+    - recoveryDebt: Current accumulated deficit. 0=fully recovered, 50+=significant debt.
+    - activityScore: Today's activity vs personal baseline from steps, exercise, movement.
     - loadBalance: Acute/chronic training load ratio. 50=balanced, below=undertrained, above=overreached.
-    - carScore: Combined score for the car card. Weight: readiness 40%, sleep 25%, HRV 20%, strain 15%.
+    - carScore: Combined score based on today's metrics. Weight: readiness 40%, sleep 25%, HRV 20%, strain 15%.
     Be CONSISTENT day-to-day: similar data should produce similar scores. Use personal baselines.
     """
     }
@@ -188,8 +189,9 @@ class GeminiService {
             let langName = isHebrew ? "Hebrew" : "English"
 
             let prompt = """
-            MISSION: Analyze 90-day health performance trends and provide actionable insights.
-            Data sources: Weekly summaries (13 weeks) + daily data (last 14 days).
+            MISSION: Analyze today's health status and provide actionable insights.
+            All scores MUST reflect today's data, with slight reference to yesterday. Use historical data (weekly summaries, daily data) only as baseline context for trend comparison — NOT for averaging into scores.
+            Data sources: Weekly summaries (13 weeks, for trend context) + daily data (last 14 days, focus on today + yesterday).
             Write ALL text in \(langName).
 
             ==================================================
