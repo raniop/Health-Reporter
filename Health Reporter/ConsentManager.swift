@@ -24,8 +24,13 @@ enum ConsentManager {
     // MARK: - AI Analysis Consent
 
     /// Whether the user has explicitly agreed to send health data to Google Gemini AI.
+    /// Existing users (pre-consent-flow) default to opted-in since they were
+    /// already using AI analysis before the consent screen was added.
     static var hasAIConsent: Bool {
-        get { UserDefaults.standard.bool(forKey: aiConsentKey) }
+        get {
+            guard hasCompletedConsentFlow else { return true }
+            return UserDefaults.standard.bool(forKey: aiConsentKey)
+        }
         set {
             UserDefaults.standard.set(newValue, forKey: aiConsentKey)
             syncToFirestore()
@@ -35,8 +40,12 @@ enum ConsentManager {
     // MARK: - Leaderboard Consent
 
     /// Whether the user has opted in to the global leaderboard.
+    /// Existing users (pre-consent-flow) default to opted-in.
     static var hasLeaderboardConsent: Bool {
-        get { UserDefaults.standard.bool(forKey: leaderboardConsentKey) }
+        get {
+            guard hasCompletedConsentFlow else { return true }
+            return UserDefaults.standard.bool(forKey: leaderboardConsentKey)
+        }
         set {
             UserDefaults.standard.set(newValue, forKey: leaderboardConsentKey)
             LeaderboardFirestoreSync.setLeaderboardOptIn(newValue) { _ in }
