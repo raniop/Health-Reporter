@@ -1030,9 +1030,11 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
     print("🚗 [CarImage] wikiName = '\(wikiName)', carName = '\(carName)'")
     if !wikiName.isEmpty {
-        fetchCarImageFromWikipedia(carName: wikiName, into: carImageView, fallbackEmoji: "")
+        fetchCarImageFromWikipedia(carName: wikiName, into: carImageView, fallbackEmoji: "🚗")
     } else if !carName.isEmpty && carName != "insights.waitingForAnalysis".localized {
-        fetchCarImageFromWikipedia(carName: carName, into: carImageView, fallbackEmoji: "")
+        fetchCarImageFromWikipedia(carName: carName, into: carImageView, fallbackEmoji: "🚗")
+    } else {
+        showFallbackEmoji(in: carImageView, emoji: "🚗")
     }
 
     // ── Assemble ──
@@ -1337,6 +1339,13 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
             return
         }
 
+        // No cache - show fallback emoji immediately so the floating-image slot
+        // isn't an empty hole while we hit Wikipedia. The successful fetch below
+        // replaces it; if every attempt fails, the fallback stays.
+        DispatchQueue.main.async { [weak self] in
+            self?.showFallbackEmoji(in: imageView, emoji: fallbackEmoji)
+        }
+
         // No cache - fetch from Wikipedia
         // Generate candidate names: full name, then progressively shorter
         // e.g. "Tesla Model 3 Standard Range" -> ["Tesla Model 3 Standard Range", "Tesla Model 3 Standard", "Tesla Model 3"]
@@ -1377,7 +1386,16 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
             return
         }
 
-        URLSession.shared.dataTask(with: url) { [weak self, weak imageView] data, response, error in
+        // Wikipedia's REST API requires a descriptive User-Agent per their API
+        // etiquette policy — anonymous requests with the default URLSession UA
+        // can be rate-limited or rejected, which is one reason the floating
+        // car image silently fails to load for some users.
+        var apiRequest = URLRequest(url: url)
+        apiRequest.setValue("AION-Health-Reporter/1.0 (https://github.com/raniop/Health-Reporter; contact@aionhealth.app) Swift", forHTTPHeaderField: "User-Agent")
+        apiRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        apiRequest.timeoutInterval = 15
+
+        URLSession.shared.dataTask(with: apiRequest) { [weak self, weak imageView] data, response, error in
             guard let self = self, let imageView = imageView else { return }
 
             if let error = error {
@@ -1433,6 +1451,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                         WidgetDataManager.shared.removeBackground(from: image) { [weak self, weak imageView] processedImage in
                             DispatchQueue.main.async {
                                 guard let imageView = imageView else { return }
+                                imageView.subviews.forEach { $0.removeFromSuperview() }
                                 imageView.image = processedImage
                                 imageView.contentMode = .scaleAspectFill
                                 imageView.backgroundColor = .clear
