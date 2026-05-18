@@ -154,7 +154,10 @@ final class InsightsTabViewController: UIViewController {
     // MARK: - Colors (dynamic based on light/dark background)
 
     private var bgColor: UIColor { AIONDesign.background }
-    private var cardBgColor: UIColor { AIONDesign.surface }
+    // Use the Livity neutral tint as the default card surface so secondary
+    // cards on this screen pop against the cream background instead of
+    // blending in like the previous near-invisible cardFill grey.
+    private var cardBgColor: UIColor { LivityUIColor.neutralTint }
     private var textWhite: UIColor { AIONDesign.textPrimary }
     private var textGray: UIColor { AIONDesign.textSecondary }
     private var textDarkGray: UIColor { AIONDesign.textTertiary }
@@ -500,14 +503,9 @@ final class InsightsTabViewController: UIViewController {
         let isRTL = LocalizationManager.shared.currentLanguage.isRTL
 
         let card = UIView()
-        card.backgroundColor = cardBgColor
-        card.layer.cornerRadius = 16
+        card.backgroundColor = LivityUIColor.neutralTint
+        card.layer.cornerRadius = 20
         card.layer.cornerCurve = .continuous
-        // Subtle shadow for depth
-        card.layer.shadowColor = UIColor.black.cgColor
-        card.layer.shadowOpacity = 0.18
-        card.layer.shadowOffset = CGSize(width: 0, height: 2)
-        card.layer.shadowRadius = 8
         card.translatesAutoresizingMaskIntoConstraints = false
 
         let innerStack = UIStackView()
@@ -846,26 +844,26 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     wrapper.clipsToBounds = false
     wrapper.translatesAutoresizingMaskIntoConstraints = false
 
-    // Glass card
+    // Livity-style card — soft pastel fill, 20pt corner radius, no blur.
+    // The previous glass-blur look fought the rest of the Livity tabs and
+    // made white text vanish when the blur tinted the card light gray.
     let card = UIView()
     card.layer.cornerRadius = 20
+    card.layer.cornerCurve = .continuous
     card.clipsToBounds = true
+    card.backgroundColor = LivityUIColor.infoTint.withAlphaComponent(0.55)
     card.translatesAutoresizingMaskIntoConstraints = false
 
     self.discoveryContainer = wrapper
     self.carCardView = card
 
-    // Blur background (glass morphism - light blur avoids dark tint)
-    card.backgroundColor = .clear
-    let blurEffect = UIBlurEffect(style: AIONDesign.glassBlurStyle)
-    let blurView = UIVisualEffectView(effect: blurEffect)
-    blurView.alpha = AIONDesign.glassBlurAlpha
+    // Placeholder so existing layout constraints on `blurView` still compile.
+    // Kept as a zero-sized invisible spacer — the card's own backgroundColor
+    // now does the work the blur used to do.
+    let blurView = UIView()
+    blurView.isHidden = true
     blurView.translatesAutoresizingMaskIntoConstraints = false
     card.addSubview(blurView)
-
-    // Subtle border
-    card.layer.borderWidth = 1
-    card.layer.borderColor = AIONDesign.separator.cgColor
 
     // ── Car name ──
     let carNameLabel = UILabel()
@@ -1715,8 +1713,10 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
     private func makeDataBox(icon: String, title: String, value: String, color: UIColor, explanation: String) -> UIView {
         let box = UIView()
-        box.backgroundColor = cardBgColor
-        box.layer.cornerRadius = 16
+        // Soft accent-color tint per metric box, matching the Livity language.
+        box.backgroundColor = color.withAlphaComponent(0.10)
+        box.layer.cornerRadius = 20
+        box.layer.cornerCurve = .continuous
         box.translatesAutoresizingMaskIntoConstraints = false
 
         // Info button (top left) - using CardInfoButton like the rest of the app
@@ -1815,8 +1815,12 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
     private func makeExpandableCard(emoji: String, title: String, content: String, color: UIColor) -> UIView {
         let card = UIView()
-        card.backgroundColor = cardBgColor
-        card.layer.cornerRadius = 16
+        // Use the section's accent color as a soft tint background — gives each
+        // card a distinct pastel surface (orange Engine, purple Transmission,
+        // etc.) in the Livity language, instead of the near-invisible cardFill.
+        card.backgroundColor = color.withAlphaComponent(0.10)
+        card.layer.cornerRadius = 20
+        card.layer.cornerCurve = .continuous
         card.translatesAutoresizingMaskIntoConstraints = false
 
         // Emoji
@@ -3229,12 +3233,15 @@ private func showDiscoveryLoadingAnimation() {
         card.translatesAutoresizingMaskIntoConstraints = false
         card.alpha = 0
         card.transform = CGAffineTransform(scaleX: 0.5, y: 0.5).translatedBy(x: 0, y: -100)
-        card.layer.borderWidth = 1
-        card.layer.borderColor = AIONDesign.separator.cgColor
+        card.layer.cornerCurve = .continuous
+        card.backgroundColor = LivityUIColor.infoTint.withAlphaComponent(0.55)
         container.addSubview(card)
         self.carCardView = card
 
-        let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+        // Invisible placeholder so the existing blurView constraints still pin
+        // to *something*. The card's own backgroundColor replaced the blur.
+        let blurView = UIView()
+        blurView.isHidden = true
         blurView.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(blurView)
 

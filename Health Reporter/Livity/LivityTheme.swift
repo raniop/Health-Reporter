@@ -120,6 +120,17 @@ enum LivityUIColor {
     static let caution       = UIColor(red: 0.98, green: 0.78, blue: 0.13, alpha: 1)
     static let purple        = UIColor(red: 0.56, green: 0.36, blue: 0.86, alpha: 1)
 
+    // Soft status tints used as card backgrounds — UIKit mirror of the SwiftUI
+    // tint constants on LivityTheme, so legacy UIViewControllers can paint
+    // cards in the same pastel language as the SwiftUI surfaces.
+    static let infoTint      = adaptive(light: rgb(0.87, 0.94, 0.99), dark: rgb(0.04, 0.09, 0.18))
+    static let goodTint      = adaptive(light: rgb(0.85, 0.95, 0.87), dark: rgb(0.04, 0.13, 0.07))
+    static let warningTint   = adaptive(light: rgb(0.99, 0.92, 0.85), dark: rgb(0.17, 0.10, 0.03))
+    static let badTint       = adaptive(light: rgb(0.99, 0.90, 0.90), dark: rgb(0.17, 0.05, 0.06))
+    static let neutralTint   = adaptive(light: rgb(0.92, 0.93, 0.96), dark: rgb(0.10, 0.11, 0.14))
+    static let cautionTint   = adaptive(light: rgb(1.00, 0.95, 0.78), dark: rgb(0.17, 0.13, 0.02))
+    static let purpleTint    = adaptive(light: rgb(0.93, 0.90, 0.99), dark: rgb(0.10, 0.06, 0.18))
+
     private static func adaptive(light: UIColor, dark: UIColor) -> UIColor {
         UIColor { $0.userInterfaceStyle == .dark ? dark : light }
     }
