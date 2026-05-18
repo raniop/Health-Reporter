@@ -275,6 +275,18 @@ extension WidgetDataManager {
                     return
                 }
 
+                // Vision sometimes returns a results array with an empty
+                // allInstances set — e.g. a vehicle photographed against a
+                // similar-color backdrop. generateScaledMaskForImage(forInstances:)
+                // with an empty set produces an all-zero mask and blendWithMask
+                // outputs a fully transparent image, which was then cached and
+                // rendered as an invisible UIImageView on the Insights card.
+                guard !result.allInstances.isEmpty else {
+                    print("🚗 [BgRemoval] ⚠️ No foreground instances detected — keeping original image")
+                    completion(image)
+                    return
+                }
+
                 let mask = try result.generateScaledMaskForImage(
                     forInstances: result.allInstances,
                     from: handler
@@ -316,8 +328,11 @@ extension WidgetDataManager {
 
 extension WidgetDataManager {
     private var carImageFileName: String { "widget_car_image.png" }
-    private var carImageCacheFileName: String { "cached_car_image.png" }
-    private var carImageCacheKeyName: String { "cached_car_wiki_name" }
+    // v3: bumped from "cached_car_image.png" to invalidate caches written by
+    // the buggy bg-removal that produced fully transparent PNGs. Old files
+    // become orphans on disk; the next fetch repopulates the v3 cache.
+    private var carImageCacheFileName: String { "cached_car_image_v3.png" }
+    private var carImageCacheKeyName: String { "cached_car_wiki_name_v3" }
 
     /// Saves car image to App Group for widget access
     func saveCarImage(_ image: UIImage) {
