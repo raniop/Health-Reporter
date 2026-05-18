@@ -162,29 +162,32 @@ struct WatchComplicationData {
 
     // MARK: - Placeholder
 
+    /// Snapshot used by WidgetKit while it generates the real timeline.
+    /// All "data" fields are zeroed so the UI shows "—" instead of fabricated numbers
+    /// like a fake 72 score / 6,543 steps that could mislead a user glancing at it.
     static var placeholder: WatchComplicationData {
         WatchComplicationData(
-            healthScore: 72,
-            healthStatus: "Good",
-            reliabilityScore: 85,
-            carTierIndex: 2,
-            carName: "BMW M3",
-            carEmoji: "🏎️",
-            carTierLabel: "Good Condition",
+            healthScore: 0,
+            healthStatus: "—",
+            reliabilityScore: 0,
+            carTierIndex: 0,
+            carName: "—",
+            carEmoji: "",
+            carTierLabel: "—",
             geminiCarName: nil,
             geminiCarScore: nil,
             geminiCarTierIndex: nil,
-            moveCalories: 320,
-            moveGoal: 500,
-            exerciseMinutes: 25,
-            exerciseGoal: 30,
-            standHours: 8,
-            standGoal: 12,
-            steps: 6543,
-            heartRate: 72,
-            restingHeartRate: 58,
-            hrv: 45,
-            sleepHours: 7.5,
+            moveCalories: 0,
+            moveGoal: 0,
+            exerciseMinutes: 0,
+            exerciseGoal: 0,
+            standHours: 0,
+            standGoal: 0,
+            steps: 0,
+            heartRate: 0,
+            restingHeartRate: 0,
+            hrv: 0,
+            sleepHours: 0,
             lastUpdated: Date(),
             isFromPhone: true
         )

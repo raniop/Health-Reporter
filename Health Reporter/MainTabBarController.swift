@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SwiftUI
 import HealthKit
 import FirebaseAuth
 import UserNotifications
@@ -19,17 +20,13 @@ final class MainTabBarController: UITabBarController {
     override func viewDidLoad() {
         super.viewDidLoad()
         requestHealthKitAuthorizationUpfront()
-        configureLiquidGlassTabBar()
-        configureSemanticContentAttribute()
         syncCurrentUserProfile()
-        tabBar.tintColor = UIColor.white
-        tabBar.unselectedItemTintColor = UIColor.white.withAlphaComponent(0.5)
 
-        let home = InsightsDashboardViewController()
-        home.tabBarItem = UITabBarItem(title: "tab.dashboard".localized, image: UIImage(systemName: "square.grid.2x2"), tag: 0)
+        let home = LivityOverviewHostingController()
+        home.tabBarItem = UITabBarItem(title: "tab.overview".localized, image: UIImage(systemName: "heart.fill"), tag: 0)
 
-        let unified = UnifiedTrendsActivityViewController()
-        unified.tabBarItem = UITabBarItem(title: "tab.unified".localized, image: UIImage(systemName: "figure.run"), tag: 1)
+        let unified = LivityGoalsHostingController()
+        unified.tabBarItem = UITabBarItem(title: "tab.goals".localized, image: UIImage(systemName: "target"), tag: 1)
 
         let insights = InsightsTabViewController()
         insights.tabBarItem = UITabBarItem(title: "tab.insights".localized, image: UIImage(systemName: "sparkles"), tag: 2)
@@ -37,8 +34,10 @@ final class MainTabBarController: UITabBarController {
         let social = SocialHubViewController()
         social.tabBarItem = UITabBarItem(title: "tab.social".localized, image: UIImage(systemName: "person.2"), tag: 3)
 
-        let profile = ProfileViewController()
-        profile.tabBarItem = UITabBarItem(title: "tab.profile".localized, image: UIImage(systemName: "person.circle"), tag: 4)
+        let profile = LivityProfileHostingController()
+        let profileItem = UITabBarItem(title: "tab.profile".localized, image: UIImage(systemName: "person.circle"), tag: 4)
+        profile.tabBarItem = profileItem
+        loadProfileTabAvatar(into: profileItem)
 
         let homeNav = UINavigationController(rootViewController: home)
         dashboardNavController = homeNav
@@ -60,6 +59,14 @@ final class MainTabBarController: UITabBarController {
         for nav in viewControllers as? [UINavigationController] ?? [] {
             configureNavigationBar(nav.navigationBar)
         }
+
+        // Tab bar appearance and the iOS 26 minimize-behavior opt-out must be applied
+        // *after* viewControllers is set, otherwise the system reinitializes the tab bar
+        // with default Liquid Glass behavior and the labels stay hidden until first tap.
+        configureLiquidGlassTabBar()
+        tabBar.tintColor = UIColor(LivityTheme.info)
+        tabBar.unselectedItemTintColor = UIColor(LivityTheme.textPrimary)
+        configureSemanticContentAttribute()
 
         // Listen for background color changes
         NotificationCenter.default.addObserver(self, selector: #selector(backgroundColorDidChange), name: .backgroundColorChanged, object: nil)
@@ -235,23 +242,43 @@ final class MainTabBarController: UITabBarController {
         navBar.barStyle = .black
     }
 
-    /// Glassmorphism styling for tab bar: frosted glass with teal tint.
+    /// Liquid-glass tab bar: transparent background, dark icons/labels for readability.
     private func configureLiquidGlassTabBar() {
         let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
-        appearance.backgroundColor = UIColor.white.withAlphaComponent(0.06)
-        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+        appearance.configureWithTransparentBackground()
+        appearance.backgroundColor = .clear
+        appearance.shadowColor = .clear
 
-        // Style both normal and stacked layouts
-        let normalAppearance = appearance.stackedLayoutAppearance
-        normalAppearance.normal.iconColor = UIColor.white.withAlphaComponent(0.5)
-        normalAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.white.withAlphaComponent(0.5)]
-        normalAppearance.selected.iconColor = UIColor.white
-        normalAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.white]
+        let unselectedColor = UIColor(LivityTheme.textPrimary)
+        let selectedColor = UIColor(LivityTheme.info)
+
+        let stacked = appearance.stackedLayoutAppearance
+        stacked.normal.iconColor = unselectedColor
+        stacked.normal.titleTextAttributes = [
+            .foregroundColor: unselectedColor,
+            .font: UIFont.systemFont(ofSize: 11, weight: .semibold)
+        ]
+        stacked.selected.iconColor = selectedColor
+        stacked.selected.titleTextAttributes = [
+            .foregroundColor: selectedColor,
+            .font: UIFont.systemFont(ofSize: 11, weight: .bold)
+        ]
+
+        appearance.inlineLayoutAppearance = stacked
+        appearance.compactInlineLayoutAppearance = stacked
 
         tabBar.standardAppearance = appearance
         tabBar.scrollEdgeAppearance = appearance
-        tabBar.isTranslucent = true
+
+        // iOS 26 Liquid Glass tab bar shrinks to icons-only while a scroll view
+        // scrolls — and worse, can launch in that minimized state, leaving labels
+        // invisible until the user taps a tab. Opt out entirely.
+        if #available(iOS 26.0, *) {
+            tabBarMinimizeBehavior = .never
+        }
+
+        tabBar.setNeedsLayout()
+        tabBar.layoutIfNeeded()
     }
 
     /// Set semantic direction (RTL/LTR) based on system language
@@ -274,6 +301,43 @@ final class MainTabBarController: UITabBarController {
     private func requestHealthKitAuthorizationUpfront() {
         guard HKHealthStore.isHealthDataAvailable() else { return }
         HealthKitManager.shared.requestAuthorization { _, _ in }
+    }
+
+    /// Downloads the current user's profile photo (if any) and renders it into a
+    /// circular template image used as the Profile tab icon. Falls back to the
+    /// system `person.circle` glyph when the user has no photo.
+    private func loadProfileTabAvatar(into item: UITabBarItem) {
+        guard let photoURL = Auth.auth().currentUser?.photoURL else { return }
+        URLSession.shared.dataTask(with: photoURL) { [weak item] data, _, _ in
+            guard let data, let image = UIImage(data: data) else { return }
+            let avatar = MainTabBarController.makeCircularTabIcon(from: image, size: 28)
+            DispatchQueue.main.async {
+                item?.image = avatar
+                item?.selectedImage = avatar
+            }
+        }.resume()
+    }
+
+    /// Renders `image` into a circular tab-bar-sized icon. Returns the image as
+    /// `.alwaysOriginal` so iOS doesn't re-tint it with the active accent color.
+    static func makeCircularTabIcon(from image: UIImage, size: CGFloat) -> UIImage {
+        let rect = CGRect(x: 0, y: 0, width: size, height: size)
+        let renderer = UIGraphicsImageRenderer(size: rect.size)
+        let circular = renderer.image { _ in
+            UIBezierPath(ovalIn: rect).addClip()
+            // Aspect-fill crop so face stays centred.
+            let aspect = image.size.width / image.size.height
+            var drawRect = rect
+            if aspect > 1 {
+                drawRect = CGRect(x: -(size * aspect - size) / 2, y: 0,
+                                  width: size * aspect, height: size)
+            } else if aspect < 1 {
+                drawRect = CGRect(x: 0, y: -(size / aspect - size) / 2,
+                                  width: size, height: size / aspect)
+            }
+            image.draw(in: drawRect)
+        }
+        return circular.withRenderingMode(.alwaysOriginal)
     }
 
     /// Syncs the user's details to Firestore (so they can be searched and their photo displayed).

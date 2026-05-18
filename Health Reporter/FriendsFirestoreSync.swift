@@ -644,17 +644,71 @@ enum FriendsFirestoreSync {
             .updateData(["read": true])
     }
 
-    /// Marks all notifications as read
-    static func markAllNotificationsAsRead() {
-        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else { return }
+    /// Deletes a single notification by id.
+    static func deleteNotification(_ notificationId: String, completion: ((Error?) -> Void)? = nil) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
+            completion?(NSError(domain: "FriendsFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user logged in"]))
+            return
+        }
+        db.collection(usersCollection).document(uid)
+            .collection("notifications").document(notificationId)
+            .delete { error in
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("NotificationItemSaved"), object: nil)
+                    completion?(error)
+                }
+            }
+    }
+
+    /// Deletes every notification for the current user.
+    static func deleteAllNotifications(completion: ((Error?) -> Void)? = nil) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
+            completion?(NSError(domain: "FriendsFirestoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user logged in"]))
+            return
+        }
+        let ref = db.collection(usersCollection).document(uid).collection("notifications")
+        ref.getDocuments { snapshot, error in
+            if let error = error {
+                DispatchQueue.main.async { completion?(error) }
+                return
+            }
+            guard let docs = snapshot?.documents, !docs.isEmpty else {
+                DispatchQueue.main.async { completion?(nil) }
+                return
+            }
+            let batch = db.batch()
+            for doc in docs { batch.deleteDocument(doc.reference) }
+            batch.commit { err in
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("NotificationItemSaved"), object: nil)
+                    completion?(err)
+                }
+            }
+        }
+    }
+
+    /// Marks all notifications as read. Completion fires once Firestore has
+    /// confirmed the batch commit — callers that need a fresh unread count
+    /// (badge refresh, etc.) must wait for it, otherwise a follow-up read
+    /// returns the stale pre-commit count.
+    static func markAllNotificationsAsRead(completion: (() -> Void)? = nil) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
+            completion?()
+            return
+        }
         let ref = db.collection(usersCollection).document(uid).collection("notifications")
         ref.whereField("read", isEqualTo: false).getDocuments { snapshot, _ in
-            guard let docs = snapshot?.documents else { return }
+            guard let docs = snapshot?.documents, !docs.isEmpty else {
+                DispatchQueue.main.async { completion?() }
+                return
+            }
             let batch = db.batch()
             for doc in docs {
                 batch.updateData(["read": true], forDocument: doc.reference)
             }
-            batch.commit()
+            batch.commit { _ in
+                DispatchQueue.main.async { completion?() }
+            }
         }
     }
 
@@ -709,6 +763,110 @@ enum FriendsFirestoreSync {
                 }
                 completion?(error)
             }
+    }
+
+    /// Deletes bedtime notifications whose body is just the generic placeholder.
+    /// Keeps the ones carrying the real Gemini-generated recommendation.
+    /// `placeholders` must be the localized strings considered "generic / placeholder".
+    /// Scans ALL notifications (not filtered by `type`) because old docs from previous
+    /// app versions may have missing/legacy type fields but still carry placeholder text.
+    static func deleteGenericBedtimeNotifications(placeholders: [String], completion: ((Int) -> Void)? = nil) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else {
+            completion?(0)
+            return
+        }
+
+        let normalizedPlaceholders = placeholders.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+
+        db.collection(usersCollection).document(uid)
+            .collection("notifications")
+            .getDocuments { snapshot, _ in
+                guard let docs = snapshot?.documents else {
+                    DispatchQueue.main.async { completion?(0) }
+                    return
+                }
+
+                let toDelete = docs.filter { doc in
+                    let d = doc.data()
+                    let type = (d["type"] as? String ?? "").lowercased()
+                    let title = (d["title"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    let body = (d["body"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    let source = (d["source"] as? String ?? "").lowercased()
+
+                    // Only consider bedtime-ish docs. If type is missing/unknown, fall back
+                    // to a title/body heuristic so legacy docs are still caught.
+                    let looksBedtime = type.contains("bedtime")
+                        || title.contains("bedtime")
+                        || body.contains("bedtime")
+                        || body.contains("שינה")
+                    guard looksBedtime else { return false }
+
+                    // Anything marked `source: "gemini"` is a real upserted recommendation — keep it.
+                    if source == "gemini" { return false }
+
+                    // Everything else bedtime-flavored without a source is legacy junk — nuke it.
+                    // This includes empty bodies, "Bedtime Recommendation / Your personalized bedtime
+                    // is ready", and any older placeholder variants.
+                    return true
+                }
+
+                guard !toDelete.isEmpty else {
+                    DispatchQueue.main.async { completion?(0) }
+                    return
+                }
+
+                let batch = db.batch()
+                for doc in toDelete { batch.deleteDocument(doc.reference) }
+                batch.commit { error in
+                    if let error = error {
+                        print("[Notifications] Cleanup failed: \(error.localizedDescription)")
+                    } else {
+                        print("[Notifications] Cleaned up \(toDelete.count) generic bedtime notifications")
+                    }
+                    DispatchQueue.main.async { completion?(toDelete.count) }
+                }
+            }
+    }
+
+    /// Idempotent upsert for today's bedtime recommendation. Uses a stable doc id derived
+    /// from the local calendar date so repeated calls overwrite rather than duplicate.
+    static func upsertBedtimeNotificationForToday(title: String, body: String) {
+        guard let uid = Auth.auth().currentUser?.uid, !uid.isEmpty else { return }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd"
+        formatter.timeZone = .current
+        let docId = "bedtime_" + formatter.string(from: Date())
+
+        let docRef = db.collection(usersCollection).document(uid)
+            .collection("notifications").document(docId)
+
+        // Read first so we can preserve `read` and `createdAt` if the doc already exists.
+        docRef.getDocument { snapshot, _ in
+            let existing = snapshot?.data()
+            let alreadyRead = existing?["read"] as? Bool ?? false
+            // Keep the original createdAt if present so order doesn't jump around each update.
+            let createdAt: Any = existing?["createdAt"] ?? FieldValue.serverTimestamp()
+
+            let docData: [String: Any] = [
+                "type": "bedtime_recommendation",
+                "source": "gemini", // marker: distinguishes real Gemini data from legacy placeholder docs
+                "title": title,
+                "body": body,
+                "data": ["fullTitle": title, "fullBody": body],
+                "read": alreadyRead,
+                "createdAt": createdAt
+            ]
+            docRef.setData(docData, merge: true) { error in
+                if let error = error {
+                    print("[Notifications] Bedtime upsert failed: \(error.localizedDescription)")
+                } else {
+                    print("[Notifications] Bedtime upserted for today: \(title.prefix(30))")
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: NSNotification.Name("NotificationItemSaved"), object: nil)
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Morning Notification Settings

@@ -56,60 +56,34 @@ enum BackgroundColor: String, CaseIterable {
 }
 
 enum AIONDesign {
-    // MARK: - Surfaces (dynamic based on light/dark background)
-    static var background: UIColor {
-        BackgroundColor.current.color
-    }
-    /// Gradient background colors for views (top to bottom)
+    // MARK: - Surfaces — bridged to LivityTheme so the legacy UIKit screens share
+    // the same adaptive light/dark palette as the new SwiftUI Livity screens.
+    static var background: UIColor { LivityUIColor.background }
+
+    /// Gradient background — kept for legacy screens but now resolves to a flat
+    /// Livity background in both modes (the old teal gradient clashed with the
+    /// monochrome Livity look).
     static var backgroundGradientColors: [CGColor] {
-        BackgroundColor.current.isLight
-            ? [UIColor(hex: "#E0F7FA")!.cgColor, UIColor(hex: "#B2EBF2")!.cgColor]
-            : [UIColor(hex: "#0D3B52")!.cgColor, UIColor(hex: "#0E6E78")!.cgColor, UIColor(hex: "#14998D")!.cgColor]
+        [LivityUIColor.background.cgColor, LivityUIColor.background.cgColor]
     }
-    static var surface: UIColor {
-        BackgroundColor.current.isLight
-            ? UIColor.white.withAlphaComponent(0.6)
-            : UIColor.white.withAlphaComponent(0.08)
-    }
-    static var surfaceElevated: UIColor {
-        BackgroundColor.current.isLight
-            ? UIColor.white.withAlphaComponent(0.75)
-            : UIColor.white.withAlphaComponent(0.12)
-    }
-    static var separator: UIColor {
-        BackgroundColor.current.isLight
-            ? UIColor(hex: "#C6C6C8")!
-            : UIColor.white.withAlphaComponent(0.15)
-    }
+    static var surface: UIColor { LivityUIColor.cardFill }
+    static var surfaceElevated: UIColor { LivityUIColor.chipFill }
+    static var separator: UIColor { LivityUIColor.separator }
 
     // MARK: - Navigation Bar Style
-    static var navBarStyle: UIBarStyle {
-        BackgroundColor.current.isLight ? .default : .black
-    }
+    static var navBarStyle: UIBarStyle { .default }
 
-    // MARK: - Text (dynamic based on light/dark background)
-    static var textPrimary: UIColor {
-        BackgroundColor.current.isLight
-            ? UIColor(hex: "#0A2A3C")!
-            : UIColor.white
-    }
-    static var textSecondary: UIColor {
-        BackgroundColor.current.isLight
-            ? UIColor(hex: "#1A4A5E")!.withAlphaComponent(0.7)
-            : UIColor.white.withAlphaComponent(0.7)
-    }
-    static var textTertiary: UIColor {
-        BackgroundColor.current.isLight
-            ? UIColor(hex: "#1A4A5E")!.withAlphaComponent(0.4)
-            : UIColor.white.withAlphaComponent(0.45)
-    }
+    // MARK: - Text
+    static var textPrimary: UIColor { LivityUIColor.textPrimary }
+    static var textSecondary: UIColor { LivityUIColor.textSecondary }
+    static var textTertiary: UIColor { LivityUIColor.textTertiary }
 
-    // MARK: - Accents (cyan/teal/lime logo theme)
-    static let accentPrimary = UIColor(hex: "#00BFFF")!   // Deep Sky Blue – logo cyan
-    static let accentSecondary = UIColor(hex: "#00CED1")!  // Dark Turquoise – logo teal
-    static let accentSuccess = UIColor(hex: "#7FFF00")!    // Chartreuse – logo lime
-    static let accentWarning = UIColor(hex: "#FF6B35")!    // Orange
-    static let accentDanger = UIColor(hex: "#EF4444")!
+    // MARK: - Accents — re-mapped to the Livity palette.
+    static let accentPrimary   = LivityUIColor.info
+    static let accentSecondary = LivityUIColor.info
+    static let accentSuccess   = LivityUIColor.good
+    static let accentWarning   = LivityUIColor.warning
+    static let accentDanger    = LivityUIColor.bad
 
     // MARK: - Chart colors
     static let chartRecovery = UIColor(hex: "#00BFFF")!
@@ -139,7 +113,7 @@ enum AIONDesign {
     }
     /// Glass card border color – thin and subtle
     static var glassCardBorder: UIColor {
-        UIColor.white.withAlphaComponent(0.2)
+        AIONDesign.separator
     }
 
     // MARK: - Shadows
@@ -237,25 +211,17 @@ final class AIONGradientBackgroundView: UIView {
 extension UIViewController {
     private static let gradientBgTag = 9990
 
-    /// Adds the AION gradient background to the view. Safe to call multiple times (idempotent).
+    /// Sets the view's background to the adaptive Livity background. Kept named
+    /// `applyAIONGradientBackground` for backwards compatibility with all the
+    /// legacy callers; the gradient is now a flat colour to match Livity.
     @discardableResult
     func applyAIONGradientBackground() -> UIView {
-        view.backgroundColor = AIONDesign.background
-        // Remove existing gradient background if present
+        view.backgroundColor = LivityUIColor.background
+        // Remove old gradient background if a previous version added one.
         if let existing = view.viewWithTag(UIViewController.gradientBgTag) {
             existing.removeFromSuperview()
         }
-        let bgView = AIONGradientBackgroundView()
-        bgView.tag = UIViewController.gradientBgTag
-        bgView.translatesAutoresizingMaskIntoConstraints = false
-        view.insertSubview(bgView, at: 0)
-        NSLayoutConstraint.activate([
-            bgView.topAnchor.constraint(equalTo: view.topAnchor),
-            bgView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            bgView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            bgView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-        ])
-        return bgView
+        return view
     }
 }
 

@@ -110,8 +110,17 @@ final class BedtimeNotificationManager {
 
         cancelBedtimeNotification()
 
-        // Build content from cache and schedule the single calendar notification
-        let content = buildContentFromCache()
+        // Only schedule a notification if we have a *real* Gemini recommendation cached.
+        // Without one we'd be sending the user the generic "your personalised bedtime is
+        // ready" placeholder — exactly what the user asked us to never do. The
+        // background refresh below will fetch fresh content; once it arrives we'll
+        // schedule then.
+        guard let content = buildContentFromRealCache() else {
+            print("🌙 [BedtimeNotification] No real Gemini content yet — skipping schedule, will retry via background refresh")
+            scheduleBackgroundRefresh()
+            return
+        }
+
         NotificationScheduler.scheduleCalendarNotification(
             identifier: notificationIdentifier,
             content: content,
@@ -126,7 +135,45 @@ final class BedtimeNotificationManager {
             }
         }
 
+        // Also persist to Firestore history now, so the bell shows the latest Gemini
+        // recommendation even if the local notification fires in background without
+        // ever reaching willPresent/didReceive.
+        persistCurrentBedtimeToFirestore()
+
         scheduleBackgroundRefresh()
+    }
+
+    /// Returns notification content only when the cached recommendation is real
+    /// (Gemini-generated, not a placeholder). nil otherwise.
+    private func buildContentFromRealCache() -> UNMutableNotificationContent? {
+        guard let cached = AnalysisCache.loadBedtimeRecommendation() else { return nil }
+        let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
+        let title = (isHebrew ? cached.notification.title_he : cached.notification.title_en)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = (isHebrew ? cached.notification.body_he : cached.notification.body_en)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty,
+              !AppDelegate.isBedtimePlaceholder(title: title, body: body) else { return nil }
+
+        let content = UNMutableNotificationContent()
+        content.sound = .default
+        content.userInfo = ["type": "bedtime_recommendation"]
+        content.title = buildGreetingTitle()
+        content.body = body
+        return content
+    }
+
+    /// Writes the freshest Gemini bedtime recommendation to Firestore, keyed by the user +
+    /// today's date. Idempotent — repeat calls overwrite the same doc. Skips persistence
+    /// when we only have the generic placeholder (no real content yet).
+    func persistCurrentBedtimeToFirestore() {
+        guard let cached = AnalysisCache.loadBedtimeRecommendation() else { return }
+        let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
+        let title = (isHebrew ? cached.notification.title_he : cached.notification.title_en).trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = (isHebrew ? cached.notification.body_he : cached.notification.body_en).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty, !AppDelegate.isBedtimePlaceholder(title: title, body: body) else { return }
+
+        FriendsFirestoreSync.upsertBedtimeNotificationForToday(title: title, body: body)
     }
 
     func cancelBedtimeNotification() {
@@ -152,15 +199,27 @@ final class BedtimeNotificationManager {
                 return
             }
 
-            let content: UNMutableNotificationContent
+            // Prefer fresh Gemini content; fall back to cache only if it's real.
+            // If neither is available, *cancel* the pending notification — better to
+            // show nothing than to deliver a generic "your bedtime is ready" stub.
+            let content: UNMutableNotificationContent?
             if let recommendation = recommendation {
                 print("🌙 [BedtimeNotification] Gemini OK: bedtime=\(recommendation.recommendedBedtimeLocal)")
                 content = self.buildContent(from: recommendation)
+            } else if let cached = self.buildContentFromRealCache() {
+                print("🌙 [BedtimeNotification] Gemini failed: \(error?.localizedDescription ?? "unknown") — using real cached content")
+                content = cached
             } else {
-                print("🌙 [BedtimeNotification] Gemini failed: \(error?.localizedDescription ?? "unknown"), using cache")
-                content = self.buildContentFromCache()
+                print("🌙 [BedtimeNotification] Gemini failed and no real cache — cancelling pending notification")
+                NotificationScheduler.cancelAll(identifier: self.notificationIdentifier)
+                completion?(false)
+                return
             }
 
+            guard let content else {
+                completion?(false)
+                return
+            }
             NotificationScheduler.scheduleCalendarNotification(
                 identifier: self.notificationIdentifier,
                 content: content,
@@ -176,6 +235,10 @@ final class BedtimeNotificationManager {
                     completion?(true)
                 }
             }
+
+            // Persist fresh Gemini content so the bell history reflects today's recommendation
+            // even if the eventual push fires in the background without waking the app.
+            self.persistCurrentBedtimeToFirestore()
         }
     }
 
@@ -303,18 +366,22 @@ final class BedtimeNotificationManager {
                 print("🌙 [BedtimeNotification] ✅ Gemini returned: \(recommendation.recommendedBedtimeLocal)")
                 content = self.buildContent(from: recommendation)
 
-                // Save full Gemini data to Firestore
+                // Save full Gemini data to Firestore — use Gemini's actual title + body (not
+                // the greeting title the push uses) so the notification history shows the real
+                // informative message, not a generic greeting.
                 let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
                 let geminiTitle = isHebrew ? recommendation.notification.title_he : recommendation.notification.title_en
                 let geminiBody = isHebrew ? recommendation.notification.body_he : recommendation.notification.body_en
+                let savedTitle = geminiTitle.isEmpty ? content.title : geminiTitle
+                let savedBody = geminiBody.isEmpty ? content.body : geminiBody
 
                 FriendsFirestoreSync.saveNotificationItem(
                     type: "bedtime_recommendation",
-                    title: content.title,
-                    body: content.body,
+                    title: savedTitle,
+                    body: savedBody,
                     data: [
-                        "fullTitle": geminiTitle,
-                        "fullBody": geminiBody,
+                        "fullTitle": savedTitle,
+                        "fullBody": savedBody,
                         "recommendedBedtime": recommendation.recommendedBedtimeLocal,
                         "sleepNeedMinutes": recommendation.sleepNeedTonightMinutes
                     ]

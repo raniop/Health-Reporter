@@ -643,7 +643,7 @@ final class RankBadgeView: UIView {
         // Shine layer setup
         shineLayer.colors = [
             UIColor.white.withAlphaComponent(0).cgColor,
-            UIColor.white.withAlphaComponent(0.4).cgColor,
+            AIONDesign.textTertiary.cgColor,
             UIColor.white.withAlphaComponent(0).cgColor
         ]
         shineLayer.startPoint = CGPoint(x: 0, y: 0.5)

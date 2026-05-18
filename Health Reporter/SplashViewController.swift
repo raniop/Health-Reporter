@@ -17,8 +17,8 @@ class SplashViewController: UIViewController {
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.text = "AION"
-        label.font = .boldSystemFont(ofSize: 30)
-        label.textColor = .white  // Always white in Splash (fixed dark background)
+        label.font = .systemFont(ofSize: 30, weight: .heavy)
+        label.textColor = LivityUIColor.textPrimary
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -26,7 +26,8 @@ class SplashViewController: UIViewController {
 
     private let accentBar: UIView = {
         let view = UIView()
-        view.backgroundColor = AIONDesign.accentSecondary  // Turquoise
+        view.backgroundColor = LivityUIColor.info
+        view.layer.cornerRadius = 2
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
@@ -35,7 +36,7 @@ class SplashViewController: UIViewController {
         let label = UILabel()
         label.text = "splash.healthReport".localized
         label.font = .systemFont(ofSize: 15, weight: .medium)
-        label.textColor = UIColor.white.withAlphaComponent(0.6)
+        label.textColor = LivityUIColor.textSecondary
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -43,7 +44,7 @@ class SplashViewController: UIViewController {
 
     private let loadingIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .medium)
-        indicator.color = AIONDesign.accentSecondary
+        indicator.color = LivityUIColor.info
         indicator.translatesAutoresizingMaskIntoConstraints = false
         indicator.hidesWhenStopped = true
         return indicator
@@ -53,7 +54,7 @@ class SplashViewController: UIViewController {
         let label = UILabel()
         label.text = "loading".localized
         label.font = .systemFont(ofSize: 13, weight: .regular)
-        label.textColor = UIColor.white.withAlphaComponent(0.6)
+        label.textColor = LivityUIColor.textSecondary
         label.textAlignment = .center
         label.alpha = 0
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -63,8 +64,8 @@ class SplashViewController: UIViewController {
     private let progressBar: UIProgressView = {
         let bar = UIProgressView(progressViewStyle: .default)
         bar.translatesAutoresizingMaskIntoConstraints = false
-        bar.progressTintColor = AIONDesign.accentSecondary
-        bar.trackTintColor = UIColor.white.withAlphaComponent(0.1)
+        bar.progressTintColor = LivityUIColor.info
+        bar.trackTintColor = LivityUIColor.separator.withAlphaComponent(0.3)
         bar.layer.cornerRadius = 2
         bar.clipsToBounds = true
         bar.progress = 0
@@ -77,6 +78,15 @@ class SplashViewController: UIViewController {
     private var timeoutWorkItem: DispatchWorkItem?
     private var progressTimer: Timer?
     private var currentProgress: Float = 0
+
+    /// True once `LivityMetricsService.fetchDaily(today)` has finished populating
+    /// the in-memory cache. The Overview tab reads this cache on its first render
+    /// — if we transition before it's ready, the user sees stale numbers update
+    /// in front of them. Cached-Gemini paths can finish well before this fetch.
+    private var livityCacheReady = false
+    /// Set when Gemini finishes but we still need to wait on `fetchDaily`. Fired
+    /// either by the fetch completion or by the safety timeout — whichever first.
+    private var pendingFinish: DispatchWorkItem?
 
     // MARK: - Lifecycle
 
@@ -222,6 +232,22 @@ class SplashViewController: UIViewController {
                 return
             }
 
+            // Pre-warm the Livity Overview cache in parallel with the legacy fetch
+            // so the user sees real numbers the instant the main screen appears,
+            // instead of empty cards that fill in afterwards. The completion gates
+            // the splash → main transition (see `finishAndTransition`).
+            LivityMetricsService.shared.fetchDaily(for: Date()) { [weak self] _ in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.livityCacheReady = true
+                    // If Gemini already finished and we were waiting on this, go now.
+                    if let pending = self.pendingFinish {
+                        self.pendingFinish = nil
+                        pending.perform()
+                    }
+                }
+            }
+
             // Load data
             self.loadHealthData()
         }
@@ -314,6 +340,27 @@ class SplashViewController: UIViewController {
     }
 
     private func finishAndTransition() {
+        guard !hasTransitioned else { return }
+
+        // Gate on the Livity cache: if Gemini returned from cache before
+        // `fetchDaily` finished, transitioning now would land the user on a
+        // stale Overview that visibly refreshes a moment later.
+        if livityCacheReady {
+            actuallyFinishAndTransition()
+            return
+        }
+
+        let work = DispatchWorkItem { [weak self] in self?.actuallyFinishAndTransition() }
+        pendingFinish = work
+        // Safety: never wait more than 3s on the fetch — better stale than stuck.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            guard let self = self, !self.hasTransitioned else { return }
+            self.pendingFinish = nil
+            self.actuallyFinishAndTransition()
+        }
+    }
+
+    private func actuallyFinishAndTransition() {
         guard !hasTransitioned else { return }
         hasTransitioned = true
         updateProgress(1.0, status: "splash.ready".localized)

@@ -32,8 +32,8 @@ final class LanguageSelectionViewController: UIViewController {
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.text = "AION"
-        label.font = .boldSystemFont(ofSize: 34)
-        label.textColor = .white
+        label.font = .systemFont(ofSize: 34, weight: .heavy)
+        label.textColor = LivityUIColor.textPrimary
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -43,7 +43,7 @@ final class LanguageSelectionViewController: UIViewController {
         let label = UILabel()
         label.text = "Choose your language\nבחר שפה"
         label.font = .systemFont(ofSize: 18, weight: .medium)
-        label.textColor = UIColor.white.withAlphaComponent(0.7)
+        label.textColor = LivityUIColor.textSecondary
         label.textAlignment = .center
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -141,17 +141,17 @@ final class LanguageSelectionViewController: UIViewController {
         btn.tag = tag
         btn.translatesAutoresizingMaskIntoConstraints = false
 
-        // Style: rounded, semi-transparent border
-        btn.backgroundColor = UIColor.white.withAlphaComponent(0.08)
+        // Livity card-styled button
+        btn.backgroundColor = LivityUIColor.cardFill
         btn.layer.cornerRadius = 14
         btn.layer.borderWidth = 1
-        btn.layer.borderColor = UIColor.white.withAlphaComponent(0.15).cgColor
+        btn.layer.borderColor = LivityUIColor.separator.cgColor
 
         // Content
         let text = "\(flag)   \(title)"
         let attr = NSAttributedString(string: text, attributes: [
             .font: UIFont.systemFont(ofSize: 20, weight: .semibold),
-            .foregroundColor: UIColor.white
+            .foregroundColor: LivityUIColor.textPrimary
         ])
         btn.setAttributedTitle(attr, for: .normal)
 

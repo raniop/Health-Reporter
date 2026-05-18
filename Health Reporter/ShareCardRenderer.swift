@@ -96,7 +96,7 @@ enum ShareCardRenderer {
             // "/100" below score
             let denomAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 48, weight: .medium),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.3)
+                .foregroundColor: AIONDesign.textTertiary
             ]
             let denomStr = "/100"
             let denomSize = denomStr.size(withAttributes: denomAttrs)
@@ -148,7 +148,7 @@ enum ShareCardRenderer {
             // ── "aionapp.co" ──
             let urlAttrs: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 36, weight: .medium),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.3)
+                .foregroundColor: AIONDesign.textTertiary
             ]
             let urlStr = "aionapp.co"
             let urlSize = urlStr.size(withAttributes: urlAttrs)

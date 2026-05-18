@@ -37,6 +37,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             BedtimeNotificationManager.shared.scheduleBedtimeNotification()
         }
 
+        // Re-install each habit's daily reminder. iOS periodically purges
+        // pending notifications (reinstall, locale change, etc); re-scheduling
+        // on launch keeps them in sync with what the user set in Goals.
+        HabitNotificationManager.rescheduleAll()
+
         // Sync notification settings to Firestore (for Cloud Functions)
         MorningNotificationManager.shared.syncSettingsOnLaunch()
         BedtimeNotificationManager.shared.syncSettingsOnLaunch()
@@ -283,16 +288,62 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             default:
                 firestoreType = type
             }
+            let saved = AppDelegate.bedtimeDisplayFields(fallbackTitle: content.title, fallbackBody: content.body, type: type)
+            // Suppress placeholder bedtime entries entirely — don't persist to history,
+            // and don't show a banner. The user only wants real, Gemini-backed content.
+            if type == "bedtime_recommendation" && AppDelegate.isBedtimePlaceholder(title: saved.title, body: saved.body) {
+                print("🌙 [Notif] Suppressing generic bedtime — no real content to show")
+                completionHandler([])
+                return
+            }
             FriendsFirestoreSync.saveNotificationItem(
                 type: firestoreType,
-                title: content.title,
-                body: content.body,
-                data: ["fullTitle": content.title, "fullBody": content.body]
+                title: saved.title,
+                body: saved.body,
+                data: ["fullTitle": saved.title, "fullBody": saved.body]
             )
         }
 
         // Show notification banner even when app is in foreground
         completionHandler([[.banner, .badge, .sound]])
+    }
+
+    /// For bedtime notifications, prefer the freshest Gemini recommendation in the notification
+    /// history — the scheduled push may carry stale content if the BGTask hasn't run yet.
+    private static func bedtimeDisplayFields(fallbackTitle: String, fallbackBody: String, type: String) -> (title: String, body: String) {
+        guard type == "bedtime_recommendation",
+              let cached = AnalysisCache.loadBedtimeRecommendation() else {
+            return (fallbackTitle, fallbackBody)
+        }
+        let isHebrew = LocalizationManager.shared.currentLanguage == .hebrew
+        let title = isHebrew ? cached.notification.title_he : cached.notification.title_en
+        let body = isHebrew ? cached.notification.body_he : cached.notification.body_en
+        return (
+            title.isEmpty ? fallbackTitle : title,
+            body.isEmpty ? fallbackBody : body
+        )
+    }
+
+    /// Strings that count as "nothing useful was delivered" for a bedtime notification.
+    /// Shared with the one-time cleanup in FriendsFirestoreSync.
+    static var bedtimePlaceholderStrings: [String] {
+        [
+            "bedtime.notification.generic".localized,
+            "Bedtime Recommendation",
+            "המלצת שעת שינה",
+            "Your personalized bedtime is ready",
+            "המלצת השינה האישית שלך מוכנה",
+            "בדוק את המלצת שעת השינה המותאמת אישית שלך",
+            "Check your personalized bedtime recommendation"
+        ]
+    }
+
+    static func isBedtimePlaceholder(title: String, body: String) -> Bool {
+        let normalized = bedtimePlaceholderStrings.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        let t = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let b = body.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if b.isEmpty { return true }
+        return normalized.contains(t) || normalized.contains(b)
     }
 
     // Handle notification tap
@@ -317,12 +368,17 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             default:
                 firestoreType = type
             }
-            FriendsFirestoreSync.saveNotificationItem(
-                type: firestoreType,
-                title: content.title,
-                body: content.body,
-                data: ["fullTitle": content.title, "fullBody": content.body]
-            )
+            let saved = AppDelegate.bedtimeDisplayFields(fallbackTitle: content.title, fallbackBody: content.body, type: type)
+            if type == "bedtime_recommendation" && AppDelegate.isBedtimePlaceholder(title: saved.title, body: saved.body) {
+                print("🌙 [Notif] Skipping generic bedtime save (tap) — placeholder content")
+            } else {
+                FriendsFirestoreSync.saveNotificationItem(
+                    type: firestoreType,
+                    title: saved.title,
+                    body: saved.body,
+                    data: ["fullTitle": saved.title, "fullBody": saved.body]
+                )
+            }
 
             handleNotificationAction(type: type, userInfo: userInfo)
         }

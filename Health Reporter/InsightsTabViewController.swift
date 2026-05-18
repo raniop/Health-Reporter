@@ -863,7 +863,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
 
     // Subtle border
     card.layer.borderWidth = 1
-    card.layer.borderColor = UIColor.white.withAlphaComponent(0.12).cgColor
+    card.layer.borderColor = AIONDesign.separator.cgColor
 
     // ── Car name ──
     let carNameLabel = UILabel()
@@ -926,7 +926,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         let bgLayer = CAShapeLayer()
         bgLayer.path = bgPath.cgPath
         bgLayer.fillColor = UIColor.clear.cgColor
-        bgLayer.strokeColor = UIColor.white.withAlphaComponent(0.08).cgColor
+        bgLayer.strokeColor = AIONDesign.separator.cgColor
         bgLayer.lineWidth = arcLineWidth
         bgLayer.lineCap = .round
         gaugeContainer.layer.insertSublayer(bgLayer, at: 0)
@@ -992,7 +992,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     let explanationLabel = UILabel()
     explanationLabel.text = explanationText
     explanationLabel.font = .systemFont(ofSize: 15, weight: .regular)
-    explanationLabel.textColor = UIColor.white.withAlphaComponent(0.85)
+    explanationLabel.textColor = AIONDesign.textPrimary
     explanationLabel.textAlignment = .center
     explanationLabel.numberOfLines = 0
     explanationLabel.lineBreakMode = .byWordWrapping
@@ -3198,7 +3198,7 @@ private func showDiscoveryLoadingAnimation() {
         card.alpha = 0
         card.transform = CGAffineTransform(scaleX: 0.5, y: 0.5).translatedBy(x: 0, y: -100)
         card.layer.borderWidth = 1
-        card.layer.borderColor = UIColor.white.withAlphaComponent(0.12).cgColor
+        card.layer.borderColor = AIONDesign.separator.cgColor
         container.addSubview(card)
         self.carCardView = card
 
@@ -3229,7 +3229,7 @@ private func showDiscoveryLoadingAnimation() {
         let maxScoreLabel = UILabel()
         maxScoreLabel.text = "/100"
         maxScoreLabel.font = .systemFont(ofSize: 18, weight: .medium)
-        maxScoreLabel.textColor = UIColor.white.withAlphaComponent(0.4)
+        maxScoreLabel.textColor = AIONDesign.textTertiary
         maxScoreLabel.alpha = 0
         maxScoreLabel.translatesAutoresizingMaskIntoConstraints = false
 
@@ -3276,7 +3276,7 @@ private func showDiscoveryLoadingAnimation() {
         let rawExplanation = parsed?.carExplanation ?? "insights.carSelectedBased".localized
         explanationLabel.text = cleanExplanationText(rawExplanation, carName: carName)
         explanationLabel.font = .systemFont(ofSize: 15, weight: .regular)
-        explanationLabel.textColor = UIColor.white.withAlphaComponent(0.85)
+        explanationLabel.textColor = AIONDesign.textPrimary
         explanationLabel.textAlignment = .center
         explanationLabel.numberOfLines = 0
         explanationLabel.lineBreakMode = .byWordWrapping
@@ -3430,7 +3430,7 @@ private func showDiscoveryLoadingAnimation() {
         button.setTitle(title, for: .normal)
         button.setTitleColor(.white, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
-        button.backgroundColor = UIColor.white.withAlphaComponent(0.15)
+        button.backgroundColor = AIONDesign.surface
         button.layer.cornerRadius = 12
         button.addTarget(self, action: action, for: .touchUpInside)
         return button

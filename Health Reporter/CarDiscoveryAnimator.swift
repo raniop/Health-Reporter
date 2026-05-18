@@ -312,7 +312,7 @@ extension UIView {
 
         gradientLayer.colors = [
             UIColor.clear.cgColor,
-            UIColor.white.withAlphaComponent(0.2).cgColor,
+            AIONDesign.separator.cgColor,
             UIColor.clear.cgColor
         ]
         gradientLayer.locations = [0.0, 0.5, 1.0]
@@ -420,7 +420,7 @@ final class AnimatedProgressBar: UIView {
     }
 
     private func setupViews() {
-        backgroundBar.backgroundColor = UIColor.white.withAlphaComponent(0.2)
+        backgroundBar.backgroundColor = AIONDesign.separator
         backgroundBar.layer.cornerRadius = 4
         backgroundBar.translatesAutoresizingMaskIntoConstraints = false
         addSubview(backgroundBar)

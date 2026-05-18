@@ -40,7 +40,7 @@ final class NotificationCell: UITableViewCell {
     private let titleLabel: UILabel = {
         let l = UILabel()
         l.font = .systemFont(ofSize: 15, weight: .semibold)
-        l.textColor = AIONDesign.textPrimary
+        l.textColor = .label
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -48,7 +48,7 @@ final class NotificationCell: UITableViewCell {
     private let bodyLabel: UILabel = {
         let l = UILabel()
         l.font = .systemFont(ofSize: 13, weight: .regular)
-        l.textColor = AIONDesign.textSecondary
+        l.textColor = .secondaryLabel
         l.numberOfLines = 2
         l.isUserInteractionEnabled = true
         l.translatesAutoresizingMaskIntoConstraints = false
@@ -58,7 +58,7 @@ final class NotificationCell: UITableViewCell {
     private let timeLabel: UILabel = {
         let l = UILabel()
         l.font = .systemFont(ofSize: 11, weight: .medium)
-        l.textColor = AIONDesign.textTertiary
+        l.textColor = .tertiaryLabel
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -86,8 +86,8 @@ final class NotificationCell: UITableViewCell {
     // MARK: - Setup
 
     private func setupUI() {
-        backgroundColor = .clear
-        contentView.backgroundColor = .clear
+        backgroundColor = .secondarySystemGroupedBackground
+        contentView.backgroundColor = .secondarySystemGroupedBackground
         selectionStyle = .none
 
         contentView.addSubview(iconContainer)
@@ -202,11 +202,11 @@ final class NotificationCell: UITableViewCell {
 
             let attr = NSMutableAttributedString(string: body, attributes: [
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
-                .foregroundColor: AIONDesign.textSecondary,
+                .foregroundColor: UIColor.secondaryLabel,
             ])
             attr.addAttributes([
                 .underlineStyle: NSUnderlineStyle.single.rawValue,
-                .foregroundColor: UIColor.white,
+                .foregroundColor: UIColor.label,
                 .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
             ], range: nsRange)
             bodyLabel.attributedText = attr

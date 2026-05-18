@@ -455,7 +455,7 @@ final class UserProfileViewController: UIViewController {
 
         // Tier chip
         tierChip.translatesAutoresizingMaskIntoConstraints = false
-        tierChip.backgroundColor = UIColor.white.withAlphaComponent(0.1)
+        tierChip.backgroundColor = AIONDesign.separator
         tierChip.layer.cornerRadius = 14
         tierChip.layer.borderWidth = 0.5
         tierChip.layer.borderColor = UIColor.white.withAlphaComponent(0.25).cgColor

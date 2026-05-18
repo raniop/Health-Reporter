@@ -26,6 +26,8 @@
 "tab.trends" = "מגמות";
 "tab.insights" = "תובנות";
 "tab.profile" = "פרופיל";
+"tab.overview" = "סקירה";
+"tab.goals" = "יעדים";
 
 /* Login Screen */
 "login.title" = "התחבר כדי להמשיך";
@@ -49,6 +51,27 @@
 /* Profile Screen */
 "profile.title" = "פרופיל";
 "profile.logout" = "התנתק";
+
+/* Profile — Livity-style hub (new) */
+"profile.section.subscription" = "מנוי";
+"profile.section.app" = "אפליקציה";
+"profile.section.more" = "עוד";
+"profile.section.community" = "קהילה";
+"profile.manageSubscriptions" = "ניהול מנוי";
+"profile.manageSubscriptions.desc" = "צפייה וניהול המנויים שלך";
+"profile.preferences" = "העדפות";
+"profile.preferences.desc" = "מראה, בריאות, התראות";
+"profile.integrations" = "אינטגרציות";
+"profile.integrations.desc" = "גרמין, Apple Watch";
+"profile.privacyData" = "פרטיות ומידע";
+"profile.privacyData.desc" = "הסכמה ותנאים משפטיים";
+"profile.helpSupport" = "עזרה ותמיכה";
+"profile.helpSupport.desc" = "מדריך, משוב, יצירת קשר";
+"profile.account" = "חשבון";
+"profile.account.desc" = "ניהול החשבון שלך";
+"profile.voteFeatures" = "הצביעו לתכונות";
+"profile.voteFeatures.desc" = "עזרו לעצב את עתיד Health Reporter";
+"profile.new" = "חדש";
 "profile.logoutConfirm" = "האם אתה בטוח שברצונך להתנתק?";
 "profile.height" = "גובה";
 "profile.weight" = "משקל";
@@ -302,7 +325,7 @@
 "trends.pValue" = "P-VALUE";
 "trends.sampleSize" = "גודל מדגם";
 "trends.proLabInsight" = "PRO-LAB INSIGHT";
-"trends.sleepBoostsRecovery" = "שינה %@h+ מעלה את ההתאוששות ב־%d%%";
+"trends.sleepBoostsRecovery" = "שינה %@h+ מעלה את ההתאוששות ב־%d%";
 "trends.basedOnDays" = "מבוסס על נתונים ביומטריים מ־%d הימים האחרונים.";
 "trends.noBiometricData" = "אין נתונים ביומטריים זמינים עדיין.";
 
@@ -1078,6 +1101,9 @@
 "notifications.title" = "התראות";
 "notifications.empty" = "אין התראות עדיין";
 "notifications.section.recent" = "אחרונות";
+"notifications.clearAll.title" = "לנקות את כל ההתראות?";
+"notifications.clearAll.message" = "כל ההתראות יימחקו לצמיתות. לא ניתן לבטל פעולה זו.";
+"notifications.clearAll.confirm" = "נקה הכל";
 
 "onboarding.healthkit.title" = "חבר את הבריאות שלך";
 "onboarding.healthkit.subtitle" = "פתח תובנות עוצמתיות מהנתונים שלך";
@@ -1234,3 +1260,252 @@
 "explanation.activity_score" = "רמת פעילות יומית על בסיס צעדים, דקות פעילות ותנועה";
 "explanation.daily_goals" = "התקדמות לעבר יעדי תנועה, אימון ועמידה יומיים";
 "explanation.cardio_fitness_trend" = "מגמת כושר קרדיווסקולרי על בסיס הערכות VO2 max";
+
+/* ========== Livity - Overview & Goals ========== */
+
+/* Overview - Header */
+"livity.overview.title" = "סקירה";
+"livity.overview.bodyBattery" = "סוללת הגוף";
+
+/* Overview - AI Analysis card */
+"livity.ai.title" = "ניתוח AI";
+"livity.ai.prompt" = "קבל ניתוח AI מותאם אישית ליום שלך!";
+"livity.ai.open" = "פתח ניתוח";
+"livity.ai.unlock" = "פתח את AION Pro";
+
+/* Overview - No sleep data banner */
+"livity.banner.noSleepTitle" = "אין עדיין נתונים";
+"livity.banner.noSleepSubtitle" = "ענוד את ה-Apple Watch הלילה כדי לראות את הציונים שלך";
+
+/* Overview - Body Battery card */
+"livity.bodyBattery.title" = "סוללת הגוף";
+"livity.bodyBattery.currentLevel" = "רמה נוכחית";
+
+/* Overview - Stress card */
+"livity.stress.title" = "המתח היום";
+"livity.stress.average" = "ממוצע";
+"livity.stress.peak" = "שיא";
+"livity.stress.low" = "נמוך";
+"livity.stress.relaxed" = "רגוע";
+"livity.stress.lowLevel" = "נמוך";
+"livity.stress.moderate" = "בינוני";
+"livity.stress.high" = "גבוה";
+
+/* Overview - Energy Balance card */
+"livity.energy.title" = "מאזן אנרגיה";
+"livity.energy.noFood" = "לא נרשם אוכל היום";
+"livity.energy.useApps" = "השתמש ב-MyFitnessPal, Cronometer או כל אפליקציית Apple Health";
+"livity.energy.logged" = "נרשם";
+
+/* Overview - Strain card */
+"livity.strain.title" = "עומס";
+"livity.strain.totalEnergy" = "אנרגיה כוללת";
+"livity.strain.activeEnergy" = "אנרגיה פעילה";
+"livity.strain.steps" = "צעדים";
+
+/* Overview - Sleep card */
+"livity.sleep.title" = "שינה";
+"livity.sleep.deep" = "שינה עמוקה";
+"livity.sleep.rem" = "REM";
+"livity.sleep.awake" = "ערות";
+"livity.sleep.time" = "זמן שינה";
+
+/* Overview - Recovery card */
+"livity.recovery.title" = "התאוששות";
+"livity.recovery.hrv" = "HRV";
+"livity.recovery.rhr" = "RHR";
+"livity.recovery.resp" = "נשימה";
+"livity.recovery.spo2" = "Spo2";
+"livity.recovery.wristTemp" = "טמפ' שורש כף יד";
+
+/* Overview - Daylight card */
+"livity.daylight.title" = "זמן באור יום";
+"livity.daylight.noHistory" = "אין עדיין היסטוריה";
+
+/* Overview - Buckets */
+"livity.bucket.bottom33" = "תחתון 33%";
+"livity.bucket.middle33" = "אמצעי 33%";
+"livity.bucket.top33" = "עליון 33%";
+"livity.bucket.bottom40" = "תחתון 40%";
+"livity.bucket.middle40" = "אמצעי 40%";
+"livity.bucket.top40" = "עליון 40%";
+
+/* Overview - Circadian Phases */
+"livity.phase.earlyMorning" = "בוקר מוקדם";
+"livity.phase.morningPeak" = "שיא הבוקר";
+"livity.phase.midday" = "אמצע היום";
+"livity.phase.afternoonDip" = "צניחת הצהריים";
+"livity.phase.evening" = "ערב";
+"livity.phase.earlyNight" = "לילה מוקדם";
+"livity.phase.circadianNadir" = "שפל צירקדי";
+
+/* Overview - Phase subtitles */
+"livity.phase.earlyMorning.subtitle" = "עליית קורטיזול";
+"livity.phase.morningPeak.subtitle" = "חלון אנרגיה גבוה";
+"livity.phase.midday.subtitle" = "ריכוז יציב";
+"livity.phase.afternoonDip.subtitle" = "הסוללה מתרוקנת מהר יותר";
+"livity.phase.evening.subtitle" = "שלב רגיעה";
+"livity.phase.earlyNight.subtitle" = "טעינה מחדש";
+"livity.phase.circadianNadir.subtitle" = "המנוחה העמוקה ביותר";
+
+/* Overview - Body Battery detail */
+"livity.bbDetail.currentPhase" = "שלב נוכחי";
+"livity.bbDetail.virtualCoach" = "מאמן וירטואלי";
+"livity.bbDetail.virtualCoachText" = "סוללת הגוף שלך בטווח טוב. הישאר רווי בנוזלים וקח הפסקות תנועה קצרות הצהריים כדי להישאר רענן.";
+"livity.bbDetail.charged" = "נטען";
+"livity.bbDetail.drained" = "התרוקן";
+"livity.bbDetail.chart" = "גרף סוללה";
+"livity.bbDetail.rhythms" = "מקצבים צירקדיים";
+"livity.bbDetail.whatIs" = "מהי סוללת הגוף?";
+"livity.bbDetail.description" = "סוללת הגוף מודדת את רמות האנרגיה שלך לאורך היום בסקאלה של 0–100. היא לוקחת בחשבון את השונות בקצב הלב, רמות מתח, פעילות גופנית ואיכות שינה כדי לתת תובנות על מצב האנרגיה של הגוף שלך.";
+"livity.bbDetail.factor.hrv" = "שונות קצב לב";
+"livity.bbDetail.factor.stress" = "רמת מתח";
+"livity.bbDetail.factor.activity" = "פעילות גופנית";
+"livity.bbDetail.factor.sleep" = "איכות שינה";
+"livity.bbDetail.now" = "עכשיו";
+
+/* Overview - Common detail labels */
+"livity.detail.showMore" = "קרא עוד";
+"livity.detail.showLess" = "הצג פחות";
+"livity.detail.monthlyTrends" = "מגמות חודשיות";
+"livity.detail.worseThanUsual" = "גרוע מהרגיל";
+"livity.detail.betterThanUsual" = "טוב מהרגיל";
+"livity.detail.noData" = "אין נתונים";
+
+/* Calendar weekday abbreviations */
+"livity.weekday.sun" = "א׳";
+"livity.weekday.mon" = "ב׳";
+"livity.weekday.tue" = "ג׳";
+"livity.weekday.wed" = "ד׳";
+"livity.weekday.thu" = "ה׳";
+"livity.weekday.fri" = "ו׳";
+"livity.weekday.sat" = "ש׳";
+
+/* Goals Screen */
+"livity.goals.title" = "יעדים";
+"livity.goals.emptyTitle" = "אין עדיין הרגלים";
+"livity.goals.emptySubtitle" = "הקש על + כדי להוסיף את ההרגל הראשון שלך ולבנות רצפים.";
+
+/* Habit card */
+"livity.habit.streak.single" = "רצף %d ימים";
+"livity.habit.streak.none" = "אין רצף";
+"livity.habit.best" = "שיא: %d";
+"livity.habit.loading" = "טוען היסטוריה…";
+"livity.habit.freq.today" = "היום";
+"livity.habit.freq.thisWeek" = "השבוע";
+"livity.habit.freq.thisMonth" = "החודש";
+
+/* Habit heatmap legend */
+"livity.habit.legend.today" = "היום";
+"livity.habit.legend.notMet" = "לא הושג";
+"livity.habit.legend.met" = "הושג";
+"livity.habit.weekday.m" = "ב׳";
+"livity.habit.weekday.w" = "ד׳";
+"livity.habit.weekday.f" = "ו׳";
+
+/* Habit types (display names) */
+"livity.habitType.steps" = "צעדים";
+"livity.habitType.floorsClimbed" = "קומות שטיפסת";
+"livity.habitType.caloriesBurned" = "קלוריות שנשרפו";
+"livity.habitType.caloriesConsumed" = "קלוריות שנצרכו";
+"livity.habitType.proteinIntake" = "צריכת חלבון";
+"livity.habitType.waterIntake" = "שתיית מים";
+"livity.habitType.sunExposure" = "חשיפה לשמש";
+"livity.habitType.sleepDuration" = "משך שינה";
+"livity.habitType.bedtime" = "שעת שינה";
+"livity.habitType.workoutCount" = "כמות אימונים";
+"livity.habitType.workoutDistance" = "מרחק אימון";
+"livity.habitType.workoutDuration" = "משך אימון";
+
+/* Habit units */
+"livity.unit.steps" = "צעדים";
+"livity.unit.floors" = "קומות";
+"livity.unit.kcal" = "קק״ל";
+"livity.unit.g" = "גרם";
+"livity.unit.ml" = "מ״ל";
+"livity.unit.min" = "דק׳";
+"livity.unit.h" = "שע׳";
+"livity.unit.workouts" = "אימונים";
+"livity.unit.km" = "ק״מ";
+
+/* Habit frequency */
+"livity.freq.daily" = "יומי";
+"livity.freq.weekly" = "שבועי";
+"livity.freq.monthly" = "חודשי";
+"livity.freq.daily.subtitle" = "עקוב אחר התקדמות כל יום";
+"livity.freq.weekly.subtitle" = "עקוב אחר התקדמות כל שבוע";
+"livity.freq.monthly.subtitle" = "עקוב אחר התקדמות כל חודש";
+
+/* Add habit sheet */
+"livity.addHabit.title" = "הוסף הרגל";
+"livity.addHabit.whatToTrack" = "מה למדוד";
+"livity.addHabit.howOften" = "באיזו תדירות";
+"livity.addHabit.goal" = "יעד";
+"livity.addHabit.color" = "צבע";
+"livity.addHabit.reminders" = "תזכורות";
+"livity.addHabit.data" = "נתונים";
+"livity.addHabit.historical" = "נתונים היסטוריים";
+"livity.addHabit.historicalSubtitle" = "סנכרן שנה אחורה מ-Health";
+"livity.addHabit.dailyReminders" = "תזכורות יומיות";
+"livity.addHabit.dailyRemindersSubtitle" = "קבל התראה על ההתקדמות שלך";
+"livity.addHabit.goalCompleted" = "יעד הושג";
+"livity.addHabit.goalCompletedSubtitle" = "חגוג כשאתה משיג את המטרה";
+"livity.addHabit.progressReminder" = "תזכורת התקדמות";
+"livity.addHabit.progressReminderSubtitle" = "דחיפה אם היעד עוד לא הושג";
+"livity.addHabit.reminderTime" = "זמן תזכורת";
+"livity.addHabit.reminderTimeSubtitle" = "מתי לבדוק את ההתקדמות שלך";
+
+/* AI enable sheet */
+"livity.aiSheet.title" = "ל-AION יש עכשיו AI";
+"livity.aiSheet.subtitle" = "שוחח עם ה-AI וקבל תובנות על השינה, ההתאוששות והאימונים שלך. שאל כל דבר על נתוני הבריאות שלך.";
+"livity.aiSheet.privacy" = "הפרטיות שלך";
+"livity.aiSheet.privacy1" = "אנחנו לא שומרים את היסטוריית הצ'אטים עם ה-AI";
+"livity.aiSheet.privacy2" = "הנתונים האישיים שלך אף פעם לא נשמרים בשרתים שלנו";
+"livity.aiSheet.privacy3" = "רק נתונים אנונימיים נשלחים לשרתי ה-AI כדי להפיק את התשובות שלך";
+"livity.aiSheet.enable" = "הפעל AI";
+"livity.aiSheet.noThanks" = "לא תודה";
+"livity.aiSheet.note" = "אפשר לשנות את זה בכל עת בהגדרות";
+
+/* Activity status sheet */
+"livity.activity.title" = "סטטוס פעילות";
+"livity.activity.subtitle" = "התאם זמנית את היעדים שלך להתאוששות. יעדי עומס יקטנו והמלצות שינה יגדלו.";
+"livity.activity.question" = "מה הסטטוס שלך?";
+"livity.activity.save" = "שמור";
+"livity.activity.active" = "פעיל";
+"livity.activity.injury" = "פציעה";
+"livity.activity.sickness" = "מחלה";
+"livity.activity.rest" = "מנוחה";
+"livity.activity.active.sub" = "בריא ומתאמן כרגיל";
+"livity.activity.injury.sub" = "מתאושש מפציעה פיזית";
+"livity.activity.sickness.sub" = "מתאושש ממחלה או זיהום";
+"livity.activity.rest.sub" = "לוקח הפסקה למנוחה או לבריאות הנפש";
+
+/* Car Tier card + detail */
+"livity.carTier.title" = "הרכב שלך";
+"livity.carTier.empty" = "הרץ ניתוח AI";
+"livity.carTier.empty.title" = "אין עדיין ניתוח";
+"livity.carTier.empty.subtitle" = "הרץ ניתוח AI כדי לפתוח את דרגת הרכב והפירוט שלך.";
+"livity.carTier.breakdown" = "פירוט ציונים";
+"livity.carTier.whatIs" = "מהו הרכב שלך?";
+"livity.carTier.description" = "הרכב מייצג את דרגת הבריאות הכוללת שלך על בסיס ניתוח ה-AI של המדדים היומיים. ציונים גבוהים יותר פותחים רכבים מהירים יותר — מרכב עירוני ועד לסופרקאר.";
+"livity.carTier.metric.health" = "בריאות";
+"livity.carTier.metric.sleep" = "שינה";
+"livity.carTier.metric.readiness" = "מוכנות";
+"livity.carTier.metric.energy" = "אנרגיה";
+"livity.carTier.metric.nervousSystem" = "מערכת עצבים";
+"livity.carTier.metric.activity" = "פעילות";
+"livity.carTier.metric.loadBalance" = "איזון עומס";
+"livity.carTier.metric.recoveryDebt" = "חוב התאוששות";
+
+/* AI Analysis detail */
+"livity.aiDetail.title" = "ניתוח AI";
+"livity.aiDetail.healthScore" = "ציון בריאות";
+"livity.aiDetail.recommendations" = "המלצות";
+"livity.aiDetail.reco.medical" = "רפואי";
+"livity.aiDetail.reco.sports" = "ספורט";
+"livity.aiDetail.reco.nutrition" = "תזונה";
+"livity.aiDetail.breakdown" = "פירוט ציונים";
+"livity.aiDetail.empty.title" = "אין עדיין ניתוח";
+"livity.aiDetail.empty.subtitle" = "הרץ ניתוח כדי לראות כאן את התובנות שלך.";
+
+"livity.ai.generating" = "מייצר ניתוח AI…";

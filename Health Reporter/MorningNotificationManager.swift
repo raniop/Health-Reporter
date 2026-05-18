@@ -175,6 +175,11 @@ final class MorningNotificationManager {
     /// Fetches fresh data and replaces the pending notification content.
     /// Called from BGTask, Cloud Function silent push, and foreground entry.
     /// Does NOT send a new notification — only updates the pending one.
+    ///
+    /// Refresh is skipped when the new content is *strictly poorer* than what's
+    /// already pending — e.g. BGTask runs before HealthKit has synced, fetches
+    /// nothing, builds a generic "morning.notification.checkin" body, and would
+    /// otherwise overwrite a rich notification scheduled the previous day.
     func refreshPendingNotification(completion: ((Bool) -> Void)? = nil) {
         guard isEnabled else {
             completion?(false)
@@ -186,24 +191,41 @@ final class MorningNotificationManager {
                 completion?(false)
                 return
             }
+            let newRichness = (content.userInfo[Self.richnessKey] as? Int) ?? 0
 
-            NotificationScheduler.scheduleCalendarNotification(
-                identifier: self.notificationIdentifier,
-                content: content,
-                hour: self.notificationHour,
-                minute: self.notificationMinute,
-                repeats: true
-            ) { error in
-                if let error = error {
-                    print("🔔 [MorningNotification] Failed to refresh: \(error)")
+            UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+                let existing = requests.first { $0.identifier == self.notificationIdentifier }
+                let existingRichness = (existing?.content.userInfo[Self.richnessKey] as? Int) ?? 0
+
+                if existing != nil && newRichness < existingRichness {
+                    print("🔔 [MorningNotification] Skipping refresh: new richness \(newRichness) < existing \(existingRichness) — keeping pending content")
                     completion?(false)
-                } else {
-                    print("🔔 [MorningNotification] ✅ Refreshed with fresh data")
-                    completion?(true)
+                    return
+                }
+
+                NotificationScheduler.scheduleCalendarNotification(
+                    identifier: self.notificationIdentifier,
+                    content: content,
+                    hour: self.notificationHour,
+                    minute: self.notificationMinute,
+                    repeats: true
+                ) { error in
+                    if let error = error {
+                        print("🔔 [MorningNotification] Failed to refresh: \(error)")
+                        completion?(false)
+                    } else {
+                        print("🔔 [MorningNotification] ✅ Refreshed (richness \(newRichness))")
+                        completion?(true)
+                    }
                 }
             }
         }
     }
+
+    /// userInfo key tagging how many real data lines (sleep/readiness/score/steps/streak)
+    /// the notification body carries. Read by `refreshPendingNotification` to
+    /// avoid downgrading rich content to a generic fallback.
+    fileprivate static let richnessKey = "morning.bodyRichness"
 
     // MARK: - Background Refresh
 
@@ -330,7 +352,7 @@ final class MorningNotificationManager {
             }
             content.body = "morning.notification.checkin".localized
             content.sound = .default
-            content.userInfo = ["type": "morning_health"]
+            content.userInfo = ["type": "morning_health", Self.richnessKey: 0]
             return content
         }
 
@@ -470,6 +492,11 @@ final class MorningNotificationManager {
             bodyLines.append(String(format: "morning.streak.line".localized, stepStreak))
         }
 
+        // Snapshot how many *real* data lines are present before we tack on
+        // the motivational closing — that's what `refreshPendingNotification`
+        // uses to avoid overwriting rich content with a fallback.
+        let dataLineCount = bodyLines.count
+
         // 6. Motivational closing
         if includeMotivation {
             let tier: String
@@ -491,6 +518,7 @@ final class MorningNotificationManager {
         }
 
         content.body = bodyLines.isEmpty ? "morning.notification.checkin".localized : bodyLines.joined(separator: "\n")
+        content.userInfo = ["type": "morning_health", Self.richnessKey: dataLineCount]
         return content
     }
 

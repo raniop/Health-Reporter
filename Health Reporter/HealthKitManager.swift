@@ -38,11 +38,19 @@ class HealthKitManager {
             if let t = HKObjectType.characteristicType(forIdentifier: id) { types.insert(t) }
         }
         
-        // Activity and steps
+        // Workouts (HKWorkoutType)
+        types.insert(HKObjectType.workoutType())
+
+        // Activity and movement — all distance + energy variants HealthKit exposes,
+        // plus sport-specific distances so users in wheelchairs / paddlers / skiers
+        // see their data too. iOS 17+ adds running form metrics; iOS 18+ adds
+        // cycling power/speed/cadence and the new effort scores.
         addQ(.stepCount)
         addQ(.distanceWalkingRunning)
         addQ(.distanceCycling)
         addQ(.distanceSwimming)
+        addQ(.distanceWheelchair)
+        addQ(.distanceDownhillSnowSports)
         addQ(.flightsClimbed)
         addQ(.activeEnergyBurned)
         addQ(.basalEnergyBurned)
@@ -50,9 +58,32 @@ class HealthKitManager {
         addQ(.appleMoveTime)
         addQ(.appleStandTime)
         addQ(.pushCount)
-        addQ(.distanceWheelchair)
-        
-        // Heart and cardiovascular
+        addQ(.swimmingStrokeCount)
+        addQ(.nikeFuel)
+        if #available(iOS 16.0, *) {
+            addQ(.runningStrideLength)
+            addQ(.runningVerticalOscillation)
+            addQ(.runningGroundContactTime)
+            addQ(.runningPower)
+            addQ(.runningSpeed)
+            addQ(.underwaterDepth)
+            addQ(.waterTemperature)
+        }
+        if #available(iOS 17.0, *) {
+            addQ(.cyclingPower)
+            addQ(.cyclingSpeed)
+            addQ(.cyclingCadence)
+            addQ(.cyclingFunctionalThresholdPower)
+            addQ(.timeInDaylight)
+            addQ(.physicalEffort)
+        }
+        if #available(iOS 18.0, *) {
+            addQ(.estimatedWorkoutEffortScore)
+            addQ(.workoutEffortScore)
+        }
+
+        // Heart and cardiovascular — every quantity HealthKit publishes, plus
+        // the matching alert categories. AFib burden lives behind iOS 16.
         addQ(.heartRate)
         addQ(.restingHeartRate)
         addQ(.walkingHeartRateAverage)
@@ -63,38 +94,49 @@ class HealthKitManager {
         addQ(.oxygenSaturation)
         addQ(.vo2Max)
         addQ(.peripheralPerfusionIndex)
+        addQ(.electrodermalActivity)
         addC(.highHeartRateEvent)
         addC(.lowHeartRateEvent)
         addC(.irregularHeartRhythmEvent)
-        
-        // Body – weight, height, temperature
+        if #available(iOS 16.0, *) {
+            addQ(.atrialFibrillationBurden)
+        }
+
+        // Body – weight, height, temperature, plus iOS 16+ sleeping wrist temp
+        // (the only intraday core-temp proxy Apple Watch surfaces).
         addQ(.height)
         addQ(.bodyMass)
         addQ(.bodyMassIndex)
         addQ(.bodyFatPercentage)
         addQ(.leanBodyMass)
+        addQ(.waistCircumference)
         addQ(.bodyTemperature)
         addQ(.basalBodyTemperature)
         if #available(iOS 16.0, *) {
             addQ(.appleSleepingWristTemperature)
         }
-        
-        // Respiratory
+
+        // Respiratory + sleep
         addQ(.respiratoryRate)
         addQ(.forcedVitalCapacity)
         addQ(.forcedExpiratoryVolume1)
         addQ(.peakExpiratoryFlowRate)
-        addQ(.oxygenSaturation)
-        
-        // Sleep (sleep quality = sleepAnalysis – stages, duration, etc.)
+        addQ(.inhalerUsage)
         addC(.sleepAnalysis)
         addC(.appleStandHour)
-        
-        // Nutrition
+        if #available(iOS 18.0, *) {
+            addQ(.appleSleepingBreathingDisturbances)
+        }
+
+        // Nutrition — full macro + micronutrient panel so the Energy Balance
+        // card can read whatever the user logs in MyFitnessPal/Cronometer/etc.
         addQ(.dietaryEnergyConsumed)
         addQ(.dietaryProtein)
         addQ(.dietaryCarbohydrates)
         addQ(.dietaryFatTotal)
+        addQ(.dietaryFatMonounsaturated)
+        addQ(.dietaryFatPolyunsaturated)
+        addQ(.dietaryFatSaturated)
         addQ(.dietaryFiber)
         addQ(.dietarySugar)
         addQ(.dietaryCaffeine)
@@ -106,14 +148,32 @@ class HealthKitManager {
         addQ(.dietaryVitaminA)
         addQ(.dietaryVitaminC)
         addQ(.dietaryVitaminD)
+        addQ(.dietaryVitaminE)
+        addQ(.dietaryVitaminK)
+        addQ(.dietaryVitaminB6)
+        addQ(.dietaryVitaminB12)
+        addQ(.dietaryThiamin)
+        addQ(.dietaryRiboflavin)
+        addQ(.dietaryNiacin)
+        addQ(.dietaryFolate)
+        addQ(.dietaryBiotin)
+        addQ(.dietaryPantothenicAcid)
         addQ(.dietaryIron)
         addQ(.dietaryMagnesium)
         addQ(.dietaryZinc)
-        
+        addQ(.dietaryIodine)
+        addQ(.dietarySelenium)
+        addQ(.dietaryCopper)
+        addQ(.dietaryManganese)
+        addQ(.dietaryChromium)
+        addQ(.dietaryMolybdenum)
+        addQ(.dietaryPhosphorus)
+        addQ(.dietaryChloride)
+
         // Blood sugar, insulin
         addQ(.bloodGlucose)
         addQ(.insulinDelivery)
-        
+
         // Walking and stability
         addQ(.walkingSpeed)
         addQ(.walkingStepLength)
@@ -123,31 +183,107 @@ class HealthKitManager {
         addQ(.sixMinuteWalkTestDistance)
         addQ(.stairAscentSpeed)
         addQ(.stairDescentSpeed)
-        
-        // Swimming, workout
-        addQ(.swimmingStrokeCount)
         addQ(.numberOfTimesFallen)
-        
+        if #available(iOS 15.0, *) {
+            addC(.appleWalkingSteadinessEvent)
+        }
+
         // Audio and environment
         addQ(.environmentalAudioExposure)
         addQ(.headphoneAudioExposure)
+        addQ(.uvExposure)
         addC(.audioExposureEvent)
-        
-        // Other
+        addC(.environmentalAudioExposureEvent)
+        addC(.headphoneAudioExposureEvent)
+        if #available(iOS 18.0, *) {
+            addQ(.environmentalSoundReduction)
+        }
+
+        // Lifestyle / wellness events
         addQ(.bloodAlcoholContent)
         addQ(.numberOfAlcoholicBeverages)
-        addQ(.uvExposure)
         addC(.mindfulSession)
         addC(.handwashingEvent)
         addC(.toothbrushingEvent)
-        
+        addC(.lowCardioFitnessEvent)
+
+        // Mental health (iOS 17+) — mood logs use the dedicated stateOfMind
+        // sample type rather than a quantity/category identifier.
+        if #available(iOS 18.0, *) {
+            types.insert(HKObjectType.stateOfMindType())
+        }
+
+        // Reproductive health — full cycle tracking surface so we surface what
+        // the user already logs in Apple Health.
+        addC(.menstrualFlow)
+        addC(.intermenstrualBleeding)
+        addC(.ovulationTestResult)
+        addC(.cervicalMucusQuality)
+        addC(.sexualActivity)
+        addC(.contraceptive)
+        addC(.lactation)
+        addC(.pregnancy)
+        addC(.pregnancyTestResult)
+        if #available(iOS 16.0, *) {
+            addC(.persistentIntermenstrualBleeding)
+            addC(.prolongedMenstrualPeriods)
+            addC(.irregularMenstrualCycles)
+            addC(.infrequentMenstrualCycles)
+            addC(.progesteroneTestResult)
+        }
+
+        // Symptoms — every category Apple Health exposes. Users log these and
+        // we want to surface them as context (e.g. low recovery + headache).
+        addC(.abdominalCramps)
+        addC(.acne)
+        addC(.appetiteChanges)
+        addC(.bladderIncontinence)
+        addC(.bloating)
+        addC(.breastPain)
+        addC(.chestTightnessOrPain)
+        addC(.chills)
+        addC(.constipation)
+        addC(.coughing)
+        addC(.diarrhea)
+        addC(.dizziness)
+        addC(.drySkin)
+        addC(.fainting)
+        addC(.fatigue)
+        addC(.fever)
+        addC(.generalizedBodyAche)
+        addC(.hairLoss)
+        addC(.headache)
+        addC(.heartburn)
+        addC(.hotFlashes)
+        addC(.lossOfSmell)
+        addC(.lossOfTaste)
+        addC(.lowerBackPain)
+        addC(.memoryLapse)
+        addC(.moodChanges)
+        addC(.nausea)
+        addC(.nightSweats)
+        addC(.pelvicPain)
+        addC(.rapidPoundingOrFlutteringHeartbeat)
+        addC(.runnyNose)
+        addC(.shortnessOfBreath)
+        addC(.sinusCongestion)
+        addC(.skippedHeartbeat)
+        addC(.sleepChanges)
+        addC(.soreThroat)
+        addC(.vaginalDryness)
+        addC(.vomiting)
+        addC(.wheezing)
+
         // Characteristics (age, sex, etc.)
         addX(.dateOfBirth)
         addX(.biologicalSex)
         addX(.bloodType)
         addX(.fitzpatrickSkinType)
         addX(.wheelchairUse)
-        
+        if #available(iOS 17.0, *) {
+            addX(.activityMoveMode)
+        }
+
         return types
     }()
     

@@ -27,28 +27,92 @@ class WatchHealthKitManager {
         return HKHealthStore.isHealthDataAvailable()
     }
 
-    /// The set of HealthKit types we need to read (safe — skips any nil types)
+    /// The set of HealthKit types we need to read (safe — skips any nil types).
+    /// Mirrors the phone app's read set for the metrics Apple Watch can record
+    /// or display directly: activity, vitals, respiratory, sleep, basic body
+    /// measurements, and the iOS 16/17/18 watch-native types.
     private var typesToRead: Set<HKObjectType> {
         var types: Set<HKObjectType> = []
-
-        // Activity
-        let quantityIds: [HKQuantityTypeIdentifier] = [
-            .stepCount, .activeEnergyBurned, .appleExerciseTime,
-            .heartRate, .restingHeartRate, .heartRateVariabilitySDNN
-        ]
-        for id in quantityIds {
+        func addQ(_ id: HKQuantityTypeIdentifier) {
             if let t = HKQuantityType.quantityType(forIdentifier: id) { types.insert(t) }
         }
-
-        let categoryIds: [HKCategoryTypeIdentifier] = [
-            .appleStandHour, .sleepAnalysis
-        ]
-        for id in categoryIds {
+        func addC(_ id: HKCategoryTypeIdentifier) {
             if let t = HKCategoryType.categoryType(forIdentifier: id) { types.insert(t) }
         }
 
-        // Activity summary for goals
+        // Activity & energy
+        addQ(.stepCount)
+        addQ(.distanceWalkingRunning)
+        addQ(.distanceCycling)
+        addQ(.distanceSwimming)
+        addQ(.distanceWheelchair)
+        addQ(.flightsClimbed)
+        addQ(.activeEnergyBurned)
+        addQ(.basalEnergyBurned)
+        addQ(.appleExerciseTime)
+        addQ(.appleMoveTime)
+        addQ(.appleStandTime)
+        addQ(.pushCount)
+        addQ(.swimmingStrokeCount)
+
+        // Heart & cardiovascular
+        addQ(.heartRate)
+        addQ(.restingHeartRate)
+        addQ(.walkingHeartRateAverage)
+        addQ(.heartRateRecoveryOneMinute)
+        addQ(.heartRateVariabilitySDNN)
+        addQ(.oxygenSaturation)
+        addQ(.vo2Max)
+        addC(.highHeartRateEvent)
+        addC(.lowHeartRateEvent)
+        addC(.irregularHeartRhythmEvent)
+        if #available(watchOS 9.0, *) {
+            addQ(.atrialFibrillationBurden)
+        }
+
+        // Respiratory + temperature
+        addQ(.respiratoryRate)
+        addQ(.bodyTemperature)
+        if #available(watchOS 9.0, *) {
+            addQ(.appleSleepingWristTemperature)
+        }
+
+        // Sleep + stand + walking steadiness
+        addC(.sleepAnalysis)
+        addC(.appleStandHour)
+        addQ(.appleWalkingSteadiness)
+        addQ(.walkingSpeed)
+        addQ(.walkingStepLength)
+        addQ(.walkingAsymmetryPercentage)
+        addQ(.walkingDoubleSupportPercentage)
+        addQ(.stairAscentSpeed)
+        addQ(.stairDescentSpeed)
+
+        // Body
+        addQ(.bodyMass)
+        addQ(.bodyFatPercentage)
+        addQ(.leanBodyMass)
+        addQ(.height)
+
+        // Audio
+        addQ(.environmentalAudioExposure)
+        addQ(.headphoneAudioExposure)
+        addC(.audioExposureEvent)
+
+        // Wellness events
+        addC(.mindfulSession)
+        addC(.handwashingEvent)
+        addC(.toothbrushingEvent)
+
+        // Daylight (watchOS 10+)
+        if #available(watchOS 10.0, *) {
+            addQ(.timeInDaylight)
+        }
+
+        // Workouts + activity summary
+        types.insert(HKObjectType.workoutType())
         types.insert(HKObjectType.activitySummaryType())
+
         return types
     }
 

@@ -26,6 +26,8 @@
 "tab.trends" = "Trends";
 "tab.insights" = "Insights";
 "tab.profile" = "Profile";
+"tab.overview" = "Overview";
+"tab.goals" = "Goals";
 
 /* Login Screen */
 "login.title" = "Sign in to continue";
@@ -49,6 +51,27 @@
 /* Profile Screen */
 "profile.title" = "Profile";
 "profile.logout" = "Logout";
+
+/* Profile — Livity-style hub (new) */
+"profile.section.subscription" = "Subscription";
+"profile.section.app" = "App";
+"profile.section.more" = "More";
+"profile.section.community" = "Community";
+"profile.manageSubscriptions" = "Manage Subscriptions";
+"profile.manageSubscriptions.desc" = "View and manage your subscriptions";
+"profile.preferences" = "Preferences";
+"profile.preferences.desc" = "Appearance, health, notifications";
+"profile.integrations" = "Integrations";
+"profile.integrations.desc" = "Garmin, Apple Watch";
+"profile.privacyData" = "Privacy & Data";
+"profile.privacyData.desc" = "Consent and legal";
+"profile.helpSupport" = "Help & Support";
+"profile.helpSupport.desc" = "Manual, feedback, contact us";
+"profile.account" = "Account";
+"profile.account.desc" = "Manage your account";
+"profile.voteFeatures" = "Vote for Features";
+"profile.voteFeatures.desc" = "Help shape the future of Health Reporter";
+"profile.new" = "NEW";
 "profile.logoutConfirm" = "Are you sure you want to logout?";
 "profile.height" = "Height";
 "profile.weight" = "Weight";
@@ -318,7 +341,7 @@
 "trends.pValue" = "P-VALUE";
 "trends.sampleSize" = "Sample size";
 "trends.proLabInsight" = "PRO-LAB INSIGHT";
-"trends.sleepBoostsRecovery" = "%@h+ sleep boosts recovery by %d%%";
+"trends.sleepBoostsRecovery" = "%@h+ sleep boosts recovery by %d%";
 "trends.basedOnDays" = "Based on biometric data from the last %d days.";
 "trends.noBiometricData" = "No biometric data available yet.";
 
@@ -1074,6 +1097,9 @@
 "notifications.title" = "Notifications";
 "notifications.empty" = "No notifications yet";
 "notifications.section.recent" = "Recent";
+"notifications.clearAll.title" = "Clear All Notifications?";
+"notifications.clearAll.message" = "This will permanently delete every notification. This cannot be undone.";
+"notifications.clearAll.confirm" = "Clear All";
 
 "onboarding.healthkit.title" = "Connect Your Health";
 "onboarding.healthkit.subtitle" = "Unlock powerful insights from your data";
@@ -1230,3 +1256,252 @@
 "explanation.activity_score" = "Daily activity level based on steps, exercise minutes and movement";
 "explanation.daily_goals" = "Progress towards daily movement, exercise and stand goals";
 "explanation.cardio_fitness_trend" = "Trend in cardiovascular fitness based on VO2 max estimates";
+
+/* ========== Livity - Overview & Goals ========== */
+
+/* Overview - Header */
+"livity.overview.title" = "OVERVIEW";
+"livity.overview.bodyBattery" = "BODY BATTERY";
+
+/* Overview - AI Analysis card */
+"livity.ai.title" = "AI ANALYSIS";
+"livity.ai.prompt" = "Get personalised AI analysis for your day!";
+"livity.ai.open" = "Open analysis";
+"livity.ai.unlock" = "Unlock AION Pro";
+
+/* Overview - No sleep data banner */
+"livity.banner.noSleepTitle" = "No data yet";
+"livity.banner.noSleepSubtitle" = "Wear your Apple Watch tonight to see your scores";
+
+/* Overview - Body Battery card */
+"livity.bodyBattery.title" = "Body Battery";
+"livity.bodyBattery.currentLevel" = "Current Level";
+
+/* Overview - Stress card */
+"livity.stress.title" = "Today's Stress";
+"livity.stress.average" = "Average";
+"livity.stress.peak" = "Peak";
+"livity.stress.low" = "Low";
+"livity.stress.relaxed" = "Relaxed";
+"livity.stress.lowLevel" = "Low";
+"livity.stress.moderate" = "Moderate";
+"livity.stress.high" = "High";
+
+/* Overview - Energy Balance card */
+"livity.energy.title" = "Energy Balance";
+"livity.energy.noFood" = "No food logged today";
+"livity.energy.useApps" = "Use MyFitnessPal, Cronometer, or any Apple Health app";
+"livity.energy.logged" = "Logged";
+
+/* Overview - Strain card */
+"livity.strain.title" = "STRAIN";
+"livity.strain.totalEnergy" = "Total Energy";
+"livity.strain.activeEnergy" = "Active Energy";
+"livity.strain.steps" = "Steps";
+
+/* Overview - Sleep card */
+"livity.sleep.title" = "SLEEP";
+"livity.sleep.deep" = "Deep sleep";
+"livity.sleep.rem" = "REM";
+"livity.sleep.awake" = "Awake";
+"livity.sleep.time" = "Sleep time";
+
+/* Overview - Recovery card */
+"livity.recovery.title" = "RECOVERY";
+"livity.recovery.hrv" = "HRV";
+"livity.recovery.rhr" = "RHR";
+"livity.recovery.resp" = "Resp";
+"livity.recovery.spo2" = "Spo2";
+"livity.recovery.wristTemp" = "Wrist temp";
+
+/* Overview - Daylight card */
+"livity.daylight.title" = "Time in Daylight";
+"livity.daylight.noHistory" = "No history yet";
+
+/* Overview - Buckets */
+"livity.bucket.bottom33" = "Bottom 33%";
+"livity.bucket.middle33" = "Middle 33%";
+"livity.bucket.top33" = "Top 33%";
+"livity.bucket.bottom40" = "Bottom 40%";
+"livity.bucket.middle40" = "Middle 40%";
+"livity.bucket.top40" = "Top 40%";
+
+/* Overview - Circadian Phases */
+"livity.phase.earlyMorning" = "Early Morning";
+"livity.phase.morningPeak" = "Morning Peak";
+"livity.phase.midday" = "Midday";
+"livity.phase.afternoonDip" = "Afternoon Dip";
+"livity.phase.evening" = "Evening";
+"livity.phase.earlyNight" = "Early Night";
+"livity.phase.circadianNadir" = "Circadian Nadir";
+
+/* Overview - Phase subtitles */
+"livity.phase.earlyMorning.subtitle" = "Cortisol rising";
+"livity.phase.morningPeak.subtitle" = "High energy window";
+"livity.phase.midday.subtitle" = "Sustained focus";
+"livity.phase.afternoonDip.subtitle" = "Battery drains faster";
+"livity.phase.evening.subtitle" = "Wind-down phase";
+"livity.phase.earlyNight.subtitle" = "Recharging";
+"livity.phase.circadianNadir.subtitle" = "Deepest rest";
+
+/* Overview - Body Battery detail */
+"livity.bbDetail.currentPhase" = "CURRENT PHASE";
+"livity.bbDetail.virtualCoach" = "Virtual Coach";
+"livity.bbDetail.virtualCoachText" = "Your body battery is in a good range. Keep hydrated and take short movement breaks this afternoon to stay fresh.";
+"livity.bbDetail.charged" = "Charged";
+"livity.bbDetail.drained" = "Drained";
+"livity.bbDetail.chart" = "Battery Chart";
+"livity.bbDetail.rhythms" = "Circadian Rhythms";
+"livity.bbDetail.whatIs" = "What is Body Battery?";
+"livity.bbDetail.description" = "Body Battery measures your energy levels throughout the day on a scale of 0–100. It considers your heart rate variability, stress levels, physical activity, and sleep quality to provide insights into your body's energy state.";
+"livity.bbDetail.factor.hrv" = "Heart Rate Variability";
+"livity.bbDetail.factor.stress" = "Stress Level";
+"livity.bbDetail.factor.activity" = "Physical Activity";
+"livity.bbDetail.factor.sleep" = "Sleep Quality";
+"livity.bbDetail.now" = "NOW";
+
+/* Overview - Common detail labels */
+"livity.detail.showMore" = "Read More";
+"livity.detail.showLess" = "Show Less";
+"livity.detail.monthlyTrends" = "Monthly Trends";
+"livity.detail.worseThanUsual" = "Worse than usual";
+"livity.detail.betterThanUsual" = "Better than usual";
+"livity.detail.noData" = "No data";
+
+/* Calendar weekday abbreviations */
+"livity.weekday.sun" = "SUN";
+"livity.weekday.mon" = "MON";
+"livity.weekday.tue" = "TUE";
+"livity.weekday.wed" = "WED";
+"livity.weekday.thu" = "THU";
+"livity.weekday.fri" = "FRI";
+"livity.weekday.sat" = "SAT";
+
+/* Goals Screen */
+"livity.goals.title" = "Goals";
+"livity.goals.emptyTitle" = "No habits yet";
+"livity.goals.emptySubtitle" = "Tap + to add your first habit and start building streaks.";
+
+/* Habit card */
+"livity.habit.streak.single" = "%d day streak";
+"livity.habit.streak.none" = "No streak";
+"livity.habit.best" = "Best: %d";
+"livity.habit.loading" = "Loading history…";
+"livity.habit.freq.today" = "today";
+"livity.habit.freq.thisWeek" = "this week";
+"livity.habit.freq.thisMonth" = "this month";
+
+/* Habit heatmap legend */
+"livity.habit.legend.today" = "Today";
+"livity.habit.legend.notMet" = "Not Met";
+"livity.habit.legend.met" = "Met";
+"livity.habit.weekday.m" = "M";
+"livity.habit.weekday.w" = "W";
+"livity.habit.weekday.f" = "F";
+
+/* Habit types (display names) */
+"livity.habitType.steps" = "Steps";
+"livity.habitType.floorsClimbed" = "Floors Climbed";
+"livity.habitType.caloriesBurned" = "Calories Burned";
+"livity.habitType.caloriesConsumed" = "Calories Consumed";
+"livity.habitType.proteinIntake" = "Protein Intake";
+"livity.habitType.waterIntake" = "Water Intake";
+"livity.habitType.sunExposure" = "Sun Exposure";
+"livity.habitType.sleepDuration" = "Sleep Duration";
+"livity.habitType.bedtime" = "Bedtime";
+"livity.habitType.workoutCount" = "Workout Count";
+"livity.habitType.workoutDistance" = "Workout Distance";
+"livity.habitType.workoutDuration" = "Workout Duration";
+
+/* Habit units */
+"livity.unit.steps" = "steps";
+"livity.unit.floors" = "floors";
+"livity.unit.kcal" = "kcal";
+"livity.unit.g" = "g";
+"livity.unit.ml" = "ml";
+"livity.unit.min" = "min";
+"livity.unit.h" = "h";
+"livity.unit.workouts" = "workouts";
+"livity.unit.km" = "km";
+
+/* Habit frequency */
+"livity.freq.daily" = "Daily";
+"livity.freq.weekly" = "Weekly";
+"livity.freq.monthly" = "Monthly";
+"livity.freq.daily.subtitle" = "Track progress each day";
+"livity.freq.weekly.subtitle" = "Track progress each week";
+"livity.freq.monthly.subtitle" = "Track progress each month";
+
+/* Add habit sheet */
+"livity.addHabit.title" = "Add Habit";
+"livity.addHabit.whatToTrack" = "What to Track";
+"livity.addHabit.howOften" = "How Often";
+"livity.addHabit.goal" = "Goal";
+"livity.addHabit.color" = "Color";
+"livity.addHabit.reminders" = "Reminders";
+"livity.addHabit.data" = "Data";
+"livity.addHabit.historical" = "Historical Data";
+"livity.addHabit.historicalSubtitle" = "Sync past year from Health";
+"livity.addHabit.dailyReminders" = "Daily Reminders";
+"livity.addHabit.dailyRemindersSubtitle" = "Get notified about your progress";
+"livity.addHabit.goalCompleted" = "Goal Completed";
+"livity.addHabit.goalCompletedSubtitle" = "Celebrate when you hit your target";
+"livity.addHabit.progressReminder" = "Progress Reminder";
+"livity.addHabit.progressReminderSubtitle" = "Nudge if goal isn't met yet";
+"livity.addHabit.reminderTime" = "Reminder Time";
+"livity.addHabit.reminderTimeSubtitle" = "When to check your progress";
+
+/* AI enable sheet */
+"livity.aiSheet.title" = "AION NOW HAS AI";
+"livity.aiSheet.subtitle" = "Chat with AI to get insights about your sleep, recovery, and training. Ask anything about your health data.";
+"livity.aiSheet.privacy" = "YOUR PRIVACY";
+"livity.aiSheet.privacy1" = "We don't store your AI chat history";
+"livity.aiSheet.privacy2" = "Your personal data is never stored on our servers";
+"livity.aiSheet.privacy3" = "Only anonymized data is sent to AI servers to generate your answers";
+"livity.aiSheet.enable" = "ENABLE AI";
+"livity.aiSheet.noThanks" = "NO THANKS";
+"livity.aiSheet.note" = "You can change this anytime in Settings";
+
+/* Activity status sheet */
+"livity.activity.title" = "Activity Status";
+"livity.activity.subtitle" = "Temporarily adjust your targets for recovery. Strain goals will be reduced and sleep recommendations increased.";
+"livity.activity.question" = "What's your status?";
+"livity.activity.save" = "Save";
+"livity.activity.active" = "Active";
+"livity.activity.injury" = "Injury";
+"livity.activity.sickness" = "Sickness";
+"livity.activity.rest" = "Rest";
+"livity.activity.active.sub" = "Healthy and training normally";
+"livity.activity.injury.sub" = "Recovering from a physical injury";
+"livity.activity.sickness.sub" = "Recovering from illness or infection";
+"livity.activity.rest.sub" = "Taking a break for rest or mental health";
+
+/* Car Tier card + detail */
+"livity.carTier.title" = "Your Car";
+"livity.carTier.empty" = "Run AI analysis";
+"livity.carTier.empty.title" = "No analysis yet";
+"livity.carTier.empty.subtitle" = "Run AI analysis to unlock your car tier and breakdown.";
+"livity.carTier.breakdown" = "Score Breakdown";
+"livity.carTier.whatIs" = "What is your car?";
+"livity.carTier.description" = "Your car represents your overall health tier based on AI analysis of your daily metrics. Higher scores unlock faster cars — from a city hatchback up to a supercar.";
+"livity.carTier.metric.health" = "Health";
+"livity.carTier.metric.sleep" = "Sleep";
+"livity.carTier.metric.readiness" = "Readiness";
+"livity.carTier.metric.energy" = "Energy";
+"livity.carTier.metric.nervousSystem" = "Nervous System";
+"livity.carTier.metric.activity" = "Activity";
+"livity.carTier.metric.loadBalance" = "Load Balance";
+"livity.carTier.metric.recoveryDebt" = "Recovery Debt";
+
+/* AI Analysis detail */
+"livity.aiDetail.title" = "AI Analysis";
+"livity.aiDetail.healthScore" = "HEALTH SCORE";
+"livity.aiDetail.recommendations" = "Recommendations";
+"livity.aiDetail.reco.medical" = "Medical";
+"livity.aiDetail.reco.sports" = "Sports";
+"livity.aiDetail.reco.nutrition" = "Nutrition";
+"livity.aiDetail.breakdown" = "Score Breakdown";
+"livity.aiDetail.empty.title" = "No analysis yet";
+"livity.aiDetail.empty.subtitle" = "Run an analysis to see your AI insights here.";
+
+"livity.ai.generating" = "Generating AI Analysis…";

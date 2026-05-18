@@ -18,8 +18,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         window = UIWindow(windowScene: windowScene)
-        window?.overrideUserInterfaceStyle = .dark
         setRootByAuth()
+        applyAppearancePreference()
         window?.makeKeyAndVisible()
 
         // Send data to Watch when Gemini analysis completes
@@ -31,6 +31,25 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             let result = notification.object as? GeminiDailyResult
             WatchConnectivityManager.shared.sendPostGeminiDataToWatch(result: result)
         }
+
+        // Re-apply whenever the user toggles Profile → UI Customization → Appearance
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("LivityAppearanceChanged"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in self?.applyAppearancePreference() }
+    }
+
+    /// Reads the user's Profile preference and applies it to the active window.
+    func applyAppearancePreference() {
+        let raw = UserDefaults.standard.string(forKey: "livity.profile.appearance") ?? "system"
+        let style: UIUserInterfaceStyle
+        switch raw {
+        case "light": style = .light
+        case "dark":  style = .dark
+        default:      style = .unspecified
+        }
+        window?.overrideUserInterfaceStyle = style
     }
 
     func setRootByAuth() {

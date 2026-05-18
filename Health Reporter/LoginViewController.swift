@@ -25,7 +25,7 @@ final class LoginViewController: UIViewController {
     private let signInButton = UIButton(type: .system)
     private let dividerView = UIView()
     private let googleButton = UIButton(type: .system)
-    private let appleButton = ASAuthorizationAppleIDButton(type: .signIn, style: .white)
+    private let appleButton = ASAuthorizationAppleIDButton(type: .signIn, style: .black)
     private let signUpHint = UILabel()
     private let loadingOverlay = UIView()
     private let loadingSpinner = UIActivityIndicatorView(style: .large)

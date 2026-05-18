@@ -24,14 +24,14 @@
                             </label>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="accent-bar">
                                 <rect key="frame" x="171.66666666666666" y="510" width="50" height="4"/>
-                                <color key="backgroundColor" red="0.0" green="0.78823529411764703" blue="0.65490196078431373" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <color key="backgroundColor" red="0.22" green="0.55" blue="0.95" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                             </view>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchLogoNew" translatesAutoresizingMaskIntoConstraints="NO" id="logo-img">
                                 <rect key="frame" x="96.666666666666686" y="246" width="200" height="200"/>
                             </imageView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
-                        <color key="backgroundColor" red="0.10999999940395355" green="0.10999999940395355" blue="0.11800000071525574" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="accent-bar" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="a-cx"/>
                             <constraint firstItem="accent-bar" firstAttribute="height" constant="4" id="a-h"/>

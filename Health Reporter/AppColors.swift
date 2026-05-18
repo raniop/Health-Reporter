@@ -15,7 +15,7 @@ enum AppColors {
 
     // MARK: - Surfaces (dark teal background)
     static let backgroundDeepCharcoal = UIColor(hex: "#0A2A3C")!
-    static let surfaceCard = UIColor.white.withAlphaComponent(0.15)
+    static let surfaceCard = AIONDesign.surface
 
     // MARK: - Semantic accents
     static let primaryAccent = UIColor(hex: "#00BFFF")!
@@ -24,9 +24,9 @@ enum AppColors {
 
     // MARK: - Text & borders
     static let textPrimary = UIColor.white
-    static let textSecondary = UIColor.white.withAlphaComponent(0.7)
-    static let borderOverlay = UIColor.white.withAlphaComponent(0.2)
-    static let glassmorphism = UIColor.white.withAlphaComponent(0.12)
+    static let textSecondary = AIONDesign.textSecondary
+    static let borderOverlay = AIONDesign.separator
+    static let glassmorphism = AIONDesign.separator
 
     // MARK: - Layout
     static let borderRadius: CGFloat = 16

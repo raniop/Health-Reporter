@@ -414,9 +414,10 @@ exports.sendBedtimeNotifications = functions.pubsub
               return {uid, success: false};
             }
 
-            await saveNotification(uid, "bedtime_recommendation",
-                "Bedtime Recommendation", "Your personalized bedtime is ready",
-                {timestamp: now.toISOString()}, TAG);
+            // Do NOT persist a Firestore notification here. The real recommendation
+            // is written by the client via upsertBedtimeNotificationForToday after
+            // it generates the Gemini-backed body. Saving a placeholder doc created
+            // duplicate "Your personalized bedtime is ready" junk in the bell.
 
             const res = await sendFCM(token, {
               token,

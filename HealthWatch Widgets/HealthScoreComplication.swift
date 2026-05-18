@@ -11,6 +11,14 @@ import SwiftUI
 struct HealthScoreComplication: Widget {
     let kind: String = "HealthScoreWatch"
 
+    private var supportedFamilies: [WidgetFamily] {
+        #if os(watchOS)
+        return [.accessoryCircular, .accessoryRectangular, .accessoryInline, .accessoryCorner]
+        #else
+        return [.accessoryCircular, .accessoryRectangular, .accessoryInline]
+        #endif
+    }
+
     var body: some WidgetConfiguration {
         StaticConfiguration(
             kind: kind,
@@ -20,12 +28,7 @@ struct HealthScoreComplication: Widget {
         }
         .configurationDisplayName("Health Score")
         .description("Your overall health score")
-        .supportedFamilies([
-            .accessoryCircular,
-            .accessoryRectangular,
-            .accessoryInline,
-            .accessoryCorner
-        ])
+        .supportedFamilies(supportedFamilies)
     }
 }
 
@@ -44,8 +47,10 @@ struct HealthScoreComplicationView: View {
                 RectangularScoreView(data: entry.data)
             case .accessoryInline:
                 InlineScoreView(data: entry.data)
+            #if os(watchOS)
             case .accessoryCorner:
                 CornerScoreView(data: entry.data)
+            #endif
             default:
                 CircularScoreView(data: entry.data)
             }

@@ -44,7 +44,7 @@ final class NotificationsCenterViewController: UIViewController {
         let config = UIImage.SymbolConfiguration(pointSize: 48, weight: .light)
         let iv = UIImageView(image: UIImage(systemName: "bell.slash", withConfiguration: config))
         iv.contentMode = .scaleAspectFit
-        iv.tintColor = AIONDesign.textTertiary
+        iv.tintColor = .tertiaryLabel
         iv.translatesAutoresizingMaskIntoConstraints = false
         return iv
     }()
@@ -52,7 +52,7 @@ final class NotificationsCenterViewController: UIViewController {
     private let emptyStateLabel: UILabel = {
         let l = UILabel()
         l.font = .systemFont(ofSize: 16, weight: .medium)
-        l.textColor = AIONDesign.textSecondary
+        l.textColor = .secondaryLabel
         l.textAlignment = .center
         l.numberOfLines = 0
         l.text = "notifications.empty".localized
@@ -89,11 +89,16 @@ final class NotificationsCenterViewController: UIViewController {
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        // Mark all as read when leaving the screen
-        markAllReadQuietly()
         // Always clear the app icon badge when leaving notifications
         UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
         delegate?.notificationsCenterDidUpdate(self)
+        // Mark all as read, then ping observers — posting the broadcast before
+        // Firestore commits returns the stale unread count, leaving the bell
+        // badge stuck until the user opens-and-closes the sheet a second time.
+        markAllReadQuietly { [weak self] in
+            _ = self
+            NotificationCenter.default.post(name: NSNotification.Name("NotificationItemSaved"), object: nil)
+        }
     }
 
     // MARK: - Setup Navigation
@@ -104,8 +109,8 @@ final class NotificationsCenterViewController: UIViewController {
 
         let appearance = UINavigationBarAppearance()
         appearance.configureWithDefaultBackground()
-        appearance.backgroundColor = AIONDesign.surface
-        appearance.titleTextAttributes = [.foregroundColor: AIONDesign.textPrimary]
+        appearance.backgroundColor = .systemGroupedBackground
+        appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
         navigationItem.standardAppearance = appearance
         navigationItem.scrollEdgeAppearance = appearance
 
@@ -115,14 +120,23 @@ final class NotificationsCenterViewController: UIViewController {
             target: self,
             action: #selector(closeTapped)
         )
-        closeButton.tintColor = AIONDesign.textPrimary
+        closeButton.tintColor = .label
         navigationItem.rightBarButtonItem = closeButton
+
+        let clearAllButton = UIBarButtonItem(
+            image: UIImage(systemName: "trash"),
+            style: .plain,
+            target: self,
+            action: #selector(clearAllTapped)
+        )
+        clearAllButton.tintColor = .label
+        navigationItem.leftBarButtonItem = clearAllButton
     }
 
     // MARK: - Setup UI
 
     private func setupUI() {
-        view.backgroundColor = AIONDesign.surface
+        view.backgroundColor = .systemGroupedBackground
 
         tableView.delegate = self
         tableView.dataSource = self
@@ -181,6 +195,15 @@ final class NotificationsCenterViewController: UIViewController {
             emptyStateView.isHidden = true
         }
 
+        // Purge generic bedtime placeholders first, then fetch so the list comes back clean.
+        FriendsFirestoreSync.deleteGenericBedtimeNotifications(
+            placeholders: AppDelegate.bedtimePlaceholderStrings
+        ) { [weak self] _ in
+            self?.performFetch()
+        }
+    }
+
+    private func performFetch() {
         let group = DispatchGroup()
 
         // Fetch pending follow requests
@@ -240,15 +263,55 @@ final class NotificationsCenterViewController: UIViewController {
         fetchData()
     }
 
-    private func markAllReadQuietly() {
+    @objc private func clearAllTapped() {
+        guard !notifications.isEmpty || !pendingRequests.isEmpty else { return }
+
+        let alert = UIAlertController(
+            title: "notifications.clearAll.title".localized,
+            message: "notifications.clearAll.message".localized,
+            preferredStyle: .actionSheet
+        )
+        alert.addAction(UIAlertAction(title: "notifications.clearAll.confirm".localized, style: .destructive) { [weak self] _ in
+            self?.performClearAll()
+        })
+        alert.addAction(UIAlertAction(title: "cancel".localized, style: .cancel))
+        if let popover = alert.popoverPresentationController {
+            popover.barButtonItem = navigationItem.leftBarButtonItem
+        }
+        present(alert, animated: true)
+    }
+
+    private func performClearAll() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        notifications.removeAll()
+        tableView.reloadData()
+        updateUI()
+        FriendsFirestoreSync.deleteAllNotifications { [weak self] error in
+            guard let self = self else { return }
+            if let error = error {
+                self.showErrorAlert(message: error.localizedDescription)
+                self.fetchData()
+            } else {
+                UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+                self.delegate?.notificationsCenterDidUpdate(self)
+            }
+        }
+    }
+
+    private func markAllReadQuietly(completion: (() -> Void)? = nil) {
         let hasUnread = notifications.contains { !$0.read }
-        guard hasUnread else { return }
-        FriendsFirestoreSync.markAllNotificationsAsRead()
+        guard hasUnread else {
+            completion?()
+            return
+        }
         for i in notifications.indices {
             notifications[i].read = true
         }
         // Clear app icon badge immediately (don't wait for Firestore round-trip)
         UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+        FriendsFirestoreSync.markAllNotificationsAsRead {
+            completion?()
+        }
     }
 
     // MARK: - Follow Request Actions
@@ -379,12 +442,12 @@ extension NotificationsCenterViewController: UITableViewDataSource {
 
     private func makeSectionHeader(title: String, icon: String) -> UIView {
         let container = UIView()
-        container.backgroundColor = AIONDesign.surface
+        container.backgroundColor = .systemGroupedBackground
 
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 13, weight: .heavy)
-        label.textColor = AIONDesign.textSecondary
+        label.textColor = .secondaryLabel
 
         let iconAttachment = NSTextAttachment()
         iconAttachment.image = UIImage(
@@ -395,7 +458,7 @@ extension NotificationsCenterViewController: UITableViewDataSource {
         let attrText = NSMutableAttributedString(attachment: iconAttachment)
         attrText.append(NSAttributedString(string: "  " + title.uppercased(), attributes: [
             .font: UIFont.systemFont(ofSize: 13, weight: .heavy),
-            .foregroundColor: AIONDesign.textSecondary,
+            .foregroundColor: UIColor.secondaryLabel,
             .kern: 0.8 as NSNumber,
         ]))
         label.attributedText = attrText
@@ -438,6 +501,39 @@ extension NotificationsCenterViewController: UITableViewDelegate {
 
         // Show detail for any notification
         showNotificationDetail(notification)
+    }
+
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        guard Section(rawValue: indexPath.section) == .notifications,
+              indexPath.row < notifications.count else {
+            return nil
+        }
+
+        let deleteAction = UIContextualAction(style: .destructive, title: "delete".localized) { [weak self] _, _, complete in
+            self?.deleteNotification(at: indexPath)
+            complete(true)
+        }
+        deleteAction.image = UIImage(systemName: "trash")
+        return UISwipeActionsConfiguration(actions: [deleteAction])
+    }
+
+    private func deleteNotification(at indexPath: IndexPath) {
+        guard indexPath.row < notifications.count else { return }
+        let item = notifications.remove(at: indexPath.row)
+        tableView.deleteRows(at: [indexPath], with: .automatic)
+
+        FriendsFirestoreSync.deleteNotification(item.id) { [weak self] error in
+            guard let self = self else { return }
+            if let error = error {
+                self.showErrorAlert(message: error.localizedDescription)
+                self.fetchData()
+            } else {
+                self.delegate?.notificationsCenterDidUpdate(self)
+                if self.notifications.isEmpty && self.pendingRequests.isEmpty {
+                    self.updateUI()
+                }
+            }
+        }
     }
 
     private func showNotificationDetail(_ notification: NotificationItem) {

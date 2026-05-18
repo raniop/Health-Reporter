@@ -134,7 +134,7 @@ final class MessageBubbleCell: UITableViewCell {
             // Sent bubble: trailing side (right in LTR, left in RTL)
             bubbleContainer.backgroundColor = AIONDesign.accentPrimary
             messageLabel.textColor = .white
-            timestampLabel.textColor = UIColor.white.withAlphaComponent(0.7)
+            timestampLabel.textColor = AIONDesign.textSecondary
 
             if isRTL {
                 bubbleLeading.isActive = true
@@ -152,10 +152,10 @@ final class MessageBubbleCell: UITableViewCell {
             switch message.status {
             case .sent:
                 statusIcon.image = UIImage(systemName: "checkmark")
-                statusIcon.tintColor = UIColor.white.withAlphaComponent(0.7)
+                statusIcon.tintColor = AIONDesign.textSecondary
             case .delivered:
                 statusIcon.image = Self.doubleCheckImage()
-                statusIcon.tintColor = UIColor.white.withAlphaComponent(0.7)
+                statusIcon.tintColor = AIONDesign.textSecondary
             case .seen:
                 statusIcon.image = Self.doubleCheckImage()
                 statusIcon.tintColor = UIColor(red: 0.33, green: 0.85, blue: 1.0, alpha: 1.0)
