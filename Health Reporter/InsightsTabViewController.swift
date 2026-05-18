@@ -3231,7 +3231,7 @@ private func showDiscoveryLoadingAnimation() {
         let carNameLabel = UILabel()
         carNameLabel.text = carName
         carNameLabel.font = .systemFont(ofSize: 22, weight: .heavy)
-        carNameLabel.textColor = .white
+        carNameLabel.textColor = AIONDesign.textPrimary
         carNameLabel.textAlignment = .center
         carNameLabel.numberOfLines = 1
         carNameLabel.adjustsFontSizeToFitWidth = true
@@ -3333,6 +3333,10 @@ private func showDiscoveryLoadingAnimation() {
 
         if !wikiName.isEmpty {
             fetchCarImageFromWikipedia(carName: wikiName, into: carImageView, fallbackEmoji: "🚗")
+        } else if !carName.isEmpty && carName != "insights.waitingForAnalysis".localized {
+            fetchCarImageFromWikipedia(carName: carName, into: carImageView, fallbackEmoji: "🚗")
+        } else {
+            showFallbackEmoji(in: carImageView, emoji: "🚗")
         }
 
         NSLayoutConstraint.activate([
