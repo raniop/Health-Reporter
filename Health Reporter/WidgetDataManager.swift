@@ -255,11 +255,18 @@ extension WidgetDataManager {
     /// Removes the background from a car image using Vision framework (iOS 17+).
     /// Returns the isolated subject with transparent background via completion handler.
     /// Falls back to the original image if background removal fails.
-    func removeBackground(from image: UIImage, completion: @escaping (UIImage) -> Void) {
+    /// Removes the background from a photo using Vision's foreground-instance
+    /// mask. Returns `nil` (not the original image) when Vision can't isolate
+    /// a foreground — callers should treat nil as "this image is unusable on
+    /// our floating car card" and try a different source or show a fallback.
+    /// Returning the original image is wrong here because the whole point of
+    /// this card is to display a cut-out car silhouette, not a snapshot with
+    /// a parking lot in the background.
+    func removeBackground(from image: UIImage, completion: @escaping (UIImage?) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             guard let inputCIImage = CIImage(image: image) else {
                 print("🚗 [BgRemoval] ❌ Failed to create CIImage")
-                completion(image)
+                completion(nil)
                 return
             }
 
@@ -271,19 +278,16 @@ extension WidgetDataManager {
 
                 guard let result = request.results?.first else {
                     print("🚗 [BgRemoval] ❌ No mask results")
-                    completion(image)
+                    completion(nil)
                     return
                 }
 
-                // Vision sometimes returns a results array with an empty
-                // allInstances set — e.g. a vehicle photographed against a
-                // similar-color backdrop. generateScaledMaskForImage(forInstances:)
-                // with an empty set produces an all-zero mask and blendWithMask
-                // outputs a fully transparent image, which was then cached and
-                // rendered as an invisible UIImageView on the Insights card.
+                // Empty allInstances → generateScaledMaskForImage produces an
+                // all-zero mask and blendWithMask outputs a fully transparent
+                // image. Caller handles nil by moving on to the next candidate.
                 guard !result.allInstances.isEmpty else {
-                    print("🚗 [BgRemoval] ⚠️ No foreground instances detected — keeping original image")
-                    completion(image)
+                    print("🚗 [BgRemoval] ⚠️ No foreground instances detected")
+                    completion(nil)
                     return
                 }
 
@@ -301,14 +305,14 @@ extension WidgetDataManager {
 
                 guard let outputCIImage = filter.outputImage else {
                     print("🚗 [BgRemoval] ❌ Filter produced no output")
-                    completion(image)
+                    completion(nil)
                     return
                 }
 
                 let context = CIContext(options: nil)
                 guard let cgImage = context.createCGImage(outputCIImage, from: outputCIImage.extent) else {
                     print("🚗 [BgRemoval] ❌ Failed to create CGImage")
-                    completion(image)
+                    completion(nil)
                     return
                 }
 
@@ -318,7 +322,7 @@ extension WidgetDataManager {
 
             } catch {
                 print("🚗 [BgRemoval] ❌ Vision error: \(error.localizedDescription)")
-                completion(image)
+                completion(nil)
             }
         }
     }
@@ -328,11 +332,11 @@ extension WidgetDataManager {
 
 extension WidgetDataManager {
     private var carImageFileName: String { "widget_car_image.png" }
-    // v3: bumped from "cached_car_image.png" to invalidate caches written by
-    // the buggy bg-removal that produced fully transparent PNGs. Old files
-    // become orphans on disk; the next fetch repopulates the v3 cache.
-    private var carImageCacheFileName: String { "cached_car_image_v3.png" }
-    private var carImageCacheKeyName: String { "cached_car_wiki_name_v3" }
+    // v4: bumped again — v3 was filled by the interim fix that cached the
+    // original photo (with parking-lot background) when Vision failed, which
+    // defeats the whole "cut-out car silhouette" intent of the hero card.
+    private var carImageCacheFileName: String { "cached_car_image_v4.png" }
+    private var carImageCacheKeyName: String { "cached_car_wiki_name_v4" }
 
     /// Saves car image to App Group for widget access
     func saveCarImage(_ image: UIImage) {
@@ -557,9 +561,14 @@ extension WidgetDataManager {
                 if let imgData = imgData, !imgData.isEmpty, let image = UIImage(data: imgData) {
                     print("🚗 [Prefetch] ✅ Image prefetched for '\(carName)', removing background...")
                     self.removeBackground(from: image) { processedImage in
-                        self.saveCarImage(processedImage)
-                        self.cacheCarImage(processedImage, forWikiName: originalWikiName)
-                        completion?(true)
+                        if let processedImage = processedImage {
+                            self.saveCarImage(processedImage)
+                            self.cacheCarImage(processedImage, forWikiName: originalWikiName)
+                            completion?(true)
+                        } else {
+                            print("🚗 [Prefetch] 🔄 Bg removal failed for '\(carName)' — trying next candidate")
+                            self.prefetchWithCandidates(candidates: candidates, index: index + 1, originalWikiName: originalWikiName, completion: completion)
+                        }
                     }
                 } else {
                     // Try original URL
@@ -572,9 +581,13 @@ extension WidgetDataManager {
                             if let retryData = retryData, !retryData.isEmpty, let image = UIImage(data: retryData) {
                                 print("🚗 [Prefetch] ✅ Image prefetched with original URL for '\(carName)', removing background...")
                                 self.removeBackground(from: image) { processedImage in
-                                    self.saveCarImage(processedImage)
-                                    self.cacheCarImage(processedImage, forWikiName: originalWikiName)
-                                    completion?(true)
+                                    if let processedImage = processedImage {
+                                        self.saveCarImage(processedImage)
+                                        self.cacheCarImage(processedImage, forWikiName: originalWikiName)
+                                        completion?(true)
+                                    } else {
+                                        self.prefetchWithCandidates(candidates: candidates, index: index + 1, originalWikiName: originalWikiName, completion: completion)
+                                    }
                                 }
                             } else {
                                 self.prefetchWithCandidates(candidates: candidates, index: index + 1, originalWikiName: originalWikiName, completion: completion)

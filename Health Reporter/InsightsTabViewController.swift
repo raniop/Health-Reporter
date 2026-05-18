@@ -1449,15 +1449,20 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                     if let imgData = imgData, !imgData.isEmpty, let image = UIImage(data: imgData) {
                         print("🚗 [CarImage] ✅ Image loaded successfully for '\(carName)' (size: \(imgData.count) bytes), removing background...")
                         WidgetDataManager.shared.removeBackground(from: image) { [weak self, weak imageView] processedImage in
-                            DispatchQueue.main.async {
-                                guard let imageView = imageView else { return }
-                                imageView.subviews.forEach { $0.removeFromSuperview() }
-                                imageView.image = processedImage
-                                imageView.contentMode = .scaleAspectFill
-                                imageView.backgroundColor = .clear
+                            guard let self = self, let imageView = imageView else { return }
+                            if let processedImage = processedImage {
+                                DispatchQueue.main.async {
+                                    imageView.subviews.forEach { $0.removeFromSuperview() }
+                                    imageView.image = processedImage
+                                    imageView.contentMode = .scaleAspectFill
+                                    imageView.backgroundColor = .clear
+                                }
+                                WidgetDataManager.shared.saveCarImage(processedImage)
+                                WidgetDataManager.shared.cacheCarImage(processedImage, forWikiName: originalWikiName)
+                            } else {
+                                print("🚗 [CarImage] 🔄 Bg removal failed for '\(carName)' — trying next candidate")
+                                self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji, originalWikiName: originalWikiName)
                             }
-                            WidgetDataManager.shared.saveCarImage(processedImage)
-                            WidgetDataManager.shared.cacheCarImage(processedImage, forWikiName: originalWikiName)
                         }
                     } else {
                         print("🚗 [CarImage] ❌ Failed to load image data: \(imgError?.localizedDescription ?? "no error"), data size: \(imgData?.count ?? 0)")
@@ -1473,14 +1478,20 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                                 if let retryData = retryData, !retryData.isEmpty, let image = UIImage(data: retryData) {
                                     print("🚗 [CarImage] ✅ Image loaded with original URL for '\(carName)', removing background...")
                                     WidgetDataManager.shared.removeBackground(from: image) { [weak self, weak imageView] processedImage in
-                                        DispatchQueue.main.async {
-                                            guard let imageView = imageView else { return }
-                                            imageView.image = processedImage
-                                            imageView.contentMode = .scaleAspectFill
-                                            imageView.backgroundColor = .clear
+                                        guard let self = self, let imageView = imageView else { return }
+                                        if let processedImage = processedImage {
+                                            DispatchQueue.main.async {
+                                                imageView.subviews.forEach { $0.removeFromSuperview() }
+                                                imageView.image = processedImage
+                                                imageView.contentMode = .scaleAspectFill
+                                                imageView.backgroundColor = .clear
+                                            }
+                                            WidgetDataManager.shared.saveCarImage(processedImage)
+                                            WidgetDataManager.shared.cacheCarImage(processedImage, forWikiName: originalWikiName)
+                                        } else {
+                                            print("🚗 [CarImage] 🔄 Bg removal failed on retry for '\(carName)' — trying next candidate")
+                                            self.tryWikipediaCandidates(candidates: candidates, index: index + 1, into: imageView, fallbackEmoji: fallbackEmoji, originalWikiName: originalWikiName)
                                         }
-                                        WidgetDataManager.shared.saveCarImage(processedImage)
-                                        WidgetDataManager.shared.cacheCarImage(processedImage, forWikiName: originalWikiName)
                                     }
                                 } else {
                                     DispatchQueue.main.async {
