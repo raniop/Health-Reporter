@@ -949,7 +949,8 @@ final class LivityMetricsService {
         guard let type = HKQuantityType.quantityType(forIdentifier: id) else { completion(nil); return }
         let predicate = HKQuery.predicateForSamples(withStart: from, end: to, options: .strictStartDate)
         let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
-            completion(result?.sumQuantity()?.doubleValue(for: unit))
+            let value = result?.sumQuantity()?.doubleValue(for: unit)
+            DispatchQueue.main.async { completion(value) }
         }
         store.execute(query)
     }
@@ -958,7 +959,8 @@ final class LivityMetricsService {
         guard let type = HKQuantityType.quantityType(forIdentifier: id) else { completion(nil); return }
         let predicate = HKQuery.predicateForSamples(withStart: from, end: to, options: .strictStartDate)
         let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .mostRecent) { _, result, _ in
-            completion(result?.mostRecentQuantity()?.doubleValue(for: unit))
+            let value = result?.mostRecentQuantity()?.doubleValue(for: unit)
+            DispatchQueue.main.async { completion(value) }
         }
         store.execute(query)
     }
@@ -1278,7 +1280,7 @@ final class LivityMetricsService {
                 default: break
                 }
             }
-            completion(summary)
+            DispatchQueue.main.async { completion(summary) }
         }
         store.execute(query)
     }
