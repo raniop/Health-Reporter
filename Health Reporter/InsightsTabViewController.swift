@@ -577,6 +577,8 @@ final class InsightsTabViewController: UIViewController {
         saveBtn.layer.cornerCurve = .continuous
         saveBtn.contentEdgeInsets = UIEdgeInsets(top: 5, left: 14, bottom: 5, right: 14)
         saveBtn.setContentHuggingPriority(.required, for: .horizontal)
+        saveBtn.setContentCompressionResistancePriority(.required, for: .horizontal)
+        saveBtn.titleLabel?.lineBreakMode = .byClipping
         saveBtn.addTarget(self, action: #selector(saveNotesTapped), for: .touchUpInside)
         saveBtn.alpha = 0
         saveBtn.transform = CGAffineTransform(scaleX: 0.85, y: 0.85)
@@ -869,7 +871,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
     let carNameLabel = UILabel()
     carNameLabel.text = carName
     carNameLabel.font = .systemFont(ofSize: 22, weight: .heavy)
-    carNameLabel.textColor = .white
+    carNameLabel.textColor = AIONDesign.textPrimary
     carNameLabel.textAlignment = .center
     carNameLabel.numberOfLines = 1
     carNameLabel.adjustsFontSizeToFitWidth = true
