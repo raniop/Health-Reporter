@@ -202,7 +202,12 @@ final class InsightsTabViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "insights.title".localized
+        // Title intentionally left blank — the bundled "Insights" nav bar
+        // duplicated the on-canvas "AION Insights" header and used up the
+        // top of the screen. We hide the nav bar entirely in viewWillAppear
+        // to match Livity's other tabs, and surface the debug button as an
+        // overlay so it stays reachable.
+        title = ""
         applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
@@ -239,9 +244,10 @@ final class InsightsTabViewController: UIViewController {
               lastContentLanguage != LocalizationManager.shared.currentLanguage else { return }
         lastContentLanguage = LocalizationManager.shared.currentLanguage
 
-        // Update UI direction & title
+        // Update UI direction. Title stays empty — the on-canvas "AION Insights"
+        // header is the user-facing screen title now.
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
-        title = "insights.title".localized
+        title = ""
 
         // Trigger full re-analysis from Gemini via orchestrator
         showLoading()
@@ -254,6 +260,10 @@ final class InsightsTabViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // Match the Livity hosting controllers — the bundled UINavigationBar
+        // duplicated the on-canvas header. Hiding it lets the sparkle/title
+        // sit at the top of the safe area.
+        navigationController?.setNavigationBarHidden(true, animated: animated)
         // Initial load only - prevent duplicate calls
         if !hasLoadedInitialContent {
             hasLoadedInitialContent = true
@@ -358,9 +368,28 @@ final class InsightsTabViewController: UIViewController {
             return
         }
 
-        let debugBtn = UIBarButtonItem(image: UIImage(systemName: "ant"), style: .plain, target: self, action: #selector(debugTapped))
+        // The nav bar is hidden on this screen, so float the bug as a
+        // circular overlay in the top-right corner — preserves the same
+        // glass-pill look the system gave the UIBarButtonItem before.
+        let debugBtn = UIButton(type: .system)
+        debugBtn.setImage(UIImage(systemName: "ant"), for: .normal)
         debugBtn.tintColor = .systemOrange
-        navigationItem.rightBarButtonItem = debugBtn
+        debugBtn.backgroundColor = .systemBackground
+        debugBtn.layer.cornerRadius = 19
+        debugBtn.layer.cornerCurve = .continuous
+        debugBtn.layer.shadowColor = UIColor.black.cgColor
+        debugBtn.layer.shadowOpacity = 0.08
+        debugBtn.layer.shadowOffset = CGSize(width: 0, height: 2)
+        debugBtn.layer.shadowRadius = 6
+        debugBtn.addTarget(self, action: #selector(debugTapped), for: .touchUpInside)
+        debugBtn.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(debugBtn)
+        NSLayoutConstraint.activate([
+            debugBtn.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            debugBtn.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+            debugBtn.widthAnchor.constraint(equalToConstant: 38),
+            debugBtn.heightAnchor.constraint(equalToConstant: 38),
+        ])
     }
 
     @objc private func debugTapped() {
