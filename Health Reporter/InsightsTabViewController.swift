@@ -776,6 +776,11 @@ final class InsightsTabViewController: UIViewController {
         headerStack.addArrangedSubview(dateLabel)
 
         stack.addArrangedSubview(headerStack)
+        // The floating car image on the next card extends ~20pt above its
+        // wrapper, so the default 16pt stack spacing left the car visually
+        // brushing against the "Last update" line. Bump the gap so the car
+        // has breathing room.
+        stack.setCustomSpacing(40, after: headerStack)
     }
 
     // MARK: - Hero Car Card (Like Dashboard)
