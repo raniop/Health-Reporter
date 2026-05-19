@@ -1483,9 +1483,11 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                                         if let processedImage = processedImage {
                                             DispatchQueue.main.async {
                                                 imageView.subviews.forEach { $0.removeFromSuperview() }
+                                                imageView.isHidden = false
                                                 imageView.image = processedImage
                                                 imageView.contentMode = .scaleAspectFill
                                                 imageView.backgroundColor = .clear
+                                                print("🚗 [CarImage] 🖼 Set RETRY image — imageView frame=\(imageView.frame) inWindow=\(imageView.window != nil) alpha=\(imageView.alpha) superview=\(imageView.superview != nil) imgSize=\(processedImage.size)")
                                             }
                                             WidgetDataManager.shared.saveCarImage(processedImage)
                                             WidgetDataManager.shared.cacheCarImage(processedImage, forWikiName: originalWikiName)
