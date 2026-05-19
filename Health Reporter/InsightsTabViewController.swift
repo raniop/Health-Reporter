@@ -475,7 +475,6 @@ final class InsightsTabViewController: UIViewController {
 
         guard let rawAnalysis = GeminiResultStore.loadRawAnalysis(), !rawAnalysis.isEmpty else {
             addEmptyState()
-            addPersonalNotesCard()
             return
         }
 
@@ -484,7 +483,6 @@ final class InsightsTabViewController: UIViewController {
         // Build Premium UI
         addHeader()
         addHeroCarCard(parsed: parsed)
-        addPersonalNotesCard()
         addPerformanceSection(parsed: parsed)
         addBottlenecksCard(parsed: parsed)
         addOptimizationCard(parsed: parsed)
