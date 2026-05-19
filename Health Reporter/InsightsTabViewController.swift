@@ -1330,6 +1330,8 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         if let cachedImage = WidgetDataManager.shared.loadCachedCarImage(forWikiName: carName) {
             print("🚗 [CarImage] ⚡ Using cached image for '\(carName)'")
             DispatchQueue.main.async {
+                imageView.subviews.forEach { $0.removeFromSuperview() }
+                imageView.isHidden = false
                 imageView.image = cachedImage
                 imageView.contentMode = .scaleAspectFill
                 imageView.backgroundColor = .clear
@@ -1451,6 +1453,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                             if let processedImage = processedImage {
                                 DispatchQueue.main.async {
                                     imageView.subviews.forEach { $0.removeFromSuperview() }
+                                    imageView.isHidden = false
                                     imageView.image = processedImage
                                     imageView.contentMode = .scaleAspectFill
                                     imageView.backgroundColor = .clear
@@ -1514,19 +1517,17 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
         }.resume()
     }
 
+    /// Empty out the floating car-image slot. We deliberately do *not* render
+    /// a 🚗 (or any other) emoji or SF Symbol fallback any more — the user
+    /// found it visually jarring next to the rest of the Livity-styled card,
+    /// and would rather see a clean empty space above the card than a
+    /// cartoon icon. `emoji` is kept in the signature for API stability with
+    /// existing call sites but is intentionally ignored.
     private func showFallbackEmoji(in imageView: UIImageView, emoji: String) {
         imageView.subviews.forEach { $0.removeFromSuperview() }
-        let emojiLabel = UILabel()
-        emojiLabel.text = emoji
-        emojiLabel.font = .systemFont(ofSize: 60)
-        emojiLabel.textAlignment = .center
-        emojiLabel.translatesAutoresizingMaskIntoConstraints = false
-        imageView.addSubview(emojiLabel)
+        imageView.image = nil
         imageView.backgroundColor = .clear
-        NSLayoutConstraint.activate([
-            emojiLabel.centerXAnchor.constraint(equalTo: imageView.centerXAnchor),
-            emojiLabel.centerYAnchor.constraint(equalTo: imageView.centerYAnchor),
-        ])
+        imageView.isHidden = true
     }
 
     // MARK: - Weekly Data Grid (4 boxes)
