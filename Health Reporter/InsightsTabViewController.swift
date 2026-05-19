@@ -208,6 +208,10 @@ final class InsightsTabViewController: UIViewController {
         // to match Livity's other tabs, and surface the debug button as an
         // overlay so it stays reachable.
         title = ""
+        // UIViewController mirrors `title` into `tabBarItem.title`, so the
+        // empty title above also wiped the "Insights" label under the tab's
+        // sparkles icon. Restore it explicitly.
+        tabBarItem.title = "tab.insights".localized
         applyAIONGradientBackground()
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
 
@@ -245,9 +249,11 @@ final class InsightsTabViewController: UIViewController {
         lastContentLanguage = LocalizationManager.shared.currentLanguage
 
         // Update UI direction. Title stays empty — the on-canvas "AION Insights"
-        // header is the user-facing screen title now.
+        // header is the user-facing screen title now. Re-pin the tab label
+        // because clearing `title` would otherwise blank it via auto-sync.
         view.semanticContentAttribute = LocalizationManager.shared.semanticContentAttribute
         title = ""
+        tabBarItem.title = "tab.insights".localized
 
         // Trigger full re-analysis from Gemini via orchestrator
         showLoading()
