@@ -1335,6 +1335,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                 imageView.image = cachedImage
                 imageView.contentMode = .scaleAspectFill
                 imageView.backgroundColor = .clear
+                print("🚗 [CarImage] 🖼 Set CACHED image — imageView frame=\(imageView.frame) inWindow=\(imageView.window != nil) alpha=\(imageView.alpha) superview=\(imageView.superview != nil) imgSize=\(cachedImage.size)")
             }
             return
         }
@@ -1457,6 +1458,7 @@ private func addHeroCarCard(parsed: CarAnalysisResponse) {
                                     imageView.image = processedImage
                                     imageView.contentMode = .scaleAspectFill
                                     imageView.backgroundColor = .clear
+                                    print("🚗 [CarImage] 🖼 Set image — imageView frame=\(imageView.frame) inWindow=\(imageView.window != nil) alpha=\(imageView.alpha) superview=\(imageView.superview != nil) imgSize=\(processedImage.size)")
                                 }
                                 WidgetDataManager.shared.saveCarImage(processedImage)
                                 WidgetDataManager.shared.cacheCarImage(processedImage, forWikiName: originalWikiName)
