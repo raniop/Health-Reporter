@@ -262,7 +262,18 @@ extension WidgetDataManager {
     /// Returning the original image is wrong here because the whole point of
     /// this card is to display a cut-out car silhouette, not a snapshot with
     /// a parking lot in the background.
+    ///
+    /// Exception: the iOS Simulator has no Neural Engine, so
+    /// VNGenerateForegroundInstanceMaskRequest always errors with
+    /// "Could not create inference context". On simulator we degrade to
+    /// returning the original photo so developers can still see *something*
+    /// during UI work — the real-device behavior is unaffected.
     func removeBackground(from image: UIImage, completion: @escaping (UIImage?) -> Void) {
+        #if targetEnvironment(simulator)
+        print("🚗 [BgRemoval] ℹ️ Simulator — Vision foreground mask unavailable, returning original image")
+        completion(image)
+        return
+        #else
         DispatchQueue.global(qos: .userInitiated).async {
             guard let inputCIImage = CIImage(image: image) else {
                 print("🚗 [BgRemoval] ❌ Failed to create CIImage")
@@ -325,6 +336,7 @@ extension WidgetDataManager {
                 completion(nil)
             }
         }
+        #endif
     }
 }
 
